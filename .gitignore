@@ -1,0 +1,37 @@
+# ── Neovim ──
+# lazy.nvim plugin directory (downloaded automatically)
+nvim/lazy/
+nvim/plugin/
+nvim/after/
+
+# Mason installed tools (downloaded automatically)
+nvim/mason/
+
+# Treesitter parsers (compiled automatically)
+nvim/parser/
+
+# Neovim general cache
+nvim/spell/
+nvim/undo/
+nvim/swap/
+nvim/backup/
+nvim/view/
+nvim/session/
+nvim/log/
+
+# ── System junk ──
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Backups ──
+*.bak
+*.backup
+*.old
+
+# ── Secrets ──
+.env
+.env.local
+*.secret

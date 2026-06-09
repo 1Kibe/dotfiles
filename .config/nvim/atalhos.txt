@@ -1,0 +1,83 @@
+-- Leader = Espaço
+
+-- Neo-tree
+-- <Space>e         → abrir/fechar o neo-tree
+-- a                → criar arquivo/pasta (dentro do neo-tree)
+-- d                → deletar
+-- r                → renomear
+-- f                → find
+-- Ctrl+w + l       → mover cursor para o editor
+-- Ctrl+w + h       → mover cursor para o neo-tree
+
+-- Telescope
+-- <Space>ff        → buscar arquivos
+-- <Space>fg        → buscar texto nos arquivos
+-- <Space>fb        → listar buffers abertos
+
+
+-- Modo Visual
+-- v                → entrar no modo visual (seleciona caractere a caractere)
+-- V                → selecionar linha inteira
+-- Ctrl+v           → modo visual em bloco (coluna)
+-- y                → copiar seleção (yank)
+-- d                → deletar seleção
+-- p                → colar
+-- >                → indentar para direita
+-- <                → indentar para esquerda
+-- u                → transformar em minúsculo
+-- U                → transformar em maiúsculo
+
+
+-- LSP
+-- K                → mostra documentação do símbolo sob o cursor
+-- gd               → ir para a definição
+-- <Space>ca        → code actions (sugestões de correção)
+
+
+-- Formatação (conform.nvim)
+-- <Space>f         → formatar arquivo com: stylua (lua), prettier (js/ts/react/css/html/json/yaml/md), shfmt (bash), ruff (python), clang-format (c/cpp), rustfmt (rust, via rustup), gofumpt (go), alejandra (nix), taplo (toml), google-java-format (java), php-cs-fixer (php)
+
+
+-- Comentários
+-- gcc              → comentar/descomentar linha atual
+-- gc + movimento   → comentar bloco (ex: gc5j comenta 5 linhas abaixo)
+-- gcb              → comentar bloco com /* */
+
+
+-- Autocomplete (nvim-cmp)
+-- Ctrl+Space       → abrir sugestões manualmente
+-- Enter            → confirmar sugestão selecionada
+-- Tab              → próxima sugestão
+-- Shift+Tab        → sugestão anterior
+-- Ctrl+e           → fechar sugestões
+
+
+-- Avante (IA Chat)
+-- <Space>aa        → abrir/fechar painel de chat IA
+-- <Space>ae        → editar seleção com IA
+-- <Space>ar        → refresh do painel
+-- <Space>at        → toggle do painel
+
+
+-- Dentro do painel Avante:
+-- Ctrl+s           → enviar mensagem
+-- Enter            → enviar mensagem (modo normal)
+-- q                → fechar painel
+
+
+-- Diff (sugestões da IA):
+-- co               → aceitar sua versão
+-- ct               → aceitar versão da IA
+-- ]x               → próximo diff
+-- [x               → diff anterior
+
+
+-- Painéis (janelas)
+-- Ctrl+w >         → aumentar painel atual
+-- Ctrl+w <         → diminuir painel atual
+-- Ctrl+w =         → igualar todos os painéis
+-- Ctrl+w 10>       → aumentar 10 colunas de uma vez
+-- Ctrl+w h         → ir para painel esquerdo
+-- Ctrl+w l         → ir para painel direito
+-- Ctrl+w j         → ir para painel abaixo
+-- Ctrl+w k         → ir para painel acima
