@@ -141,3 +141,4 @@ export DEEPSEEK_API_KEY="sua-chave-aqui"
 - Roda apenas em **Arch Linux** (ou derivados)
 - O script **não** é destrutivo — faz backup de configurações existentes (`.bak`)
 - Neovim faz bootstrap automático dos plugins na primeira execução
+# Arch
