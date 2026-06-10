@@ -6,7 +6,7 @@
     <property name="screen0" type="empty">
       <property name="monitorLVDS-1" type="empty">
         <property name="workspace0" type="empty">
-          <property name="last-image" type="string" value="/home/kibe/wallpapers/Captura de tela 2026-01-24 153931.png"/>
+          <property name="last-image" type="string" value="${HOME}/.config/wallpapers/Captura de tela 2026-01-24 153931.png"/>
           <property name="backdrop-cycle-enable" type="bool" value="false"/>
           <property name="backdrop-cycle-timer" type="uint" value="10"/>
           <property name="backdrop-cycle-random-order" type="bool" value="true"/>

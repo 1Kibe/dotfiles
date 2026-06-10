@@ -325,6 +325,14 @@ for entry in "${CONFIG_SRC}"/*; do
   log "Symlinked: ${name}"
 done
 
+# Copy wallpapers directory directly (not symlinked)
+if [[ -d "${DOTFILES_DIR}/wallpapers" ]]; then
+  step "Installing wallpapers..."
+  mkdir -p "${CONFIG_DST}/wallpapers"
+  cp -r "${DOTFILES_DIR}/wallpapers"/* "${CONFIG_DST}/wallpapers/" 2>/dev/null || true
+  log "Wallpapers installed to ${CONFIG_DST}/wallpapers/"
+fi
+
 # =============================================================================
 # 5. XFCE DESKTOP & WALLPAPER
 # =============================================================================
