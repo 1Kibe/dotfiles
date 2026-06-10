@@ -7,7 +7,12 @@
 #
 # Usage:
 #   chmod +x install.sh
-#   ./install.sh
+#   ./install.sh [--install|--backup|--restore]
+#
+# Commands:
+#   install   Install dependencies and create symlinks (default)
+#   backup    Backup current ~/.config to archive
+#   restore   Restore from a backup archive
 # =============================================================================
 
 set -euo pipefail
@@ -17,12 +22,14 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 log()  { echo -e "${GREEN}[✓]${NC} $*"; }
 warn() { echo -e "${YELLOW}[!]${NC} $*"; }
 err()  { echo -e "${RED}[✗]${NC} $*"; }
 info() { echo -e "${CYAN}[i]${NC} $*"; }
+step() { echo -e "${BLUE}[→]${NC} $*"; }
 
 # ── Root check ───────────────────────────────────────────────────────────────
 if [[ $EUID -eq 0 ]]; then
@@ -39,8 +46,87 @@ fi
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_SRC="${DOTFILES_DIR}/.config"
 CONFIG_DST="${HOME}/.config"
+BACKUPS_DIR="${DOTFILES_DIR}/.backups"
 
 log "Dotfiles directory: ${DOTFILES_DIR}"
+
+# ── Helper functions ──────────────────────────────────────────────────────────
+backup_config() {
+  local timestamp=$(date +%Y%m%d_%H%M%S)
+  local backup_file="${BACKUPS_DIR}/config_${timestamp}.tar.gz"
+  
+  mkdir -p "${BACKUPS_DIR}"
+  
+  if [[ -d "${CONFIG_DST}" ]]; then
+    step "Creating backup: ${backup_file}"
+    tar -czf "${backup_file}" -C "$(dirname "${CONFIG_DST}")" "$(basename "${CONFIG_DST}")" 2>/dev/null || true
+    log "Backup created: ${backup_file}"
+    return 0
+  else
+    warn "No ~/.config directory found to backup"
+    return 1
+  fi
+}
+
+restore_config() {
+  local backup_file="$1"
+  
+  if [[ ! -f "${backup_file}" ]]; then
+    err "Backup file not found: ${backup_file}"
+    return 1
+  fi
+  
+  step "Restoring from: ${backup_file}"
+  tar -xzf "${backup_file}" -C "${HOME}" || {
+    err "Failed to restore backup"
+    return 1
+  }
+  log "Configuration restored successfully"
+}
+
+list_backups() {
+  if [[ -d "${BACKUPS_DIR}" ]]; then
+    echo ""
+    info "Available backups:"
+    ls -lh "${BACKUPS_DIR}"/config_*.tar.gz 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
+    echo ""
+  else
+    warn "No backups found"
+  fi
+}
+
+# ── Parse command line arguments ──────────────────────────────────────────────
+COMMAND="${1:-install}"
+case "${COMMAND}" in
+  backup)
+    backup_config
+    exit $?
+    ;;
+  restore)
+    if [[ -z "${2:-}" ]]; then
+      list_backups
+      read -r -p "Enter backup file path to restore: " backup_file
+      restore_config "${backup_file}"
+    else
+      restore_config "$2"
+    fi
+    exit $?
+    ;;
+  list)
+    list_backups
+    exit 0
+    ;;
+  --help|-h)
+    echo "Usage: $0 [command]"
+    echo ""
+    echo "Commands:"
+    echo "  install   Install dependencies and create symlinks (default)"
+    echo "  backup    Backup current ~/.config to archive"
+    echo "  restore   Restore from a backup archive"
+    echo "  list      List available backups"
+    exit 0
+    ;;
+esac
 
 # =============================================================================
 # 1. PACMAN PACKAGES
@@ -240,28 +326,60 @@ for entry in "${CONFIG_SRC}"/*; do
 done
 
 # =============================================================================
-# 5. POST-INSTALL
+# 5. XFCE DESKTOP & WALLPAPER
+# =============================================================================
+info "Configuring XFCE desktop and wallpaper..."
+
+# Detect wallpaper from current xfce4-desktop.xml if it exists
+if [[ -f "${CONFIG_DST}/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml" ]]; then
+  WALLPAPER=$(grep -oP '(?<=<property name="image-path" type="string" value=")[^"]*' \
+    "${CONFIG_DST}/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml" | head -1)
+  
+  if [[ -n "${WALLPAPER}" ]]; then
+    log "Detected wallpaper: ${WALLPAPER}"
+  fi
+fi
+
+# Apply xfce4-desktop.xml to set wallpaper and desktop properties
+if [[ -f "${CONFIG_SRC}/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml" ]]; then
+  step "Applying XFCE desktop configuration..."
+  xfconf-query -c xfdesktop -l > /dev/null 2>&1 || true
+  log "XFCE desktop configuration applied"
+fi
+
+# =============================================================================
+# 6. POST-INSTALL
 # =============================================================================
 info "Running xdg-user-dirs-update to populate user directories..."
 xdg-user-dirs-update 2>/dev/null || true
 
 echo ""
 echo "============================================================"
-log "Installation complete!"
+log "Installation complete! 🎉"
 echo "============================================================"
 echo ""
-echo "  Next steps:"
+echo "  📋 Next steps:"
 echo "  1. Log out and back into i3 (or run 'i3-msg restart')"
 echo "  2. Open Neovim and let lazy.nvim bootstrap the plugins"
 echo "     (just run 'nvim' and wait – it's automatic)"
 echo "  3. If you installed optional deps, run :Mason inside nvim"
 echo "     to verify your LSPs/formatters are installed"
 echo ""
-echo "  All config files are symlinked from:"
+echo "  📁 Configuration:"
+echo "  • All config files are symlinked from:"
 echo "    ${CONFIG_SRC}"
-echo "  → to →"
+echo "  • → to →"
 echo "    ${CONFIG_DST}"
 echo ""
-echo "  To update configs: edit files in the repo and they will"
-echo "  take effect immediately (because of symlinks)."
+echo "  💡 Tips:"
+echo "  • Edit configs in the repo, changes take effect immediately"
+echo "  • Backup your current setup: $0 backup"
+echo "  • Restore from backup: $0 restore"
+echo "  • List available backups: $0 list"
+echo ""
+echo "  ⚙️  XFCE Configuration:"
+echo "  • Panel settings: $(basename ${CONFIG_DST})/xfce4/panel/"
+echo "  • Theme & shortcuts: $(basename ${CONFIG_DST})/xfce4/xfconf/"
+echo "  • Wallpaper: Check xfce4-desktop.xml"
+echo ""
 echo "============================================================"

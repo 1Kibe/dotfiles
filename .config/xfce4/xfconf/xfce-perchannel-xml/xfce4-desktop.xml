@@ -1,0 +1,31 @@
+<?xml version="1.1" encoding="UTF-8"?>
+
+<channel name="xfce4-desktop" version="1.0">
+  <property name="last-settings-migration-version" type="uint" value="1"/>
+  <property name="backdrop" type="empty">
+    <property name="screen0" type="empty">
+      <property name="monitorLVDS-1" type="empty">
+        <property name="workspace0" type="empty">
+          <property name="last-image" type="string" value="/home/kibe/wallpapers/Captura de tela 2026-01-24 153931.png"/>
+          <property name="backdrop-cycle-enable" type="bool" value="false"/>
+          <property name="backdrop-cycle-timer" type="uint" value="10"/>
+          <property name="backdrop-cycle-random-order" type="bool" value="true"/>
+        </property>
+      </property>
+    </property>
+  </property>
+  <property name="desktop-menu" type="empty">
+    <property name="show" type="bool" value="true"/>
+  </property>
+  <property name="desktop-icons" type="empty">
+    <property name="style" type="int" value="0"/>
+    <property name="show-thumbnails" type="bool" value="true"/>
+    <property name="file-icons" type="empty">
+      <property name="show-home" type="bool" value="true"/>
+    </property>
+  </property>
+  <property name="last" type="empty">
+    <property name="window-width" type="int" value="833"/>
+    <property name="window-height" type="int" value="603"/>
+  </property>
+</channel>

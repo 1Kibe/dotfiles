@@ -11,7 +11,7 @@ Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fáci
 | **Neovim** | Editor completo com LSP, autocomplete, formatters, file-tree, dashboard e IA |
 | **Rofi** | Application launcher (tema gruvbox-dark) |
 | **Thunar** | File manager (com ações customizadas e atalhos) |
-| **XFCE4** | Screenshooter, desktop icons e helpers |
+| **XFCE4** | Desktop, painéis, temas e configurações completas |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
 | **GTK 3.0** | Bookmarks e configurações |
 
@@ -66,6 +66,7 @@ O script vai:
 2. Instalar pacotes AUR (xss-lock) via **paru** (instala o paru se necessário)
 3. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix)
 4. Criar **symlinks** de `~/arch+xfce/.config/*` → `~/.config/*`
+5. Aplicar configurações do XFCE (temas, painéis, wallpaper)
 
 ## 📁 Estrutura
 
@@ -94,9 +95,20 @@ arch+xfce/
 │   │   ├── helpers.rc
 │   │   ├── help.rc
 │   │   ├── xfce4-screenshooter
-│   │   └── desktop/
-│   │       ├── accels.scm
-│   │       └── icons.screen0.yaml
+│   │   ├── desktop/
+│   │   │   ├── accels.scm
+│   │   │   └── icons.screen0.yaml
+│   │   ├── panel/                [Configurações do painel XFCE]
+│   │   │   ├── battery-15.rc
+│   │   │   └── ...
+│   │   └── xfconf/
+│   │       └── xfce-perchannel-xml/  [Temas, atalhos, wallpaper]
+│   │           ├── xfce4-panel.xml
+│   │           ├── xfce4-desktop.xml
+│   │           ├── xfwm4.xml
+│   │           ├── xsettings.xml
+│   │           ├── xfce4-keyboard-shortcuts.xml
+│   │           └── ...
 │   ├── pavucontrol.ini
 │   ├── user-dirs.dirs
 │   └── user-dirs.locale
@@ -115,6 +127,51 @@ git add .
 git commit -m "atualiza config do nvim"
 git push
 ```
+
+## 💾 Backup e Restore
+
+O script oferece comandos para gerenciar suas configurações:
+
+### Fazer Backup
+```bash
+./install.sh backup
+# Cria: ~/.backups/config_YYYYMMDD_HHMMSS.tar.gz
+```
+
+### Listar Backups Disponíveis
+```bash
+./install.sh list
+```
+
+### Restaurar de um Backup
+```bash
+./install.sh restore /caminho/para/config_20240609_205600.tar.gz
+# Ou simplesmente:
+./install.sh restore
+# E selecione o arquivo interativamente
+```
+
+## 🖥️ Configurações XFCE Capturadas
+
+A partir da versão 2.0, o repositório captura **100% das configurações do XFCE**:
+
+### Painéis
+- Posição e plugins dos painéis
+- Configurações de cada widget (clock, battery, taskbar, etc.)
+
+### Temas & Aparência
+- **xfce4-desktop.xml** — Wallpaper, cores do desktop, ícones
+- **xsettings.xml** — Tema GTK, fontes, ícones, cursor
+- **xfwm4.xml** — Tema de janelas, keybindings de janela
+
+### Atalhos de Teclado
+- **xfce4-keyboard-shortcuts.xml** — Todos os atalhos do XFCE
+
+### Outros
+- Configurações de screenshooter
+- Configurações de gerenciador de arquivos
+- Preferências de notificações
+- Configurações de energia
 
 ## ⚙️ Dependências opcionais
 
@@ -141,4 +198,5 @@ export DEEPSEEK_API_KEY="sua-chave-aqui"
 - Roda apenas em **Arch Linux** (ou derivados)
 - O script **não** é destrutivo — faz backup de configurações existentes (`.bak`)
 - Neovim faz bootstrap automático dos plugins na primeira execução
-# Arch
+- Simlinks permitem manter configs no git com efeito imediato no sistema
+- XFCE configuration é versionável e replicável em múltiplas máquinas
