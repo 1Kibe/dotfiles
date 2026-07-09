@@ -29,6 +29,9 @@ return {
     config = function()
       local builtin = require("telescope.builtin")
       require("telescope").setup({
+        defaults = {
+          path_display = { filename_first = { reverse_directories = false } },
+        },
         extensions = {
           ["ui-select"] = {
             require("telescope.themes").get_dropdown(),
@@ -91,7 +94,7 @@ return {
   "WhoIsSethDaniel/mason-tool-installer.nvim",
   dependencies = { "williamboman/mason.nvim" },
   opts = {
-    ensure_installed = { "prettier", "stylua", "shfmt", "ruff", "clang-format", "alejandra", "taplo", "google-java-format", "php-cs-fixer" },
+    ensure_installed = { "prettier", "stylua", "shfmt", "ruff", "clang-format", "taplo", "google-java-format", "php-cs-fixer" },
   },
 }, {
   "neovim/nvim-lspconfig",
@@ -200,33 +203,68 @@ return {
     })
   end,
 }, {
-  "yetone/avante.nvim",
-  event = "VeryLazy",
-  version = false,
-  build = "make",
-  dependencies = {
-    "nvim-treesitter/nvim-treesitter",
-    "stevearc/dressing.nvim",
-    "nvim-lua/plenary.nvim",
-    "MunifTanjim/nui.nvim",
-    "nvim-tree/nvim-web-devicons",
-    "hrsh7th/nvim-cmp",
-    "nvim-telescope/telescope.nvim",
-  },
-  opts = {
-    provider = "deepseek",
-    providers = {
-      deepseek = {
-        __inherited_from = "openai",
-        endpoint = "https://api.deepseek.com/v1",
-        model = "deepseek-v4-pro",
-        api_key_name = "DEEPSEEK_API_KEY",
-        extra_request_body = {
-          temperature = 0.75,
-          max_tokens = 8192,
+  "Isrothy/neominimap.nvim",
+  version = "v3.x.x",
+  lazy = false,
+  init = function()
+    vim.opt.wrap = false
+    vim.opt.sidescrolloff = 36
+    vim.g.neominimap = {
+      auto_enable = true,
+      layout = "split",
+      split = {
+        direction = "right",
+        width = 20,
+        close_if_last_window = true,
+      },
+      exclude_filetypes = { "help", "alpha", "neo-tree", "dashboard" },
+      exclude_buftypes = { "nofile", "nowrite", "quickfix", "terminal", "prompt" },
+      click = { enabled = true, auto_switch_focus = false },
+      diagnostic = {
+        enabled = true,
+        severity = vim.diagnostic.severity.HINT,
+        mode = "line",
+        priority = {
+          ERROR = 100,
+          WARN = 90,
+          INFO = 80,
+          HINT = 70,
+        },
+        icon = {
+          ERROR = "󰅚 ",
+          WARN = "󰀪 ",
+          INFO = "󰋽 ",
+          HINT = "󰌶 ",
         },
       },
-    },
-  },
+      git = {
+        enabled = true,
+        mode = "sign",
+        priority = 6,
+        icon = {
+          add = "+ ",
+          change = "~ ",
+          delete = "- ",
+        },
+      },
+      search = {
+        enabled = true,
+        mode = "line",
+        priority = 20,
+        icon = "󰱽 ",
+      },
+      mark = {
+        enabled = true,
+        mode = "icon",
+        priority = 10,
+        key = "m",
+        show_builtins = false,
+      },
+      treesitter = { enabled = true, priority = 200 },
+    }
+    vim.keymap.set("n", "<leader>nm", "<cmd>Neominimap toggle<CR>", { desc = "Toggle minimap" })
+    vim.keymap.set("n", "<leader>nb", "<cmd>Neominimap bufToggle<CR>", { desc = "Toggle minimap (buffer)" })
+    vim.keymap.set("n", "<leader>nf", "<cmd>Neominimap focus<CR>", { desc = "Focus minimap" })
+  end,
 },
 }

@@ -72,6 +72,14 @@
 -- [x               → diff anterior
 
 
+-- Minimapa (neominimap)
+-- <Space>nm        → abrir/fechar minimapa (global)
+-- <Space>nb        → abrir/fechar minimapa só do buffer atual
+-- <Space>nf        → focar cursor no minimapa
+-- Ctrl+w h/l       → sair do minimapa de volta pro código
+-- (o minimapa é read-only: erro E21 se tentar editar é normal)
+
+
 -- Painéis (janelas)
 -- Ctrl+w >         → aumentar painel atual
 -- Ctrl+w <         → diminuir painel atual
