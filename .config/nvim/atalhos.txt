@@ -72,6 +72,150 @@
 -- [x               → diff anterior
 
 
+-- Which-key (Command Palette / dicas)
+-- <Space> (e aguarda) → popup mostra TODOS os atalhos disponíveis com <Space>
+-- Serve como cheatsheet interativo: aperta leader e vê o que existe
+
+
+-- Trouble (Painel de Problems)
+-- <Space>xx        → abrir painel com TODOS os erros/warnings do projeto
+-- <Space>xd        → só erros/warnings do buffer atual
+-- <Space>xs        → outline de símbolos do arquivo (classes, funções)
+-- <Space>xl        → definições/referências LSP em painel
+-- <Space>xL        → location list
+-- <Space>xQ        → quickfix list
+-- Dentro do painel:
+-- <CR>             → pular pra localização do erro
+-- q                → fechar painel
+-- r                → refresh
+
+
+-- Terminal integrado (toggleterm)
+-- Ctrl+\           → abre/fecha terminal flutuante (persiste ao esconder)
+-- <Space>tf        → terminal flutuante
+-- <Space>th        → terminal split horizontal
+-- <Space>tv        → terminal split vertical
+-- <Space>t1/t2/t3  → "Shell 1/2/3" — terminais nomeados, independentes
+-- <Space>tg        → abrir Lazygit (se instalado no sistema)
+-- <Space>ts        → listar todos terminais abertos e escolher qual abrir
+-- <Space>tq        → fechar o terminal atual (mata o shell)
+-- <Space>tQ        → fechar TODOS os terminais (shutdown geral)
+--
+-- Winbar: no topo de cada terminal aparece o nome, ex: "[1] Shell 1"
+-- Lualine: canto direito mostra "N term(s)" com quantos estão ativos
+--
+-- Dentro do terminal:
+-- Esc              → sair do modo terminal (pra rolar/copiar texto)
+-- jk               → mesma coisa (mais rápido)
+-- Ctrl+h/j/k/l     → pular pra janela vizinha (sem sair do modo terminal)
+-- Ctrl+\           → esconder terminal (mantém sessão viva em background)
+-- exit             → matar sessão do shell de verdade
+-- i / a            → voltar pro modo terminal (digitar comandos)
+--
+-- OBS: <Space>t1/t2/t3 e Ctrl+\ escondem/mostram (processo continua rodando).
+-- Só <Space>tq / <Space>tQ / exit MATAM o processo de verdade.
+
+
+-- Bufferline (abas de arquivos no topo)
+-- ]b               → próxima aba/buffer
+-- [b               → aba/buffer anterior
+-- <Space>bd        → fechar aba atual
+-- <Space>bo        → fechar todas as outras (mantém só a atual)
+-- <Space>bp        → escolher aba mostrando uma letra em cada (aperta a letra pra pular)
+
+
+-- Multi-cursor (vim-visual-multi)
+-- Ctrl+n           → selecionar palavra sob cursor (aperte de novo pra próxima ocorrência)
+-- Ctrl+A          → selecionar TODAS as ocorrências no arquivo (Shift+A maiúsculo)
+-- Ctrl+↓ / Ctrl+↑ → adicionar cursor linha abaixo / acima (coluna vertical)
+-- Ctrl+x           → pular a próxima ocorrência (sem adicionar cursor)
+-- Ctrl+p           → remover cursor atual
+-- (com múltiplos cursores) i, a, c, s, r → entra em insert como se fossem 1 só
+-- Esc              → sair do modo multi-cursor
+
+
+-- Search & Replace no projeto (Spectre)
+-- <Space>S         → abrir/fechar painel Spectre (busca + substitui em todo projeto)
+-- <Space>sw        → buscar palavra sob cursor no projeto
+-- <Space>sw (visual)→ buscar seleção no projeto
+-- <Space>sp        → buscar palavra só no arquivo atual
+-- Dentro do painel:
+-- <CR>             → abrir arquivo na ocorrência
+-- dd               → desmarcar ocorrência (não substitui essa)
+-- <Space>R         → executar substituição em tudo que sobrou
+
+
+-- Busca dentro do arquivo (nativo)
+-- /palavra         → buscar pra baixo (Enter pra confirmar)
+-- ?palavra         → buscar pra cima
+-- n                → próxima ocorrência (mesma direção)
+-- N                → ocorrência anterior (direção oposta)
+-- *                → buscar palavra sob cursor pra baixo
+-- #                → buscar palavra sob cursor pra cima
+-- /palavra\c       → busca case-insensitive
+-- :noh             → tira o highlight das ocorrências
+
+
+-- Git: Fugitive (comandos git direto do editor)
+-- <Space>gs        → :Git status (painel interativo pra stage/unstage)
+-- <Space>gb        → git blame (mostra quem editou cada linha)
+-- <Space>gl        → git log
+-- :Git <comando>   → roda QUALQUER comando git direto:
+--                    :Git fetch
+--                    :Git pull
+--                    :Git push
+--                    :Git checkout main
+--                    :Git checkout -b nova-branch
+--                    :Git merge dev
+--                    :Git stash / :Git stash pop
+--                    :Git reset --hard HEAD
+-- Dentro do painel :Git:
+-- s                → stage arquivo/hunk sob cursor
+-- u                → unstage
+-- X                → descartar mudança
+-- =                → expande/colapsa diff inline
+-- -                → stage/unstage toggle
+-- c c              → criar commit
+-- c a              → amend último commit
+-- d d              → abre diff em split
+-- ?                → ajuda com todos os atalhos do fugitive
+
+
+-- Git: Diffview (diff visual side-by-side)
+-- <Space>gd        → abrir diff do que mudou desde o último commit
+-- <Space>gh        → histórico completo de commits do repo (navegável)
+-- <Space>gf        → histórico do arquivo atual
+-- <Space>gc        → fechar diffview
+
+
+-- Git: Neogit (interface completa estilo Magit — mais visual)
+-- <Space>gg        → abrir painel Neogit
+-- Dentro do painel:
+-- s                → stage (arquivo ou hunk sob cursor)
+-- u                → unstage
+-- c c              → criar commit
+-- c a              → amend último commit
+-- P p              → push
+-- F p              → pull
+-- F f              → fetch
+-- b b              → trocar de branch
+-- b c              → criar branch nova
+-- m m              → merge
+-- r r              → rebase
+-- l l              → log/histórico
+-- z z              → stash
+-- ?                → ajuda com todos os atalhos do Neogit
+
+
+-- Git: qual usar pra cada coisa?
+-- Pull/fetch/push rápido    → :Git pull  |  :Git fetch  |  :Git push
+-- Ver o que mudei           → <Space>gd (diffview)
+-- Fazer commit visual       → <Space>gg → s → c c
+-- Ver quem alterou linha    → <Space>gb (blame)
+-- Ver histórico do repo     → <Space>gh (diffview) ou l l no Neogit
+-- Resolver conflito         → <Space>gg (Neogit) → arquivo em conflito
+
+
 -- Minimapa (neominimap)
 -- <Space>nm        → abrir/fechar minimapa (global)
 -- <Space>nb        → abrir/fechar minimapa só do buffer atual
