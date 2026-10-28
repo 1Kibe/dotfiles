@@ -31,6 +31,9 @@ Thumbs.db
 *.backup
 *.old
 
+# install.sh backups (full ~/.config tarballs, may contain tokens/cookies)
+.backups/
+
 # ── Secrets ──
 .env
 .env.local

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# arch+xfce dotfiles – Install Script
+# dotfiles – Install Script
 # =============================================================================
 # This script installs all necessary dependencies and symlinks the
 # configuration files into ~/.config so everything works out of the box.
@@ -253,8 +253,16 @@ info "Enabling system services..."
 
 sudo systemctl enable --now NetworkManager
 sudo systemctl enable --now bluetooth
-sudo systemctl enable sshd
 sudo systemctl enable tailscaled 2>/dev/null || true
+
+# sshd opens remote login (password auth by default), so only on request
+read -r -p "Enable SSH server (sshd)? [y/N]: " enable_sshd
+if [[ "${enable_sshd,,}" == "y" ]]; then
+  sudo systemctl enable sshd
+  log "sshd enabled."
+else
+  info "Skipping sshd."
+fi
 
 # =============================================================================
 # 3. OPTIONAL HEAVY DEPENDENCIES

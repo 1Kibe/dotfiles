@@ -1,4 +1,4 @@
-# arch+xfce — Dotfiles
+# dotfiles
 
 Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fácil replicação em qualquer máquina.
 
@@ -55,8 +55,8 @@ Gerenciados via **lazy.nvim** (bootstrap automático):
 ## 🚀 Instalação
 
 ```bash
-git clone https://github.com/seu-usuario/arch+xfce.git ~/arch+xfce
-cd ~/arch+xfce
+git clone https://github.com/1Kibe/dotfiles.git ~/dotfiles
+cd ~/dotfiles
 chmod +x install.sh
 ./install.sh
 ```
@@ -64,14 +64,15 @@ chmod +x install.sh
 O script vai:
 1. Instalar pacotes essenciais via **pacman**
 2. Instalar pacotes AUR (xss-lock) via **paru** (instala o paru se necessário)
-3. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix)
-4. Criar **symlinks** de `~/arch+xfce/.config/*` → `~/.config/*`
-5. Aplicar configurações do XFCE (temas, painéis, wallpaper)
+3. Perguntar se deve ativar o servidor SSH (`sshd`) — padrão é não
+4. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix)
+5. Criar **symlinks** de `~/dotfiles/.config/*` → `~/.config/*`
+6. Aplicar configurações do XFCE (temas, painéis, wallpaper)
 
 ## 📁 Estrutura
 
 ```
-arch+xfce/
+dotfiles/
 ├── .config/
 │   ├── alacritty/
 │   │   └── alacritty.toml
@@ -122,7 +123,7 @@ arch+xfce/
 Como os arquivos em `~/.config` são **symlinks**, qualquer mudança nos arquivos do repositório reflete imediatamente nos programas:
 
 ```bash
-cd ~/arch+xfce
+cd ~/dotfiles
 git add .
 git commit -m "atualiza config do nvim"
 git push
@@ -135,7 +136,7 @@ O script oferece comandos para gerenciar suas configurações:
 ### Fazer Backup
 ```bash
 ./install.sh backup
-# Cria: ~/.backups/config_YYYYMMDD_HHMMSS.tar.gz
+# Cria: .backups/config_YYYYMMDD_HHMMSS.tar.gz (dentro do repo, ignorado pelo git)
 ```
 
 ### Listar Backups Disponíveis
@@ -200,3 +201,7 @@ export DEEPSEEK_API_KEY="sua-chave-aqui"
 - Neovim faz bootstrap automático dos plugins na primeira execução
 - Simlinks permitem manter configs no git com efeito imediato no sistema
 - XFCE configuration é versionável e replicável em múltiplas máquinas
+
+## 📄 Licença
+
+MIT — veja [LICENSE](LICENSE).
