@@ -68,8 +68,16 @@ aur:xss-lock   # screen locker integration
 thunar
 thunar-archive-plugin
 
-# ── XFCE components ──
+# ── XFCE desktop ──
+xfce4                  # group: panel, xfwm4, xfdesktop, session, settings, power manager...
+xfce4-notifyd          # notifications (xfce4-notifyd.xml)
+xfce4-battery-plugin   # battery widget on the top panel
 xfce4-screenshooter
+
+# ── Look (xsettings.xml) ──
+gnome-themes-extra     # Adwaita-dark GTK theme
+breeze-icons           # breeze-dark icon theme
+noto-fonts             # Noto, the UI font set in xsettings.xml
 
 # ── Audio ──
 pavucontrol
