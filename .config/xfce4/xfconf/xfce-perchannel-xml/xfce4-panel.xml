@@ -70,12 +70,6 @@
     </property>
     <property name="plugin-6" type="string" value="systray">
       <property name="square-icons" type="bool" value="true"/>
-      <property name="known-legacy-items" type="array">
-        <value type="string" value="miniaplicativo gerenciador de redes"/>
-        <value type="string" value="nenhuma conexão de rede"/>
-        <value type="string" value="conexão de rede ethernet “conexão cabeada 1” ativa"/>
-        <value type="string" value="ethernet network connection “wired connection 1” active"/>
-      </property>
       <property name="icon-size" type="int" value="0"/>
       <property name="single-row" type="bool" value="false"/>
       <property name="known-items" type="array">

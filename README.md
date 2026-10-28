@@ -2,38 +2,54 @@
 
 Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fácil replicação em qualquer máquina.
 
-## 🧰 O que está incluído
+![Prévia do desktop: Neovim com dashboard alpha, terminal Alacritty Gruvbox e painéis XFCE](assets/preview.png)
+
+<sub>Prévia renderizada a partir das configs deste repositório (cores, fontes, dashboard e painéis).</sub>
+
+## O que está incluído
 
 | Ferramenta | Descrição |
 |---|---|
 | **i3** | Window manager (com i3status, i3lock, xss-lock) |
-| **Alacritty** | Terminal emulator (com tema Gruvbox + FiraCode Nerd Font) |
-| **Neovim** | Editor completo com LSP, autocomplete, formatters, file-tree, dashboard e IA |
+| **Alacritty** | Terminal emulator (tema Gruvbox + FiraCode Nerd Font) |
+| **Neovim** | Editor completo com LSP, autocomplete, formatters, file-tree, git e dashboard |
 | **Rofi** | Application launcher (tema gruvbox-dark) |
 | **Thunar** | File manager (com ações customizadas e atalhos) |
-| **XFCE4** | Desktop, painéis, temas e configurações completas |
+| **XFCE4** | Desktop, painéis, temas e atalhos |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
-| **GTK 3.0** | Bookmarks e configurações |
+| **GTK 3.0** | Bookmarks |
 
 ### Plugins do Neovim
 
-Gerenciados via **lazy.nvim** (bootstrap automático):
+Gerenciados via **lazy.nvim** (bootstrap automático). Cola de atalhos em [`.config/nvim/atalhos.txt`](.config/nvim/atalhos.txt).
 
+**Interface**
 - `gruvbox.nvim` — tema Gruvbox dark (contraste hard)
 - `alpha-nvim` — dashboard inicial com ASCII art
-- `telescope.nvim` — busca fuzzy de arquivos/texto/buffers
-- `nvim-treesitter` — syntax highlighting avançado
-- `neo-tree.nvim` — explorador de arquivos lateral
-- `lualine.nvim` — statusline elegante
-- `mason.nvim` / `mason-lspconfig.nvim` — gerência de LSPs
-- `nvim-lspconfig` — configuração nativa de LSPs
-- `nvim-cmp` — autocomplete inteligente
-- `conform.nvim` — formatação de código
-- `nvim-autopairs` — fecha pares automaticamente
-- `Comment.nvim` — atalhos de comentário
-- `gitsigns.nvim` — indicadores de git no gutter
+- `lualine.nvim` — statusline
+- `bufferline.nvim` — abas de buffers
+- `neominimap.nvim` — minimapa lateral
 - `indent-blankline.nvim` — guias de indentação
-- `avante.nvim` — chat com IA integrado (DeepSeek)
+- `which-key.nvim` — mostra os atalhos disponíveis
+
+**Navegação e busca**
+- `telescope.nvim` (+ `telescope-ui-select`) — busca fuzzy de arquivos/texto/buffers
+- `neo-tree.nvim` — explorador de arquivos lateral
+- `nvim-spectre` — buscar e substituir no projeto
+
+**Código**
+- `nvim-treesitter` — syntax highlighting
+- `mason.nvim` / `mason-lspconfig.nvim` / `mason-tool-installer.nvim` — instala LSPs e formatters
+- `nvim-lspconfig` — LSPs: `lua_ls`, `jdtls`, `ts_ls`, `html`, `cssls`, `eslint`
+- `nvim-cmp` + `LuaSnip` — autocomplete e snippets
+- `conform.nvim` — formatação de código
+- `trouble.nvim` — lista de diagnósticos
+- `nvim-autopairs`, `Comment.nvim`, `vim-visual-multi` — pares, comentários e múltiplos cursores
+
+**Git e terminal**
+- `gitsigns.nvim` — indicadores de git no gutter
+- `vim-fugitive`, `neogit`, `diffview.nvim` — fluxo de git dentro do editor
+- `toggleterm.nvim` — terminais flutuantes/integrados
 
 ### Formatters suportados (via conform.nvim)
 
@@ -52,7 +68,7 @@ Gerenciados via **lazy.nvim** (bootstrap automático):
 | CSS/HTML/JSON/YAML/MD | prettier |
 | Bash | shfmt |
 
-## 🚀 Instalação
+## Instalação
 
 ```bash
 git clone https://github.com/1Kibe/dotfiles.git ~/dotfiles
@@ -66,18 +82,17 @@ O script vai:
 2. Instalar pacotes AUR (xss-lock) via **paru** (instala o paru se necessário)
 3. Perguntar se deve ativar o servidor SSH (`sshd`) — padrão é não
 4. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix)
-5. Criar **symlinks** de `~/dotfiles/.config/*` → `~/.config/*`
-6. Aplicar configurações do XFCE (temas, painéis, wallpaper)
+5. Configurar o filtro git que mantém o cache do painel XFCE fora dos commits
+6. Criar **symlinks** de `~/dotfiles/.config/*` → `~/.config/*`
+7. Aplicar configurações do XFCE (temas, painéis, wallpaper)
 
-## 📁 Estrutura
+## Estrutura
 
 ```
 dotfiles/
 ├── .config/
-│   ├── alacritty/
-│   │   └── alacritty.toml
-│   ├── i3/
-│   │   └── config
+│   ├── alacritty/alacritty.toml
+│   ├── i3/config
 │   ├── nvim/
 │   │   ├── init.lua
 │   │   ├── atalhos.txt
@@ -85,10 +100,8 @@ dotfiles/
 │   │   └── lua/
 │   │       ├── dashboard.lua
 │   │       └── plugins.lua
-│   ├── rofi/
-│   │   └── config.rasi
-│   ├── gtk-3.0/
-│   │   └── bookmarks
+│   ├── rofi/config.rasi
+│   ├── gtk-3.0/bookmarks
 │   ├── Thunar/
 │   │   ├── accels.scm
 │   │   └── uca.xml
@@ -99,26 +112,25 @@ dotfiles/
 │   │   ├── desktop/
 │   │   │   ├── accels.scm
 │   │   │   └── icons.screen0.yaml
-│   │   ├── panel/                [Configurações do painel XFCE]
-│   │   │   ├── battery-15.rc
-│   │   │   └── ...
-│   │   └── xfconf/
-│   │       └── xfce-perchannel-xml/  [Temas, atalhos, wallpaper]
-│   │           ├── xfce4-panel.xml
-│   │           ├── xfce4-desktop.xml
-│   │           ├── xfwm4.xml
-│   │           ├── xsettings.xml
-│   │           ├── xfce4-keyboard-shortcuts.xml
-│   │           └── ...
+│   │   └── xfconf/xfce-perchannel-xml/   [painéis, temas, atalhos, wallpaper]
+│   │       ├── xfce4-panel.xml
+│   │       ├── xfce4-desktop.xml
+│   │       ├── xfwm4.xml
+│   │       ├── xsettings.xml
+│   │       ├── xfce4-keyboard-shortcuts.xml
+│   │       └── ...
 │   ├── pavucontrol.ini
 │   ├── user-dirs.dirs
 │   └── user-dirs.locale
+├── assets/preview.png
+├── tools/xfce-panel-clean.awk
+├── wallpapers/
 ├── install.sh
-├── README.md
-└── .gitignore
+├── LICENSE
+└── README.md
 ```
 
-## 🔄 Atualizando configurações
+## Atualizando configurações
 
 Como os arquivos em `~/.config` são **symlinks**, qualquer mudança nos arquivos do repositório reflete imediatamente nos programas:
 
@@ -129,7 +141,11 @@ git commit -m "atualiza config do nvim"
 git push
 ```
 
-## 💾 Backup e Restore
+> O XFCE grava estado de uso direto nesses arquivos (ex.: o painel guarda o nome das redes Wi-Fi do systray).
+> O filtro `tools/xfce-panel-clean.awk`, configurado pelo `install.sh`, remove esse cache do `xfce4-panel.xml` antes de cada commit.
+> Mesmo assim, revise o `git diff` antes de dar push.
+
+## Backup e Restore
 
 O script oferece comandos para gerenciar suas configurações:
 
@@ -152,29 +168,24 @@ O script oferece comandos para gerenciar suas configurações:
 # E selecione o arquivo interativamente
 ```
 
-## 🖥️ Configurações XFCE Capturadas
-
-A partir da versão 2.0, o repositório captura **100% das configurações do XFCE**:
+## Configurações XFCE versionadas
 
 ### Painéis
-- Posição e plugins dos painéis
-- Configurações de cada widget (clock, battery, taskbar, etc.)
+- Posição e plugins dos painéis (topo e rodapé)
+- Configurações de cada widget (relógio, bateria, lista de janelas, área de trabalho)
 
 ### Temas & Aparência
-- **xfce4-desktop.xml** — Wallpaper, cores do desktop, ícones
-- **xsettings.xml** — Tema GTK, fontes, ícones, cursor
-- **xfwm4.xml** — Tema de janelas, keybindings de janela
+- **xfce4-desktop.xml** — wallpaper e ícones da área de trabalho
+- **xsettings.xml** — tema GTK (Adwaita-dark), ícones (breeze-dark) e fontes
+- **xfwm4.xml** — tema e botões das janelas
 
 ### Atalhos de Teclado
-- **xfce4-keyboard-shortcuts.xml** — Todos os atalhos do XFCE
+- **xfce4-keyboard-shortcuts.xml** — todos os atalhos do XFCE
 
 ### Outros
-- Configurações de screenshooter
-- Configurações de gerenciador de arquivos
-- Preferências de notificações
-- Configurações de energia
+- Screenshooter, Thunar, notificações e gerenciamento de energia
 
-## ⚙️ Dependências opcionais
+## Dependências opcionais
 
 Durante a instalação você pode escolher instalar:
 
@@ -186,22 +197,19 @@ Durante a instalação você pode escolher instalar:
 | **Rust (rustup)** | rustfmt + rust-analyzer |
 | **Nix** | alejandra formatter |
 
-## 🔑 API Key (Avante.nvim)
+## Próximos passos
 
-O plugin `avante.nvim` usa a API do **DeepSeek**. Defina a variável de ambiente no seu shell:
+- [ ] Hyprland + Quickshell personalizado
+- [ ] Suporte a Fedora e Ubuntu (lista de pacotes por distro)
+- [ ] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 
-```bash
-export DEEPSEEK_API_KEY="sua-chave-aqui"
-```
+## Notas
 
-## 📝 Notas
-
-- Roda apenas em **Arch Linux** (ou derivados)
-- O script **não** é destrutivo — faz backup de configurações existentes (`.bak`)
+- Roda apenas em **Arch Linux** (ou derivados), por enquanto
+- O script **não** é destrutivo — faz backup de configurações existentes (`.bak`) antes de criar os symlinks
 - Neovim faz bootstrap automático dos plugins na primeira execução
-- Simlinks permitem manter configs no git com efeito imediato no sistema
-- XFCE configuration é versionável e replicável em múltiplas máquinas
+- Symlinks permitem manter configs no git com efeito imediato no sistema
 
-## 📄 Licença
+## Licença
 
 MIT — veja [LICENSE](LICENSE).

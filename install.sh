@@ -306,6 +306,13 @@ esac
 # =============================================================================
 # 4. SYMLINK CONFIGURATIONS
 # =============================================================================
+# XFCE writes runtime cache (Wi-Fi network names) into the symlinked
+# xfce4-panel.xml. This git filter strips it on commit (see .gitattributes).
+if git -C "${DOTFILES_DIR}" rev-parse --git-dir &>/dev/null; then
+  git -C "${DOTFILES_DIR}" config filter.xfce-panel.clean "awk -f tools/xfce-panel-clean.awk"
+  log "Git filter for xfce4-panel.xml configured."
+fi
+
 info "Creating symlinks from ${CONFIG_SRC} to ${CONFIG_DST}..."
 
 mkdir -p "${CONFIG_DST}"

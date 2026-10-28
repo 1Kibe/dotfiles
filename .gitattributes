@@ -1,0 +1,6 @@
+# Scripts run on Linux: always LF
+*.sh  text eol=lf
+*.awk text eol=lf
+
+# Strip XFCE runtime cache (Wi-Fi names) before committing; see tools/xfce-panel-clean.awk
+.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml filter=xfce-panel
