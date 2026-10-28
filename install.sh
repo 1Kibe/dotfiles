@@ -77,8 +77,9 @@ detect_distro() {
 
 # ── Backup helpers ────────────────────────────────────────────────────────────
 backup_config() {
-  local timestamp=$(date +%Y%m%d_%H%M%S)
-  local backup_file="${BACKUPS_DIR}/config_${timestamp}.tar.gz"
+  local timestamp backup_file
+  timestamp=$(date +%Y%m%d_%H%M%S)
+  backup_file="${BACKUPS_DIR}/config_${timestamp}.tar.gz"
 
   mkdir -p "${BACKUPS_DIR}"
 
@@ -450,6 +451,45 @@ clear_stow_targets() {
   done < <(find "${pkg_dir}${rel:+/${rel}}" -mindepth 1 -maxdepth 1 -print0)
 }
 
+# The old layout kept the configs in the repo's .config/ and linked
+# ~/.config/<name> to it, so apps also wrote untracked files there (XFCE panel
+# launchers, other xfconf channels, ...). git pull only moves tracked files:
+# move what is left to the package that now holds that folder.
+migrate_old_layout() {
+  local old="${DOTFILES_DIR}/.config"
+  local src rel top env pkg dest moved=0
+
+  if [[ ! -d "$old" ]]; then return 0; fi
+  info "Moving files left in the old .config/ folder to the new packages..."
+
+  while IFS= read -r -d '' src; do
+    rel="${src#"${old}/"}"
+    top="${rel%%/*}"
+    pkg=""
+    for env in common "${ENVS_AVAILABLE[@]}"; do
+      if [[ -e "${DOTFILES_DIR}/${env}/.config/${top}" ]]; then
+        pkg="$env"
+        break
+      fi
+    done
+    if [[ -z "$pkg" ]]; then continue; fi
+    dest="${DOTFILES_DIR}/${pkg}/.config/${rel}"
+    if [[ -e "$dest" || -L "$dest" ]]; then
+      warn "Kept .config/${rel}: ${pkg}/.config/${rel} already exists"
+      continue
+    fi
+    mkdir -p "$(dirname "$dest")"
+    mv "$src" "$dest"
+    moved=$((moved + 1))
+  done < <(find "$old" \( -type f -o -type l \) -print0)
+
+  find "$old" -depth -type d -empty -delete
+  log "Moved ${moved} file(s) from the old .config/ folder."
+  if [[ -d "$old" ]]; then
+    warn "Some files stayed in ${old}. Check them by hand."
+  fi
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -464,6 +504,7 @@ link_configs() {
 
   ensure_stow
   setup_git_filter
+  migrate_old_layout
 
   info "Linking with GNU Stow: ${pkgs[*]} -> ${HOME}"
   mkdir -p "${CONFIG_DST}"
