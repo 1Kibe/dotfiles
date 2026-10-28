@@ -1,0 +1,11 @@
+# Ubuntu / Debian packages, read by install.sh (installed with apt-get).
+# Same format as packages/arch.txt; "aur:" entries do not apply here.
+#
+# TODO: translate packages/arch.txt to Ubuntu package names.
+# Until then install.sh only installs GNU Stow and links the configs.
+
+[common]
+
+[xfce]
+
+[hyprland]

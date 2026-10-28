@@ -1,0 +1,11 @@
+# Fedora packages, read by install.sh (installed with dnf).
+# Same format as packages/arch.txt; "aur:" entries do not apply here.
+#
+# TODO: translate packages/arch.txt to Fedora package names.
+# Until then install.sh only installs GNU Stow and links the configs.
+
+[common]
+
+[xfce]
+
+[hyprland]
