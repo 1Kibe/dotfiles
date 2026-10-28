@@ -6,10 +6,11 @@ set -uo pipefail
 . /tests/lib.sh
 git_setup
 want="$1"
+dir="${2:-dotfiles}"   # clone folder, relative to $HOME
 rm -rf ~/.config
 
-clone_new
-cd ~/dotfiles
+clone_new "$dir"
+echo "    repo cloned at ~/$dir"
 
 if [[ "$want" == "arch" ]]; then
   mkdir -p ~/fakebin
@@ -31,6 +32,9 @@ t "stow available" command -v stow
 for n in nvim alacritty rofi wallpapers xfce4 i3 Thunar gtk-3.0 user-dirs.dirs; do
   t "~/.config/$n linked" bash -c "[[ -L ~/.config/$n && -e ~/.config/$n ]]"
 done
+t "links resolve into ~/$dir" bash -c "[[ \$(readlink -f ~/.config/nvim) == $HOME/$dir/common/.config/nvim && \$(readlink -f ~/.config/xfce4) == $HOME/$dir/xfce/.config/xfce4 ]]"
+t "links are relative" bash -c "[[ \$(readlink ~/.config/nvim) == ../$dir/common/.config/nvim ]]"
+t "wallpaper of xfce4-desktop.xml exists" bash -c 'f=$(grep -oP "(?<=name=\"last-image\" type=\"string\" value=\")[^\"]*" ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml); f=${f//\$\{HOME\}/$HOME}; test -f "$f"'
 t "sshd skipped" grep -q "Skipping ssh" /tmp/install.log
 
 if [[ "$want" == "arch" ]]; then

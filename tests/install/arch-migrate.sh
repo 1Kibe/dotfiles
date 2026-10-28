@@ -70,7 +70,14 @@ t "only wallpapers.bak exists" bash -c '[[ $(ls -d ~/.config/*.bak* | wc -l) -eq
 
 echo "### 5. XFCE writes a Wi-Fi name into the panel file"
 panel=~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
-sed -i --follow-symlinks 's#</channel>#  <property name="plugins" type="empty">\n    <property name="known-legacy-items" type="array">\n      <value type="string" value="MinhaRedeWifi"/>\n    </property>\n  </property>\n</channel>#' "$panel"
+# same place XFCE uses: inside the systray plugin
+awk '{ print }
+  /value="systray">/ && !done {
+    print "      <property name=\"known-legacy-items\" type=\"array\">"
+    print "        <value type=\"string\" value=\"conexao de rede wi-fi MinhaRedeWifi ativa\"/>"
+    print "      </property>"
+    done = 1
+  }' "$panel" > /tmp/panel.xml && cat /tmp/panel.xml > "$panel"
 t "SSID is in the repo file" grep -q MinhaRedeWifi ~/dotfiles/xfce/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
 git -C ~/dotfiles add xfce/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml
 t "SSID not staged (clean filter)" bash -c '! git -C ~/dotfiles diff --cached | grep -q MinhaRedeWifi'

@@ -18,15 +18,19 @@ git_setup() {
   git config --global advice.detachedHead false
 }
 
-# clone at the new layout, with the current (maybe uncommitted) install.sh
+# clone at the new layout into $HOME/$1 (default: dotfiles)
 clone_new() {
-  git clone -q /src ~/dotfiles
-  cd ~/dotfiles || exit 1
+  DOTFILES="$HOME/${1:-dotfiles}"
+  mkdir -p "$(dirname "$DOTFILES")"
+  git clone -q /src "$DOTFILES"
+  cd "$DOTFILES" || exit 1
   git checkout -q -B main "${NEW_REF}"
   overlay
 }
 
+# use the install.sh of $WT (same as the commit in CI)
 overlay() {
-  cp "${WT}/install.sh" ~/dotfiles/install.sh
-  git -C ~/dotfiles commit -qam "test: install.sh atual" || true
+  local dir="${DOTFILES:-$HOME/dotfiles}"
+  cp "${WT}/install.sh" "$dir/install.sh"
+  git -C "$dir" commit -qam "test: install.sh atual" >/dev/null || true
 }

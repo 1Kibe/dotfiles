@@ -15,9 +15,9 @@ jobs:
       matrix:
         include:
           - { name: arch-migrate,  image: "archlinux:latest", family: arch,   script: "arch-migrate.sh" }
-          - { name: arch-install,  image: "archlinux:latest", family: arch,   script: "fresh-install.sh arch" }
+          - { name: arch-install,  image: "archlinux:latest", family: arch,   script: "fresh-install.sh arch Projetos/dotfiles" }
           - { name: ubuntu-install, image: "ubuntu:24.04",    family: ubuntu, script: "fresh-install.sh ubuntu" }
-          - { name: fedora-install, image: "fedora:latest",   family: fedora, script: "fresh-install.sh fedora" }
+          - { name: fedora-install, image: "fedora:latest",   family: fedora, script: "fresh-install.sh fedora Projetos/dotfiles" }
     steps:
       - uses: actions/checkout@v4
         with:
