@@ -1,0 +1,93 @@
+# Arch Linux packages, read by install.sh.
+#
+# Format:
+#   - one package per line; '#' starts a comment
+#   - [section] is the environment the packages belong to:
+#       common    always installed
+#       xfce      XFCE + i3
+#       hyprland  Hyprland + Quickshell
+#   - "aur:" prefix installs through the AUR helper (paru/yay) instead of pacman
+
+[common]
+# ── Core tools ──
+git
+nano
+wget
+curl
+unzip
+less
+htop
+fastfetch
+make
+stow
+
+# ── Launcher ──
+rofi
+
+# ── Terminal ──
+alacritty
+
+# ── Editor ──
+neovim
+
+# ── Bluetooth ──
+bluez
+bluez-utils
+
+# ── Fonts ──
+ttf-firacode-nerd
+
+# ── XDG user dirs ──
+xdg-user-dirs
+
+# ── Neovim dependencies ──
+ripgrep
+nodejs
+npm
+python
+python-pip
+jdk-openjdk
+clang
+shfmt
+
+# ── System ──
+openssh
+
+# ── AUR ──
+aur:tailscale
+aur:obexftp
+
+[xfce]
+# ── Window manager & essentials ──
+i3-wm
+i3status
+i3lock
+aur:xss-lock   # screen locker integration
+
+# ── File manager ──
+thunar
+thunar-archive-plugin
+
+# ── XFCE components ──
+xfce4-screenshooter
+
+# ── Audio ──
+pavucontrol
+
+# ── Network applet ──
+network-manager-applet
+
+# ── Bluetooth applet ──
+blueman
+
+# ── Input / automation (X11) ──
+xdotool
+
+# ── Autostart ──
+dex
+
+# ── Clipboard (X11, also used by Neovim) ──
+xclip
+
+[hyprland]
+# TODO: add the Hyprland / Quickshell packages together with their configs

@@ -1,6 +1,6 @@
 # dotfiles
 
-Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fácil replicação em qualquer máquina.
+Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fácil replicação em qualquer máquina. Organizadas em pastas por ambiente e linkadas com **GNU Stow**, prontas para receber Hyprland e outras distros.
 
 ![Prévia do desktop: Neovim com dashboard alpha, terminal Alacritty Gruvbox e painéis XFCE](assets/preview.png)
 
@@ -21,7 +21,7 @@ Configurações pessoais para **Arch Linux + XFCE + i3**, versionadas para fáci
 
 ### Plugins do Neovim
 
-Gerenciados via **lazy.nvim** (bootstrap automático). Cola de atalhos em [`.config/nvim/atalhos.txt`](.config/nvim/atalhos.txt).
+Gerenciados via **lazy.nvim** (bootstrap automático). Cola de atalhos em [`common/.config/nvim/atalhos.txt`](common/.config/nvim/atalhos.txt).
 
 **Interface**
 - `gruvbox.nvim` — tema Gruvbox dark (contraste hard)
@@ -78,21 +78,41 @@ chmod +x install.sh
 ```
 
 O script vai:
-1. Instalar pacotes essenciais via **pacman**
-2. Instalar pacotes AUR (xss-lock) via **paru** (instala o paru se necessário)
-3. Perguntar se deve ativar o servidor SSH (`sshd`) — padrão é não
-4. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix)
-5. Configurar o filtro git que mantém o cache do painel XFCE fora dos commits
-6. Criar **symlinks** de `~/dotfiles/.config/*` → `~/.config/*`
-7. Aplicar configurações do XFCE (temas, painéis, wallpaper)
+1. Detectar a distro pelo `/etc/os-release` e escolher a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
+2. Perguntar quais ambientes ativar: `xfce` (padrão sim) e `hyprland` (padrão não). O `common` entra sempre
+3. Instalar os pacotes das seções `[common]` + ambientes escolhidos (no Arch via **pacman**, e os `aur:` via **paru**, que é instalado se necessário)
+4. Ativar NetworkManager e Bluetooth, e perguntar se deve ativar o servidor SSH (`sshd`) — padrão é não
+5. Oferecer dependências opcionais (Java, PHP, Go, Rust, Nix) — só no Arch
+6. Configurar o filtro git que mantém o cache do painel XFCE fora dos commits
+7. Linkar as configs com `stow` (`common` + ambientes escolhidos) em `~`
+8. Aplicar configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
+
+Os ambientes também podem ir direto na linha de comando, sem o menu:
+
+```bash
+./install.sh install xfce   # pacotes + links de common e xfce
+./install.sh link xfce      # só os links, sem pacotes nem serviços
+./install.sh unlink xfce    # remove os links do xfce
+```
+
+## Ambientes
+
+Cada pasta de ambiente é um pacote do GNU Stow: ela espelha o `$HOME`, então `common/.config/nvim` vira `~/.config/nvim`.
+
+| Pasta | Conteúdo | Quando entra |
+|---|---|---|
+| `common/` | Neovim, Alacritty, Rofi, wallpapers | Sempre |
+| `xfce/` | XFCE, i3, Thunar, GTK 3, Pavucontrol, `user-dirs.*` | Ambiente `xfce` |
+| `hyprland/` | Hyprland e Quickshell (ainda vazio) | Ambiente `hyprland`; pulado enquanto não tiver configs |
+
+As listas de pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`. No Arch, o prefixo `aur:` manda o pacote para o helper AUR.
 
 ## Estrutura
 
 ```
 dotfiles/
-├── .config/
+├── common/.config/
 │   ├── alacritty/alacritty.toml
-│   ├── i3/config
 │   ├── nvim/
 │   │   ├── init.lua
 │   │   ├── atalhos.txt
@@ -101,6 +121,9 @@ dotfiles/
 │   │       ├── dashboard.lua
 │   │       └── plugins.lua
 │   ├── rofi/config.rasi
+│   └── wallpapers/
+├── xfce/.config/
+│   ├── i3/config
 │   ├── gtk-3.0/bookmarks
 │   ├── Thunar/
 │   │   ├── accels.scm
@@ -122,9 +145,17 @@ dotfiles/
 │   ├── pavucontrol.ini
 │   ├── user-dirs.dirs
 │   └── user-dirs.locale
+├── hyprland/
+│   ├── README.md
+│   └── .config/
+│       ├── hypr/
+│       └── quickshell/
+├── packages/
+│   ├── arch.txt
+│   ├── fedora.txt                        [TODO]
+│   └── ubuntu.txt                        [TODO]
 ├── assets/preview.png
 ├── tools/xfce-panel-clean.awk
-├── wallpapers/
 ├── install.sh
 ├── LICENSE
 └── README.md
@@ -132,7 +163,7 @@ dotfiles/
 
 ## Atualizando configurações
 
-Como os arquivos em `~/.config` são **symlinks**, qualquer mudança nos arquivos do repositório reflete imediatamente nos programas:
+Como os arquivos em `~/.config` são **symlinks** criados pelo `stow`, qualquer mudança nos arquivos do repositório reflete imediatamente nos programas:
 
 ```bash
 cd ~/dotfiles
@@ -144,6 +175,23 @@ git push
 > O XFCE grava estado de uso direto nesses arquivos (ex.: o painel guarda o nome das redes Wi-Fi do systray).
 > O filtro `tools/xfce-panel-clean.awk`, configurado pelo `install.sh`, remove esse cache do `xfce4-panel.xml` antes de cada commit.
 > Mesmo assim, revise o `git diff` antes de dar push.
+
+Depois de um `git pull` que adiciona ou move arquivos, rode `./install.sh link` para atualizar os links.
+
+## Migrando do layout antigo
+
+Até esta versão as configs ficavam em `.config/` na raiz do repo, e o `install.sh` criava links `~/.config/<nome>` apontando para lá. Depois do `git pull` esses links ficam quebrados. Para trocar pelos links do `stow`:
+
+```bash
+cd ~/dotfiles
+git pull
+./install.sh link xfce
+```
+
+- Se o `git pull` reclamar de mudanças locais (o XFCE altera os XMLs o tempo todo), faça commit delas antes.
+- O `link` apaga só os links que apontam para dentro do repo e recria tudo com o `stow`. Qualquer outro arquivo no caminho vira `<nome>.bak`.
+- Arquivos que os programas gravaram em `.config/` pelos links antigos e nunca entraram no git (lançadores do painel, outros canais do xfconf, `settings.ini` do GTK) são movidos para o pacote novo, então nada do desktop some.
+- Os wallpapers, que antes eram copiados para `~/.config/wallpapers`, viram `~/.config/wallpapers.bak` e podem ser apagados (o repo tem os mesmos arquivos).
 
 ## Backup e Restore
 
@@ -199,14 +247,15 @@ Durante a instalação você pode escolher instalar:
 
 ## Próximos passos
 
-- [ ] Hyprland + Quickshell personalizado
-- [ ] Suporte a Fedora e Ubuntu (lista de pacotes por distro)
-- [ ] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
+- [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
+- [ ] Hyprland + Quickshell personalizado em `hyprland/` (configs e seção `[hyprland]` de `packages/arch.txt`)
+- [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
+- [ ] Dependências opcionais do Neovim fora do Arch
 
 ## Notas
 
-- Roda apenas em **Arch Linux** (ou derivados), por enquanto
-- O script **não** é destrutivo — faz backup de configurações existentes (`.bak`) antes de criar os symlinks
+- Feito para **Arch Linux** (e derivados). Em Fedora e Ubuntu o script já detecta a distro e cria os links, mas ainda não instala pacotes além do `stow`
+- O script **não** é destrutivo — o que estiver no caminho dos links vira `.bak` em vez de ser apagado
 - Neovim faz bootstrap automático dos plugins na primeira execução
 - Symlinks permitem manter configs no git com efeito imediato no sistema
 

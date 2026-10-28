@@ -3,4 +3,5 @@
 *.awk text eol=lf
 
 # Strip XFCE runtime cache (Wi-Fi names) before committing; see tools/xfce-panel-clean.awk
-.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml filter=xfce-panel
+# Matched by name so the rule keeps working if the file moves to another package.
+**/xfce4-panel.xml filter=xfce-panel
