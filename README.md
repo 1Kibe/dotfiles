@@ -26,13 +26,15 @@ Para rodar sem nenhuma pergunta, usando os padrões (ambiente `xfce`, SSH não, 
 
 Pode clonar em qualquer pasta, por exemplo `~/Projetos/dotfiles`. Só não mova a pasta depois de linkar (veja [Cuidados](#cuidados)).
 
+Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (com áudio **pipewire** e rede **NetworkManager**): o script instala o Xorg, o LightDM e o PipeWire. No fim, reinicie e escolha a sessão **Xfce** ou **i3** na tela de login.
+
 <details>
 <summary>Passo a passo do que o <code>install.sh</code> faz</summary>
 
 1. Detecta a distro pelo `/etc/os-release` e escolhe a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
 2. Pergunta os ambientes: `xfce` (padrão sim) e `hyprland` (padrão não). O `common` entra sempre
 3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
-4. Ativa NetworkManager e Bluetooth e pergunta se deve ativar o `sshd`
+4. Ativa NetworkManager e Bluetooth (e o LightDM, a tela de login, no ambiente `xfce`) e pergunta se deve ativar o `sshd`
 5. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
 6. Configura o filtro git que mantém nomes de redes Wi-Fi fora dos commits
 7. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
@@ -205,6 +207,8 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 
 - **Nomes de Wi-Fi no painel do XFCE.** O XFCE grava os nomes das redes no `xfce4-panel.xml`. Um filtro git (`tools/xfce-panel-clean.awk`, ligado pelo `install.sh`) tira isso antes de cada commit. Mesmo assim, revise o `git diff` antes do push.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
+- **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
+- **Tela de login.** No ambiente `xfce`, o script ativa o LightDM. Se já existir outro gerenciador de login (GDM, SDDM...), ele é mantido.
 - **Não mova a pasta depois de linkar.** Para mover: `./install.sh unlink`, mova a pasta e rode `./install.sh link` no lugar novo.
 - **Backups ficam fora do git.** A pasta `.backups/` está no `.gitignore`, porque um backup do `~/.config` pode ter tokens e cookies de outros programas.
 

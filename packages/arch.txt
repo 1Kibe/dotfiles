@@ -34,6 +34,12 @@ neovim
 bluez
 bluez-utils
 
+# ── Audio (PipeWire, also serves PulseAudio apps) ──
+pipewire
+pipewire-pulse
+pipewire-alsa
+wireplumber
+
 # ── Fonts ──
 ttf-firacode-nerd
 
@@ -58,6 +64,11 @@ aur:tailscale
 aur:obexftp
 
 [xfce]
+# ── Display server & login screen ──
+xorg-server
+lightdm               # enabled by install.sh, starts on the next boot
+lightdm-gtk-greeter
+
 # ── Window manager & essentials ──
 i3-wm
 i3status

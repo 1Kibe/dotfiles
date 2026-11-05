@@ -67,6 +67,7 @@ DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 CONFIG_DST="${HOME}/.config"
 BACKUPS_DIR="${DOTFILES_DIR}/.backups"
 PACKAGES_DIR="${DOTFILES_DIR}/packages"
+DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
 
 # Optional environments (Stow packages next to common/), in menu order
 ENVS_AVAILABLE=(xfce hyprland)
@@ -382,6 +383,23 @@ install_optional_deps() {
 }
 
 # ── Services ─────────────────────────────────────────────────────────────────
+# XFCE and i3 start from LightDM's login screen. It is only enabled, not
+# started: starting it now would switch to the login screen in the middle of
+# the run. A display manager that is already set up (gdm, sddm...) is kept.
+enable_display_manager() {
+  local current
+  current="$(readlink -e "${DM_UNIT_LINK}" 2>/dev/null || true)"
+  if [[ -n "$current" && "${current##*/}" != "lightdm.service" ]]; then
+    info "Display manager already set (${current##*/}), keeping it."
+    return 0
+  fi
+  if sudo systemctl enable lightdm; then
+    log "lightdm enabled (login screen from the next boot)."
+  else
+    warn "Could not enable lightdm."
+  fi
+}
+
 enable_services() {
   local svc enable_sshd ssh_unit=sshd
 
@@ -397,6 +415,10 @@ enable_services() {
     fi
   done
   sudo systemctl enable tailscaled 2>/dev/null || true
+
+  if has_env xfce; then
+    enable_display_manager
+  fi
 
   # sshd opens remote login (password auth by default), so only on request
   enable_sshd="$(ask "Enable SSH server (${ssh_unit})? [y/N]: " n)"
@@ -630,7 +652,7 @@ print_summary() {
   echo ""
   echo "  📋 Next steps:"
   if has_env xfce; then
-    echo "  • Log out and back into i3 (or run 'i3-msg restart')"
+    echo "  • Reboot and pick the Xfce or i3 session on the login screen"
   fi
   echo "  • Open Neovim and let lazy.nvim bootstrap the plugins"
   echo "    (just run 'nvim' and wait – it's automatic)"
