@@ -15,7 +15,11 @@
 #
 # Usage:
 #   chmod +x install.sh
-#   ./install.sh [command] [environment...]
+#   ./install.sh [-y|--yes] [command] [environment...]
+#
+# Options:
+#   -y, --yes  Answer every question with its default, without prompting
+#              (environments: xfce, SSH server: no, optional deps: skip)
 #
 # Commands:
 #   install   Install packages and link configs (default)
@@ -45,6 +49,19 @@ err()  { echo -e "${RED}[✗]${NC} $*"; }
 info() { echo -e "${CYAN}[i]${NC} $*"; }
 step() { echo -e "${BLUE}[→]${NC} $*"; }
 
+# Asks a question and prints the answer; an empty answer gives the default.
+# With --yes (or no input, e.g. < /dev/null) the default is used without
+# waiting. The question goes to stderr, so it shows inside $(...).
+ask() {
+  local question="$1" default="$2" answer=""
+  if [[ -n "${ASSUME_YES}" ]]; then
+    echo "${question}${default} (--yes)" >&2
+  else
+    read -r -p "$question" answer || answer=""
+  fi
+  echo "${answer:-$default}"
+}
+
 # ── Directories ──────────────────────────────────────────────────────────────
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 CONFIG_DST="${HOME}/.config"
@@ -54,6 +71,9 @@ PACKAGES_DIR="${DOTFILES_DIR}/packages"
 # Optional environments (Stow packages next to common/), in menu order
 ENVS_AVAILABLE=(xfce hyprland)
 SELECTED_ENVS=()
+
+# Set by -y / --yes: every question takes its default
+ASSUME_YES=""
 
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
@@ -122,7 +142,10 @@ list_backups() {
 }
 
 usage() {
-  echo "Usage: $0 [command] [environment...]"
+  echo "Usage: $0 [-y|--yes] [command] [environment...]"
+  echo ""
+  echo "Options:"
+  echo "  -y, --yes Answer every question with its default (no prompts)"
   echo ""
   echo "Commands:"
   echo "  install   Install packages and link configs (default)"
@@ -188,11 +211,10 @@ choose_envs() {
   for env in "${ENVS_AVAILABLE[@]}"; do
     default="$(env_default "$env")"
     if [[ "$default" == "y" ]]; then
-      read -r -p "  ${env} ($(env_label "$env"))? [Y/n]: " answer || answer=""
+      answer="$(ask "  ${env} ($(env_label "$env"))? [Y/n]: " y)"
     else
-      read -r -p "  ${env} ($(env_label "$env"))? [y/N]: " answer || answer=""
+      answer="$(ask "  ${env} ($(env_label "$env"))? [y/N]: " n)"
     fi
-    answer="${answer:-$default}"
     if [[ "${answer,,}" == y* ]]; then SELECTED_ENVS+=("$env"); fi
   done
 }
@@ -223,7 +245,14 @@ pkg_install() {
   if (( $# == 0 )); then return 0; fi
   case "${DISTRO}" in
     arch)
-      sudo pacman -S --needed --noconfirm "$@"
+      # The first call of the run also upgrades the system: installing from a
+      # stale package database gives 404s on the mirrors or a partial upgrade
+      if [[ -z "${PACMAN_SYNCED:-}" ]]; then
+        sudo pacman -Syu --needed --noconfirm "$@"
+        PACMAN_SYNCED=1
+      else
+        sudo pacman -S --needed --noconfirm "$@"
+      fi
       ;;
     fedora)
       sudo dnf install -y "$@"
@@ -255,7 +284,7 @@ install_aur() {
   if [[ -z "$aur_helper" ]]; then
     warn "No AUR helper (paru/yay) found. Installing paru..."
 
-    sudo pacman -S --needed --noconfirm base-devel git
+    pkg_install base-devel git
     tmp="$(mktemp -d)"
     git clone https://aur.archlinux.org/paru.git "$tmp/paru"
     (cd "$tmp/paru" && makepkg -si --noconfirm)
@@ -328,14 +357,14 @@ install_optional_deps() {
   echo "  [0] Skip"
   echo ""
 
-  read -r -p "Enter your choice (0-6): " choice || choice=0
+  choice="$(ask "Enter your choice (0-6): " 0)"
 
   case "$choice" in
-    1) sudo pacman -S --needed --noconfirm jdk-openjdk ;;
-    2) sudo pacman -S --needed --noconfirm php ;;
-    3) sudo pacman -S --needed --noconfirm go ;;
+    1) pkg_install jdk-openjdk ;;
+    2) pkg_install php ;;
+    3) pkg_install go ;;
     4)
-      sudo pacman -S --needed --noconfirm rustup
+      pkg_install rustup
       rustup default stable 2>/dev/null || true
       ;;
     5)
@@ -344,7 +373,7 @@ install_optional_deps() {
       fi
       ;;
     6)
-      sudo pacman -S --needed --noconfirm jdk-openjdk php go rustup
+      pkg_install jdk-openjdk php go rustup
       rustup default stable 2>/dev/null || true
       ;;
     0) info "Skipping optional dependencies." ;;
@@ -370,7 +399,7 @@ enable_services() {
   sudo systemctl enable tailscaled 2>/dev/null || true
 
   # sshd opens remote login (password auth by default), so only on request
-  read -r -p "Enable SSH server (${ssh_unit})? [y/N]: " enable_sshd || enable_sshd=""
+  enable_sshd="$(ask "Enable SSH server (${ssh_unit})? [y/N]: " n)"
   if [[ "${enable_sshd,,}" == "y" ]]; then
     sudo systemctl enable "${ssh_unit}"
     log "${ssh_unit} enabled."
@@ -490,6 +519,29 @@ migrate_old_layout() {
   fi
 }
 
+# Lists the *.bak that clear_stow_targets left in ~/.config, so the copies
+# from earlier runs don't pile up unnoticed. Only warns, deletes nothing.
+report_bak_files() {
+  local -a baks=()
+  local f shown=0 max=10
+
+  if [[ ! -d "${CONFIG_DST}" ]]; then return 0; fi
+  mapfile -t baks < <(find "${CONFIG_DST}" -mindepth 1 -maxdepth 1 \
+    \( -name '*.bak' -o -name '*.bak.[0-9]*' \) -print | sort)
+  if (( ${#baks[@]} == 0 )); then return 0; fi
+
+  warn "${#baks[@]} copy(ies) *.bak in ~/.config (files that were in the way of a link):"
+  for f in "${baks[@]}"; do
+    if (( shown == max )); then
+      echo "    ... and $(( ${#baks[@]} - max )) more"
+      break
+    fi
+    echo "    ~${f#"${HOME}"}"
+    shown=$((shown + 1))
+  done
+  info "Check them and delete what you no longer need."
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -513,6 +565,7 @@ link_configs() {
   done
   stow --dir="${DOTFILES_DIR}" --target="${HOME}" --restow --verbose=1 "${pkgs[@]}"
   log "Linked: ${pkgs[*]}"
+  report_bak_files
 }
 
 # Without arguments removes the links of every package
@@ -606,6 +659,18 @@ print_summary() {
 }
 
 main() {
+  local -a args=()
+  local arg
+
+  # Options may come anywhere: ./install.sh --yes install xfce
+  for arg in "$@"; do
+    case "$arg" in
+      -y|--yes) ASSUME_YES=1 ;;
+      *)        args+=("$arg") ;;
+    esac
+  done
+  set -- "${args[@]}"
+
   local command="${1:-install}"
   if (( $# )); then shift; fi
   command="${command#--}"   # accept --backup, --install, ...
@@ -627,7 +692,11 @@ main() {
     restore)
       if [[ -z "${1:-}" ]]; then
         list_backups
-        read -r -p "Enter backup file path to restore: " backup_file
+        backup_file="$(ask "Enter backup file path to restore: " "")"
+        if [[ -z "${backup_file}" ]]; then
+          err "No backup file given. Usage: $0 restore <file>"
+          exit 1
+        fi
         restore_config "${backup_file}"
       else
         restore_config "$1"

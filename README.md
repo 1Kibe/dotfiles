@@ -16,6 +16,14 @@ cd ~/dotfiles
 
 O script detecta a distro, pergunta quais ambientes ativar (`xfce` já vem marcado), instala os pacotes, pergunta se liga o servidor SSH (padrão: não) e cria os links. Rode como usuário normal: ele chama o `sudo` quando precisa.
 
+No Arch, a instalação começa com `pacman -Syu`: o sistema inteiro é atualizado junto, o que evita erro 404 nos mirrors e atualização parcial quando o script roda de novo semanas depois.
+
+Para rodar sem nenhuma pergunta, usando os padrões (ambiente `xfce`, SSH não, dependências opcionais puladas), use `--yes`. Serve para testes repetidos numa VM a partir de um snapshot:
+
+```bash
+./install.sh --yes
+```
+
 Pode clonar em qualquer pasta, por exemplo `~/Projetos/dotfiles`. Só não mova a pasta depois de linkar (veja [Cuidados](#cuidados)).
 
 <details>
@@ -23,11 +31,11 @@ Pode clonar em qualquer pasta, por exemplo `~/Projetos/dotfiles`. Só não mova 
 
 1. Detecta a distro pelo `/etc/os-release` e escolhe a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
 2. Pergunta os ambientes: `xfce` (padrão sim) e `hyprland` (padrão não). O `common` entra sempre
-3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman**, e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
+3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
 4. Ativa NetworkManager e Bluetooth e pergunta se deve ativar o `sshd`
 5. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
 6. Configura o filtro git que mantém nomes de redes Wi-Fi fora dos commits
-7. Cria os links com o `stow` (`common` + ambientes escolhidos)
+7. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
 8. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
 
 </details>
@@ -50,6 +58,7 @@ Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções
 |---|---|
 | `./install.sh` | Instala tudo: pacotes, serviços e links. Pergunta os ambientes |
 | `./install.sh install xfce` | O mesmo, com os ambientes direto na linha de comando |
+| `./install.sh --yes [comando]` | Não pergunta nada: usa os padrões (`xfce`, SSH não, sem opcionais). Também aceita `-y` |
 | `./install.sh link [ambiente...]` | Só cria ou atualiza os links. Use depois de um `git pull` |
 | `./install.sh unlink [ambiente...]` | Remove os links. Sem ambiente, remove de todos |
 | `./install.sh backup` | Salva o `~/.config` em `.backups/config_<data>.tar.gz` |
@@ -195,7 +204,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 ## Cuidados
 
 - **Nomes de Wi-Fi no painel do XFCE.** O XFCE grava os nomes das redes no `xfce4-panel.xml`. Um filtro git (`tools/xfce-panel-clean.awk`, ligado pelo `install.sh`) tira isso antes de cada commit. Mesmo assim, revise o `git diff` antes do push.
-- **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak`.
+- **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **Não mova a pasta depois de linkar.** Para mover: `./install.sh unlink`, mova a pasta e rode `./install.sh link` no lugar novo.
 - **Backups ficam fora do git.** A pasta `.backups/` está no `.gitignore`, porque um backup do `~/.config` pode ter tokens e cookies de outros programas.
 
