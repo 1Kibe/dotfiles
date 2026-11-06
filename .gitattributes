@@ -3,6 +3,9 @@
 *.awk      text eol=lf
 *.desktop  text eol=lf
 *.conf     text eol=lf
+*.toml     text eol=lf
+*.css      text eol=lf
+*.lua      text eol=lf
 **/.local/bin/* text eol=lf
 
 # Strip XFCE runtime cache (Wi-Fi names) before committing; see tools/xfce-panel-clean.awk

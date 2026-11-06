@@ -65,11 +65,17 @@ shfmt
 openssh
 tailscale   # tailscaled is enabled by install.sh
 
+# ── Login screen (greetd + ReGreet, for every environment) ──
+greetd
+greetd-regreet
+cage
+gnome-themes-extra     # Adwaita-dark GTK theme (desktop and login screen)
+breeze-icons           # breeze-dark icon theme
+
 [xfce]
-# ── Display server & login screen ──
+# ── Display server (X11 sessions start through startx) ──
 xorg-server
-lightdm               # enabled by install.sh, starts on the next boot
-lightdm-gtk-greeter
+xorg-xinit
 
 # ── Window manager & essentials ──
 i3-wm
@@ -91,8 +97,6 @@ xorg-xkill             # Ctrl+Alt+Esc
 xorg-xrandr            # monitor list for ~/.local/bin/xfce-wallpaper
 
 # ── Look (xsettings.xml) ──
-gnome-themes-extra     # Adwaita-dark GTK theme
-breeze-icons           # breeze-dark icon theme
 noto-fonts             # fallback for accents, symbols and other scripts
 
 # ── Audio ──

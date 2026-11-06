@@ -70,8 +70,8 @@ CONFIG_DST="${HOME}/.config"
 BACKUPS_DIR="${DOTFILES_DIR}/.backups"
 PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
-GREETER_CONF="/etc/lightdm/lightdm-gtk-greeter.conf"
-GREETER_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
+GREETD_DIR="/etc/greetd"
+LOGIN_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
 
 # Wallpaper in common/.config/wallpapers (also the default of xfce-wallpaper)
 WALLPAPER_FILE="Captura de tela 2026-01-24 153931.png"
@@ -390,20 +390,31 @@ install_optional_deps() {
 }
 
 # ── Services ─────────────────────────────────────────────────────────────────
-# XFCE and i3 start from LightDM's login screen. It is only enabled, not
-# started: starting it now would switch to the login screen in the middle of
-# the run. A display manager that is already set up (gdm, sddm...) is kept.
+# greetd shows the login screen for every environment (Hyprland, Xfce, i3).
+# Only enabled, not started: starting it now would switch to the login screen
+# in the middle of the run. A LightDM set up by an older install.sh is
+# replaced; any other display manager (gdm, sddm...) is kept.
 enable_display_manager() {
   local current
   current="$(readlink -e "${DM_UNIT_LINK}" 2>/dev/null || true)"
-  if [[ -n "$current" && "${current##*/}" != "lightdm.service" ]]; then
-    info "Display manager already set (${current##*/}), keeping it."
-    return 0
-  fi
-  if sudo systemctl enable lightdm; then
-    log "lightdm enabled (login screen from the next boot)."
+  current="${current##*/}"
+
+  case "$current" in
+    "" | greetd.service) ;;
+    lightdm.service)
+      info "Replacing LightDM with greetd."
+      sudo systemctl disable lightdm || warn "Could not disable lightdm."
+      ;;
+    *)
+      info "Display manager already set (${current}), keeping it."
+      return 0
+      ;;
+  esac
+
+  if sudo systemctl enable greetd; then
+    log "greetd enabled (login screen from the next boot)."
   else
-    warn "Could not enable lightdm."
+    warn "Could not enable greetd."
   fi
 }
 
@@ -423,7 +434,7 @@ enable_services() {
   done
   sudo systemctl enable tailscaled 2>/dev/null || true
 
-  if has_env xfce; then
+  if has_env xfce || has_env hyprland; then
     enable_display_manager
   fi
 
@@ -637,31 +648,34 @@ configure_xfce() {
   else
     warn "Wallpaper not found: ${wallpaper}"
   fi
-
-  configure_login_screen "$wallpaper"
 }
 
-# Login screen with the desktop's theme, icons, cursor, font and wallpaper.
-# The greeter runs as the lightdm user and can't read $HOME, so the wallpaper
-# is copied to /usr/share/backgrounds. The packaged config is kept as .bak once.
+# Login screen (greetd + ReGreet) with the desktop's theme, cursor, font and
+# wallpaper. The greeter can't read $HOME, so the wallpaper is copied to
+# /usr/share/backgrounds. greetd's packaged config.toml is kept as .bak once.
 configure_login_screen() {
-  local wallpaper="$1"
-  local conf_src="${DOTFILES_DIR}/system/lightdm-gtk-greeter.conf"
+  local wallpaper="${DOTFILES_DIR}/common/.config/wallpapers/${WALLPAPER_FILE}"
+  local src="${DOTFILES_DIR}/system/greetd"
+  local file
 
-  if [[ ! -d "$(dirname "${GREETER_CONF}")" ]]; then
-    warn "LightDM is not installed, skipping the login screen theme."
+  if [[ ! -d "${GREETD_DIR}" ]]; then
+    warn "greetd is not installed, skipping the login screen."
     return 0
   fi
 
   if [[ -f "$wallpaper" ]]; then
-    sudo install -Dm644 "$wallpaper" "${GREETER_BACKGROUND}"
+    sudo install -Dm644 "$wallpaper" "${LOGIN_BACKGROUND}"
+  else
+    warn "Wallpaper not found: ${wallpaper}"
   fi
-  if [[ -f "${GREETER_CONF}" && ! -e "${GREETER_CONF}.bak" \
-        && "$(< "${GREETER_CONF}")" != "$(< "$conf_src")" ]]; then
-    sudo cp -p "${GREETER_CONF}" "${GREETER_CONF}.bak"
+  if [[ -f "${GREETD_DIR}/config.toml" && ! -e "${GREETD_DIR}/config.toml.bak" \
+        && "$(< "${GREETD_DIR}/config.toml")" != "$(< "${src}/config.toml")" ]]; then
+    sudo cp -p "${GREETD_DIR}/config.toml" "${GREETD_DIR}/config.toml.bak"
   fi
-  sudo install -m644 "$conf_src" "${GREETER_CONF}"
-  log "Login screen themed (LightDM GTK greeter)."
+  for file in config.toml regreet.toml regreet.css; do
+    sudo install -m644 "${src}/${file}" "${GREETD_DIR}/${file}"
+  done
+  log "Login screen set (greetd + ReGreet)."
 }
 
 # ── Install ──────────────────────────────────────────────────────────────────
@@ -672,8 +686,8 @@ print_summary() {
   echo "============================================================"
   echo ""
   echo "  📋 Next steps:"
-  if has_env xfce; then
-    echo "  • Reboot and pick the Xfce or i3 session on the login screen"
+  if has_env xfce || has_env hyprland; then
+    echo "  • Reboot and pick the session (Hyprland, Xfce or i3) on the login screen"
   fi
   echo "  • Open Neovim and let lazy.nvim bootstrap the plugins"
   echo "    (just run 'nvim' and wait – it's automatic)"
@@ -696,7 +710,7 @@ print_summary() {
     echo "  • Panel settings: xfce/.config/xfce4/panel/"
     echo "  • Theme & shortcuts: xfce/.config/xfce4/xfconf/"
     echo "  • Wallpaper: set at login by ~/.local/bin/xfce-wallpaper"
-    echo "  • Login screen: system/lightdm-gtk-greeter.conf"
+    echo "  • Login screen: system/greetd/ (copied to /etc/greetd)"
     echo ""
   fi
   echo "============================================================"
@@ -788,6 +802,9 @@ main() {
 
   if has_env xfce; then
     configure_xfce
+  fi
+  if has_env xfce || has_env hyprland; then
+    configure_login_screen
   fi
 
   info "Running xdg-user-dirs-update to populate user directories..."

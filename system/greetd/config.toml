@@ -1,0 +1,11 @@
+# greetd: shows ReGreet (inside the cage kiosk compositor) on VT 1.
+# Copied to /etc/greetd/ by install.sh.
+[terminal]
+vt = 1
+
+[default_session]
+# Software cursor and renderer: on VMs (vmwgfx) wlroots' GLES renderer fails to
+# import buffers and cage dies right after start. On real hardware this only
+# costs a bit of CPU while the login screen is open.
+command = "env WLR_NO_HARDWARE_CURSORS=1 WLR_RENDERER=pixman cage -s -mlast -- regreet"
+user = "greeter"

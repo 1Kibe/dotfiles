@@ -1,0 +1,34 @@
+/* ReGreet login screen in Gruvbox dark. Copied to /etc/greetd/ by install.sh. */
+@define-color gb_bg #282828;
+@define-color gb_bg1 #3c3836;
+@define-color gb_bg2 #504945;
+@define-color gb_fg #ebdbb2;
+@define-color gb_yellow #fabd2f;
+@define-color gb_orange #fe8019;
+
+label {
+  color: @gb_fg;
+}
+
+entry,
+dropdown > button,
+combobox button {
+  background-color: alpha(@gb_bg1, 0.92);
+  color: @gb_fg;
+  border: 1px solid @gb_bg2;
+  border-radius: 8px;
+}
+
+entry:focus-within {
+  border-color: @gb_yellow;
+}
+
+button.suggested-action {
+  background-color: @gb_yellow;
+  color: @gb_bg;
+}
+
+button.destructive-action {
+  background-color: @gb_orange;
+  color: @gb_bg;
+}
