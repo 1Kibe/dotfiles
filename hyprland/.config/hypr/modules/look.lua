@@ -34,8 +34,8 @@ hl.config({
     disable_splash_rendering = true,
     force_default_wallpaper = 0,
     -- Plain until the Quickshell wallpaper module; darker than the terminals
-    -- (c.bg) so windows stand out
-    background_color = rgb(c.bg_hard),
+    -- (c.bg_hard) so windows stand out
+    background_color = rgb(c.bg_deep),
     font_family = "Agave Nerd Font Propo",
   },
   ecosystem = { no_update_news = true, no_donation_nag = true },

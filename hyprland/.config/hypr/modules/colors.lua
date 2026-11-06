@@ -1,9 +1,10 @@
--- Gruvbox dark (medium): same palette as Alacritty and Rofi.
+-- Gruvbox dark palette (Alacritty uses the hard background, bg_hard).
 return {
   bg      = "#282828",
   bg1     = "#3c3836",
   bg2     = "#504945",
   bg_hard = "#1d2021",
+  bg_deep = "#141617", -- darker than the terminals, for the desktop
   fg      = "#ebdbb2",
   gray    = "#928374",
   yellow  = "#fabd2f",
