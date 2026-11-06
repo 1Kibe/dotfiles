@@ -33,6 +33,7 @@ neovim
 # ── Bluetooth ──
 bluez
 bluez-utils
+bluez-obex   # file transfer (OBEX), used by blueman's "Send files"
 
 # ── Audio (PipeWire, also serves PulseAudio apps) ──
 pipewire
@@ -58,10 +59,7 @@ shfmt
 
 # ── System ──
 openssh
-
-# ── AUR ──
-aur:tailscale
-aur:obexftp
+tailscale   # tailscaled is enabled by install.sh
 
 [xfce]
 # ── Display server & login screen ──
@@ -73,7 +71,7 @@ lightdm-gtk-greeter
 i3-wm
 i3status
 i3lock
-aur:xss-lock   # screen locker integration
+xss-lock   # screen locker integration
 
 # ── File manager ──
 thunar
