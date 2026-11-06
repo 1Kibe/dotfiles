@@ -728,6 +728,15 @@ print_summary() {
     echo "  • Login screen: system/greetd/ (copied to /etc/greetd)"
     echo ""
   fi
+  if has_env hyprland; then
+    echo "  🪟 Hyprland:"
+    echo "  • On the login screen pick \"Hyprland (uwsm-managed)\""
+    echo "  • Machine settings (monitor, scale, VM fixes):"
+    echo "    cp ~/.config/hypr/local.lua.example ~/.config/hypr/local.lua"
+    echo "    and keep only the block for this machine"
+    echo "  • Keybinds: Super+F1 or hyprland/README.md"
+    echo ""
+  fi
   echo "============================================================"
 }
 
