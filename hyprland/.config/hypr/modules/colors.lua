@@ -12,4 +12,9 @@ return {
   green   = "#b8bb26",
   aqua    = "#8ec07c",
   blue    = "#83a598",
+
+  -- Accent: the Windows accent color (title bars) and a lighter tone of it
+  -- from the Windows accent palette. Used by the active window border.
+  accent       = "#7e735f",
+  accent_light = "#bfb8a3",
 }

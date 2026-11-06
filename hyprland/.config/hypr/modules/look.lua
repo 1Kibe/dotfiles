@@ -1,4 +1,5 @@
--- Look: Gruvbox borders, gaps, rounding, shadow, blur and animations.
+-- Look: borders in the Windows accent color, gaps, rounding, translucent
+-- inactive windows, shadow, blur and animations.
 -- The VM block in local.lua turns blur and shadow off.
 local c = require("modules.colors")
 
@@ -13,7 +14,7 @@ hl.config({
     gaps_out = 10,
     border_size = 2,
     col = {
-      active_border = { colors = { rgb(c.yellow), rgb(c.orange) }, angle = 45 },
+      active_border = { colors = { rgb(c.accent_light), rgb(c.accent) }, angle = 45 },
       inactive_border = rgb(c.bg2),
     },
     layout = "dwindle",
@@ -21,6 +22,9 @@ hl.config({
   },
   decoration = {
     rounding = 8,
+    -- Same as xfwm4's inactive_opacity (71%) on XFCE
+    active_opacity = 1.0,
+    inactive_opacity = 0.71,
     shadow = { enabled = true, range = 8, render_power = 3, color = 0xaa1d2021 },
     blur = { enabled = true, size = 4, passes = 2 },
   },
