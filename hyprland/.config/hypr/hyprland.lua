@@ -7,8 +7,11 @@
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
 require("modules.env")
+require("modules.look")
 require("modules.input")
+require("modules.rules")
 require("modules.keybinds")
+require("modules.autostart")
 
 -- Optional: a missing local.lua is not an error
 pcall(require, "local")

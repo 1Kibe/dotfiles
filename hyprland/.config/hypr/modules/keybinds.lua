@@ -111,3 +111,5 @@ end })
 hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
 hl.gesture({ fingers = 4, direction = "up", action = launch("media_next") })
 hl.gesture({ fingers = 4, direction = "down", action = launch("media_prev") })
+-- Windows uses a 4-finger tap; libinput has no such tap, so a 4-finger pinch
+hl.gesture({ fingers = 4, direction = "pinch", action = launch("media_play") })
