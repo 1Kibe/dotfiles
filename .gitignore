@@ -38,3 +38,6 @@ Thumbs.db
 .env
 .env.local
 *.secret
+
+# ── Hyprland: machine-specific settings ──
+hyprland/.config/hypr/local.lua

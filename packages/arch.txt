@@ -65,6 +65,10 @@ shfmt
 openssh
 tailscale   # tailscaled is enabled by install.sh
 
+# ── File manager ──
+thunar
+thunar-archive-plugin
+
 # ── Login screen (greetd + ReGreet, for every environment) ──
 greetd
 greetd-regreet
@@ -82,10 +86,6 @@ i3-wm
 i3status
 i3lock
 xss-lock   # screen locker integration
-
-# ── File manager ──
-thunar
-thunar-archive-plugin
 
 # ── XFCE desktop ──
 xfce4                  # group: panel, xfwm4, xfdesktop, session, settings, power manager...
@@ -118,4 +118,25 @@ dex
 xclip
 
 [hyprland]
-# TODO: add the Hyprland / Quickshell packages together with their configs
+# ── Compositor and session ──
+hyprland
+uwsm                         # starts Hyprland as a systemd session
+xdg-desktop-portal-hyprland  # screen sharing, screenshots for apps
+xdg-desktop-portal-gtk       # file picker and dark mode for GTK apps
+hyprpolkitagent              # password dialog for apps (polkit)
+qt6-wayland
+
+# ── Shell (own Quickshell config in hyprland/.config/quickshell) ──
+quickshell
+
+# ── Clipboard, screenshots, media keys ──
+wl-clipboard
+cliphist                     # clipboard history (Super+V, Quickshell module)
+grim                         # hypr-print
+slurp                        # hypr-print area selection
+brightnessctl
+playerctl
+
+# ── Tools used by the keybinds ──
+btop                         # task manager until the Quickshell module exists
+jq                           # hypr-atalhos, hypr-print

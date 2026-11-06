@@ -1,0 +1,23 @@
+-- Machine-specific settings. Copy to local.lua (ignored by git) and keep only
+-- the block for this machine. Loaded last, so it overrides every module.
+
+-- ── VM (VMware) ─────────────────────────────────────────────────────────────
+-- Virtual GPU: scale 1 (auto picks 2 on a small VM window), software cursor
+-- (the hardware one doesn't show), no blur or shadow, shorter animations.
+hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
+hl.config({
+  cursor = { no_hardware_cursors = 1 },
+  decoration = {
+    blur = { enabled = false },
+    shadow = { enabled = false },
+  },
+})
+hl.animation({ leaf = "global", enabled = true, speed = 3, bezier = "default" })
+-- Apps draw on the CPU: on vmwgfx Hyprland rejects their GPU buffers
+-- ("invalid arguments for wl_surface.attach") and they close at once.
+-- AQ_NO_MODIFIERS=1 in ~/.config/uwsm/env did not help here.
+hl.env("LIBGL_ALWAYS_SOFTWARE", "1")
+
+-- ── Notebook (Yoga Slim 7, 2.8K screen) ─────────────────────────────────────
+-- Uncomment on the notebook (and delete the VM block). Pick the scale there.
+-- hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1.75 })
