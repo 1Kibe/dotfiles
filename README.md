@@ -1,6 +1,6 @@
 # dotfiles
 
-Configurações pessoais de desktop Linux: **Arch Linux + XFCE + i3**, com Neovim, Alacritty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
+Configurações pessoais de desktop Linux: **Arch Linux + XFCE + i3** e **Hyprland** (em construção), com Neovim, Alacritty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
 
 ![Prévia do desktop: Neovim com dashboard alpha, terminal Alacritty Gruvbox e painéis XFCE](assets/preview.png)
 
@@ -50,7 +50,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 |---|---|---|
 | `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers` | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
-| `hyprland/` | `~/.config/hypr`, `quickshell` | Ambiente `hyprland` (ainda vazio, o script pula) |
+| `hyprland/` | `~/.config/hypr`, `quickshell`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
 
@@ -311,7 +311,8 @@ git pull
 ## Próximos passos
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
-- [ ] Hyprland + Quickshell personalizado em `hyprland/` (configs e seção `[hyprland]` de `packages/arch.txt`)
+- [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell` (um módulo por vez, barra primeiro)
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 

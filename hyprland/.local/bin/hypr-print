@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Screenshot saved to Pictures/Capturas and copied to the clipboard.
+# Bound to Print / Shift+Print (and Super+Shift+S) / Alt+Print in Hyprland.
+# Cancelling the area selection (Esc) saves nothing.
+#
+# Usage: hypr-print tela|area|janela
+set -euo pipefail
+
+mode="${1:-}"
+case "$mode" in
+  tela)
+    geometry=""
+    ;;
+  area)
+    geometry="$(slurp)" || exit 0
+    ;;
+  janela)
+    geometry="$(hyprctl -j activewindow \
+      | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else "" end')"
+    [[ -n "$geometry" ]] || exit 0
+    ;;
+  *)
+    echo "usage: hypr-print tela|area|janela" >&2
+    exit 2
+    ;;
+esac
+
+pictures="$(xdg-user-dir PICTURES 2>/dev/null || true)"
+dir="${pictures:-$HOME/Pictures}/Capturas"
+file="${dir}/$(date +%Y-%m-%d_%H-%M-%S).png"
+mkdir -p "$dir"
+
+if [[ -n "$geometry" ]]; then
+  grim -g "$geometry" "$file"
+else
+  grim "$file"
+fi
+wl-copy --type image/png < "$file"
+echo "$file"

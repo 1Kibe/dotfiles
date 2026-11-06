@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Keybind list read from the running Hyprland (hyprctl binds), so it always
+# matches the config. Bound to Super+F1. Bind descriptions look like
+# "Group: text" (see modules/keybinds.lua). Gestures are a fixed block:
+# Hyprland doesn't list them, so keep it in sync with keybinds.lua.
+#
+#   hypr-atalhos                  list in a pager (q closes)
+#   hypr-atalhos --markdown       tables in Markdown
+#   hypr-atalhos --readme FILE    replaces the tables between the markers
+#                                 <!-- atalhos:inicio --> and <!-- atalhos:fim -->
+set -euo pipefail
+# A failing hyprctl inside $(...) must stop the script, so the README is not
+# rewritten with an empty table
+shopt -s inherit_errexit
+
+SECTIONS=(Sistema Janelas Áreas Mídia)
+
+GESTURES=(
+  "3 dedos ←/→|Janela anterior / próxima"
+  "3 dedos ↑|Visão geral das janelas"
+  "3 dedos ↓|Mostrar a área de trabalho (área vazia)"
+  "4 dedos ←/→|Trocar de área de trabalho"
+  "4 dedos ↑ / ↓|Próxima / anterior música"
+  "4 dedos (pinça)|Tocar / pausar música"
+)
+
+# One line per action: "group<TAB>keys<TAB>text". Binds with the same group
+# and text are merged ("Super / Super+D"); runs like Super+1..9 are shortened.
+binds_tsv() {
+  local json
+  if ! json="$(hyprctl -j binds)"; then
+    echo "hypr-atalhos: hyprctl falhou (rodando fora do Hyprland?)" >&2
+    return 1
+  fi
+  jq -r '
+    def pretty:
+      {"Super_L": "Super", "space": "Espaço", "Return": "Enter",
+       "left": "←", "right": "→", "up": "↑", "down": "↓",
+       "Escape": "Esc", "Delete": "Del",
+       "mouse:272": "botão esquerdo", "mouse:273": "botão direito",
+       "mouse_down": "roda ↓", "mouse_up": "roda ↑",
+       "XF86AudioRaiseVolume": "Volume +", "XF86AudioLowerVolume": "Volume −",
+       "XF86AudioMute": "Mudo", "XF86AudioMicMute": "Microfone mudo",
+       "XF86MonBrightnessUp": "Brilho +", "XF86MonBrightnessDown": "Brilho −",
+       "XF86AudioPlay": "Play", "XF86AudioPause": "Pause",
+       "XF86AudioNext": "Próxima", "XF86AudioPrev": "Anterior"}[.] // .;
+    def mods($m):
+      [ (if (($m / 64) | floor) % 2 == 1 then "Super" else empty end),
+        (if (($m / 4) | floor) % 2 == 1 then "Ctrl" else empty end),
+        (if (($m / 8) | floor) % 2 == 1 then "Alt" else empty end),
+        (if $m % 2 == 1 then "Shift" else empty end) ];
+    def compact:
+      if length > 2
+         and all(.[]; test("[0-9]$"))
+         and ((map(sub("[0-9]$"; "")) | unique | length) == 1)
+      then .[0] + ".." + (.[-1] | .[-1:])
+      else join(" / ") end;
+    [ .[]
+      | select((.description // "") | test("^[^:]+: "))
+      | (.description | capture("^(?<g>[^:]+): (?<t>.*)$")) as $d
+      | { g: $d.g, t: $d.t,
+          k: ((if .key == "Super_L" then [] else mods(.modmask // 0) end) + [(.key | pretty)] | join("+"))
+             + (if .release then " (soltar)" else "" end) } ]
+    | reduce .[] as $r ([];
+        if any(.[]; .g == $r.g and .t == $r.t)
+        then map(if .g == $r.g and .t == $r.t then .k += [$r.k] else . end)
+        else . + [{ g: $r.g, t: $r.t, k: [$r.k] }] end)
+    | .[] | [.g, (.k | compact), .t] | @tsv' <<< "$json"
+}
+
+markdown() {
+  local tsv section g
+  tsv="$(binds_tsv)"
+  for section in "${SECTIONS[@]}"; do
+    grep -q "^${section}"$'\t' <<< "$tsv" || continue
+    printf '\n### %s\n\n| Atalho | Ação |\n|---|---|\n' "$section"
+    awk -F'\t' -v s="$section" '$1 == s { printf "| `%s` | %s |\n", $2, $3 }' <<< "$tsv"
+  done
+  printf '\n### Gestos do touchpad\n\n| Gesto | Ação |\n|---|---|\n'
+  for g in "${GESTURES[@]}"; do
+    printf '| %s | %s |\n' "${g%%|*}" "${g#*|}"
+  done
+}
+
+pager() {
+  local tsv section g
+  tsv="$(binds_tsv)"
+  {
+    echo "Atalhos do Hyprland (q fecha)"
+    for section in "${SECTIONS[@]}"; do
+      grep -q "^${section}"$'\t' <<< "$tsv" || continue
+      printf '\n%s\n' "$section"
+      awk -F'\t' -v s="$section" '$1 == s { printf "  %-34s %s\n", $2, $3 }' <<< "$tsv"
+    done
+    printf '\nGestos do touchpad\n'
+    for g in "${GESTURES[@]}"; do
+      printf '  %-34s %s\n' "${g%%|*}" "${g#*|}"
+    done
+  } | less
+}
+
+update_readme() {
+  local readme="$1" table
+  if ! grep -q '<!-- atalhos:inicio -->' "$readme" || ! grep -q '<!-- atalhos:fim -->' "$readme"; then
+    echo "hypr-atalhos: marcadores não encontrados em $readme" >&2
+    return 1
+  fi
+  table="$(markdown)"
+  TABLE="$table" awk '
+    /<!-- atalhos:inicio -->/ { print; print ENVIRON["TABLE"]; print ""; skip = 1; next }
+    /<!-- atalhos:fim -->/ { skip = 0 }
+    !skip { print }
+  ' "$readme" > "${readme}.tmp"
+  mv "${readme}.tmp" "$readme"
+}
+
+case "${1:-}" in
+  "") pager ;;
+  --markdown) markdown ;;
+  --readme) update_readme "${2:?usage: hypr-atalhos --readme FILE}" ;;
+  *)
+    echo "usage: hypr-atalhos [--markdown | --readme FILE]" >&2
+    exit 2
+    ;;
+esac
