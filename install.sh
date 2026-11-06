@@ -637,6 +637,21 @@ unlink_configs() {
   log "Links removed. Files renamed to *.bak were left as they are."
 }
 
+# ── User directories ─────────────────────────────────────────────────────────
+# Creates the folders named in the linked ~/.config/user-dirs.dirs (Imagens,
+# Downloads...). xdg-user-dirs-update resets a missing folder to $HOME and
+# rewrites the file, which replaces the stow link with a plain file.
+create_user_dirs() {
+  local conf="${HOME}/.config/user-dirs.dirs" line
+
+  [[ -f "$conf" ]] || return 0
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^XDG_[A-Z]+_DIR=\"\$HOME/(.+)\"$ ]]; then
+      mkdir -p "${HOME}/${BASH_REMATCH[1]}"
+    fi
+  done < "$conf"
+}
+
 # ── XFCE ─────────────────────────────────────────────────────────────────────
 # The wallpaper is not in xfce4-desktop.xml: xfdesktop keys it by monitor name.
 # ~/.local/bin/xfce-wallpaper sets it at every XFCE login (autostart).
@@ -807,6 +822,7 @@ main() {
     configure_login_screen
   fi
 
+  create_user_dirs
   info "Running xdg-user-dirs-update to populate user directories..."
   xdg-user-dirs-update 2>/dev/null || true
 
