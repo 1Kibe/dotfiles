@@ -49,7 +49,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 | Pasta | Vira | Quando entra |
 |---|---|---|
 | `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers` | Sempre |
-| `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*` | Ambiente `xfce` |
+| `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell` | Ambiente `hyprland` (ainda vazio, o script pula) |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
@@ -156,23 +156,32 @@ Depois de instalar, rode `:Mason` dentro do `nvim` para conferir os LSPs e forma
 
 ### XFCE
 
-Dois painéis: em cima ficam menu, janelas abertas, sessão, área de notificação e bateria; embaixo, relógio, janelas abertas e áreas de trabalho. Tema GTK Adwaita-dark com ícones breeze-dark.
+Dois painéis: em cima ficam menu, janelas abertas, sessão, área de notificação e bateria; embaixo, relógio, janelas abertas e áreas de trabalho. Tema GTK Adwaita-dark com ícones breeze-dark, fonte Agave Nerd Font e cursor Bibata Modern Classic (o mesmo do Windows). A tela de login (LightDM) usa o mesmo visual e o wallpaper do desktop.
+
+O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todos os monitores. Ele não fica no `xfce4-desktop.xml` porque o XFCE salva o wallpaper pelo nome do monitor (`eDP-1`, `Virtual-1`...), que muda de máquina para máquina. Depois de ligar um monitor novo, rode `xfce-wallpaper` de novo.
 
 | Atalho | Ação |
 |---|---|
 | `Super+D` | Rofi (abrir aplicativo) |
-| `Super+Espaço` | Alacritty |
-| `Super+E` | Thunar |
+| `Super+Espaço` / `Ctrl+Alt+T` | Alacritty |
+| `Super+E` / `Ctrl+Alt+F` | Thunar |
+| `Super+R` / `Alt+F2` | Busca de aplicativos (`Alt+F3`: versão completa) |
+| `Alt+F1` | Menu de aplicativos |
+| `Super+P` | Configuração de monitores |
 | `Print` | Captura da tela inteira |
 | `Shift+Print` | Captura de uma área |
 | `Alt+Print` | Captura da janela |
+| `Ctrl+Alt+L` | Travar a tela |
+| `Ctrl+Shift+Esc` | Gerenciador de tarefas |
+| `Ctrl+Alt+Esc` | xkill (clique na janela para fechar à força) |
+| `Ctrl+Alt+Del` | Sair, reiniciar ou desligar |
 
 <details>
 <summary>Arquivos do XFCE versionados</summary>
 
 - **xfce4-panel.xml** — posição e plugins dos painéis, configuração de cada widget
-- **xfce4-desktop.xml** — wallpaper e ícones da área de trabalho
-- **xsettings.xml** — tema GTK, ícones e fontes
+- **xfce4-desktop.xml** — ícones da área de trabalho e o mesmo wallpaper em todas as áreas de trabalho
+- **xsettings.xml** — tema GTK, ícones, fontes e cursor
 - **xfwm4.xml** — tema e botões das janelas
 - **xfce4-keyboard-shortcuts.xml** — todos os atalhos
 - Screenshooter, Thunar, notificações e gerenciamento de energia
@@ -206,6 +215,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 ## Cuidados
 
 - **Nomes de Wi-Fi no painel do XFCE.** O XFCE grava os nomes das redes no `xfce4-panel.xml`. Um filtro git (`tools/xfce-panel-clean.awk`, ligado pelo `install.sh`) tira isso antes de cada commit. Mesmo assim, revise o `git diff` antes do push.
+- **Wallpaper por monitor.** O XFCE também grava no `xfce4-desktop.xml` o nome de cada monitor e o caminho do wallpaper com a sua pasta pessoal (`/home/<usuário>`). O filtro `tools/xfce-desktop-clean.awk` tira esse bloco antes de cada commit.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
 - **Tela de login.** No ambiente `xfce`, o script ativa o LightDM. Se já existir outro gerenciador de login (GDM, SDDM...), ele é mantido.
@@ -230,7 +240,9 @@ dotfiles/
 │   │       └── plugins.lua
 │   ├── rofi/config.rasi
 │   └── wallpapers/
+├── xfce/.local/bin/xfce-wallpaper        [aplica o wallpaper no login]
 ├── xfce/.config/
+│   ├── autostart/xfce-wallpaper.desktop
 │   ├── i3/config
 │   ├── gtk-3.0/bookmarks
 │   ├── Thunar/
@@ -262,8 +274,12 @@ dotfiles/
 │   ├── arch.txt
 │   ├── fedora.txt                        [TODO]
 │   └── ubuntu.txt                        [TODO]
+├── system/
+│   └── lightdm-gtk-greeter.conf           [tela de login, copiada para /etc/lightdm]
 ├── assets/preview.png
-├── tools/xfce-panel-clean.awk
+├── tools/
+│   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]
+│   └── xfce-desktop-clean.awk             [filtro git: wallpaper por monitor]
 ├── install.sh
 ├── LICENSE
 └── README.md

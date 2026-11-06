@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Wallpaper (dotfiles)
+Comment=Sets the dotfiles wallpaper on every monitor
+Exec=sh -c 'exec "$HOME/.local/bin/xfce-wallpaper"'
+OnlyShowIn=XFCE;
+Terminal=false

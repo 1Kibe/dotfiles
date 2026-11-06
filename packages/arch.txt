@@ -43,6 +43,10 @@ wireplumber
 
 # ── Fonts ──
 ttf-firacode-nerd
+ttf-agave-nerd   # desktop and monospace font (xsettings.xml, login screen)
+
+# ── Cursor ──
+aur:bibata-cursor-theme-bin   # Bibata Modern Classic (Right), same as on Windows
 
 # ── XDG user dirs ──
 xdg-user-dirs
@@ -82,11 +86,14 @@ xfce4                  # group: panel, xfwm4, xfdesktop, session, settings, powe
 xfce4-notifyd          # notifications (xfce4-notifyd.xml)
 xfce4-battery-plugin   # battery widget on the top panel
 xfce4-screenshooter
+xfce4-taskmanager      # Ctrl+Shift+Esc
+xorg-xkill             # Ctrl+Alt+Esc
+xorg-xrandr            # monitor list for ~/.local/bin/xfce-wallpaper
 
 # ── Look (xsettings.xml) ──
 gnome-themes-extra     # Adwaita-dark GTK theme
 breeze-icons           # breeze-dark icon theme
-noto-fonts             # Noto, the UI font set in xsettings.xml
+noto-fonts             # fallback for accents, symbols and other scripts
 
 # ── Audio ──
 pavucontrol

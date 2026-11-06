@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Sets the dotfiles wallpaper on every monitor (xfdesktop).
+#
+# xfce4-desktop.xml can't hold the wallpaper: xfdesktop saves it under the
+# monitor's connector name (eDP-1, Virtual-1...), which changes from machine to
+# machine, and xfconf doesn't expand $HOME. This runs at every XFCE login from
+# ~/.config/autostart/xfce-wallpaper.desktop. Run it by hand after plugging in
+# a new monitor.
+#
+# Usage: xfce-wallpaper [image]
+set -euo pipefail
+
+image="${1:-$HOME/.config/wallpapers/Captura de tela 2026-01-24 153931.png}"
+
+if [[ ! -f "$image" ]]; then
+  echo "xfce-wallpaper: image not found: $image" >&2
+  exit 1
+fi
+
+# Creates the property when xfdesktop has not saved it yet
+set_prop() {
+  local prop="$1" type="$2" value="$3"
+  if xfconf-query -c xfce4-desktop -p "$prop" &>/dev/null; then
+    xfconf-query -c xfce4-desktop -p "$prop" -s "$value"
+  else
+    xfconf-query -c xfce4-desktop -p "$prop" -n -t "$type" -s "$value"
+  fi
+}
+
+# Same image on every workspace (xfce4-desktop.xml sets this too)
+set_prop /backdrop/single-workspace-mode bool true
+set_prop /backdrop/single-workspace-number int 0
+
+monitors="$(xrandr --listactivemonitors | awk 'NR > 1 { print $NF }')"
+if [[ -z "$monitors" ]]; then
+  echo "xfce-wallpaper: no active monitor found (is X running?)" >&2
+  exit 1
+fi
+
+while IFS= read -r monitor; do
+  base="/backdrop/screen0/monitor${monitor}/workspace0"
+  set_prop "${base}/last-image" string "$image"
+  set_prop "${base}/image-style" int 5   # zoomed: fills the screen, keeps the aspect
+done <<< "$monitors"

@@ -10,6 +10,8 @@
 #   xfce/       XFCE + i3
 #   hyprland/   Hyprland + Quickshell (skipped while it has no configs)
 #
+# system/ holds files that go outside $HOME (copied with sudo, not linked).
+#
 # Package lists: packages/<distro>.txt (arch, fedora, ubuntu), picked from
 # /etc/os-release.
 #
@@ -68,6 +70,11 @@ CONFIG_DST="${HOME}/.config"
 BACKUPS_DIR="${DOTFILES_DIR}/.backups"
 PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
+GREETER_CONF="/etc/lightdm/lightdm-gtk-greeter.conf"
+GREETER_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
+
+# Wallpaper in common/.config/wallpapers (also the default of xfce-wallpaper)
+WALLPAPER_FILE="Captura de tela 2026-01-24 153931.png"
 
 # Optional environments (Stow packages next to common/), in menu order
 ENVS_AVAILABLE=(xfce hyprland)
@@ -79,7 +86,7 @@ ASSUME_YES=""
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
 # inside the repo.
-SHARED_DIRS=(.config .local .local/bin .local/share)
+SHARED_DIRS=(.config .config/autostart .local .local/bin .local/share)
 
 # ── Distro ───────────────────────────────────────────────────────────────────
 # Maps /etc/os-release to a package list: arch, fedora, ubuntu (or unknown)
@@ -431,12 +438,14 @@ enable_services() {
 }
 
 # ── Linking (GNU Stow) ───────────────────────────────────────────────────────
-# XFCE writes runtime cache (Wi-Fi network names) into the linked
-# xfce4-panel.xml. This git filter strips it on commit (see .gitattributes).
+# XFCE writes machine data into the linked files: Wi-Fi network names in
+# xfce4-panel.xml, monitor names and /home/<user> paths in xfce4-desktop.xml.
+# These git filters strip them on commit (see .gitattributes).
 setup_git_filter() {
   if git -C "${DOTFILES_DIR}" rev-parse --git-dir &>/dev/null; then
     git -C "${DOTFILES_DIR}" config filter.xfce-panel.clean "awk -f tools/xfce-panel-clean.awk"
-    log "Git filter for xfce4-panel.xml configured."
+    git -C "${DOTFILES_DIR}" config filter.xfce-desktop.clean "awk -f tools/xfce-desktop-clean.awk"
+    log "Git filters for xfce4-panel.xml and xfce4-desktop.xml configured."
   fi
 }
 
@@ -618,29 +627,41 @@ unlink_configs() {
 }
 
 # ── XFCE ─────────────────────────────────────────────────────────────────────
+# The wallpaper is not in xfce4-desktop.xml: xfdesktop keys it by monitor name.
+# ~/.local/bin/xfce-wallpaper sets it at every XFCE login (autostart).
 configure_xfce() {
-  local desktop_xml="${CONFIG_DST}/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"
-  local wallpaper=""
+  local wallpaper="${DOTFILES_DIR}/common/.config/wallpapers/${WALLPAPER_FILE}"
 
-  info "Configuring XFCE desktop and wallpaper..."
-
-  # Wallpaper path from xfce4-desktop.xml (uses ${HOME}, wallpapers come from common/)
-  if [[ -f "${desktop_xml}" ]]; then
-    wallpaper=$(grep -oP '(?<=<property name="(last-image|image-path)" type="string" value=")[^"]*' \
-      "${desktop_xml}" | head -1 || true)
-
-    if [[ -n "${wallpaper}" ]]; then
-      log "Detected wallpaper: ${wallpaper}"
-      wallpaper="${wallpaper//\$\{HOME\}/${HOME}}"
-      if [[ ! -f "${wallpaper}" ]]; then
-        warn "Wallpaper file not found: ${wallpaper}"
-      fi
-    fi
-
-    step "Applying XFCE desktop configuration..."
-    xfconf-query -c xfdesktop -l > /dev/null 2>&1 || true
-    log "XFCE desktop configuration applied"
+  if [[ -f "$wallpaper" ]]; then
+    info "Wallpaper is set at the next XFCE login (xfce-wallpaper)."
+  else
+    warn "Wallpaper not found: ${wallpaper}"
   fi
+
+  configure_login_screen "$wallpaper"
+}
+
+# Login screen with the desktop's theme, icons, cursor, font and wallpaper.
+# The greeter runs as the lightdm user and can't read $HOME, so the wallpaper
+# is copied to /usr/share/backgrounds. The packaged config is kept as .bak once.
+configure_login_screen() {
+  local wallpaper="$1"
+  local conf_src="${DOTFILES_DIR}/system/lightdm-gtk-greeter.conf"
+
+  if [[ ! -d "$(dirname "${GREETER_CONF}")" ]]; then
+    warn "LightDM is not installed, skipping the login screen theme."
+    return 0
+  fi
+
+  if [[ -f "$wallpaper" ]]; then
+    sudo install -Dm644 "$wallpaper" "${GREETER_BACKGROUND}"
+  fi
+  if [[ -f "${GREETER_CONF}" && ! -e "${GREETER_CONF}.bak" \
+        && "$(< "${GREETER_CONF}")" != "$(< "$conf_src")" ]]; then
+    sudo cp -p "${GREETER_CONF}" "${GREETER_CONF}.bak"
+  fi
+  sudo install -m644 "$conf_src" "${GREETER_CONF}"
+  log "Login screen themed (LightDM GTK greeter)."
 }
 
 # ── Install ──────────────────────────────────────────────────────────────────
@@ -674,7 +695,8 @@ print_summary() {
     echo "  ⚙️  XFCE Configuration:"
     echo "  • Panel settings: xfce/.config/xfce4/panel/"
     echo "  • Theme & shortcuts: xfce/.config/xfce4/xfconf/"
-    echo "  • Wallpaper: Check xfce4-desktop.xml"
+    echo "  • Wallpaper: set at login by ~/.local/bin/xfce-wallpaper"
+    echo "  • Login screen: system/lightdm-gtk-greeter.conf"
     echo ""
   fi
   echo "============================================================"
