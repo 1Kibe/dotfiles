@@ -24,7 +24,8 @@ return {
   print_tela    = "hypr-print tela",
   print_area    = "hypr-print area",
   print_janela  = "hypr-print janela",
-  logout        = "uwsm stop",
+  -- uwsm session: stop it cleanly; the "Hyprland" entry without uwsm: exit
+  logout        = "uwsm check is-active && uwsm stop || hyprctl dispatch 'hl.dsp.exit()'",
 
   -- Media keys (the Quickshell OSD reads PipeWire and brightness itself)
   volume_up       = "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+",
