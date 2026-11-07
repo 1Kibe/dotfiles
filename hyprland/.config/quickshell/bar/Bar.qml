@@ -64,5 +64,12 @@ PanelWindow {
         anchors.rightMargin: Theme.padding
         anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.spacing
+
+        VolumeStatus {}
+        NetworkStatus {}
+        BluetoothStatus {}
+        BatteryStatus {}
+        Separator {}
+        PowerButton {}
     }
 }
