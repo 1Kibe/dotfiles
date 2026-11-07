@@ -1,11 +1,16 @@
 import QtQuick
 import Quickshell.Services.Pipewire
 import qs.theme
+import qs.state
 
 // Default output: icon by level and percent. Wheel ±5% (up to 100%,
-// like the volume keys), click mutes.
+// like the volume keys); click opens the volume panel (mute is in there).
 BarItem {
     id: root
+
+    required property var monitor   // HyprlandMonitor of this bar
+    readonly property string monitorName: monitor ? monitor.name : ""
+    readonly property bool open: ShellState.isOpen("volume", monitorName)
 
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property bool ok: sink !== null && sink.ready && sink.audio !== null
@@ -27,12 +32,9 @@ BarItem {
         return `${icon} ${percent}%`
     }
     textColor: !ok ? Theme.gray : muted ? Theme.red : Theme.text
-    tooltip: ok ? (sink.description || sink.nickname || sink.name) : "Sem saída de áudio"
+    tooltip: open ? "" : ok ? (sink.description || sink.nickname || sink.name) : "Sem saída de áudio"
 
-    onClicked: {
-        if (ok)
-            sink.audio.muted = !sink.audio.muted
-    }
+    onClicked: ShellState.toggle("volume", monitorName)
     onScrolled: steps => {
         if (!ok)
             return
@@ -41,5 +43,10 @@ BarItem {
             return   // above 100% (set by another app): don't push it further
         const next = Math.min(1, Math.max(0, v + 0.05 * steps))
         sink.audio.volume = Math.round(next * 100) / 100
+    }
+
+    VolumePanel {
+        button: root
+        open: root.open
     }
 }

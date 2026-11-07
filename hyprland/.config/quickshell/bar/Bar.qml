@@ -65,7 +65,9 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.spacing
 
-        VolumeStatus {}
+        VolumeStatus {
+            monitor: root.hyprMonitor
+        }
         NetworkStatus {
             monitor: root.hyprMonitor
         }
