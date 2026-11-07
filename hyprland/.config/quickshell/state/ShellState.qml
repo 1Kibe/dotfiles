@@ -10,6 +10,7 @@ Singleton {
 
     property string openPanel: ""   // "" = all closed
     property string openOn: ""      // monitor name
+    property string mediaPlayer: "" // dbusName of the player picked in the music panel
 
     function toggle(panel, monitor) {
         if (isOpen(panel, monitor)) {

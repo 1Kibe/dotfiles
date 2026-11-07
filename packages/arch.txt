@@ -67,6 +67,9 @@ openssh
 tailscale   # tailscaled is enabled by install.sh
 networkmanager   # network backend of the Quickshell bar (nmtui comes with it); enabled by install.sh
 
+# ── Apps ──
+spotify-launcher   # official Spotify client, installed and updated by the launcher; MPRIS for the bar
+
 # ── File manager ──
 thunar
 thunar-archive-plugin

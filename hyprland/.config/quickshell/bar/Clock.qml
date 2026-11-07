@@ -19,5 +19,6 @@ BarItem {
 
     // pt_BR abbreviates "qua." with a dot; the login screen shows "qua"
     text: `${format("ddd").replace(".", "").toLowerCase()} ${format("dd/MM")}  ${format("HH:mm")}`
-    tooltip: format("dddd, d 'de' MMMM 'de' yyyy")
+    readonly property string fullDate: format("dddd, d 'de' MMMM 'de' yyyy")
+    tooltip: fullDate
 }

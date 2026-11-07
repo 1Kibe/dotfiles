@@ -6,8 +6,9 @@ import Quickshell.Hyprland
 import qs.theme
 
 // Top bar of one monitor: one translucent strip glued to the top edge, with
-// rounded bottom corners. Left: workspaces and title. Center: clock.
-// Right: music, status and the power button (Tasks 4 and 5).
+// rounded bottom corners. Left: workspaces. Center: clock (an island with
+// the music while a player plays).
+// Right: status and the power button.
 PanelWindow {
     id: root
 
@@ -46,16 +47,12 @@ PanelWindow {
         Workspaces {
             monitor: root.hyprMonitor
         }
-        Separator {
-            visible: title.visible
-        }
-        WindowTitle {
-            id: title
-        }
     }
 
-    Clock {
-        anchors.centerIn: parent
+    CenterIsland {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        monitor: root.hyprMonitor
     }
 
     RowLayout {

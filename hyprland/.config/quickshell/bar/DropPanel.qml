@@ -15,11 +15,12 @@ PopupWindow {
     required property Item button
     required property bool open        // from ShellState
     property int panelWidth: Theme.panelWidth
+    property bool centered: false      // under the middle of the button
     default property alias content: body.data
 
     anchor.item: button
-    anchor.edges: Edges.Bottom | Edges.Right
-    anchor.gravity: Edges.Bottom | Edges.Left
+    anchor.edges: centered ? Edges.Bottom : Edges.Bottom | Edges.Right
+    anchor.gravity: centered ? Edges.Bottom : Edges.Bottom | Edges.Left
     anchor.margins.top: 8
     grabFocus: true   // keyboard (Esc)
     color: Theme.clear

@@ -11,6 +11,7 @@ Item {
     property string tooltip
     property bool clickable: true
     property int maxWidth: 0      // > 0: cut the text with "…" at this width
+    property int fontSize: Theme.fontSize
 
     signal clicked(int button)
     signal scrolled(int steps)    // +1 per wheel notch up, -1 per notch down
@@ -37,7 +38,7 @@ Item {
         text: root.text
         color: root.textColor
         font.family: Theme.font
-        font.pointSize: Theme.fontSize
+        font.pointSize: root.fontSize
     }
 
     MouseArea {
