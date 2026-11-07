@@ -59,6 +59,7 @@ Singleton {
     readonly property int mediaMaxChars: 35
     readonly property int hoverDelay: 500
     readonly property int panelWidth: 300
+    readonly property int cardIcon: 32     // icon circle of the device cards
 
     // Animations: short, no bounce on panels (the spring is only on items)
     readonly property int animFast: 120     // closing, hover, tooltips

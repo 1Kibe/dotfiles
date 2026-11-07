@@ -69,7 +69,9 @@ PanelWindow {
         NetworkStatus {
             monitor: root.hyprMonitor
         }
-        BluetoothStatus {}
+        BluetoothStatus {
+            monitor: root.hyprMonitor
+        }
         BatteryStatus {}
         Separator {}
         PowerButton {
