@@ -66,7 +66,9 @@ PanelWindow {
         spacing: Theme.spacing
 
         VolumeStatus {}
-        NetworkStatus {}
+        NetworkStatus {
+            monitor: root.hyprMonitor
+        }
         BluetoothStatus {}
         BatteryStatus {}
         Separator {}

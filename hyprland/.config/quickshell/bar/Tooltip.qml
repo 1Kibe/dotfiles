@@ -21,31 +21,50 @@ PopupWindow {
 
     onShownChanged: {
         if (shown && text !== "") {
+            fadeOut.stop()
             delay.restart()
         } else {
             delay.stop()
-            visible = false
+            if (visible)
+                fadeOut.restart()
         }
     }
 
     Timer {
         id: delay
         interval: Theme.hoverDelay
-        onTriggered: root.visible = true
+        onTriggered: {
+            pane.opacity = 0
+            root.visible = true
+            fadeIn.restart()
+        }
     }
 
-    Rectangle {
+    NumberAnimation { id: fadeIn; target: pane; property: "opacity"; to: 1; duration: Theme.animFast; easing.type: Easing.OutCubic }
+    SequentialAnimation {
+        id: fadeOut
+        NumberAnimation { target: pane; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
+        ScriptAction { script: root.visible = false }
+    }
+
+    Item {
+        id: pane
         anchors.fill: parent
-        radius: Theme.radius
-        color: Theme.barFill
-    }
+        opacity: 0
 
-    Text {
-        id: label
-        anchors.centerIn: parent
-        text: root.text
-        color: Theme.text
-        font.family: Theme.font
-        font.pointSize: Theme.fontSize
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.radius
+            color: Theme.barFill
+        }
+
+        Text {
+            id: label
+            anchors.centerIn: parent
+            text: root.text
+            color: Theme.text
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize
+        }
     }
 }

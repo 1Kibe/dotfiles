@@ -14,7 +14,12 @@ BarItem {
     readonly property string title: toplevel ? toplevel.title : ""
     readonly property string appId: toplevel && toplevel.wayland ? toplevel.wayland.appId : ""
 
-    visible: title !== ""
+    // Fades out instead of vanishing (and keeps its place until then)
+    opacity: title !== "" ? 1 : 0
+    visible: opacity > 0
+    Behavior on opacity {
+        NumberAnimation { duration: Theme.animFast }
+    }
     clickable: false
     maxWidth: Theme.titleMaxWidth
     text: title

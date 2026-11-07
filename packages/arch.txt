@@ -142,3 +142,4 @@ playerctl
 btop                         # task manager until the Quickshell module exists
 jq                           # hypr-atalhos, hypr-print
 bluetui                      # Bluetooth TUI opened by the bar, until the control center exists
+nm-connection-editor         # "Mais opções…" of the bar's network panel

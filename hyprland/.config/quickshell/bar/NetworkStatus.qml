@@ -1,12 +1,16 @@
 import QtQuick
-import Quickshell
 import Quickshell.Networking
 import qs.theme
+import qs.state
 
-// Cable, Wi-Fi by signal, or grey when offline. Click: nmtui.
+// Cable, Wi-Fi by signal, or grey when offline. Click: the network panel.
 // The network name only shows at runtime, in the tooltip.
 BarItem {
     id: root
+
+    required property var monitor   // HyprlandMonitor of this bar
+    readonly property string monitorName: monitor ? monitor.name : ""
+    readonly property bool open: ShellState.isOpen("network", monitorName)
 
     readonly property var devices: Networking.devices.values
     readonly property bool backend: devices.length > 0
@@ -35,6 +39,8 @@ BarItem {
     }
     textColor: wired || wifiNet ? Theme.text : Theme.gray
     tooltip: {
+        if (open)
+            return ""
         if (wired)
             return "Cabo conectado"
         if (wifiNet)
@@ -45,5 +51,10 @@ BarItem {
             return "Wi-Fi desligado"
         return "Sem conexão"
     }
-    onClicked: Quickshell.execDetached(["alacritty", "--class", "nmtui", "-e", "nmtui"])
+    onClicked: ShellState.toggle("network", monitorName)
+
+    NetworkPanel {
+        button: root
+        open: root.open
+    }
 }

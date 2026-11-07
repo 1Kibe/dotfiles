@@ -22,7 +22,19 @@ ShellRoot {
         function toggle(): void {
             const monitor = Hyprland.focusedMonitor
             if (monitor)
-                ShellState.togglePowerMenu(monitor.name)
+                ShellState.toggle("power", monitor.name)
+        }
+    }
+
+    // Any bar panel on the focused monitor, for keybinds and scripts:
+    // qs ipc call panel toggle network   (power, network, volume, bluetooth, media)
+    IpcHandler {
+        target: "panel"
+
+        function toggle(name: string): void {
+            const monitor = Hyprland.focusedMonitor
+            if (monitor)
+                ShellState.toggle(name, monitor.name)
         }
     }
 }

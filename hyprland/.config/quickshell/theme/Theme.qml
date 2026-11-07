@@ -58,6 +58,11 @@ Singleton {
     readonly property int titleMaxWidth: 350
     readonly property int mediaMaxChars: 35
     readonly property int hoverDelay: 500
+    readonly property int panelWidth: 300
+
+    // Animations: short, no bounce on panels (the spring is only on items)
+    readonly property int animFast: 120     // closing, hover, tooltips
+    readonly property int animNormal: 200   // opening, size changes
 
     // Dates always in Brazilian Portuguese, whatever the system locale
     readonly property var locale: Qt.locale("pt_BR")

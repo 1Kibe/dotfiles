@@ -9,14 +9,14 @@ BarItem {
 
     required property var monitor   // HyprlandMonitor of this bar
     readonly property string monitorName: monitor ? monitor.name : ""
-    readonly property bool open: monitorName !== "" && ShellState.powerMenuOn === monitorName
+    readonly property bool open: ShellState.isOpen("power", monitorName)
 
     text: "󰐥"
     tooltip: open ? "" : "Energia"
-    onClicked: ShellState.togglePowerMenu(monitorName)
+    onClicked: ShellState.toggle("power", monitorName)
 
     PowerMenu {
         button: root
-        visible: root.open
+        open: root.open
     }
 }
