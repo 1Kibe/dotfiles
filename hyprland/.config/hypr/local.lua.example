@@ -17,6 +17,10 @@ hl.animation({ leaf = "global", enabled = true, speed = 3, bezier = "default" })
 -- ("invalid arguments for wl_surface.attach") and they close at once.
 -- AQ_NO_MODIFIERS=1 in ~/.config/uwsm/env did not help here.
 hl.env("LIBGL_ALWAYS_SOFTWARE", "1")
+-- XWayland dies the same way at the first X11 app (Spotify, games...), and
+-- Hyprland doesn't restart it. It starts with the session, so this goes in
+-- ~/.config/uwsm/env, not here:
+--   export XWAYLAND_NO_GLAMOR=1
 
 -- ── Notebook (Yoga Slim 7, 2.8K screen) ─────────────────────────────────────
 -- Uncomment on the notebook (and delete the VM block). Pick the scale there.
