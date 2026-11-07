@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.theme
 import qs.state
@@ -13,6 +14,22 @@ DropPanel {
     required property var player
     required property var players
     readonly property bool hasPlayer: player !== null
+
+    // The player's window in Hyprland, matched by app id / class against the
+    // MPRIS desktop entry or name (Spotify: "spotify" ~ class "Spotify").
+    // null for players without a window (mpv playing audio only).
+    readonly property var playerWindow: {
+        if (!hasPlayer)
+            return null
+        const keys = [player.desktopEntry, player.identity].filter(k => k).map(k => k.toLowerCase())
+        for (const t of Hyprland.toplevels.values) {
+            const ipc = t.lastIpcObject || {}
+            const cls = ((t.wayland && t.wayland.appId) || ipc.class || "").toLowerCase()
+            if (cls !== "" && keys.includes(cls))
+                return t
+        }
+        return null
+    }
 
     function time(seconds) {
         const s = Math.max(0, Math.floor(seconds))
@@ -212,13 +229,17 @@ DropPanel {
         }
     }
 
+    // Hyprland ignores a player's own raise() for a window on another
+    // workspace, so focus the window here (this also switches workspace)
     PanelRow {
-        visible: root.hasPlayer && root.player.canRaise
-        icon: "󰏌"
-        text: `Abrir o ${root.hasPlayer ? root.player.identity : "player"}`
+        visible: root.playerWindow !== null
+        icon: "󰁔"
+        text: `Ir para o ${root.hasPlayer ? root.player.identity : "player"}`
         onClicked: {
+            const address = root.playerWindow.address
+            const hex = address.startsWith("0x") ? address : `0x${address}`
             ShellState.close()
-            root.player.raise()
+            Hyprland.dispatch(`hl.dsp.focus({ window = "address:${hex}" })`)
         }
     }
 }
