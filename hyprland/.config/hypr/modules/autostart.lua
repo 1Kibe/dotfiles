@@ -33,5 +33,6 @@ hl.on("hyprland.start", function()
   end
   hl.exec_cmd(table.concat(cmds, "; "))
 
-  hl.exec_cmd('[ -f "$HOME/.config/quickshell/shell.qml" ] && qs')
+  -- "test", not "[ ]": Hyprland reads a leading "[...]" as window rules
+  hl.exec_cmd('test -f "$HOME/.config/quickshell/shell.qml" && qs')
 end)
