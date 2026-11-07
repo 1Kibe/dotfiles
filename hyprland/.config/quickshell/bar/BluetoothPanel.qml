@@ -18,6 +18,7 @@ DropPanel {
     readonly property var paired: devices.filter(d => d.paired && !d.connected)
     readonly property var nearby: devices.filter(d => !d.paired && !d.connected && d.name !== "")
     readonly property bool scanning: adapter !== null && adapter.discovering
+    readonly property bool blocked: adapter !== null && adapter.state === BluetoothAdapterState.Blocked
 
     panelWidth: 320
 
@@ -26,9 +27,20 @@ DropPanel {
             adapter.discovering = false
     }
 
+    Timer {
+        id: powerOn
+        interval: 1000
+        onTriggered: {
+            if (root.adapter !== null && !root.adapter.enabled)
+                root.adapter.enabled = true
+        }
+    }
+
     component SectionLabel: Text {
         Layout.fillWidth: true
         Layout.leftMargin: 12
+        Layout.rightMargin: 12
+        wrapMode: Text.WordWrap
         Layout.topMargin: 6
         color: Theme.gray
         font.family: Theme.font
@@ -52,15 +64,23 @@ DropPanel {
         }
         PanelSwitch {
             checked: root.powered
-            onToggled: root.adapter.enabled = !root.adapter.enabled
+            onToggled: {
+                if (root.blocked) {
+                    // /dev/rfkill is writable by the session user (uaccess):
+                    // unblock, then power on once BlueZ sees it
+                    Quickshell.execDetached(["rfkill", "unblock", "bluetooth"])
+                    powerOn.restart()
+                } else {
+                    root.adapter.enabled = !root.adapter.enabled
+                }
+            }
         }
     }
 
     SectionLabel {
         visible: !root.powered
         Layout.bottomMargin: 6
-        text: root.adapter !== null && root.adapter.state === BluetoothAdapterState.Blocked
-              ? "Bloqueado pelo sistema (rfkill)" : "Bluetooth desligado"
+        text: root.blocked ? "Bloqueado pelo sistema (rfkill) — ligue a chave para desbloquear" : "Bluetooth desligado"
     }
 
     SectionLabel {
