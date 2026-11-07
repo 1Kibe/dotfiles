@@ -171,7 +171,7 @@ usage() {
 env_label() {
   case "$1" in
     xfce)     echo "XFCE + i3" ;;
-    hyprland) echo "Hyprland + Quickshell, no configs yet" ;;
+    hyprland) echo "Hyprland + Quickshell" ;;
     *)        echo "$1" ;;
   esac
 }
@@ -735,6 +735,7 @@ print_summary() {
     echo "    cp ~/.config/hypr/local.lua.example ~/.config/hypr/local.lua"
     echo "    and keep only the block for this machine"
     echo "  • Keybinds: Super+F1 or hyprland/README.md"
+    echo "  • The Quickshell bar starts with the session; Super+D opens the launcher (rofi for now)"
     echo ""
   fi
   echo "============================================================"

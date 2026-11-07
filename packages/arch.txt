@@ -64,7 +64,7 @@ shfmt
 # ── System ──
 openssh
 tailscale   # tailscaled is enabled by install.sh
-networkmanager   # network backend of the Quickshell bar (nmtui comes with it); install.sh enables no service
+networkmanager   # network backend of the Quickshell bar (nmtui comes with it); enabled by install.sh
 
 # ── File manager ──
 thunar
