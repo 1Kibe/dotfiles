@@ -1,0 +1,4 @@
+[Icon Theme]
+Name=Default
+Comment=Cursor theme for apps that don't read XCURSOR_THEME (X11 apps on Hyprland)
+Inherits=Bibata-Modern-Classic-Right

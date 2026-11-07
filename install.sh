@@ -86,7 +86,7 @@ ASSUME_YES=""
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
 # inside the repo.
-SHARED_DIRS=(.config .config/autostart .local .local/bin .local/share)
+SHARED_DIRS=(.config .config/autostart .local .local/bin .local/share .local/share/icons)
 
 # ── Distro ───────────────────────────────────────────────────────────────────
 # Maps /etc/os-release to a package list: arch, fedora, ubuntu (or unknown)
