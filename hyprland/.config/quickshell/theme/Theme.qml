@@ -35,6 +35,7 @@ Singleton {
     // "quickshell-bar" in rules.lua). No gradients, no borders.
     readonly property color barFill: root.alpha(bgHard, 0.85)
     readonly property color veil: root.alpha(fg, 0.08)   // hover
+    readonly property color danger: root.alpha(red, 0.18)   // armed power action
     readonly property color clear: root.alpha(bgHard, 0)
 
     // Workspace dots: empty, with windows, active (a longer dash)

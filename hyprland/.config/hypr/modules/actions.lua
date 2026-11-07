@@ -13,7 +13,7 @@ return {
   clipboard     = "cliphist list | rofi -dmenu -display-columns 2 | cliphist decode | wl-copy",
   notifications = qs("notifications"),
   controlcenter = qs("controlcenter"),
-  powermenu     = "hypr-energia", -- temporary, until the Quickshell power menu
+  powermenu     = qs("powermenu"),
   overview      = qs("overview"),
   lock          = qs("lock", "lock"),
 

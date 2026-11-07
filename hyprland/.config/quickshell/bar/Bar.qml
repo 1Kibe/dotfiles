@@ -70,6 +70,8 @@ PanelWindow {
         BluetoothStatus {}
         BatteryStatus {}
         Separator {}
-        PowerButton {}
+        PowerButton {
+            monitor: root.hyprMonitor
+        }
     }
 }

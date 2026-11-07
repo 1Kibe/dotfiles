@@ -1,11 +1,22 @@
 import QtQuick
-import Quickshell
 import qs.theme
+import qs.state
 
-// Power menu button at the end of the status island. Opens the same menu as
-// Super+X (hypr-energia in rofi until the Quickshell power menu exists).
+// Power button at the end of the bar: drops the power menu down. Super+X
+// and Ctrl+Alt+Del open the same menu (IpcHandler "powermenu" in shell.qml).
 BarItem {
+    id: root
+
+    required property var monitor   // HyprlandMonitor of this bar
+    readonly property string monitorName: monitor ? monitor.name : ""
+    readonly property bool open: monitorName !== "" && ShellState.powerMenuOn === monitorName
+
     text: "󰐥"
-    tooltip: "Energia"
-    onClicked: Quickshell.execDetached(["hypr-energia"])
+    tooltip: open ? "" : "Energia"
+    onClicked: ShellState.togglePowerMenu(monitorName)
+
+    PowerMenu {
+        button: root
+        visible: root.open
+    }
 }
