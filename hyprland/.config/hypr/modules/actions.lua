@@ -8,11 +8,12 @@ end
 
 return {
   -- Shell (Quickshell modules)
-  launcher      = qs("launcher"),
-  clipboard     = qs("clipboard"),
+  -- Temporary, until each Quickshell module exists: rofi
+  launcher      = "rofi -show drun",
+  clipboard     = "cliphist list | rofi -dmenu -display-columns 2 | cliphist decode | wl-copy",
   notifications = qs("notifications"),
   controlcenter = qs("controlcenter"),
-  powermenu     = qs("powermenu"),
+  powermenu     = "hypr-energia", -- temporary, until the Quickshell power menu
   overview      = qs("overview"),
   lock          = qs("lock", "lock"),
 

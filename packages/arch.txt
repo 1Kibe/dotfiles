@@ -64,6 +64,7 @@ shfmt
 # ── System ──
 openssh
 tailscale   # tailscaled is enabled by install.sh
+networkmanager   # network backend of the Quickshell bar (nmtui comes with it); install.sh enables no service
 
 # ── File manager ──
 thunar
@@ -140,3 +141,4 @@ playerctl
 # ── Tools used by the keybinds ──
 btop                         # task manager until the Quickshell module exists
 jq                           # hypr-atalhos, hypr-print
+bluetui                      # Bluetooth TUI opened by the bar, until the control center exists

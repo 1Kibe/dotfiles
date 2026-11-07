@@ -1,2 +1,7 @@
+configuration {
+  font: "Agave Nerd Font Propo 11";
+  show-icons: true;
+  icon-theme: "breeze-dark";
+}
 
 @theme "/usr/share/rofi/themes/gruvbox-dark.rasi"

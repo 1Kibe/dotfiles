@@ -14,6 +14,20 @@ hl.window_rule({
   center = true,
 })
 hl.window_rule({
+  name = "float-nmtui",
+  match = { class = "^(nmtui)$" },
+  float = true,
+  size = { "monitor_w * 0.5", "monitor_h * 0.6" },
+  center = true,
+})
+hl.window_rule({
+  name = "float-bluetui",
+  match = { class = "^(bluetui)$" },
+  float = true,
+  size = { "monitor_w * 0.5", "monitor_h * 0.6" },
+  center = true,
+})
+hl.window_rule({
   name = "float-polkit",
   match = { class = "^(hyprpolkitagent)$" },
   float = true,

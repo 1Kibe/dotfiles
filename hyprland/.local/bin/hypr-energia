@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Power menu in rofi: log out, suspend, reboot, power off.
+# Bound to Super+X and Ctrl+Alt+Del (action "powermenu") until the
+# Quickshell power menu exists. Esc closes it and does nothing.
+#
+# Usage: hypr-energia
+set -euo pipefail
+
+logout="󰍃  Sair"
+suspend="󰤄  Suspender"
+reboot="󰜉  Reiniciar"
+poweroff="󰐥  Desligar"
+
+choice="$(printf '%s\n' "$logout" "$suspend" "$reboot" "$poweroff" \
+  | rofi -dmenu -i -p Energia)" || exit 0
+
+case "$choice" in
+  "$logout")
+    # uwsm session: stop it cleanly; the "Hyprland" entry without uwsm: exit
+    if uwsm check is-active >/dev/null 2>&1; then
+      uwsm stop
+    else
+      hyprctl dispatch 'hl.dsp.exit()'
+    fi
+    ;;
+  "$suspend")  systemctl suspend ;;
+  "$reboot")   systemctl reboot ;;
+  "$poweroff") systemctl poweroff ;;
+  *) exit 0 ;;
+esac
