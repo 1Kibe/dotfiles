@@ -11,11 +11,25 @@ Singleton {
     property string openPanel: ""   // "" = all closed
     property string openOn: ""      // monitor name
     property string mediaPlayer: "" // dbusName of the player picked in the music panel
+    // Opened by a keybind (IPC) rather than a click: the popup grab needs a
+    // recent click on the bar, so those panels use a Hyprland focus grab
+    property bool openedByKey: false
 
     function toggle(panel, monitor) {
         if (isOpen(panel, monitor)) {
             close()
         } else {
+            openedByKey = false
+            openPanel = panel
+            openOn = monitor
+        }
+    }
+
+    function toggleByKey(panel, monitor) {
+        if (isOpen(panel, monitor)) {
+            close()
+        } else {
+            openedByKey = true
             openPanel = panel
             openOn = monitor
         }

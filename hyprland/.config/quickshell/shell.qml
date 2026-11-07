@@ -22,7 +22,7 @@ ShellRoot {
         function toggle(): void {
             const monitor = Hyprland.focusedMonitor
             if (monitor)
-                ShellState.toggle("power", monitor.name)
+                ShellState.toggleByKey("power", monitor.name)
         }
     }
 
@@ -34,7 +34,7 @@ ShellRoot {
         function toggle(name: string): void {
             const monitor = Hyprland.focusedMonitor
             if (monitor)
-                ShellState.toggle(name, monitor.name)
+                ShellState.toggleByKey(name, monitor.name)
         }
     }
 }

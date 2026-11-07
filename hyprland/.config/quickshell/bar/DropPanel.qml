@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Hyprland
 import qs.theme
 import qs.state
 
@@ -22,7 +23,10 @@ PopupWindow {
     anchor.edges: centered ? Edges.Bottom : Edges.Bottom | Edges.Right
     anchor.gravity: centered ? Edges.Bottom : Edges.Bottom | Edges.Left
     anchor.margins.top: 8
-    grabFocus: true   // keyboard (Esc)
+    // Opened by a click: popup grab (keyboard for Esc, click outside closes).
+    // Opened by a keybind: no recent click to grab with, so a Hyprland focus
+    // grab does the same job (see HyprlandFocusGrab below).
+    grabFocus: !ShellState.openedByKey
     color: Theme.clear
     visible: false
     implicitWidth: panelWidth
@@ -36,6 +40,12 @@ PopupWindow {
     onVisibleChanged: {
         if (!visible && open)
             ShellState.close()
+    }
+
+    HyprlandFocusGrab {
+        active: ShellState.openedByKey && root.open && root.visible
+        windows: [root, root.button.QsWindow.window]   // the bar does not count as outside
+        onCleared: ShellState.close()
     }
 
     onOpenChanged: {

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.theme
+import qs.state
 
 // Top bar of one monitor: one translucent strip glued to the top edge, with
 // rounded bottom corners. Left: workspaces. Center: clock (an island with
@@ -30,6 +31,17 @@ PanelWindow {
     exclusiveZone: Theme.barHeight
     color: Theme.clear
     WlrLayershell.namespace: "quickshell-bar"
+
+    // A panel opened by a keybind has no popup grab, so the bar takes the
+    // keyboard while it is open, for Esc (see DropPanel)
+    readonly property bool keyPanelHere: ShellState.openedByKey && ShellState.openPanel !== ""
+                                         && hyprMonitor !== null && ShellState.openOn === hyprMonitor.name
+    WlrLayershell.keyboardFocus: keyPanelHere ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+
+    Item {
+        focus: true
+        Keys.onEscapePressed: ShellState.close()
+    }
 
     Rectangle {
         anchors.fill: parent
