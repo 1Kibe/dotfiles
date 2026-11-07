@@ -26,7 +26,8 @@ hl.config({
     active_opacity = 1.0,
     inactive_opacity = 0.71,
     shadow = { enabled = true, range = 8, render_power = 3, color = 0xaa1d2021 },
-    blur = { enabled = true, size = 4, passes = 2 },
+    -- vibrancy: saturation of the glass (the Quickshell bar)
+    blur = { enabled = true, size = 4, passes = 2, vibrancy = 0.2 },
   },
   dwindle = { preserve_split = true },
   misc = {

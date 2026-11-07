@@ -57,3 +57,13 @@ hl.window_rule({
   match = { class = "^$", title = "^$", xwayland = true, float = true, fullscreen = false, pin = false },
   no_focus = true,
 })
+
+-- Glass bar: Hyprland blurs what is behind the Quickshell bar and its
+-- tooltips; fully transparent pixels between the islands stay sharp.
+hl.layer_rule({
+  name = "glass-quickshell-bar",
+  match = { namespace = "^(quickshell-bar)$" },
+  blur = true,
+  blur_popups = true,
+  ignore_alpha = 0.1,
+})
