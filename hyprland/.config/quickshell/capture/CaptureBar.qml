@@ -121,7 +121,7 @@ Rectangle {
         }
         CaptureButton {
             id: bOcr
-            icon: "󰊄"
+            icon: "󱄽"
             hint: "Copiar o texto de uma área (em breve)"
             enabled: false      // Tarefa 4
         }

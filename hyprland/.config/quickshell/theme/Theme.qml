@@ -101,6 +101,8 @@ Singleton {
     readonly property int captureCardWidth: 210
     readonly property int countdownSize: 84
     readonly property color activeFill: root.alpha(fg, 0.2)    // chosen button in the capture bars
+    readonly property real highlightAlpha: 0.35                // capture marker (highlighter)
+    readonly property int blurRadius: 64                       // capture "borrar": strong, text unreadable
 
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {

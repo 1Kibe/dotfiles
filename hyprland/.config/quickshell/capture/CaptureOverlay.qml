@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.theme
 import qs.state
+import "tools.js" as Tools
 
 // Print: one full screen layer per monitor. In the "select" phase each one
 // freezes its own monitor (one ScreencopyView frame, kept in memory) and
@@ -11,7 +12,9 @@ import qs.state
 //   Área: drag (and resize by the handles, move by dragging inside)
 //   Janela: the window under the mouse lights up, a click takes it
 //   Tela: a click takes the whole monitor
-// Enter / Ctrl+C copies and saves, Ctrl+S only saves, Esc closes.
+// Then the annotation bar: drawing inside the selection with the chosen
+// tool (AnnotationLayer); Ctrl+Z / Ctrl+Shift+Z undo and redo, letters pick
+// a tool. Enter / Ctrl+C copies and saves, Ctrl+S only saves, Esc closes.
 Scope {
     Variants {
         model: Quickshell.screens
@@ -30,7 +33,14 @@ Scope {
                 readonly property bool shown: CaptureState.open && (CaptureState.phase === "select" || CaptureState.phase === "choose")
                 readonly property bool frozenPhase: CaptureState.open && CaptureState.phase === "select"
                 // Until the frame is in, the window stays clear: nothing of it may end up in the frame
-                readonly property bool ready: !frozenPhase || frozen.hasContent
+                // A frame is only taken once this overlay is fully clear on screen
+                // (armed), and each opening takes a new one: the overlay shows up
+                // only with that frame, so it can never end up inside it
+                property bool armed: false
+                readonly property Item frame: frozen
+                readonly property bool ready: !frozenPhase || (armed && frozen.hasContent)
+                property real readyAt: 0
+                onReadyChanged: readyAt = ready ? Date.now() : 0
                 property bool closing: false
 
                 // Selection, in this window's logical coordinates
@@ -60,6 +70,7 @@ Scope {
                     if (shown) {
                         closing = false
                         fadeOut.stop()
+                        content.opacity = 0
                         content.opacity = Qt.binding(() => win.ready ? 1 : 0)
                         clearSelection()
                         keys.forceActiveFocus()
@@ -68,12 +79,27 @@ Scope {
                         fadeOut.restart()
                     }
                 }
-                onFrozenPhaseChanged: clearSelection()
+                onFrozenPhaseChanged: {
+                    clearSelection()
+                    armed = false
+                    if (frozenPhase)
+                        arm.restart()
+                }
+
+                Timer {
+                    id: arm
+                    interval: 100     // a few frames for the clear overlay to reach the screen
+                    onTriggered: win.armed = true
+                }
 
                 SequentialAnimation {
                     id: fadeOut
                     NumberAnimation { target: content; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
                     ScriptAction { script: win.closing = false }
+                }
+
+                function focusKeys() {
+                    keys.forceActiveFocus()
                 }
 
                 function clearSelection() {
@@ -116,12 +142,32 @@ Scope {
                 function exportSelection(copy) {
                     if (!hasSel)
                         return
+                    if (annot.editingText)
+                        annot.commitText()
+                    exportDelay.copy = copy
+                    exportDelay.restart()   // let the canvases repaint first
+                }
+
+                Timer {
+                    id: exportDelay
+                    property bool copy
+                    interval: 40
+                    onTriggered: win.grabNow(copy)
+                }
+
+                function grabNow(copy) {
+                    // The frame is not in yet, or only just (its texture may still
+                    // be on its way): try again shortly
+                    if (!ready || Date.now() - readyAt < 150) {
+                        exportDelay.restart()
+                        return
+                    }
                     const d = win.devicePixelRatio || 1
                     const w = Math.max(1, Math.round(selW * outScale / d))
                     const h = Math.max(1, Math.round(selH * outScale / d))
                     const tmp = `${CaptureState.tmpDir}/shot-${Date.now()}.png`
                     // The frame must stay until the grab is done: close only then
-                    const ok = exportItem.grabToImage(result => {
+                    const ok = annot.exportItem.grabToImage(result => {
                         if (result.saveToFile(tmp))
                             CaptureState.finishPhoto(tmp, copy)
                         else
@@ -143,32 +189,15 @@ Scope {
                 }
 
                 // ── Frozen frame (memory only) ──
+                // The source goes off between openings and comes back once the
+                // overlay is clear, so each opening takes a new frame
                 ScreencopyView {
                     id: frozen
                     anchors.fill: parent
-                    captureSource: win.frozenPhase && win.visible ? win.modelData : null
+                    captureSource: win.frozenPhase && win.armed ? win.modelData : null
                     live: false     // one frame; live would capture this overlay too
                     paintCursor: false
                     visible: win.frozenPhase
-                }
-
-                // What gets exported: the selected part of the frame, sampled at
-                // the frame's own resolution. Decorations are not inside it.
-                Item {
-                    id: exportItem
-                    x: win.selX
-                    y: win.selY
-                    width: Math.max(1, win.selW)
-                    height: Math.max(1, win.selH)
-                    visible: win.hasSel
-
-                    ShaderEffectSource {
-                        anchors.fill: parent
-                        sourceItem: frozen
-                        sourceRect: Qt.rect(win.selX, win.selY, win.selW, win.selH)
-                        textureSize: Qt.size(Math.max(1, Math.round(win.selW * win.outScale)), Math.max(1, Math.round(win.selH * win.outScale)))
-                        hideSource: false
-                    }
                 }
 
                 Item {
@@ -176,7 +205,8 @@ Scope {
                     anchors.fill: parent
                     opacity: win.ready ? 1 : 0
                     Behavior on opacity {
-                        enabled: !win.closing
+                        // Fades in; hiding (waiting for a new frame) is instant
+                        enabled: !win.closing && win.ready
                         NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
                     }
 
@@ -215,26 +245,38 @@ Scope {
                         border.color: Theme.accentLight
                     }
 
-                    // ── Mouse: select, move, resize ──
+                    // What is exported (frame piece, mosaics, strokes) and the text box
+                    AnnotationLayer {
+                        id: annot
+                        anchors.fill: parent
+                        win: win
+                        frameItem: win.frame
+                    }
+
+                    // ── Mouse: select, move, resize; draw inside the selection ──
                     MouseArea {
                         id: picker
                         anchors.fill: parent
                         enabled: win.frozenPhase
                         hoverEnabled: true
-                        cursorShape: CaptureState.mode === "area" ? Qt.CrossCursor : Qt.PointingHandCursor
+                        cursorShape: containsMouse && inside(mouseX, mouseY)
+                                     ? (CaptureState.tool === "text" ? Qt.IBeamCursor : Qt.CrossCursor)
+                                     : CaptureState.mode === "area" ? Qt.CrossCursor : Qt.PointingHandCursor
 
                         property real startX
                         property real startY
-                        property string drag: ""      // "new" | "move"
-                        property rect from
+                        property string drag: ""      // "new" | "draw" | ""
+
+                        function inside(x, y) {
+                            return win.hasSel && x >= win.selX && x <= win.selX + win.selW
+                                   && y >= win.selY && y <= win.selY + win.selH
+                        }
 
                         onPositionChanged: mouse => {
                             if (pressed && drag === "new") {
                                 win.setSel(startX, startY, mouse.x - startX, mouse.y - startY)
-                            } else if (pressed && drag === "move") {
-                                const nx = Math.max(0, Math.min(from.x + mouse.x - startX, win.width - from.width))
-                                const ny = Math.max(0, Math.min(from.y + mouse.y - startY, win.height - from.height))
-                                win.setSel(nx, ny, from.width, from.height)
+                            } else if (pressed && drag === "draw") {
+                                annot.update(mouse.x, mouse.y, mouse.modifiers & Qt.ShiftModifier)
                             } else if (!pressed && !win.hasSel) {
                                 if (CaptureState.mode === "window")
                                     win.hover = win.windowAt(mouse.x, mouse.y)
@@ -249,27 +291,28 @@ Scope {
                         onPressed: mouse => {
                             startX = mouse.x
                             startY = mouse.y
-                            if (CaptureState.mode !== "area") {
+                            if (inside(mouse.x, mouse.y) && CaptureState.kind === "photo") {
+                                // Inside the selection the chosen tool draws
+                                drag = "draw"
+                                annot.begin(mouse.x, mouse.y)
+                            } else if (CaptureState.strokes.length > 0 || CaptureState.mode !== "area") {
+                                // An annotated selection stays; Janela/Tela pick by click
                                 drag = ""
-                                return
-                            }
-                            const inside = win.hasSel && mouse.x >= win.selX && mouse.x <= win.selX + win.selW
-                                           && mouse.y >= win.selY && mouse.y <= win.selY + win.selH
-                            if (inside) {
-                                drag = "move"
-                                from = Qt.rect(win.selX, win.selY, win.selW, win.selH)
                             } else {
                                 drag = "new"
                                 win.hover = null
                                 win.setSel(mouse.x, mouse.y, 0, 0)
                             }
                         }
-                        onReleased: {
+                        onReleased: mouse => {
                             if (drag === "new" && (win.selW < 2 || win.selH < 2))
                                 win.clearSelection()   // an empty or 1 px selection is ignored
-                            drag = ""
+                            else if (drag === "draw")
+                                annot.end(mouse.modifiers & Qt.ShiftModifier)
                         }
                         onClicked: mouse => {
+                            if (drag !== "" || CaptureState.strokes.length > 0)
+                                return
                             if (CaptureState.mode === "window") {
                                 const w = win.windowAt(mouse.x, mouse.y)
                                 if (w)
@@ -359,35 +402,12 @@ Scope {
                         }
                     }
 
-                    // After a selection: save / copy (Tarefa 2 puts the annotation bar here)
-                    Rectangle {
-                        id: actions
-                        visible: win.hasSel && !picker.pressed
-                        readonly property bool below: win.selY + win.selH + height + 12 <= win.height
-                        x: Math.max(8, Math.min(win.selX + win.selW - width, win.width - width - 8))
+                    // After a selection: the annotation bar, under it (above if no room)
+                    AnnotateBar {
+                        visible: win.hasSel && !(picker.pressed && picker.drag !== "")
+                        readonly property bool below: win.selY + win.selH + height + 40 <= win.height
+                        x: Math.max(8, Math.min(win.selX + win.selW / 2 - width / 2, win.width - width - 8))
                         y: below ? win.selY + win.selH + 10 : Math.max(8, win.selY - height - 10)
-                        width: actionRow.implicitWidth + 12
-                        height: Theme.captureButtonHeight + 12
-                        radius: Theme.pillRadius
-                        color: Theme.stripFill
-
-                        Row {
-                            id: actionRow
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            CaptureButton {
-                                icon: "󰆓"
-                                label: "Salvar"
-                                onPressed: CaptureState.exportRequested(false)
-                            }
-                            CaptureButton {
-                                icon: "󰆏"
-                                label: "Copiar"
-                                active: true
-                                onPressed: CaptureState.exportRequested(true)
-                            }
-                        }
                     }
 
                     // ── The capture bar, on the focused monitor ──
@@ -404,8 +424,14 @@ Scope {
                     focus: true
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
+                        const shift = event.modifiers & Qt.ShiftModifier
                         if (event.key === Qt.Key_Escape) {
                             CaptureState.close()
+                        } else if (ctrl && event.key === Qt.Key_Z) {
+                            if (shift)
+                                CaptureState.redo()
+                            else
+                                CaptureState.undo()
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             if (CaptureState.phase === "choose")
                                 CaptureState.startCountdown()
@@ -415,6 +441,8 @@ Scope {
                             CaptureState.exportRequested(true)
                         } else if (ctrl && event.key === Qt.Key_S) {
                             CaptureState.exportRequested(false)
+                        } else if (!ctrl && event.text.length === 1 && Tools.byKey(event.text.toUpperCase())) {
+                            CaptureState.chooseTool(Tools.byKey(event.text.toUpperCase()).id)
                         } else {
                             return
                         }

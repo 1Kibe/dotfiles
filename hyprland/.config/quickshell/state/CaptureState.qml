@@ -36,6 +36,45 @@ Singleton {
 
     signal exportRequested(bool copy)     // Enter / Ctrl+C / Ctrl+S: the monitor holding the selection exports it
 
+    // ── Annotation (this opening only) ──
+    property string tool: "arrow"         // see capture/tools.js
+    property bool blurMode: false         // the mosaic tool blurs instead
+    // { id, tool, color, size, points: [{x, y}], fill, text, lineHeight, blur }
+    // in the coordinates of the monitor holding the selection
+    property var strokes: []
+    property var redoStack: []
+    property int nextId: 1
+
+    function pushStroke(stroke) {
+        strokes = strokes.concat([Object.assign({ id: nextId++ }, stroke)])
+        redoStack = []
+    }
+
+    function undo() {
+        if (strokes.length === 0)
+            return
+        redoStack = redoStack.concat([strokes[strokes.length - 1]])
+        strokes = strokes.slice(0, -1)
+    }
+
+    function redo() {
+        if (redoStack.length === 0)
+            return
+        strokes = strokes.concat([redoStack[redoStack.length - 1]])
+        redoStack = redoStack.slice(0, -1)
+    }
+
+    // Choosing the mosaic again switches between mosaic and blur
+    function chooseTool(id) {
+        if (id === "mosaic" && tool === "mosaic")
+            blurMode = !blurMode
+        tool = id
+    }
+
+    function cycleWidth() {
+        width = widths[(widths.indexOf(width) + 1) % widths.length]
+    }
+
     // ── Recording (Tarefa 5) ──
     property bool recording: false
     property int elapsed: 0
@@ -82,6 +121,9 @@ Singleton {
     }
 
     function begin() {
+        strokes = []
+        redoStack = []
+        tool = "arrow"
         Quickshell.execDetached(["sh", "-c", "umask 077; mkdir -p \"$1\"", "sh", tmpDir])
         open = true
         phase = purpose === "capture" && delay > 0 ? "choose" : "select"
@@ -157,6 +199,7 @@ Singleton {
         return {
             open: open, purpose: purpose, phase: phase, mode: mode, kind: kind, delay: delay,
             recording: recording, elapsed: elapsed, windows: windows.length,
+            tool: tool, blur: blurMode, strokes: strokes.length, redo: redoStack.length,
             monitors: Object.keys(monitors).length
         }
     }
