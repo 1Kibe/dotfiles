@@ -14,6 +14,12 @@ hl.window_rule({
   center = true,
 })
 hl.window_rule({
+  name = "float-qalculate",
+  match = { class = "^(qalculate-gtk)$" },
+  float = true,
+  center = true,
+})
+hl.window_rule({
   name = "float-nmtui",
   match = { class = "^(nmtui)$" },
   float = true,

@@ -71,12 +71,14 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | Atalho | Ação |
 |---|---|
 | `Super (soltar) / Super+D / Super+R` | Abrir o launcher |
+| `Super+Shift+XF86Assistant` | Abrir o lançador (tecla Copilot) |
 | `Super+Espaço / Super+Enter` | Abrir o terminal |
 | `Super+E` | Abrir o Thunar |
 | `Super+L` | Travar a tela |
 | `Super+V` | Histórico do clipboard |
 | `Super+N` | Central de notificações |
 | `Super+A` | Central de controle |
+| `Super+I` | Central de controle (tecla engrenagem) |
 | `Super+X / Ctrl+Alt+Del` | Menu de energia |
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |
@@ -84,6 +86,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Print` | Print da tela inteira |
 | `Shift+Print / Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
+| `XF86Calculator` | Calculadora |
 | `Super+Shift+R` | Recarregar a config do Hyprland |
 | `Super+Shift+Esc` | Sair da sessão (emergência, sem confirmação) |
 

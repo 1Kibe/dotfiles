@@ -149,3 +149,4 @@ btop                         # "Abrir o btop" in the bar's system panel
 jq                           # hypr-atalhos, hypr-print
 bluetui                      # Bluetooth TUI opened by the bar, until the control center exists
 nm-connection-editor         # "Mais opções…" of the bar's network panel
+qalculate-gtk                # calculator key (XF86Calculator)
