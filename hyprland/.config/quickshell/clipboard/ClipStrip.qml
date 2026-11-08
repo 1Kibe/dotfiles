@@ -75,6 +75,10 @@ Rectangle {
         search.forceActiveFocus()
     }
 
+    function focusSearch() {
+        search.forceActiveFocus()
+    }
+
     function current() {
         return cards.length > 0 ? cards[selected] : null
     }

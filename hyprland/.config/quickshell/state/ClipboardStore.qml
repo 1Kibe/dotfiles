@@ -36,6 +36,7 @@ Singleton {
     readonly property string pinsPath: `${dataDir}/pins.json`
 
     property real loadStart: 0
+    property int seq: 0                   // keeps pin ids apart within one millisecond
 
     function toggle(monitor) {
         if (open && openOn === monitor) {
@@ -206,7 +207,7 @@ Singleton {
     function pin(entry) {
         if (entry.pid !== undefined)
             return
-        const pid = `p${Date.now()}`
+        const pid = `p${Date.now()}-${seq++}`
         if (entry.kind === "image") {
             const file = `${dataDir}/${pid}`
             run(["sh", "-c", "umask 077; cliphist decode \"$1\" > \"$2\"", "sh", entry.id, file], "", code => {
@@ -345,13 +346,17 @@ Singleton {
         printErrors: false
         atomicWrites: true
         onLoaded: {
+            // Pins made before this read stay (first), the saved ones follow
             try {
                 const data = JSON.parse(text())
-                root.pins = Array.isArray(data) ? data : []
+                const saved = Array.isArray(data) ? data : []
+                const made = root.pins.filter(p => !saved.some(s => s.pid === p.pid))
+                root.pins = made.concat(saved)
+                if (made.length > 0)
+                    root.savePins(root.pins)
             } catch (e) {
                 console.warn("clipboard: pins.json inválido, guardado como pins.json.bak")
                 Quickshell.execDetached(["mv", "-f", "--", root.pinsPath, root.pinsPath + ".bak"])
-                root.pins = []
             }
         }
         onSaved: Quickshell.execDetached(["chmod", "600", root.pinsPath])

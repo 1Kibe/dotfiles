@@ -26,6 +26,7 @@ Singleton {
     readonly property color green: "#b8bb26"
     readonly property color aqua: "#8ec07c"
     readonly property color blue: "#83a598"
+    readonly property color purple: "#d3869b"
     // Windows accent color and a lighter tone of it (active window border)
     readonly property color accent: "#7e735f"
     readonly property color accentLight: "#bfb8a3"
@@ -83,6 +84,12 @@ Singleton {
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
     readonly property string monoFont: "Agave Nerd Font Mono"
+
+    // Quick notes (post-its above the strip): the 5 colors a note cycles through
+    readonly property var noteColors: [yellow, green, blue, orange, purple]
+    readonly property color noteInk: bgHard     // text on a post-it
+    readonly property color notesFill: root.alpha(bgHard, 0.82)
+    readonly property int noteSize: 180
 
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {

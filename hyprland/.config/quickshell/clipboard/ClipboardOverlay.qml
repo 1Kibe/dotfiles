@@ -4,9 +4,10 @@ import Quickshell.Wayland
 import qs.theme
 import qs.state
 
-// Super+V: full screen layer on the focused monitor. The screen dims and
-// the clipboard strip rises from the bottom; a click on the dark area, Esc
-// or Super+V again closes it. It takes the keyboard while open.
+// Super+V: full screen layer on the focused monitor. The screen dims, the
+// clipboard strip rises from the bottom and the quick notes fade in above
+// it; a click on the dark area, Esc or Super+V again closes it. It takes
+// the keyboard while open.
 PanelWindow {
     id: root
 
@@ -33,6 +34,7 @@ PanelWindow {
             leave.stop()
             closing = false
             shade.opacity = 0
+            notes.opacity = 0
             rise.y = strip.height + 20
             strip.reset()
             enter.restart()
@@ -46,6 +48,7 @@ PanelWindow {
     ParallelAnimation {
         id: enter
         NumberAnimation { target: shade; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
+        NumberAnimation { target: notes; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
         NumberAnimation { target: rise; property: "y"; to: 0; duration: Theme.animNormal; easing.type: Easing.OutCubic }
     }
 
@@ -53,6 +56,7 @@ PanelWindow {
         id: leave
         ParallelAnimation {
             NumberAnimation { target: shade; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
+            NumberAnimation { target: notes; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
             NumberAnimation { target: rise; property: "y"; to: strip.height + 20; duration: Theme.animFast; easing.type: Easing.InCubic }
         }
         ScriptAction { script: root.closing = false }
@@ -69,6 +73,18 @@ PanelWindow {
             anchors.fill: parent
             onClicked: ClipboardStore.close()
         }
+    }
+
+    NotesGrid {
+        id: notes
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: strip.top
+        anchors.margins: Theme.gap
+        anchors.topMargin: Theme.barHeight + Theme.gap   // the bar stays readable above
+        opacity: 0
+        onLeave: strip.focusSearch()
     }
 
     ClipStrip {
