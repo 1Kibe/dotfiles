@@ -333,12 +333,19 @@ Singleton {
         id: previewBatch
         interval: 30
         onTriggered: {
-            if (preview.running || root.pendingPreviews.length === 0)
+            if (root.pendingPreviews.length === 0)
                 return
+            // cliphist locks its database: wait for the text batches, or a
+            // decode would come back empty
+            if (preview.running || decode.running || decodeMore.running) {
+                restart()
+                return
+            }
             preview.batch = root.pendingPreviews
             root.pendingPreviews = []
             preview.dir = root.previewDir
-            preview.command = ["sh", "-c", "umask 077; d=$1; shift; mkdir -p \"$d\" && for id; do cliphist decode \"$id\" > \"$d/$id\"; done", "sh", root.previewDir].concat(preview.batch)
+            // Prints the ids that decoded to a non-empty file
+            preview.command = ["sh", "-c", "umask 077; d=$1; shift; mkdir -p \"$d\" || exit 1; for id; do if cliphist decode \"$id\" > \"$d/$id\" && [ -s \"$d/$id\" ]; then echo \"$id\"; else rm -f -- \"$d/$id\"; fi; done", "sh", root.previewDir].concat(preview.batch)
             preview.running = true
         }
     }
@@ -347,10 +354,14 @@ Singleton {
         id: preview
         property var batch: []
         property string dir
+        stdout: StdioCollector {
+            id: decoded
+        }
         onExited: {
             const next = Object.assign({}, root.previews)
+            const ok = decoded.text.split("\n").filter(id => id !== "")
             for (const id of batch)
-                next[id] = `file://${dir}/${id}`
+                next[id] = ok.includes(id) ? `file://${dir}/${id}` : ""   // "" = generic icon
             // Only for the opening that asked (not a late batch of the last one)
             if (root.open && dir === root.previewDir)
                 root.previews = next
