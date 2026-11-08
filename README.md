@@ -51,6 +51,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 | `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers` | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
+| `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
 
@@ -201,6 +202,7 @@ Window manager em mosaico, com `Super` como tecla principal. `Super+Enter` abre 
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
 | **GTK 3** | Bookmarks do gerenciador de arquivos |
+| **Spotify** | Spicetify + Marketplace, aplicados pelo `spotify-abrir` (também depois de cada atualização). Extensões, tema e snippets: no Spotify, carrinho → engrenagem → Back up/Restore → Import, colando o conteúdo de `spicetify/marketplace-backup.json` |
 
 ## Distros
 
