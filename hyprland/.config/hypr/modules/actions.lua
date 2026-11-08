@@ -22,7 +22,7 @@ return {
   cheatsheet    = "alacritty --class hypr-atalhos -e hypr-atalhos",
   terminal      = "alacritty",
   files         = "thunar",
-  calculator    = "qalculate-gtk",
+  calculator    = "hypr-calculadora",   -- Qalculate with the look of the dotfiles
   print_tela    = "hypr-print tela",
   print_area    = "hypr-print area",
   print_janela  = "hypr-print janela",

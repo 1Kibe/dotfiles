@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Opens Qalculate (the calculator key) with the look of these dotfiles: dark
+# theme, Agave fonts, decimal comma. Qalculate rewrites its whole config on
+# exit (window size, history, recent items), so that file stays out of the
+# repo: only the keys below are set in it before opening, everything else
+# (history included) stays on this machine.
+#
+# Usage: hypr-calculadora [qalculate-gtk options]
+set -euo pipefail
+
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/qalculate/qalculate-gtk.cfg"
+
+# Appearance, [General] section of qalculate-gtk.cfg
+keys=(
+  "gtk_theme=1"                                    # Adwaita dark
+  "use_custom_application_font=1"
+  "custom_application_font=Agave Nerd Font Propo 11"
+  "use_custom_expression_font=1"
+  "custom_expression_font=Agave Nerd Font Mono 13"
+  "use_custom_result_font=1"
+  "custom_result_font=Agave Nerd Font Mono 15"
+  "use_custom_history_font=1"
+  "custom_history_font=Agave Nerd Font Mono 11"
+  "use_custom_keypad_font=1"
+  "custom_keypad_font=Agave Nerd Font Propo 11"
+  "decimal_comma=1"                                # 2,5 (pt-BR)
+  "show_keypad=1"                                  # keypad shown...
+  "persistent_keypad=0"                            # ...and folds away
+  "minimal_mode=0"                                 # full window, not the one-line mode
+)
+
+mkdir -p "$(dirname "$cfg")"
+[[ -f "$cfg" ]] || printf '\n[General]\n' > "$cfg"
+
+# Replace each key inside [General], or add it at the end of that section
+tmp="$(mktemp "$cfg.XXXXXX")"
+printf '%s\n' "${keys[@]}" | awk '
+  NR == FNR { i = index($0, "="); want[substr($0, 1, i - 1)] = $0; order[++n] = substr($0, 1, i - 1); next }
+  function flush() { for (k = 1; k <= n; k++) if (!(order[k] in done)) print want[order[k]]; flushed = 1 }
+  /^\[/ { if (in_general && !flushed) flush(); in_general = ($0 == "[General]") }
+  in_general { i = index($0, "="); key = substr($0, 1, i - 1)
+               if (i > 0 && key in want) { print want[key]; done[key] = 1; next } }
+  { print }
+  END { if (in_general && !flushed) flush() }
+' - "$cfg" > "$tmp"
+chmod --reference="$cfg" "$tmp"
+mv -f "$tmp" "$cfg"
+
+exec qalculate-gtk "$@"
