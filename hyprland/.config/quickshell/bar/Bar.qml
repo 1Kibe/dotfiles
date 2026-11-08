@@ -8,7 +8,8 @@ import qs.state
 
 // Top bar of one monitor: one translucent strip glued to the top edge, with
 // rounded bottom corners. Left: workspaces. Center: clock (an island with
-// the music while a player plays).
+// the music while a player plays). Left also has the CPU, memory and
+// temperature rings.
 // Right: status and the power button.
 PanelWindow {
     id: root
@@ -57,6 +58,10 @@ PanelWindow {
         spacing: Theme.spacing
 
         Workspaces {
+            monitor: root.hyprMonitor
+        }
+        Separator {}
+        SystemStatus {
             monitor: root.hyprMonitor
         }
     }

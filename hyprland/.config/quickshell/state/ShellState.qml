@@ -4,7 +4,8 @@ import QtQuick
 import Quickshell
 
 // Shared state of the shell's popups: one panel open at a time, on one
-// monitor. Panels: "power", "network", "volume", "bluetooth", "media".
+// monitor. Panels: "power", "network", "volume", "bluetooth", "media",
+// "system".
 Singleton {
     id: root
 

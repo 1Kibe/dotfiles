@@ -17,12 +17,13 @@ PopupWindow {
     required property bool open        // from ShellState
     property int panelWidth: Theme.panelWidth
     property bool centered: false      // under the middle of the button
+    property bool alignLeft: false     // left edges lined up (buttons on the left of the bar)
     default property alias content: body.data
     property alias underlay: under.data   // behind the content (e.g. a cover)
 
     anchor.item: button
-    anchor.edges: centered ? Edges.Bottom : Edges.Bottom | Edges.Right
-    anchor.gravity: centered ? Edges.Bottom : Edges.Bottom | Edges.Left
+    anchor.edges: centered ? Edges.Bottom : alignLeft ? Edges.Bottom | Edges.Left : Edges.Bottom | Edges.Right
+    anchor.gravity: centered ? Edges.Bottom : alignLeft ? Edges.Bottom | Edges.Right : Edges.Bottom | Edges.Left
     anchor.margins.top: 8
     // Opened by a click: popup grab (keyboard for Esc, click outside closes).
     // Opened by a keybind: no recent click to grab with, so a Hyprland focus

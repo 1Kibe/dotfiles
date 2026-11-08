@@ -64,6 +64,21 @@ Singleton {
     readonly property int panelWidth: 300
     readonly property int cardIcon: 32     // icon circle of the device cards
 
+    // System monitor rings (bar and panel)
+    readonly property int ringSize: 20       // in the bar
+    readonly property int ringBigSize: 64    // in the panel
+    readonly property color ringTrack: bg2
+    readonly property color ringNormal: accentLight
+    readonly property int usageWarn: 70      // CPU and RAM, percent
+    readonly property int usageCrit: 90
+    readonly property int tempWarn: 75       // CPU temperature, °C
+    readonly property int tempCrit: 90
+
+    // Normal, yellow or red by load
+    function loadColor(value, warn, crit) {
+        return value >= crit ? red : value >= warn ? yellow : ringNormal
+    }
+
     // Animations: short, no bounce on panels (the spring is only on items)
     readonly property int animFast: 120     // closing, hover, tooltips
     readonly property int animNormal: 200   // opening, size changes

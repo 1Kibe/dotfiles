@@ -61,7 +61,7 @@ Deixe só o bloco da máquina em que você está.
 | `Super+X / Ctrl+Alt+Del` | Menu de energia |
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |
-| `Ctrl+Shift+Esc` | Gerenciador de tarefas |
+| `Ctrl+Shift+Esc` | Monitor do sistema (processos) |
 | `Print` | Print da tela inteira |
 | `Shift+Print / Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
@@ -144,7 +144,7 @@ um módulo fica ligado ao atalho quando expõe o alvo abaixo (`IpcHandler`). Ant
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` |
 | `overview` | `toggle` | `Super+Tab`, 3 dedos ↑ |
 | `lock` | `lock` | `Super+L` |
-| `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (hoje abre o `btop`) |
+| `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema na barra; o `btop` fica no rodapé dele) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |
 
 O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.

@@ -14,12 +14,12 @@ return {
   notifications = qs("notifications"),
   controlcenter = qs("controlcenter"),
   powermenu     = qs("powermenu"),
+  taskmanager   = qs("taskmanager"),   -- system panel; btop is in its footer
   overview      = qs("overview"),
   lock          = qs("lock", "lock"),
 
   -- Apps and tools (until a Quickshell module replaces them)
   cheatsheet    = "alacritty --class hypr-atalhos -e hypr-atalhos",
-  taskmanager   = "alacritty --class btop -e btop",
   terminal      = "alacritty",
   files         = "thunar",
   print_tela    = "hypr-print tela",
