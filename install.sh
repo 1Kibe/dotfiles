@@ -282,8 +282,24 @@ pkg_install() {
   esac
 }
 
+# paru from the AUR. makepkg also builds paru-debug (debug symbols, on by
+# default in Arch's makepkg.conf): only paru itself is installed
+bootstrap_paru() {
+  local tmp
+  pkg_install base-devel git
+  tmp="$(mktemp -d)"
+  git clone https://aur.archlinux.org/paru.git "$tmp/paru"
+  (
+    cd "$tmp/paru" || exit 1
+    makepkg -s --noconfirm || exit 1
+    mapfile -t pkgs < <(makepkg --packagelist | grep -v -- '-debug-')
+    sudo pacman -U --noconfirm "${pkgs[@]}"
+  )
+  rm -rf "$tmp"
+}
+
 install_aur() {
-  local aur_helper="" helper tmp
+  local aur_helper="" helper
 
   for helper in paru yay; do
     if command -v "$helper" &>/dev/null; then
@@ -294,14 +310,8 @@ install_aur() {
 
   if [[ -z "$aur_helper" ]]; then
     warn "No AUR helper (paru/yay) found. Installing paru..."
-
-    pkg_install base-devel git
-    tmp="$(mktemp -d)"
-    git clone https://aur.archlinux.org/paru.git "$tmp/paru"
-    (cd "$tmp/paru" && makepkg -si --noconfirm)
-    rm -rf "$tmp"
+    bootstrap_paru
     aur_helper="paru"
-
     log "paru installed."
   fi
 
