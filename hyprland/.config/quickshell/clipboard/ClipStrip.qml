@@ -5,13 +5,16 @@ import qs.state
 
 // The strip at the bottom of the clipboard overlay: tabs, kind filters,
 // search and "Limpar" on top; pinned and recent cards in one row that
-// scrolls sideways; keyboard hints at the bottom. Keys: ← → move, Enter
-// copies, Ctrl+P pins, Del deletes, Tab switches tab, Esc clears the search
-// or closes; anything else types into the search.
+// scrolls sideways; keyboard hints at the bottom. The Emoji tab swaps the
+// filters for emoji groups and the cards for an emoji grid. Keys: arrows
+// move, Enter copies, Ctrl+P pins, Del deletes, Tab switches tab, Esc
+// clears the search or closes; anything else types into the search.
 Rectangle {
     id: root
 
+    property string tab: "history"       // "history" or "emoji"
     property string kind: "all"         // filter chip
+    property string emojiCat: "faces"   // emoji group chip
     property string query: search.text
     property bool clearArmed: false
     property int selected: 0             // index among the cards (headers skipped)
@@ -68,11 +71,19 @@ Rectangle {
 
     function reset() {
         search.text = ""
+        tab = "history"
         kind = "all"
         selected = 0
         clearArmed = false
         strip.positionViewAtBeginning()
         search.forceActiveFocus()
+    }
+
+    // Emoji tab opens on the recent ones when there are any
+    function showEmoji() {
+        EmojiStore.ensureLoaded()
+        emojiCat = EmojiStore.recent.length > 0 ? "recent" : "faces"
+        tab = "emoji"
     }
 
     function focusSearch() {
@@ -140,11 +151,19 @@ Rectangle {
 
             Chip {
                 label: "Histórico"
-                active: true
+                active: root.tab === "history"
+                onPressed: {
+                    root.tab = "history"
+                    search.forceActiveFocus()
+                }
             }
             Chip {
                 label: "Emoji"
-                enabled: false   // Tarefa 3
+                active: root.tab === "emoji"
+                onPressed: {
+                    root.showEmoji()
+                    search.forceActiveFocus()
+                }
             }
             Rectangle {
                 implicitWidth: 1
@@ -154,13 +173,23 @@ Rectangle {
                 color: Theme.bg2
             }
             Repeater {
-                model: root.chips
+                model: root.tab === "history" ? root.chips : EmojiStore.categories
 
                 Chip {
                     required property var modelData
                     label: modelData.label
-                    active: root.kind === modelData.key
-                    onPressed: root.kind = modelData.key
+                    // While searching emoji, the search covers every group
+                    active: root.tab === "history" ? root.kind === modelData.key
+                                                   : root.query === "" && root.emojiCat === modelData.key
+                    onPressed: {
+                        if (root.tab === "history") {
+                            root.kind = modelData.key
+                        } else {
+                            root.emojiCat = modelData.key
+                            search.text = ""
+                        }
+                        search.forceActiveFocus()
+                    }
                 }
             }
             Item {
@@ -207,7 +236,20 @@ Rectangle {
 
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
-                        if (event.key === Qt.Key_Left) {
+                        if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+                            if (root.tab === "history")
+                                root.showEmoji()
+                            else
+                                root.tab = "history"
+                        } else if (event.key === Qt.Key_Escape) {
+                            if (search.text !== "")
+                                search.text = ""
+                            else
+                                ClipboardStore.close()
+                        } else if (root.tab === "emoji") {
+                            if (!emojiGrid.key(event))
+                                return
+                        } else if (event.key === Qt.Key_Left) {
                             root.selected = Math.max(0, root.selected - 1)
                         } else if (event.key === Qt.Key_Right) {
                             root.selected = Math.min(root.cards.length - 1, root.selected + 1)
@@ -220,13 +262,6 @@ Rectangle {
                         } else if (event.key === Qt.Key_Delete) {
                             if (root.current())
                                 ClipboardStore.remove(root.current())
-                        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                            // Emoji tab comes in Tarefa 3
-                        } else if (event.key === Qt.Key_Escape) {
-                            if (search.text !== "")
-                                search.text = ""
-                            else
-                                ClipboardStore.close()
                         } else {
                             return
                         }
@@ -237,6 +272,7 @@ Rectangle {
 
             // Clear the history (pins stay); second click confirms
             Rectangle {
+                visible: root.tab === "history"
                 implicitWidth: clearText.implicitWidth + 24
                 implicitHeight: 28
                 radius: height / 2
@@ -276,9 +312,18 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.cardSize
 
+            EmojiGrid {
+                id: emojiGrid
+                anchors.fill: parent
+                visible: root.tab === "emoji"
+                model: root.tab === "emoji" ? EmojiStore.list(root.emojiCat, root.query) : []
+                emptyText: root.query === "" && root.emojiCat === "recent" ? "Nenhum emoji usado ainda" : "Nada encontrado"
+            }
+
             ListView {
                 id: strip
                 anchors.fill: parent
+                visible: root.tab === "history"
                 orientation: ListView.Horizontal
                 spacing: 10
                 clip: true
@@ -319,7 +364,7 @@ Rectangle {
             }
 
             Text {
-                visible: ClipboardStore.loaded && root.cards.length === 0
+                visible: root.tab === "history" && ClipboardStore.loaded && root.cards.length === 0
                 anchors.centerIn: parent
                 text: root.query !== "" || root.kind !== "all" ? "Nada encontrado" : "Nada copiado ainda"
                 color: Theme.gray
@@ -334,7 +379,9 @@ Rectangle {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "← → navegar   ·   Enter copiar   ·   Ctrl+P fixar   ·   Del apagar   ·   digite para buscar   ·   Esc fechar"
+            text: root.tab === "history"
+                  ? "← → navegar   ·   Enter copiar   ·   Ctrl+P fixar   ·   Del apagar   ·   Tab emoji   ·   digite para buscar   ·   Esc fechar"
+                  : `${emojiGrid.current && emojiGrid.current.name ? emojiGrid.current.name + "   ·   " : ""}setas navegar   ·   Enter copiar   ·   Tab histórico   ·   digite para buscar (em inglês)   ·   Esc fechar`
             color: Theme.gray
             font.family: Theme.font
             font.pointSize: Theme.fontSize - 2

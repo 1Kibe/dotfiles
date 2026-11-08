@@ -90,6 +90,8 @@ Singleton {
     readonly property color noteInk: bgHard     // text on a post-it
     readonly property color notesFill: root.alpha(bgHard, 0.82)
     readonly property int noteSize: 180
+    readonly property int emojiCell: 48     // emoji tab of the strip
+    readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {
