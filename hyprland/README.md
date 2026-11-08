@@ -87,7 +87,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |
 | `Ctrl+Shift+Esc` | Monitor do sistema (processos) |
-| `Print` | Print da tela inteira |
+| `Print` | Captura de tela (área, janela ou tela, com anotação) |
 | `Shift+Print / Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
 | `XF86Calculator` | Calculadora |

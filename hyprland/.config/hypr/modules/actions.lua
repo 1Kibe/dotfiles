@@ -15,6 +15,7 @@ return {
   controlcenter = qs("controlcenter"),
   powermenu     = qs("powermenu"),
   taskmanager   = qs("taskmanager"),   -- system panel; btop is in its footer
+  capture       = qs("capture", "open"),   -- Print: capture bar
   overview      = qs("overview"),
   lock          = qs("lock", "lock"),
 

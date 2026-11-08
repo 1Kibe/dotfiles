@@ -93,6 +93,15 @@ Singleton {
     readonly property int emojiCell: 48     // emoji tab of the strip
     readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 
+    // Screen capture (Print): bars, buttons, selection handles, card
+    readonly property int pillRadius: 14
+    readonly property int captureButtonWidth: 30
+    readonly property int captureButtonHeight: 28
+    readonly property int handleSize: 9
+    readonly property int captureCardWidth: 210
+    readonly property int countdownSize: 84
+    readonly property color activeFill: root.alpha(fg, 0.2)    // chosen button in the capture bars
+
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {
         return value >= crit ? red : value >= warn ? yellow : ringNormal

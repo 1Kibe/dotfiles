@@ -80,3 +80,10 @@ hl.layer_rule({
   blur_popups = true,
   ignore_alpha = 0.1,
 })
+-- Screen capture: its own animations only. Without this, Hyprland's fade
+-- of the closing countdown could still be on screen when the frame is taken
+hl.layer_rule({
+  name = "capture-no-anim",
+  match = { namespace = "^(quickshell-capture.*)$" },
+  no_anim = true,
+})

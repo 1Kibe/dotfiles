@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import qs.bar
+import qs.capture
 import qs.clipboard
 import qs.state
 
@@ -13,6 +14,24 @@ ShellRoot {
         model: Quickshell.screens
         delegate: Component {
             Bar {}
+        }
+    }
+
+    // Print: capture bar and frozen screen, countdown and notices
+    CaptureOverlay {}
+    Countdown {}
+    CaptureToast {}
+
+    IpcHandler {
+        target: "capture"
+
+        function open(): void {
+            CaptureState.openCapture()
+        }
+
+        // State and counts only, never paths or content: qs ipc call capture stats
+        function stats(): string {
+            return JSON.stringify(CaptureState.stats())
         }
     }
 
