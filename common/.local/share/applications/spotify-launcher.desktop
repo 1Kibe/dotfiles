@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Spotify
+GenericName=Music Player
+Comment=Spotify with Spicetify, applied again after each update (spotify-abrir)
+Icon=spotify-launcher
+TryExec=spotify-launcher
+Exec=spotify-abrir %U
+Terminal=false
+MimeType=x-scheme-handler/spotify;
+Categories=Audio;Music;Player;AudioVideo;
+StartupWMClass=spotify

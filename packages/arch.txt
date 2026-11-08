@@ -69,6 +69,8 @@ networkmanager   # network backend of the Quickshell bar (nmtui comes with it); 
 
 # ── Apps ──
 spotify-launcher   # official Spotify client, installed and updated by the launcher; MPRIS for the bar
+aur:spicetify-cli              # Spotify customization; applied by ~/.local/bin/spotify-abrir
+aur:spicetify-marketplace-bin  # Spicetify store (extensions, themes), same as on Windows
 
 # ── File manager ──
 thunar

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Opens Spotify (official client from spotify-launcher) with Spicetify and
+# its Marketplace applied. An update of the client wipes Spicetify, so it is
+# applied again whenever the client version changes; otherwise this only
+# opens Spotify. Used by the Spotify menu entry
+# (~/.local/share/applications/spotify-launcher.desktop).
+#
+# Usage: spotify-abrir [spotify URI]
+set -euo pipefail
+
+client="$HOME/.local/share/spotify-launcher/install/usr/share/spotify"
+launcher_state="$HOME/.local/share/spotify-launcher/state.json"
+prefs="$HOME/.config/spotify/prefs"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/spotify-abrir"
+applied="$state_dir/version"
+
+# Install or update the client, without opening it
+spotify-launcher --no-exec >/dev/null 2>&1 || true
+
+version="$(grep -oE '"version":"[^"]+"' "$launcher_state" 2>/dev/null | cut -d'"' -f4 || true)"
+
+needs_apply() {
+  [[ "$version" != "$(cat "$applied" 2>/dev/null || true)" ]] && return 0
+  ! grep -qi spicetify "$client/Apps/xpui/index.html" 2>/dev/null
+}
+
+# Spicetify needs Spotify closed, and the prefs file it creates on its first run
+if command -v spicetify >/dev/null && [[ -f "$prefs" ]] \
+    && ! pgrep -x spotify >/dev/null && needs_apply; then
+  spicetify -q config spotify_path "$client" prefs_path "$prefs" >/dev/null
+  # Marketplace (extensions and themes are installed from it, like on
+  # Windows); keep whatever app or theme was added later
+  if ! spicetify config custom_apps 2>/dev/null | grep -qx marketplace; then
+    spicetify -q config custom_apps marketplace >/dev/null
+  fi
+  if [[ -z "$(spicetify config current_theme 2>/dev/null | tr -d '[:space:]')" ]]; then
+    spicetify -q config current_theme marketplace inject_css 1 replace_colors 1 >/dev/null
+  fi
+  # After an update the old backup no longer matches: restore, then apply
+  if ! spicetify -q backup apply >/dev/null 2>&1; then
+    spicetify -q restore backup apply >/dev/null 2>&1 \
+      || echo "spotify-abrir: spicetify could not be applied" >&2
+  fi
+  mkdir -p "$state_dir"
+  echo "$version" > "$applied"
+fi
+
+exec spotify-launcher --skip-update "$@"
