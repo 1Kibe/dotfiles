@@ -314,7 +314,7 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra e painéis prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis e clipboard prontos; próximos módulos: launcher, notificações e central de controle
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 

@@ -1,6 +1,6 @@
 # hyprland
 
-Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra e os painéis dela), no tema
+Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis e o clipboard), no tema
 Gruvbox.
 
 | Pasta no repo | Vira, depois do `stow` |
@@ -35,7 +35,11 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/ShellState.qml` | Qual painel está aberto e em que monitor (um por vez) |
 | `state/MediaState.qml` | Player escolhido, música, capa (baixada para o cache) e a cor dela |
 | `state/SystemStats.qml` | CPU, memória, temperatura e a lista de processos, lidos do `/proc` e do `/sys` |
+| `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
+| `state/NotesStore.qml` | Notas rápidas (post-its) |
+| `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
 | `bar/` | A barra (`Bar.qml`), os itens dela e os painéis que descem (`*Panel.qml`, base em `DropPanel.qml`) |
+| `clipboard/` | O clipboard do `Super+V`: tela escura, faixa com os cartões, notas e emoji |
 
 ## Entrar no Hyprland
 
@@ -181,6 +185,47 @@ Descem da barra, um por vez. Esc ou um clique fora fecham. Os atalhos abrem o me
 | Energia | Sair, Suspender, Reiniciar e Desligar. Reiniciar e Desligar pedem um segundo clique |
 | Sistema | Anéis grandes de CPU, memória e temperatura, tempo ligado e os 8 processos que mais gastam CPU ou memória (CPU do momento, atualizado a cada 2 s). O ✕ de um processo seu pede um segundo clique e encerra ele; os da sessão (Hyprland, Xwayland, PipeWire, o próprio Quickshell) não têm ✕. "Abrir o btop" no rodapé |
 
+### Clipboard (Super+V)
+
+`Super+V` escurece a tela e sobe uma faixa de baixo com os 100 itens mais recentes do histórico (o `cliphist` grava tudo o
+que é copiado; senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois
+é colar onde quiser.
+
+- **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
+  prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.
+- **Fixados:** ficam no começo, com borda amarela, e sobrevivem ao "Limpar". O pino no canto (ou `Ctrl+P`) fixa e desafixa.
+- **Limpar:** apaga o histórico inteiro, com um segundo clique para confirmar. Os fixados ficam.
+- **Notas:** post-its acima da faixa, numa grade de 6 por linha que rola para baixo. "+ Nova nota" cria uma; título e texto
+  se editam no lugar e salvam sozinhos; os botões trocam a cor (5 cores), copiam o texto e apagam (com segundo clique).
+  Arraste pela alça do topo para mudar a ordem.
+- **Emoji:** a aba Emoji (ou `Tab`) mostra os emoji por grupo, com os recentes; a busca é pelo nome em inglês ("heart",
+  "cat"). Clicar copia.
+
+| Tecla | Faz |
+|---|---|
+| `←` `→` (e `↑` `↓` nos emoji) | Andam pelos cartões |
+| `Enter` | Copia e fecha |
+| `Ctrl+P` | Fixa ou desafixa |
+| `Del` | Apaga do histórico |
+| `Tab` | Troca entre Histórico e Emoji |
+| Digitar | Busca |
+| `Esc` | Limpa a busca; de novo, fecha (dentro de uma nota, volta para a busca) |
+
+Clicar na área escura ou `Super+V` de novo também fecha.
+
+Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `600`):
+
+| O quê | Onde |
+|---|---|
+| Histórico | `~/.cache/cliphist/db` (do `cliphist`) |
+| Fixados | `~/.local/share/quickshell/clipboard/pins.json` e as imagens fixadas na mesma pasta |
+| Notas | `~/.local/share/quickshell/clipboard/notes.json` |
+| Emoji recentes | `~/.local/share/quickshell/clipboard/emoji-recent.json` |
+| Prévias de imagem | `$XDG_RUNTIME_DIR/quickshell-clip` (memória; apagadas ao fechar) |
+
+**Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as notas. Um arquivo que não dá para ler vira `.bak` e o
+clipboard começa vazio, sem perder o original.
+
 ### Atalhos do shell
 
 Os atalhos chamam `qs ipc call <alvo> <função>`; um módulo fica ligado ao atalho quando expõe o alvo abaixo (`IpcHandler`).
@@ -189,7 +234,7 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | Alvo | Função | Atalho |
 |---|---|---|
 | `launcher` | `toggle` | `Super`, `Super+D`, `Super+R` (hoje abre o rofi) |
-| `clipboard` | `toggle` | `Super+V` (hoje: histórico do cliphist no rofi) |
+| `clipboard` | `toggle` | `Super+V` (clipboard do Quickshell) |
 | `notifications` | `toggle` | `Super+N` |
 | `controlcenter` | `toggle` | `Super+A` |
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (painel de energia da barra) |
@@ -204,6 +249,7 @@ Outros alvos, para scripts:
 |---|---|
 | `qs ipc call panel toggle <nome>` | Abre ou fecha um painel no monitor em foco: `power`, `network`, `volume`, `bluetooth`, `media`, `system` |
 | `qs ipc call taskmanager stats` | Os números do painel do sistema em JSON |
+| `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
 
 O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.
 
