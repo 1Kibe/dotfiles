@@ -36,6 +36,8 @@ Singleton {
     readonly property color barFill: root.alpha(bgHard, 0.85)
     readonly property color veil: root.alpha(fg, 0.08)   // hover
     readonly property color islandFill: root.alpha(bg, 0.9)   // center island while music plays
+    readonly property color coverShade: root.alpha(bgHard, 0.55)  // over the blurred cover (island)
+    readonly property color panelShade: root.alpha(bgHard, 0.6)   // over the blurred cover (music panel)
     readonly property color danger: root.alpha(red, 0.18)   // armed power action
     readonly property color clear: root.alpha(bgHard, 0)
 

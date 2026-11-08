@@ -38,6 +38,20 @@ DropPanel {
 
     panelWidth: 340
 
+    // The blurred cover behind the panel (shared look with the center island)
+    underlay: CoverBackdrop {
+        anchors.fill: parent
+        radius: Theme.radius
+        topLeftRadius: Theme.radius
+        topRightRadius: Theme.radius
+        bottomLeftRadius: Theme.radius
+        bottomRightRadius: Theme.radius
+        color: Theme.clear
+        shade: Theme.panelShade
+        shown: MediaState.artUrl !== ""
+        source: MediaState.artUrl
+    }
+
     // position is not reactive: refresh it while playing, only when visible
     Timer {
         interval: 1000
@@ -164,7 +178,10 @@ DropPanel {
                            ? parent.width * Math.min(1, root.player.position / root.player.length) : 0
                     height: parent.height
                     radius: parent.radius
-                    color: Theme.accentLight
+                    color: MediaState.tint
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.animNormal }
+                    }
                     Behavior on width {
                         NumberAnimation { duration: Theme.animNormal }
                     }
@@ -215,6 +232,7 @@ DropPanel {
         BarItem {
             text: root.hasPlayer && root.player.isPlaying ? "󰏤" : "󰐊"
             fontSize: Theme.fontSize + 8
+            textColor: MediaState.tint
             onClicked: {
                 if (root.player.canTogglePlaying)
                     root.player.togglePlaying()

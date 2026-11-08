@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Services.Mpris
 import Quickshell.Widgets
 import qs.theme
 import qs.state
@@ -16,16 +15,10 @@ Item {
     readonly property string monitorName: monitor ? monitor.name : ""
     readonly property bool open: ShellState.isOpen("media", monitorName)
 
-    readonly property var players: Mpris.players.values
-    readonly property var player: players.find(p => p.dbusName === ShellState.mediaPlayer)
-                                  ?? players.find(p => p.isPlaying) ?? players[0] ?? null
-    readonly property string track: {
-        if (!player || !player.trackTitle)
-            return ""
-        return player.trackArtist ? `${player.trackArtist} – ${player.trackTitle}` : player.trackTitle
-    }
+    readonly property var player: MediaState.player
+    readonly property string track: MediaState.track
     readonly property bool active: track !== ""
-    readonly property bool playing: active && player.isPlaying
+    readonly property bool playing: active && player !== null && player.isPlaying
 
     function act(button) {
         if (!active)
@@ -44,16 +37,12 @@ Item {
         NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
     }
 
-    // Island background, only with music
-    Rectangle {
+    // Island background, only with music: the blurred cover (or the plain
+    // island color without one), fading in and out
+    CoverBackdrop {
         anchors.fill: parent
-        color: Theme.islandFill
-        bottomLeftRadius: Theme.barRadius
-        bottomRightRadius: Theme.barRadius
-        opacity: root.active ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation { duration: Theme.animFast }
-        }
+        shown: root.active
+        source: MediaState.artUrl
     }
 
     // Clicks on the cover and the equalizer (the clock handles its own)
@@ -95,7 +84,7 @@ Item {
             Image {
                 id: cover
                 anchors.fill: parent
-                source: root.active ? root.player.trackArtUrl : ""
+                source: MediaState.artUrl
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 sourceSize.width: 40
@@ -105,7 +94,7 @@ Item {
 
         Clock {
             clickable: root.active
-            tooltip: root.active ? `${root.track}\n${root.player.identity}` : fullDate
+            tooltip: root.active && root.player ? `${root.track}\n${root.player.identity}` : fullDate
             onClicked: button => root.act(button)
         }
 
@@ -134,7 +123,10 @@ Item {
                     width: 3
                     height: root.playing ? level : 4
                     radius: 1.5
-                    color: Theme.accentLight
+                    color: MediaState.tint   // a color from the cover
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.animNormal }
+                    }
                     Behavior on height {
                         NumberAnimation { duration: 150; easing.type: Easing.InOutSine }
                     }
@@ -154,7 +146,7 @@ Item {
         button: root
         centered: true
         open: root.open
-        player: root.player
-        players: root.players
+        player: MediaState.player
+        players: MediaState.players
     }
 }

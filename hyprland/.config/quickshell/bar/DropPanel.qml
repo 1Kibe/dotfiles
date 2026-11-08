@@ -18,6 +18,7 @@ PopupWindow {
     property int panelWidth: Theme.panelWidth
     property bool centered: false      // under the middle of the button
     default property alias content: body.data
+    property alias underlay: under.data   // behind the content (e.g. a cover)
 
     anchor.item: button
     anchor.edges: centered ? Edges.Bottom : Edges.Bottom | Edges.Right
@@ -93,6 +94,11 @@ PopupWindow {
                 anchors.fill: parent
                 radius: Theme.radius
                 color: Theme.barFill
+            }
+
+            Item {
+                id: under
+                anchors.fill: parent
             }
 
             ColumnLayout {
