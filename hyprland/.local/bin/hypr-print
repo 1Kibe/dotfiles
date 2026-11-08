@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Screenshot saved to Pictures/Capturas and copied to the clipboard.
-# Bound to Print / Shift+Print (and Super+Shift+S) / Alt+Print in Hyprland.
+# Bound to Shift+Print (tela), Super+Shift+S (area) and Alt+Print (janela)
+# in Hyprland; Print itself opens the Quickshell capture bar.
 # Cancelling the area selection (Esc, or the same key again) saves nothing.
 #
 # Usage: hypr-print tela|area|janela
@@ -43,4 +44,6 @@ else
   grim "$file"
 fi
 wl-copy --type image/png < "$file"
+# Card in the corner (Quickshell); nothing if the shell is not running
+qs ipc call capture card "$file" >/dev/null 2>&1 || true
 echo "$file"

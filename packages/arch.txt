@@ -152,3 +152,4 @@ jq                           # hypr-atalhos, hypr-print
 bluetui                      # Bluetooth TUI opened by the bar, until the control center exists
 nm-connection-editor         # "Mais opções…" of the bar's network panel
 qalculate-gtk                # calculator key (XF86Calculator)
+xdg-utils                    # xdg-open: Capturas folder from the capture notices and card

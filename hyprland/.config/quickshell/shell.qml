@@ -21,12 +21,19 @@ ShellRoot {
     CaptureOverlay {}
     Countdown {}
     CaptureToast {}
+    CaptureCard {}
 
     IpcHandler {
         target: "capture"
 
         function open(): void {
             CaptureState.openCapture()
+        }
+
+        // A quick print (hypr-print) was saved: its card in the corner.
+        // Only a PNG inside the Capturas folder is accepted.
+        function card(path: string): void {
+            CaptureState.showCard(path)
         }
 
         // State and counts only, never paths or content: qs ipc call capture stats

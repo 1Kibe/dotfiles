@@ -81,6 +81,10 @@ Singleton {
     property string recordFile: ""
     property bool micOn: false
 
+    // ── Card of a quick print (hypr-print) ──
+    property string cardFile: ""          // checked path inside the Capturas folder
+    property int cardSerial: 0
+
     // ── Notice ──
     property string toastIcon: ""
     property string toastText: ""
@@ -107,6 +111,58 @@ Singleton {
             return
         }
         start("capture")
+    }
+
+    // The only check of a path that came from outside (the "card" IPC can be
+    // called by any process of the user): the canonical path (symlinks and
+    // ".." resolved) must be a regular .png inside the canonical Capturas
+    // folder. Prints that path, or nothing.
+    readonly property string checkScript: 'd=$(realpath -e -- "$1" 2>/dev/null) || exit 0\n'
+        + 'f=$(realpath -e -- "$2" 2>/dev/null) || exit 0\n'
+        + 'case "$f" in "$d"/*.png) [ -f "$f" ] && printf %s "$f" ;; esac'
+
+    // A quick print was taken: show its card (only for a file in Capturas)
+    function showCard(path) {
+        run(["sh", "-c", checkScript, "sh", picturesDir, path], (code, out) => {
+            if (out === "") {
+                console.warn("capture: card ignorado (não é um PNG da pasta Capturas)")
+                return
+            }
+            cardFile = out
+            focusName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : focusName
+            cardSerial++
+        })
+    }
+
+    // The card's pencil: the print opens in the annotation bar
+    function openEditor(path) {
+        if (open || path === "" || path !== cardFile)
+            return
+        editFile = cardFile
+        purpose = "edit"
+        selOwner = ""
+        focusName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+        ShellState.close()
+        ClipboardStore.close()
+        if (!layout.running)
+            layout.running = true
+    }
+
+    // The card's folder button: Capturas in the file manager
+    function openFolder() {
+        Quickshell.execDetached(["xdg-open", picturesDir])
+    }
+
+    // Trash (not deleted for good); the copy in the clipboard stays
+    function trashCard(path) {
+        if (path === "" || path !== cardFile)
+            return
+        run(["sh", "-c", checkScript + '\n', "sh", picturesDir, path], (code, out) => {
+            if (out === "")
+                return
+            Quickshell.execDetached(["gio", "trash", "--", out])
+            cardFile = ""
+        })
     }
 
     function start(what) {
@@ -179,6 +235,10 @@ Singleton {
     // A finished photo, written to the tmpfs: saved in Capturas and, when
     // asked, copied as an image. The clipboard keeps it even if saving fails.
     function finishPhoto(tmpFile, copy) {
+        if (purpose === "edit") {
+            finishEdit(tmpFile, copy)
+            return
+        }
         const name = Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss")
         const dest = `${picturesDir}/${name}.png`
         const script = 'src=$1 dir=$2 dest=$3 copy=$4\n'
@@ -195,11 +255,32 @@ Singleton {
         })
     }
 
+    // The edited print replaces the same file, checked again right before
+    // writing (it is never written outside Capturas)
+    function finishEdit(tmpFile, copy) {
+        const script = 'src=$3 copy=$4\n' + checkScript.replace(/printf %s "\$f"/, 'dest=$f') + '\n'
+                     + '[ -n "${dest:-}" ] || { rm -f -- "$src"; echo 0; exit 0; }\n'
+                     + 'if [ "$copy" = 1 ]; then wl-copy --type image/png < "$src" || copy=0; fi\n'
+                     + 'if cp "$src" "$dest"; then saved=1; else saved=0; fi\n'
+                     + 'rm -f -- "$src"\n'
+                     + 'echo "$saved$copy"'
+        run(["sh", "-c", script, "sh", picturesDir, editFile, tmpFile, copy ? "1" : "0"], (code, out) => {
+            const r = out.trim()
+            if (r[0] === "1") {
+                toast("󰄬", r[1] === "1" ? "Copiado · print atualizado" : "Print atualizado", picturesDir)
+                cardSerial++   // the card shows the new picture
+            } else {
+                toast("󰀦", "Não deu para salvar o print", "")
+            }
+        })
+    }
+
     function stats() {
         return {
             open: open, purpose: purpose, phase: phase, mode: mode, kind: kind, delay: delay,
             recording: recording, elapsed: elapsed, windows: windows.length,
             tool: tool, blur: blurMode, strokes: strokes.length, redo: redoStack.length,
+            card: cardFile !== "", cardSerial: cardSerial,
             monitors: Object.keys(monitors).length
         }
     }

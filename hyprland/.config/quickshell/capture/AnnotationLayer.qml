@@ -163,8 +163,8 @@ Item {
             anchors.fill: parent
             sourceItem: annot.frameItem
             sourceRect: Qt.rect(annot.win.selX, annot.win.selY, annot.win.selW, annot.win.selH)
-            textureSize: Qt.size(Math.max(1, Math.round(annot.win.selW * annot.win.outScale)),
-                                 Math.max(1, Math.round(annot.win.selH * annot.win.outScale)))
+            textureSize: Qt.size(Math.max(1, Math.round(annot.win.selW * annot.win.pixelScale)),
+                                 Math.max(1, Math.round(annot.win.selH * annot.win.pixelScale)))
             hideSource: false
         }
 

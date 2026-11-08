@@ -30,16 +30,27 @@ Scope {
                 readonly property real originX: info ? info.x : 0
                 readonly property real originY: info ? info.y : 0
                 readonly property bool isFocus: name === CaptureState.focusName
+                // Editor of a quick print (the card's pencil): only the focused
+                // monitor, the picture instead of the frozen screen
+                readonly property bool editing: CaptureState.purpose === "edit"
                 readonly property bool shown: CaptureState.open && (CaptureState.phase === "select" || CaptureState.phase === "choose")
-                readonly property bool frozenPhase: CaptureState.open && CaptureState.phase === "select"
+                                              && (!editing || isFocus)
+                readonly property bool selectPhase: shown && CaptureState.phase === "select"
+                readonly property bool frozenPhase: selectPhase && !editing
                 // Until the frame is in, the window stays clear: nothing of it may end up in the frame
                 // A frame is only taken once this overlay is fully clear on screen
                 // (armed), and each opening takes a new one: the overlay shows up
                 // only with that frame, so it can never end up inside it
                 property bool armed: false
-                readonly property Item frame: frozen
-                readonly property bool ready: !frozenPhase || (armed && frozen.hasContent)
+                readonly property Item frame: editing ? editFrame : frozen
+                readonly property bool ready: editing ? editImage.status === Image.Ready
+                                              : !frozenPhase || (armed && frozen.hasContent)
+                // Pixels of the PNG per logical point: the monitor scale, or the
+                // picture's own size in the editor (it keeps its resolution)
+                readonly property real pixelScale: editing && editImage.width > 0 ? editImage.implicitWidth / editImage.width : outScale
                 property real readyAt: 0
+                // First free line under the capture bar and its hint (top edge elsewhere)
+                readonly property real topFree: captureBar.visible ? captureBar.y + captureBar.height + 36 : 8
                 onReadyChanged: readyAt = ready ? Date.now() : 0
                 property bool closing: false
 
@@ -163,8 +174,8 @@ Scope {
                         return
                     }
                     const d = win.devicePixelRatio || 1
-                    const w = Math.max(1, Math.round(selW * outScale / d))
-                    const h = Math.max(1, Math.round(selH * outScale / d))
+                    const w = Math.max(1, Math.round(selW * pixelScale / d))
+                    const h = Math.max(1, Math.round(selH * pixelScale / d))
                     const tmp = `${CaptureState.tmpDir}/shot-${Date.now()}.png`
                     // The frame must stay until the grab is done: close only then
                     const ok = annot.exportItem.grabToImage(result => {
@@ -185,6 +196,45 @@ Scope {
                     function onExportRequested(copy) {
                         if (win.hasSel)
                             win.exportSelection(copy)
+                    }
+                }
+
+                // ── Editor: the picture, fitted under the bar with room for the
+                // annotation bar below it; the selection is the whole picture ──
+                Item {
+                    id: editFrame
+                    anchors.fill: parent
+                    visible: win.editing && win.shown
+
+                    Image {
+                        id: editImage
+                        readonly property real natW: implicitWidth / win.outScale
+                        readonly property real natH: implicitHeight / win.outScale
+                        readonly property real k: natW > 0 ? Math.min(1, (win.width - 120) / natW,
+                                                                     (win.height - Theme.barHeight - Theme.gap - 150) / natH) : 1
+                        source: win.editing && win.shown ? `file://${CaptureState.editFile}` : ""
+                        cache: false
+                        smooth: true
+                        width: natW * k
+                        height: natH * k
+                        x: Math.round((win.width - width) / 2)
+                        y: Math.round(Theme.barHeight + Theme.gap + 20)
+                        // The selection follows the picture's place on screen (its size
+                        // is only known a moment after it loads)
+                        function syncSelection() {
+                            if (status !== Image.Ready || !win.editing || width <= 0)
+                                return
+                            win.selX = x
+                            win.selY = y
+                            win.selW = width
+                            win.selH = height
+                            CaptureState.selOwner = win.name
+                        }
+                        onStatusChanged: syncSelection()
+                        onXChanged: syncSelection()
+                        onYChanged: syncSelection()
+                        onWidthChanged: syncSelection()
+                        onHeightChanged: syncSelection()
                     }
                 }
 
@@ -257,7 +307,7 @@ Scope {
                     MouseArea {
                         id: picker
                         anchors.fill: parent
-                        enabled: win.frozenPhase
+                        enabled: win.selectPhase
                         hoverEnabled: true
                         cursorShape: containsMouse && inside(mouseX, mouseY)
                                      ? (CaptureState.tool === "text" ? Qt.IBeamCursor : Qt.CrossCursor)
@@ -291,11 +341,11 @@ Scope {
                         onPressed: mouse => {
                             startX = mouse.x
                             startY = mouse.y
-                            if (inside(mouse.x, mouse.y) && CaptureState.kind === "photo") {
+                            if (inside(mouse.x, mouse.y) && (CaptureState.kind === "photo" || win.editing)) {
                                 // Inside the selection the chosen tool draws
                                 drag = "draw"
                                 annot.begin(mouse.x, mouse.y)
-                            } else if (CaptureState.strokes.length > 0 || CaptureState.mode !== "area") {
+                            } else if (win.editing || CaptureState.strokes.length > 0 || CaptureState.mode !== "area") {
                                 // An annotated selection stays; Janela/Tela pick by click
                                 drag = ""
                             } else {
@@ -311,7 +361,7 @@ Scope {
                                 annot.end(mouse.modifiers & Qt.ShiftModifier)
                         }
                         onClicked: mouse => {
-                            if (drag !== "" || CaptureState.strokes.length > 0)
+                            if (drag !== "" || win.editing || CaptureState.strokes.length > 0)
                                 return
                             if (CaptureState.mode === "window") {
                                 const w = win.windowAt(mouse.x, mouse.y)
@@ -349,7 +399,7 @@ Scope {
                             required property var modelData
                             readonly property int s: Theme.handleSize
 
-                            visible: win.hasSel && CaptureState.mode === "area"
+                            visible: win.hasSel && CaptureState.mode === "area" && !win.editing
                             x: win.selX + (modelData.h + 1) / 2 * win.selW - s / 2
                             y: win.selY + (modelData.v + 1) / 2 * win.selH - s / 2
                             width: s
@@ -386,7 +436,7 @@ Scope {
                     Rectangle {
                         visible: win.hasSel
                         x: win.selX
-                        y: win.selY >= height + 6 ? win.selY - height - 6 : win.selY + 6
+                        y: win.selY - height - 6 >= win.topFree ? win.selY - height - 6 : win.selY + 6
                         width: sizeText.implicitWidth + 12
                         height: sizeText.implicitHeight + 6
                         radius: 6
@@ -395,7 +445,7 @@ Scope {
                         Text {
                             id: sizeText
                             anchors.centerIn: parent
-                            text: `${Math.round(win.selW * win.outScale)} × ${Math.round(win.selH * win.outScale)}`
+                            text: `${Math.round(win.selW * win.pixelScale)} × ${Math.round(win.selH * win.pixelScale)}`
                             color: Theme.text
                             font.family: Theme.monoFont
                             font.pointSize: Theme.fontSize - 2
@@ -403,16 +453,24 @@ Scope {
                     }
 
                     // After a selection: the annotation bar, under it (above if no room)
+                    // Under the selection; above it if there is no room below; inside
+                    // it, at the bottom, when there is room on neither side (Tela,
+                    // a maximized window). Never over the capture bar.
                     AnnotateBar {
                         visible: win.hasSel && !(picker.pressed && picker.drag !== "")
-                        readonly property bool below: win.selY + win.selH + height + 40 <= win.height
+                        readonly property real hint: 34      // its own hint shows under it
+                        readonly property bool fitsBelow: win.selY + win.selH + 10 + height + hint <= win.height
+                        readonly property bool fitsAbove: win.selY - 10 - height >= win.topFree
                         x: Math.max(8, Math.min(win.selX + win.selW / 2 - width / 2, win.width - width - 8))
-                        y: below ? win.selY + win.selH + 10 : Math.max(8, win.selY - height - 10)
+                        y: fitsBelow ? win.selY + win.selH + 10
+                           : fitsAbove ? win.selY - height - 10
+                           : Math.max(win.topFree, win.selY + win.selH - height - hint - 16)
                     }
 
                     // ── The capture bar, on the focused monitor ──
                     CaptureBar {
-                        visible: win.isFocus
+                        id: captureBar
+                        visible: win.isFocus && !win.editing
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: Theme.barHeight + Theme.gap
                     }
