@@ -35,6 +35,7 @@ PanelWindow {
             closing = false
             shade.opacity = 0
             notes.opacity = 0
+            drop.y = -12
             rise.y = strip.height + 20
             strip.reset()
             enter.restart()
@@ -49,6 +50,7 @@ PanelWindow {
         id: enter
         NumberAnimation { target: shade; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
         NumberAnimation { target: notes; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
+        NumberAnimation { target: drop; property: "y"; to: 0; duration: Theme.animNormal; easing.type: Easing.OutCubic }
         NumberAnimation { target: rise; property: "y"; to: 0; duration: Theme.animNormal; easing.type: Easing.OutCubic }
     }
 
@@ -57,6 +59,7 @@ PanelWindow {
         ParallelAnimation {
             NumberAnimation { target: shade; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
             NumberAnimation { target: notes; property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
+            NumberAnimation { target: drop; property: "y"; to: -8; duration: Theme.animFast; easing.type: Easing.InCubic }
             NumberAnimation { target: rise; property: "y"; to: strip.height + 20; duration: Theme.animFast; easing.type: Easing.InCubic }
         }
         ScriptAction { script: root.closing = false }
@@ -84,6 +87,7 @@ PanelWindow {
         anchors.margins: Theme.gap
         anchors.topMargin: Theme.barHeight + Theme.gap   // the bar stays readable above
         opacity: 0
+        transform: Translate { id: drop }   // slides down a little while it fades in
         onLeave: strip.focusSearch()
     }
 

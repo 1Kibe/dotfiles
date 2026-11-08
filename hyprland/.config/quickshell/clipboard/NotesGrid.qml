@@ -91,9 +91,20 @@ Rectangle {
         cellHeight: Math.min(cellWidth, Theme.noteSize + 10)
         model: NotesStore.model
 
-        // The others slide aside while a note is dragged
+        // A new note pops in, a deleted one shrinks away, and the others
+        // slide to their new places (also while a note is dragged)
+        add: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: Theme.animNormal; easing.type: Easing.OutBack }
+        }
+        remove: Transition {
+            NumberAnimation { property: "opacity"; to: 0; duration: Theme.animFast; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; to: 0.85; duration: Theme.animFast; easing.type: Easing.InCubic }
+        }
         displaced: Transition {
             NumberAnimation { properties: "x,y"; duration: Theme.animNormal; easing.type: Easing.OutCubic }
+            // An item caught in the middle of add/remove ends whole
+            NumberAnimation { properties: "opacity,scale"; to: 1; duration: Theme.animNormal }
         }
 
         delegate: DropArea {
@@ -151,8 +162,12 @@ Rectangle {
                 Component.onCompleted: {
                     if (NotesStore.focusNid === nid) {
                         NotesStore.focusNid = ""
-                        grid.positionViewAtEnd()
-                        card.edit()
+                        // After the grid has placed the new note, never during
+                        // it (moving the view mid-layout crashed Qt)
+                        Qt.callLater(() => {
+                            grid.positionViewAtEnd()
+                            card.edit()
+                        })
                     }
                 }
             }
