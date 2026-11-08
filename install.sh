@@ -176,9 +176,12 @@ env_label() {
   esac
 }
 
-# Menu default: yes only for what this setup runs today
+# Menu default (and what --yes installs): every environment
 env_default() {
-  if [[ "$1" == "xfce" ]]; then echo y; else echo n; fi
+  case "$1" in
+    xfce|hyprland) echo y ;;
+    *)             echo n ;;
+  esac
 }
 
 is_known_env() {

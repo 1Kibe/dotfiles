@@ -14,11 +14,11 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-O script detecta a distro, pergunta quais ambientes ativar (`xfce` já vem marcado), instala os pacotes, pergunta se liga o servidor SSH (padrão: não) e cria os links. Rode como usuário normal: ele chama o `sudo` quando precisa.
+O script detecta a distro, pergunta quais ambientes ativar (`xfce` e `hyprland` já vêm marcados), instala os pacotes, pergunta se liga o servidor SSH (padrão: não) e cria os links. Rode como usuário normal: ele chama o `sudo` quando precisa.
 
 No Arch, a instalação começa com `pacman -Syu`: o sistema inteiro é atualizado junto, o que evita erro 404 nos mirrors e atualização parcial quando o script roda de novo semanas depois.
 
-Para rodar sem nenhuma pergunta, usando os padrões (ambiente `xfce`, SSH não, dependências opcionais puladas), use `--yes`. Serve para testes repetidos numa VM a partir de um snapshot:
+Para rodar sem nenhuma pergunta, usando os padrões (ambientes `xfce` e `hyprland`, SSH não, dependências opcionais puladas), use `--yes`. Serve para testes repetidos numa VM a partir de um snapshot:
 
 ```bash
 ./install.sh --yes
@@ -61,7 +61,7 @@ Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções
 |---|---|
 | `./install.sh` | Instala tudo: pacotes, serviços e links. Pergunta os ambientes |
 | `./install.sh install xfce` | O mesmo, com os ambientes direto na linha de comando |
-| `./install.sh --yes [comando]` | Não pergunta nada: usa os padrões (`xfce`, SSH não, sem opcionais). Também aceita `-y` |
+| `./install.sh --yes [comando]` | Não pergunta nada: usa os padrões (`xfce` e `hyprland`, SSH não, sem opcionais). Também aceita `-y` |
 | `./install.sh link [ambiente...]` | Só cria ou atualiza os links. Use depois de um `git pull` |
 | `./install.sh unlink [ambiente...]` | Remove os links. Sem ambiente, remove de todos |
 | `./install.sh backup` | Salva o `~/.config` em `.backups/config_<data>.tar.gz` |
