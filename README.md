@@ -48,7 +48,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers` | Sempre |
+| `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
@@ -197,12 +197,12 @@ Window manager em mosaico, com `Super` como tecla principal. `Super+Enter` abre 
 
 | Programa | Configuração |
 |---|---|
-| **Alacritty** | FiraCode Nerd Font 12, tema Gruvbox |
+| **Alacritty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal) |
 | **Rofi** | Tema gruvbox-dark |
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
 | **GTK 3** | Bookmarks do gerenciador de arquivos |
-| **Spotify** | Spicetify + Marketplace, aplicados pelo `spotify-abrir` (também depois de cada atualização). Extensões, tema e snippets: no Spotify, carrinho → engrenagem → Back up/Restore → Import, colando o conteúdo de `spicetify/marketplace-backup.json` |
+| **Spotify** | Spicetify + Marketplace, aplicados pelo `spotify-abrir` (também depois de cada atualização). Extensões, tema e snippets: no Spotify, carrinho → engrenagem → Back up/Restore → Import from file → `spicetify/marketplace-backup.json`. Eles ficam em `~/.cache/spotify`: limpar esse cache pede importar de novo |
 
 ## Distros
 
@@ -314,7 +314,7 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell` (um módulo por vez, barra primeiro)
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra e painéis prontos; próximos módulos: launcher, notificações e central de controle
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 
