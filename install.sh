@@ -303,7 +303,8 @@ install_aur() {
   fi
 
   info "Installing AUR packages with ${aur_helper}..."
-  "$aur_helper" -S --needed --noconfirm "$@"
+  # --removemake: build-only dependencies (go, pnpm...) don't stay installed
+  "$aur_helper" -S --needed --noconfirm --removemake "$@"
   log "AUR packages installed."
 }
 
