@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Screenshot saved to Pictures/Capturas and copied to the clipboard.
 # Bound to Print / Shift+Print (and Super+Shift+S) / Alt+Print in Hyprland.
-# Cancelling the area selection (Esc) saves nothing.
+# Cancelling the area selection (Esc, or the same key again) saves nothing.
 #
 # Usage: hypr-print tela|area|janela
 set -euo pipefail
@@ -12,6 +12,13 @@ case "$mode" in
     geometry=""
     ;;
   area)
+    # Pressed again while choosing: cancel that selection instead of opening
+    # another one on top (stacked selections lighten the screen and get
+    # into the next print)
+    if pgrep -x slurp >/dev/null; then
+      pkill -x slurp || true
+      exit 0
+    fi
     geometry="$(slurp)" || exit 0
     ;;
   janela)
