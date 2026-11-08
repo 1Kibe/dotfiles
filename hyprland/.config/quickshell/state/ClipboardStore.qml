@@ -32,6 +32,10 @@ Singleton {
     property var pendingPreviews: []
 
     readonly property string runDir: `${Quickshell.env("XDG_RUNTIME_DIR")}/quickshell-clip`
+    // One folder per opening: removing the last one (in the background)
+    // never touches the previews of the next
+    property string previewDir: ""
+    property var oldPreviewDirs: []       // waiting to be removed
     readonly property string dataDir: `${Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share"}/quickshell/clipboard`
     readonly property string pinsPath: `${dataDir}/pins.json`
 
@@ -45,6 +49,7 @@ Singleton {
         }
         ShellState.close()
         openOn = monitor
+        previewDir = `${runDir}/${Date.now()}`
         open = true
         refresh()
     }
@@ -162,11 +167,14 @@ Singleton {
         previewBatch.restart()
     }
 
+    // The folder goes a moment later, after the cards stopped reading it
     function dropPreviews() {
         previews = {}
         pendingPreviews = []
-        if (Quickshell.env("XDG_RUNTIME_DIR"))
-            Quickshell.execDetached(["rm", "-rf", "--", runDir])
+        if (Quickshell.env("XDG_RUNTIME_DIR") && previewDir !== "" && !oldPreviewDirs.includes(previewDir)) {
+            oldPreviewDirs = oldPreviewDirs.concat([previewDir])
+            cleanup.restart()
+        }
     }
 
     // ── Actions (each one its own short process) ──
@@ -313,6 +321,15 @@ Singleton {
     }
 
     Timer {
+        id: cleanup
+        interval: 1500
+        onTriggered: {
+            Quickshell.execDetached(["sh", "-c", "d=$1; shift; rm -rf -- \"$@\"; rmdir -- \"$d\" 2>/dev/null; true", "sh", root.runDir].concat(root.oldPreviewDirs))
+            root.oldPreviewDirs = []
+        }
+    }
+
+    Timer {
         id: previewBatch
         interval: 30
         onTriggered: {
@@ -320,7 +337,8 @@ Singleton {
                 return
             preview.batch = root.pendingPreviews
             root.pendingPreviews = []
-            preview.command = ["sh", "-c", "d=$1; shift; mkdir -p \"$d\" && chmod 700 \"$d\" && for id; do cliphist decode \"$id\" > \"$d/$id\"; done", "sh", root.runDir].concat(preview.batch)
+            preview.dir = root.previewDir
+            preview.command = ["sh", "-c", "umask 077; d=$1; shift; mkdir -p \"$d\" && for id; do cliphist decode \"$id\" > \"$d/$id\"; done", "sh", root.previewDir].concat(preview.batch)
             preview.running = true
         }
     }
@@ -328,11 +346,13 @@ Singleton {
     Process {
         id: preview
         property var batch: []
+        property string dir
         onExited: {
             const next = Object.assign({}, root.previews)
             for (const id of batch)
-                next[id] = `file://${root.runDir}/${id}`
-            if (root.open)
+                next[id] = `file://${dir}/${id}`
+            // Only for the opening that asked (not a late batch of the last one)
+            if (root.open && dir === root.previewDir)
                 root.previews = next
             if (root.pendingPreviews.length > 0)
                 previewBatch.restart()
