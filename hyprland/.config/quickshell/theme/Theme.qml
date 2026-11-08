@@ -74,6 +74,16 @@ Singleton {
     readonly property int tempWarn: 75       // CPU temperature, °C
     readonly property int tempCrit: 90
 
+    // Clipboard overlay (Super+V): dimmed screen, strip at the bottom
+    readonly property color dim: Qt.rgba(0, 0, 0, 0.35)
+    readonly property color stripFill: root.alpha(bgHard, 0.94)
+    readonly property color cardFill: root.alpha(bg1, 0.55)
+    readonly property color pinBorder: root.alpha(yellow, 0.75)
+    readonly property int stripHeight: 330
+    readonly property int stripRadius: 14
+    readonly property int cardSize: 200
+    readonly property string monoFont: "Agave Nerd Font Mono"
+
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {
         return value >= crit ? red : value >= warn ? yellow : ringNormal

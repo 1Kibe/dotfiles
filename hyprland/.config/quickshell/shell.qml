@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import qs.bar
+import qs.clipboard
 import qs.state
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
@@ -12,6 +13,24 @@ ShellRoot {
         model: Quickshell.screens
         delegate: Component {
             Bar {}
+        }
+    }
+
+    // Super+V: clipboard history over the focused monitor
+    ClipboardOverlay {}
+
+    IpcHandler {
+        target: "clipboard"
+
+        function toggle(): void {
+            const monitor = Hyprland.focusedMonitor
+            if (monitor)
+                ClipboardStore.toggle(monitor.name)
+        }
+
+        // Counts only, never content (for tests): qs ipc call clipboard stats
+        function stats(): string {
+            return JSON.stringify(ClipboardStore.stats())
         }
     }
 

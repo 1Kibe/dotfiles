@@ -10,7 +10,7 @@ return {
   -- Shell (Quickshell modules)
   -- Temporary, until each Quickshell module exists: rofi
   launcher      = "rofi -show drun",
-  clipboard     = "cliphist list | rofi -dmenu -display-columns 2 | cliphist decode | wl-copy",
+  clipboard     = qs("clipboard"),
   notifications = qs("notifications"),
   controlcenter = qs("controlcenter"),
   powermenu     = qs("powermenu"),
