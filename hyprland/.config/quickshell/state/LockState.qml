@@ -29,7 +29,7 @@ Singleton {
     property bool locked: false           // the compositor's confirmation (set by LockScreen)
     property bool unlocking: false        // PAM said yes: the content fades, then the lock ends
     property bool checking: false         // PAM running: keys ignored
-    property string error: ""             // "" | "wrong" | "tooMany" | "unknown"; not locked: "pam" | "denied"
+    property string error: ""             // "" | "wrong" | "tooMany" | "unknown"; not locked: "pam" | "denied" | "held"
     property int retryMinutes: 0          // left on a faillock lockout
     property bool capsLock: false
     property bool typing: false           // some field has text (dots, no count)
@@ -71,6 +71,34 @@ Singleton {
         if (!pamReady()) {
             warn(`A tela não foi travada: falta o ${pamFile} (rode o install.sh)`)
             error = "pam"
+            return
+        }
+        // Another lock may already hold the session (the reserve, hyprlock,
+        // or a lock screen that died): asking then makes Hyprland refuse our
+        // lock surfaces as a protocol error and drop Quickshell. Ask the
+        // compositor first; lockChecked() goes on
+        if (!heldCheck.running)
+            heldCheck.running = true
+    }
+
+    // Every monitor lists "LOCK" when some lock holds the session (the same
+    // test as hypr-travar). hyprctl failing or slow (1 s): lock anyway, the
+    // safe side. A few ms remain between this answer and our request; a lock
+    // taken right then still gets Quickshell dropped (documented)
+    Process {
+        id: heldCheck
+        command: ["sh", "-c", "timeout 1 hyprctl -j monitors | jq -e 'length > 0 and all(.[]; (.solitaryBlockedBy // []) | index(\"LOCK\") != null)' >/dev/null 2>&1; echo $?"]
+        stdout: StdioCollector {
+            onStreamFinished: root.lockChecked(text.trim() === "0")
+        }
+    }
+
+    function lockChecked(held) {
+        if (wanted || unlocking)
+            return
+        if (held) {
+            error = "held"
+            warn("A tela já está travada por outro bloqueio")
             return
         }
         // Nothing of the session stays open over or under the lock

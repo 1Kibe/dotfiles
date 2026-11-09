@@ -158,6 +158,7 @@ tesseract-data-eng           # and English
 gpu-screen-recorder          # screen recording of the capture (Super+Alt+R)
 ffmpeg                       # lock/login background: the picked picture blurred and darkened (BackgroundStore)
 hypridle                     # idle dim, lock and screen off; lock before sleeping (hypr/hypridle.conf)
+hyprlock                     # reserve lock screen when Quickshell does not answer (hypr-travar, hypr/hyprlock.conf)
 
 # ── Viewers ──
 swayimg                      # default image viewer of the session (install.sh: set_default_apps)
