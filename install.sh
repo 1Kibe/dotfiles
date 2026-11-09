@@ -471,13 +471,15 @@ enable_services() {
 
 # ── Linking (GNU Stow) ───────────────────────────────────────────────────────
 # XFCE writes machine data into the linked files: Wi-Fi network names in
-# xfce4-panel.xml, monitor names and /home/<user> paths in xfce4-desktop.xml.
-# These git filters strip them on commit (see .gitattributes).
+# xfce4-panel.xml, monitor names and /home/<user> paths in xfce4-desktop.xml,
+# the last window sizes in xfce4-desktop.xml and thunar.xml. These git filters
+# strip them on commit (see .gitattributes).
 setup_git_filter() {
   if git -C "${DOTFILES_DIR}" rev-parse --git-dir &>/dev/null; then
     git -C "${DOTFILES_DIR}" config filter.xfce-panel.clean "awk -f tools/xfce-panel-clean.awk"
     git -C "${DOTFILES_DIR}" config filter.xfce-desktop.clean "awk -f tools/xfce-desktop-clean.awk"
-    log "Git filters for xfce4-panel.xml and xfce4-desktop.xml configured."
+    git -C "${DOTFILES_DIR}" config filter.xfce-thunar.clean "awk -f tools/xfce-thunar-clean.awk"
+    log "Git filters for xfce4-panel.xml, xfce4-desktop.xml and thunar.xml configured."
   fi
 }
 

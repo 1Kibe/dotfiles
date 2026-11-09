@@ -16,3 +16,6 @@
 
 # Strip the per-monitor wallpaper (connector names, /home/<user> paths); see tools/xfce-desktop-clean.awk
 **/xfce4-desktop.xml filter=xfce-desktop
+
+# Strip Thunar's last window size and maximized state; see tools/xfce-thunar-clean.awk
+**/thunar.xml filter=xfce-thunar
