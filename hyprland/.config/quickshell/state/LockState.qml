@@ -14,21 +14,22 @@ import qs.theme
 // - Locking: lock() asks; `locked` turns true only when the compositor says
 //   every screen is covered (WlSessionLock.secure, set by LockScreen).
 // - Unlocking: only a PAM success, never the IPC.
+// - A second lock is denied (allow_session_lock_restore off, look.lua): if
+//   Quickshell restarts while locked, Hyprland keeps the screen locked with its
+//   own notice, and this starts unlocked; the way back is in the README.
 // - PAM: the fixed service quickshell-lock (system/pam.d), the session's own
 //   user. Nothing here can change either.
 Singleton {
     id: root
 
     // ── Read by lock/LockScreen.qml and the IPC (shell.qml) ──
-    // Asked to lock: WlSessionLock.locked follows it. Starts from the marker,
-    // read synchronously, so a Quickshell reload or restart while locked
-    // never sees "unlocked" for a moment (the lock survives the reload and
-    // would follow a false here). Only a PAM success sets it back to false.
-    property bool wanted: markerFile !== "" && marker.text().startsWith("locked")
+    // Asked to lock: WlSessionLock.locked follows it. Back to false only on a
+    // PAM success, or when the compositor denied or ended our lock (lockLost)
+    property bool wanted: false
     property bool locked: false           // the compositor's confirmation (set by LockScreen)
     property bool unlocking: false        // PAM said yes: the content fades, then the lock ends
     property bool checking: false         // PAM running: keys ignored
-    property string error: ""             // "" | "wrong" | "tooMany" | "unknown" | "marker" (not locked)
+    property string error: ""             // "" | "wrong" | "tooMany" | "unknown"; not locked: "pam" | "denied"
     property int retryMinutes: 0          // left on a faillock lockout
     property bool capsLock: false
     property bool typing: false           // some field has text (dots, no count)
@@ -36,11 +37,8 @@ Singleton {
     property string displayName: user     // full name from passwd, else the login name
 
     readonly property string pamService: "quickshell-lock"
+    readonly property string pamFile: `/etc/pam.d/${pamService}`
     readonly property string user: Quickshell.env("USER") || ""
-    readonly property string runtimeDir: Quickshell.env("XDG_RUNTIME_DIR") || ""
-    // Present while locked: a Quickshell that starts and finds it locks at
-    // once (it died while the screen was locked)
-    readonly property string markerFile: runtimeDir !== "" ? `${runtimeDir}/qs-lock-ativo` : ""
     // AccountsService picture; the user card falls back to the initial
     readonly property string photo: user !== "" ? `/var/lib/AccountsService/icons/${user}` : ""
 
@@ -51,11 +49,23 @@ Singleton {
     property string pending: ""
 
     // ── Locking ──
-    // Super+L (hypr-travar), hypridle, the marker at start. Asking again
-    // while locked does nothing.
+    // Super+L (hypr-travar), hypridle. Asking again while locked does nothing.
     function lock() {
+        // An unlock still fading out (PAM said yes a moment ago): stay locked
+        if (unlocking) {
+            fadeOut.stop()
+            unlocking = false
+            return
+        }
         if (wanted)
             return
+        // Without the PAM service, PAM falls back to "other" and denies every
+        // password: never lock then (hypr-travar checks it too)
+        if (!pamReady()) {
+            warn(`A tela não foi travada: falta o ${pamFile} (rode o install.sh)`)
+            error = "pam"
+            return
+        }
         // Nothing of the session stays open over or under the lock
         ShellState.close()
         ClipboardStore.close()
@@ -69,50 +79,51 @@ Singleton {
         unlocking = false
         typing = false
         pending = ""
-        // The marker first: without it a reload while locked would fall to
-        // Hyprland's "lockdead" screen, so no marker, no lock
-        if (!writeMarker()) {
-            console.warn("lock: o marcador não foi gravado; a tela não foi travada")
-            error = "marker"
-            return
-        }
         readLayout.running = true
         wanted = true
     }
 
-    // Written blocking, then read back from disk by a new FileView (the
-    // one that wrote answers from its own memory, even when the write
-    // failed). The text carries a new stamp every time: FileView skips a
-    // write whose text equals what it already holds, and the unlock removes
-    // the file behind its back.
-    function writeMarker() {
-        if (markerFile === "")
-            return false
-        const stamp = `locked ${Date.now()}`
-        marker.setText(`${stamp}\n`)
-        const check = freshView.createObject(root, { path: markerFile })
-        const onDisk = check.text()
-        check.destroy()
-        return onDisk.startsWith(stamp)
+    // LockScreen: the compositor denied our lock (another one holds the
+    // session) or ended it, and Quickshell already dropped it. Only syncs the
+    // state; it never unlocks anything (the lock object is gone already), and
+    // it does nothing while our lock is still held.
+    function lockLost(stillHeld) {
+        if (stillHeld || !wanted || unlocking)
+            return
+        wanted = false
+        checking = false
+        typing = false
+        pending = ""
+        error = "denied"
+        warn("A tela não foi travada: outra trava já ocupa a sessão")
     }
 
-    // A reader with no memory of earlier reads, for writeMarker()
+    // The PAM service file is there and has the password check (read anew
+    // from disk every time)
+    function pamReady() {
+        return /^\s*auth\s/m.test(readFresh(pamFile))
+    }
+
+    function readFresh(path) {
+        const view = freshView.createObject(root, { path: path })
+        const text = view.text()
+        view.destroy()
+        return text
+    }
+
+    // A failed lock never goes unnoticed: the log and a notice on the screen
+    function warn(text) {
+        console.warn(`lock: ${text}`)
+        Quickshell.execDetached(["hyprctl", "notify", "3", "8000", "0", text])
+    }
+
+    // A reader with no memory of earlier reads, for readFresh()
     Component {
         id: freshView
         FileView {
             blockLoading: true
             printErrors: false
         }
-    }
-
-    // Present ("locked <stamp>") while the screen is locked; in
-    // XDG_RUNTIME_DIR (700)
-    FileView {
-        id: marker
-        path: root.markerFile
-        blockLoading: true
-        blockWrites: true
-        printErrors: false
     }
 
     // ── Password ──
@@ -137,8 +148,9 @@ Singleton {
             error = ""
     }
 
+    // locked: the compositor's confirmation, and no unlock fading out
     function stats() {
-        return { locked: locked, checking: checking, dimmed: false, error: error }
+        return { locked: locked && !unlocking, checking: checking, dimmed: false, error: error }
     }
 
     PamContext {
@@ -187,8 +199,7 @@ Singleton {
             rejected()
     }
 
-    // The content fades out, then the lock ends (LockScreen drops the
-    // surfaces) and the marker goes
+    // The content fades out, then the lock ends (LockScreen drops the surfaces)
     Timer {
         id: fadeOut
         interval: Theme.animNormal
@@ -196,8 +207,6 @@ Singleton {
             root.wanted = false
             root.unlocking = false
             root.typing = false
-            if (root.markerFile !== "")
-                Quickshell.execDetached(["rm", "-f", "--", root.markerFile])
         }
     }
 
@@ -350,10 +359,5 @@ Singleton {
         findLeds.running = true
         if (user !== "")
             readName.running = true
-        // Started (or reloaded) with the marker: `wanted` is already true and
-        // the new lock takes over the old or dead one
-        // (allow_session_lock_restore); only the layout is read again
-        if (wanted)
-            readLayout.running = true
     }
 }

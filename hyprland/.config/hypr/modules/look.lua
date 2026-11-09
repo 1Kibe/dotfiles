@@ -38,11 +38,12 @@ hl.config({
     -- (c.bg_hard) so windows stand out
     background_color = rgb(c.bg_deep),
     font_family = "Agave Nerd Font Propo",
-    -- A Quickshell that restarts (crash, hypr-travar) can take over the lock
-    -- of a dead one; the screen stays locked meanwhile. A running process of
-    -- the user could already do anything, so this adds no risk against
-    -- someone at the keyboard.
-    allow_session_lock_restore = true,
+    -- Off: with it on, a new lock replaces even a live one (Hyprland 0.57,
+    -- SessionLockManager onNewSessionLock), so any program could take the
+    -- lock over and unlock without the password. Off, a second lock is
+    -- denied. The cost: if Quickshell restarts while locked, the screen stays
+    -- locked with Hyprland's notice; the way back is in hyprland/README.md.
+    allow_session_lock_restore = false,
   },
   ecosystem = { no_update_news = true, no_donation_nag = true },
   animations = { enabled = true },

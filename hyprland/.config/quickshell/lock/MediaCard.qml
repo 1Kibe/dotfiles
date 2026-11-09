@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell.Widgets
 import qs.theme
 import qs.state
+import "text.js" as Clean
 
 // Music card at the bottom of the lock screen: cover, title, artist and
 // previous / play-pause / next. Only while a player exists. Nothing opens
@@ -60,11 +61,15 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 2
 
-            // Player texts are plain text, cut to a sane length
+            // Player texts: plain text, one line, no control or bidi
+            // characters (text.js), cut to a sane length
             Text {
                 Layout.fillWidth: true
-                text: root.hasPlayer ? (root.player.trackTitle || "").slice(0, 120) : ""
+                text: root.hasPlayer ? Clean.clean(root.player.trackTitle, 120) : ""
                 textFormat: Text.PlainText
+                maximumLineCount: 1
+                wrapMode: Text.NoWrap
+                clip: true
                 elide: Text.ElideRight
                 color: Theme.text
                 font.family: Theme.font
@@ -73,8 +78,11 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 visible: text !== ""
-                text: root.hasPlayer ? (root.player.trackArtist || "").slice(0, 120) : ""
+                text: root.hasPlayer ? Clean.clean(root.player.trackArtist, 120) : ""
                 textFormat: Text.PlainText
+                maximumLineCount: 1
+                wrapMode: Text.NoWrap
+                clip: true
                 elide: Text.ElideRight
                 color: Theme.fg4
                 font.family: Theme.font

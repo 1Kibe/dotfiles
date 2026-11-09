@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Widgets
 import qs.theme
+import "text.js" as Clean
 
 // The user's picture (AccountsService icon) or, without one, the initial in
 // an accentLight circle, and the name under it. Shared with the login screen.
@@ -8,6 +9,8 @@ Column {
     id: root
 
     property string name: ""
+    // The name as shown: no control or bidi characters, one line
+    readonly property string shownName: Clean.clean(name, 60)
     // Absolute path of the picture; a missing or broken file shows the initial
     property string photo: ""
     property int size: Theme.lockAvatarSize
@@ -27,7 +30,7 @@ Column {
 
             Text {
                 anchors.centerIn: parent
-                text: root.name.length > 0 ? root.name.charAt(0).toUpperCase() : ""
+                text: root.shownName.length > 0 ? root.shownName.charAt(0).toUpperCase() : ""
                 textFormat: Text.PlainText
                 color: Theme.bgHard
                 font.family: Theme.font
@@ -58,8 +61,10 @@ Column {
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
-        text: root.name
+        text: root.shownName
         textFormat: Text.PlainText
+        maximumLineCount: 1
+        wrapMode: Text.NoWrap
         elide: Text.ElideRight
         width: Math.min(implicitWidth, Theme.lockFieldWidth)
         horizontalAlignment: Text.AlignHCenter

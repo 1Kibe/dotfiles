@@ -25,6 +25,11 @@ Scope {
 
         locked: LockState.wanted
 
+        // The compositor denied our lock (another lock holds the session) or
+        // ended it: Quickshell has already dropped it, so the state follows
+        // (LockState.lockLost never unlocks; it ignores a lock still held)
+        onLockStateChanged: LockState.lockLost(locked)
+
         WlSessionLockSurface {
             id: surface
             color: Theme.bgDeep

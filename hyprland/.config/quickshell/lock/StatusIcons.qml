@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Networking
 import Quickshell.Services.UPower
 import qs.theme
+import "text.js" as Clean
 
 // Top-right pill of the lock and login screens: keyboard layout, network
 // and battery (the battery hides without one). Shared with the login screen:
@@ -45,8 +46,8 @@ Rectangle {
         spacing: 14
 
         Text {
-            visible: root.layout !== ""
-            text: `󰌌 ${root.layout}`
+            visible: Clean.clean(root.layout, 12) !== ""
+            text: `󰌌 ${Clean.clean(root.layout, 12)}`
             textFormat: Text.PlainText
             color: Theme.text
             font.family: Theme.font
