@@ -69,6 +69,7 @@ Singleton {
         // Nothing of the session stays open over or under the lock
         ShellState.close()
         ClipboardStore.close()
+        BackgroundStore.closePicker()
         if (CaptureState.open)
             CaptureState.close()
         // A screen recording stops (saved as usual) so it does not film the lock

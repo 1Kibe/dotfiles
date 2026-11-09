@@ -75,7 +75,12 @@ PAM_DIR="/etc/pam.d"
 LOGIN_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
 
 # Wallpaper in common/.config/wallpapers (also the default of xfce-wallpaper)
-WALLPAPER_FILE="Captura de tela 2026-01-24 153931.png"
+WALLPAPER_FILE="wallpaper-padrao.png"
+
+# Background shared by the lock and login screens; the default picture until
+# one is chosen (lock/BackgroundPicker)
+SHARED_LOGIN_DIR="/usr/local/share/dotfiles/login"
+LOGIN_DEFAULT_FILE="fundo-login-padrao.png"
 
 # Optional environments (Stow packages next to common/), in menu order
 ENVS_AVAILABLE=(xfce hyprland)
@@ -763,6 +768,25 @@ install_lock_pam() {
   log "Lock screen PAM service installed (${PAM_DIR}/quickshell-lock)."
 }
 
+# Background shared by the lock and login screens: lock/BackgroundPicker
+# writes it, the greeter user only reads it. The parent folders stay root's;
+# only the last one belongs to the user who installs (the real one, also
+# under sudo), so the picker replaces the picture without sudo. The default
+# picture goes in only while none exists: running install.sh again keeps the
+# user's choice. No chown -R anywhere.
+setup_shared_login() {
+  local user="${SUDO_USER:-$(id -un)}" group default
+  group="$(id -gn "$user")"
+  default="${DOTFILES_DIR}/common/.config/wallpapers/${LOGIN_DEFAULT_FILE}"
+
+  sudo install -d -m755 -o root -g root "$(dirname "${SHARED_LOGIN_DIR}")"
+  sudo install -d -m755 -o "$user" -g "$group" "${SHARED_LOGIN_DIR}"
+  if [[ ! -e "${SHARED_LOGIN_DIR}/fundo.png" && -f "$default" ]]; then
+    sudo install -m644 -o "$user" -g "$group" "$default" "${SHARED_LOGIN_DIR}/fundo.png"
+  fi
+  log "Lock and login background folder ready (${SHARED_LOGIN_DIR})."
+}
+
 # ── Install ──────────────────────────────────────────────────────────────────
 print_summary() {
   echo ""
@@ -900,6 +924,9 @@ main() {
   fi
   if has_env xfce || has_env hyprland; then
     configure_login_screen
+  fi
+  if has_env xfce || has_env hyprland; then
+    setup_shared_login
   fi
   if has_env hyprland; then
     install_lock_pam

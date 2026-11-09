@@ -6,11 +6,15 @@ import qs.bar
 import qs.capture
 import qs.clipboard
 import qs.lock
+import qs.wallpaper
 import qs.state
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
 // get their own folder and a line here.
 ShellRoot {
+    // Desktop wallpaper, below every window
+    Wallpaper {}
+
     // Each Bar gets its screen as modelData; bars are added and removed as
     // monitors are plugged in and out
     Variants {
@@ -76,7 +80,17 @@ ShellRoot {
         function stats(): string {
             return JSON.stringify(LockState.stats())
         }
+
+        // The picker of the lock and login background, on the focused
+        // monitor; ignored while locked
+        function background(): void {
+            const monitor = Hyprland.focusedMonitor
+            BackgroundStore.openPicker(monitor ? monitor.name : "")
+        }
     }
+
+    // Background picker (qs ipc call lock background)
+    BackgroundPicker {}
 
     // Super+V: clipboard history over the focused monitor
     ClipboardOverlay {}

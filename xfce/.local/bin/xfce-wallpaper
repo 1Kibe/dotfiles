@@ -10,7 +10,7 @@
 # Usage: xfce-wallpaper [image]
 set -euo pipefail
 
-image="${1:-$HOME/.config/wallpapers/Captura de tela 2026-01-24 153931.png}"
+image="${1:-$HOME/.config/wallpapers/wallpaper-padrao.png}"
 
 if [[ ! -f "$image" ]]; then
   echo "xfce-wallpaper: image not found: $image" >&2

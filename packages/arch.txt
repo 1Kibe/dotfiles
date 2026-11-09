@@ -159,6 +159,7 @@ tesseract                    # OCR of the capture (Super+Shift+T)
 tesseract-data-por           # its Portuguese
 tesseract-data-eng           # and English
 gpu-screen-recorder          # screen recording of the capture (Super+Alt+R)
+ffmpeg                       # lock/login background: the picked picture blurred and darkened (BackgroundStore)
 
 # ── Viewers ──
 swayimg                      # default image viewer of the session (install.sh: set_default_apps)

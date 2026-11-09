@@ -60,9 +60,10 @@ Scope {
                     field.focusField()
                 }
 
-                // Plain until the chosen picture exists (background task)
+                // The picture chosen in the background picker (plain without one)
                 LockBackground {
                     anchors.fill: parent
+                    source: BackgroundStore.picture
                 }
 
                 // A click anywhere gives the keys back to the field

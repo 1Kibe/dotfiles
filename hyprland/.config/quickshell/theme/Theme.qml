@@ -117,6 +117,18 @@ Singleton {
     readonly property color lockFieldFill: root.alpha(bgHard, 0.75)
     readonly property color lockPillFill: root.alpha(bgHard, 0.6)
 
+    // Lock and login background (lock/BackgroundPicker): defaults of the
+    // picker's controls and its sizes
+    readonly property real lockBlurDefault: 0.55
+    readonly property real lockDarkenDefault: 0.4
+    readonly property int pickerWidth: 980
+    readonly property int pickerHeight: 600
+    readonly property int pickerThumb: 150
+
+    // Desktop wallpaper of the Hyprland session (wallpaper/Wallpaper.qml), a
+    // file in ~/.config/wallpapers; the theme switcher will change it
+    readonly property string wallpaper: "wallpaper-padrao.png"
+
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {
         return value >= crit ? red : value >= warn ? yellow : ringNormal

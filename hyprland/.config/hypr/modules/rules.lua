@@ -87,3 +87,11 @@ hl.layer_rule({
   match = { namespace = "^(quickshell-capture.*)$" },
   no_anim = true,
 })
+
+-- The Quickshell wallpaper (wallpaper/Wallpaper.qml) is just there: no
+-- slide or fade when the session starts or a monitor is plugged in
+hl.layer_rule({
+  name = "wallpaper-no-anim",
+  match = { namespace = "^(quickshell-wallpaper)$" },
+  no_anim = true,
+})
