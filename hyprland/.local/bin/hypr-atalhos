@@ -46,7 +46,8 @@ binds_tsv() {
        "XF86AudioMute": "Mudo", "XF86AudioMicMute": "Microfone mudo",
        "XF86MonBrightnessUp": "Brilho +", "XF86MonBrightnessDown": "Brilho −",
        "XF86AudioPlay": "Play", "XF86AudioPause": "Pause",
-       "XF86AudioNext": "Próxima", "XF86AudioPrev": "Anterior"}[.] // .;
+       "XF86AudioNext": "Próxima", "XF86AudioPrev": "Anterior",
+       "switch:on:Lid Switch": "Fechar a tampa"}[.] // .;
     def mods($m):
       [ (if (($m / 64) | floor) % 2 == 1 then "Super" else empty end),
         (if (($m / 4) | floor) % 2 == 1 then "Ctrl" else empty end),

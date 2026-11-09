@@ -43,6 +43,11 @@ run("SUPER + space", "terminal", "Sistema: Abrir o terminal")
 run("SUPER + Return", "terminal", "Sistema: Abrir o terminal")
 run("SUPER + E", "files", "Sistema: Abrir o Thunar")
 run("SUPER + L", "lock", "Sistema: Travar a tela")
+-- Lid closed: lock, also with a monitor plugged in (logind does not sleep
+-- then, so hypridle's lock before sleeping never runs). "Lid Switch" is the
+-- usual kernel name (hyprctl devices, Switches); on a machine without it the
+-- bind just never fires. Another name: add the same bind in local.lua.
+run("switch:on:Lid Switch", "lock", "Sistema: Travar ao fechar a tampa", { locked = true })
 run("SUPER + V", "clipboard", "Sistema: Histórico do clipboard")
 run("SUPER + N", "notifications", "Sistema: Central de notificações")
 run("SUPER + A", "controlcenter", "Sistema: Central de controle")

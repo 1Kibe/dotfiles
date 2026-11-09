@@ -35,6 +35,13 @@ Singleton {
     property bool typing: false           // some field has text (dots, no count)
     property string layout: ""            // keyboard layout of the main keyboard ("br")
     property string displayName: user     // full name from passwd, else the login name
+    // The warning before the idle lock (hypridle → dim/undim, lock/DimOverlay):
+    // only a veil, never part of the lock
+    property bool dimmed: false
+    // When the idle lock comes (ms since the epoch) and the length of the
+    // warning; 0 = unknown, the warning shows no number
+    property real dimDeadline: 0
+    property int dimSeconds: 0
 
     readonly property string pamService: "quickshell-lock"
     readonly property string pamFile: `/etc/pam.d/${pamService}`
@@ -80,8 +87,34 @@ Singleton {
         unlocking = false
         typing = false
         pending = ""
+        undim()
         readLayout.running = true
         wanted = true
+    }
+
+    // ── Idle warning (hypridle, 4 min 30 s) ──
+    // seconds: how long until the idle lock (hypridle.conf), 1..3600; anything
+    // else shows the warning without a number. dim() is ignored while locked
+    // (the veil would sit under the lock and come back on unlock); undim()
+    // always clears it
+    function dim(seconds) {
+        if (wanted)
+            return
+        const s = Number(seconds)
+        if (Number.isInteger(s) && s >= 1 && s <= 3600) {
+            dimSeconds = s
+            dimDeadline = Date.now() + s * 1000
+        } else {
+            dimSeconds = 0
+            dimDeadline = 0
+        }
+        dimmed = true
+    }
+
+    function undim() {
+        dimmed = false
+        dimSeconds = 0
+        dimDeadline = 0
     }
 
     // LockScreen: the compositor denied our lock (another one holds the
@@ -151,7 +184,7 @@ Singleton {
 
     // locked: the compositor's confirmation, and no unlock fading out
     function stats() {
-        return { locked: locked && !unlocking, checking: checking, dimmed: false, error: error }
+        return { locked: locked && !unlocking, checking: checking, dimmed: dimmed, error: error }
     }
 
     PamContext {

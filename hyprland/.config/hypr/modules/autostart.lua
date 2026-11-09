@@ -20,9 +20,11 @@ local session_env = {
 }
 
 hl.on("hyprland.start", function()
-  -- Runs first: the polkit agent below starts through systemd
+  -- Runs first: the polkit agent and the idle daemon (hypridle.conf; the
+  -- drop-in in ~/.config/systemd/user brings it back if it stops) start
+  -- through systemd
   hl.exec_cmd("dbus-update-activation-environment --systemd " .. table.concat(session_env, " ")
-    .. " && systemctl --user start hyprpolkitagent")
+    .. " && systemctl --user start hyprpolkitagent hypridle")
   hl.exec_cmd("wl-paste --type text --watch cliphist store")
   hl.exec_cmd("wl-paste --type image --watch cliphist store")
 

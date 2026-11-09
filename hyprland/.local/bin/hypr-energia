@@ -24,7 +24,8 @@ case "$choice" in
       hyprctl dispatch 'hl.dsp.exit()'
     fi
     ;;
-  "$suspend")  systemctl suspend ;;
+  # Lock first; sleep only once the lock is confirmed
+  "$suspend")  hypr-travar && systemctl suspend ;;
   "$reboot")   systemctl reboot ;;
   "$poweroff") systemctl poweroff ;;
   *) exit 0 ;;

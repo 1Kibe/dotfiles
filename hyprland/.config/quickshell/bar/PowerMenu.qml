@@ -18,7 +18,10 @@ DropPanel {
         { id: "lock", icon: "󰌾", label: "Bloquear", confirm: false, command: ["hypr-travar"] },
         { id: "logout", icon: "󰍃", label: "Sair", confirm: false,
           command: ["sh", "-c", "uwsm check is-active && uwsm stop || hyprctl dispatch 'hl.dsp.exit()'"] },
-        { id: "suspend", icon: "󰤄", label: "Suspender", confirm: false, command: ["systemctl", "suspend"] },
+        // Locks first and sleeps only once the lock is confirmed, even if
+        // hypridle (which also locks before sleeping) is not running
+        { id: "suspend", icon: "󰤄", label: "Suspender", confirm: false,
+          command: ["sh", "-c", "hypr-travar && systemctl suspend"] },
         { id: "reboot", icon: "󰜉", label: "Reiniciar", confirm: true, command: ["systemctl", "reboot"] },
         { id: "poweroff", icon: "󰐥", label: "Desligar", confirm: true, command: ["systemctl", "poweroff"] }
     ]

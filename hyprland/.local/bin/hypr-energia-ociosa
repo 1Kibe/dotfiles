@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Suspends after a long idle time, on battery only (hypridle, 60 min): on
+# power, or on a machine with no battery, it does nothing. Locks first and
+# suspends only when hypr-travar confirms the lock, so the machine never
+# sleeps unlocked through this path.
+#
+# Usage: hypr-energia-ociosa suspender
+set -uo pipefail
+
+# The power supplies the kernel reports. POWER_SUPPLY_DIR exists only for the
+# tests (a fake sysfs); the worst it can do is suspend after locking, which
+# the user can already do.
+supplies="${POWER_SUPPLY_DIR:-/sys/class/power_supply}"
+
+[[ "${1:-}" == suspender ]] || { echo "uso: hypr-energia-ociosa suspender" >&2; exit 2; }
+
+battery=""
+plugged=""
+for s in "$supplies"/*; do
+  [[ -r "$s/type" ]] || continue
+  case "$(< "$s/type")" in
+    Battery)
+      # A peripheral's battery (mouse, headset) has scope Device: not ours
+      [[ -r "$s/scope" && "$(< "$s/scope")" == Device ]] && continue
+      battery=1
+      ;;
+    Mains|USB|USB_C|USB_PD)
+      [[ -r "$s/online" && "$(< "$s/online")" == 1 ]] && plugged=1
+      ;;
+  esac
+done
+
+# No battery (desktop, VM) or on power: nothing to do
+if [[ -z "$battery" || -n "$plugged" ]]; then
+  exit 0
+fi
+
+hypr-travar || exit 1
+exec systemctl suspend

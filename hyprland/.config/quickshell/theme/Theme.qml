@@ -117,6 +117,17 @@ Singleton {
     readonly property color lockFieldFill: root.alpha(bgHard, 0.75)
     readonly property color lockPillFill: root.alpha(bgHard, 0.6)
 
+    // Warning before the idle lock (lock/DimOverlay): veil over every screen
+    // and a pill under the bar
+    readonly property color idleVeil: Qt.rgba(0, 0, 0, 0.6)
+    readonly property int idlePillHeight: 36
+    readonly property int idlePillGap: 40      // below the bar
+    readonly property int idleTextSize: 15
+    readonly property int idleNumberShift: 6   // px each new number slides in from
+    readonly property int idleLineHeight: 2    // countdown line under the text
+    readonly property int idleLineGap: 5       // from the pill's bottom edge
+    readonly property color idleLine: accentLight
+
     // Lock and login background (lock/BackgroundPicker): defaults of the
     // picker's controls and its sizes
     readonly property real lockBlurDefault: 0.55

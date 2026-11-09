@@ -63,8 +63,11 @@ ShellRoot {
     // Lock screen (Super+L through hypr-travar, hypridle)
     LockScreen {}
 
-    // Only these two: unlocking is never reachable from outside, only
-    // through a PAM success on the lock screen
+    // The veil and warning before the idle lock (hypridle: lock dim/undim)
+    DimOverlay {}
+
+    // Unlocking is never reachable from outside, only through a PAM success
+    // on the lock screen
     IpcHandler {
         target: "lock"
 
@@ -86,6 +89,17 @@ ShellRoot {
         function background(): void {
             const monitor = Hyprland.focusedMonitor
             BackgroundStore.openPicker(monitor ? monitor.name : "")
+        }
+
+        // hypridle, before the idle lock: darken with a countdown of the
+        // given seconds (hypridle.conf), and back on any key or move. Only a
+        // veil: never locks or unlocks
+        function dim(seconds: int): void {
+            LockState.dim(seconds)
+        }
+
+        function undim(): void {
+            LockState.undim()
         }
     }
 

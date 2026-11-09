@@ -91,8 +91,11 @@ ASSUME_YES=""
 
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
-# inside the repo.
-SHARED_DIRS=(.config .config/autostart .local .local/bin .local/share .local/share/icons .local/share/applications)
+# inside the repo. ~/.config/systemd/user holds only drop-ins from the repo,
+# but "systemctl --user enable" writes its links there too. systemd ignores a
+# drop-in folder that is a link, so the folder is real and only the .conf
+# inside is linked (another service's drop-in needs its own entry).
+SHARED_DIRS=(.config .config/autostart .config/systemd .config/systemd/user .config/systemd/user/hypridle.service.d .local .local/bin .local/share .local/share/icons .local/share/applications)
 
 # ── Distro ───────────────────────────────────────────────────────────────────
 # Maps /etc/os-release to a package list: arch, fedora, ubuntu (or unknown)

@@ -25,3 +25,7 @@ hl.env("LIBGL_ALWAYS_SOFTWARE", "1")
 -- ── Notebook (Yoga Slim 7, 2.8K screen) ─────────────────────────────────────
 -- Uncomment on the notebook (and delete the VM block). Pick the scale there.
 -- hl.monitor({ output = "eDP-1", mode = "preferred", position = "auto", scale = 1.75 })
+-- The lid bind in keybinds.lua uses the name "Lid Switch". If hyprctl devices
+-- (under Switches) shows another name here, lock on that one too:
+-- hl.bind("switch:on:<name>", hl.dsp.exec_cmd("hypr-travar"),
+--   { locked = true, description = "Sistema: Travar ao fechar a tampa" })

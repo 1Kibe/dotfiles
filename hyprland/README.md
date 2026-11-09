@@ -80,6 +80,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+Espaço / Super+Enter` | Abrir o terminal |
 | `Super+E` | Abrir o Thunar |
 | `Super+L` | Travar a tela |
+| `Fechar a tampa` | Travar ao fechar a tampa |
 | `Super+V` | Histórico do clipboard |
 | `Super+N` | Central de notificações |
 | `Super+A` | Central de controle |
