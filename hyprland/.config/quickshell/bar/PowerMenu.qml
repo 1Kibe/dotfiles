@@ -3,8 +3,8 @@ import Quickshell
 import qs.theme
 import qs.state
 
-// Power menu that drops down from the power button: log out, suspend,
-// reboot, power off. Reboot and power off need a second click.
+// Power menu that drops down from the power button (and Super+X): lock, log
+// out, suspend, reboot, power off. Reboot and power off need a second click.
 DropPanel {
     id: root
 
@@ -13,6 +13,9 @@ DropPanel {
     // confirm: needs the second click. Log out stops the uwsm session when
     // Hyprland runs under it, else exits Hyprland (dispatch takes Lua).
     readonly property var actions: [
+        // Through hypr-travar, the single way to lock; nothing is lost, so
+        // one click is enough
+        { id: "lock", icon: "󰌾", label: "Bloquear", confirm: false, command: ["hypr-travar"] },
         { id: "logout", icon: "󰍃", label: "Sair", confirm: false,
           command: ["sh", "-c", "uwsm check is-active && uwsm stop || hyprctl dispatch 'hl.dsp.exit()'"] },
         { id: "suspend", icon: "󰤄", label: "Suspender", confirm: false, command: ["systemctl", "suspend"] },
