@@ -3,14 +3,20 @@
 # waits until the compositor confirms every screen is covered. The single
 # way to lock: Super+L, hypridle and the suspend paths all call it.
 #
-# If Quickshell does not confirm within 2.5 s (not running, frozen, or the
-# request taken without a lock), the reserve lock screen (hyprlock, with
-# hypr/hyprlock.conf) takes over for the rest of the 4.5 s. With
-# allow_session_lock_restore off the first lock wins: a late Quickshell lock
-# makes hyprlock give up. A request left in a frozen Quickshell's queue,
-# handled once it wakes up, finds the session held by hyprlock: LockState
-# checks that before locking and does not lock (error "held"), since Hyprland
-# would drop it for a refused lock.
+# If Quickshell does not confirm within 2.5 s (not running, or the request
+# taken without a lock), or at once when its IPC does not answer (frozen),
+# the reserve lock screen (hyprlock, with hypr/hyprlock.conf) takes over for
+# the rest of the 4.5 s; a hyprlock that dies or never locks is started
+# again, up to 3 times. With allow_session_lock_restore off the first lock
+# wins: a late Quickshell lock makes hyprlock give up. A request left in a
+# frozen Quickshell's queue, handled once it wakes up, finds the session held
+# by hyprlock: LockState checks that before locking and does not lock (error
+# "held"), since Hyprland would drop it for a refused lock.
+#
+# "Locked" is the compositor's word: every monitor lists LOCK, read twice
+# 150 ms apart (a lock that just ended may still show for a moment). With
+# restore off nobody can replace a lock, so LOCK means locked whoever holds
+# it, also a lock screen that died (Hyprland then keeps the screen covered).
 #
 # Exit: 0 locked, 1 not locked in time, 2 /etc/pam.d/quickshell-lock missing
 # (PAM would deny every password, so the screen is not locked at all). Every
@@ -18,22 +24,38 @@
 set -uo pipefail
 
 pam=/etc/pam.d/quickshell-lock
+reserve_pam=/etc/pam.d/hyprlock
 runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+uid="$(id -u)"
 
-# One deadline for the whole run, counted on the clock from the start (the
-# wait for another call and every IPC call take time too): 4.5 s fits
-# inside logind's 5 s wait before a suspend
-now_ms() { echo $(( $(date +%s%N) / 1000000 )); }
+# One deadline for the whole run, on the monotonic clock (/proc/uptime, not
+# the wall clock, which can jump): 4.5 s fits inside logind's 5 s wait before
+# a suspend. Quickshell gets the first 2.5 s, the reserve the rest.
+now_ms() {
+  local up
+  read -r up _ < /proc/uptime
+  echo $(( 10#${up%.*} * 1000 + 10#${up#*.} * 10 ))
+}
 start="$(now_ms)"
 deadline_ms=4500
-# Quickshell's share of it; the reserve gets the rest
 qs_ms=2500
 
-# A short notice on the screen (Hyprland's own, not D-Bus: a frozen
-# Quickshell cannot hold it; 1 s at most): a failed lock must never go unnoticed
+left_ms() { echo $(( deadline_ms - ($(now_ms) - start) )); }
+
+# Time limit for one call: half a second, or what is left if less
+limit() {
+  local left
+  left="$(left_ms)"
+  (( left > 500 )) && left=500
+  (( left <= 0 )) && return 1
+  printf '0.%03d' "$left"
+}
+
+# A short notice on the screen (Hyprland's own, not D-Bus), in the
+# background so it never costs time: a failed lock must never go unnoticed
 warn() {
   echo "hypr-travar: $1" >&2
-  timeout 1 hyprctl notify 3 8000 0 "$1" >/dev/null 2>&1 || true
+  ( timeout 1 hyprctl notify 3 8000 0 "$1" >/dev/null 2>&1 & )
 }
 
 # A regular file only: a missing one (install.sh not run) falls back to
@@ -46,46 +68,38 @@ fi
 # One call at a time (Super+L pressed while hypridle locks): the second waits
 # for the first, then finds the screen locked. The wait counts in the deadline.
 exec 9>"$runtime/hypr-travar.lock"
-left_ms=$(( deadline_ms - ($(now_ms) - start) ))
-if (( left_ms <= 0 )) || ! LC_ALL=C flock -w "$(( left_ms / 1000 )).$(printf '%03d' $(( left_ms % 1000 )))" 9; then
+left="$(left_ms)"
+if (( left <= 0 )) || ! LC_ALL=C flock -w "$(( left / 1000 )).$(printf '%03d' $(( left % 1000 )))" 9; then
   warn "A tela não travou (outra chamada demorou demais)"
   exit 1
 fi
 
-qs_running() {
-  pgrep -u "$(id -u)" -x qs >/dev/null
-}
+qs_running() { pgrep -u "$uid" -x qs >/dev/null; }
+hyprlock_running() { pgrep -u "$uid" -x hyprlock >/dev/null; }
 
-hyprlock_running() {
-  pgrep -u "$(id -u)" -x hyprlock >/dev/null
-}
-
-# A frozen Quickshell never answers its IPC: every call gets half a second
+# Quickshell's IPC, with the time limit; exit 124 = it did not answer
 ipc() {
-  timeout 0.5 qs ipc call lock "$@" 2>/dev/null
+  local t
+  t="$(limit)" || return 124
+  timeout "$t" qs ipc call lock "$@" 2>/dev/null
 }
 
-# The lock screen's own confirmation (stats.locked: the compositor confirmed
-# our lock and no unlock is under way)
 stats_locked() {
   ipc stats | jq -e '.locked == true' >/dev/null 2>&1
 }
 
-# Hyprland itself: every monitor lists "LOCK" ("session lock") among the
-# reasons in solitaryBlockedBy. After a Quickshell reload while locked,
-# Hyprland restores the lock to the new instance without confirming it
-# again, so only this sees it. It is only an extra confirmation: it counts
-# when Quickshell is running and has taken our lock request.
-compositor_locked() {
-  timeout 0.5 hyprctl -j monitors 2>/dev/null \
+compositor_lock_seen() {
+  local t
+  t="$(limit)" || return 1
+  timeout "$t" hyprctl -j monitors 2>/dev/null \
     | jq -e 'length > 0 and all(.[]; (.solitaryBlockedBy // []) | index("LOCK") != null)' >/dev/null 2>&1
 }
 
-if stats_locked; then
-  exit 0
-fi
-# The reserve already holds the session (a second call while it is up)
-if hyprlock_running && compositor_locked; then
+compositor_locked() {
+  compositor_lock_seen && sleep 0.15 && compositor_lock_seen
+}
+
+if stats_locked || compositor_locked; then
   exit 0
 fi
 
@@ -93,52 +107,82 @@ fi
 # Hyprland, with the session's environment). Running but its IPC not ready
 # (the second right after a reload): only wait, never start a second one.
 if ! qs_running; then
-  hyprctl dispatch 'hl.dsp.exec_cmd("qs")' >/dev/null 2>&1 || true
+  t="$(limit)" && timeout "$t" hyprctl dispatch 'hl.dsp.exec_cmd("qs")' >/dev/null 2>&1
 fi
 
-# Ask (as soon as the IPC answers), then check every 100 ms, for
-# Quickshell's share of the time
+# Ask as soon as the IPC answers, then check every 100 ms. A Quickshell that
+# is running but does not answer in time is frozen: the reserve at once.
 asked=""
 while (( $(now_ms) - start < qs_ms )); do
   if [[ -z "$asked" ]]; then
-    ipc lock >/dev/null && asked=1
+    ipc lock >/dev/null
+    rc=$?
+    if (( rc == 0 )); then
+      asked=1
+    elif (( rc == 124 )) && qs_running; then
+      break
+    fi
   fi
-  if stats_locked; then
-    exit 0
-  fi
-  if [[ -n "$asked" ]] && qs_running && compositor_locked; then
+  if stats_locked || compositor_locked; then
     exit 0
   fi
   sleep 0.1
 done
 
-# The reserve. A late Quickshell lock that got there meanwhile counts as
-# before (asked and alive). Otherwise hyprlock, one at a time, started by
-# Hyprland itself (like Quickshell): a child of the session, with its
-# environment, outside the caller's systemd unit. Called by hypridle, a
-# hyprlock of ours would sit in hypridle's unit and die with it on a restart
-# (the session then stuck in "lock screen died"). setsid only if Hyprland
-# does not take the request; then without our flock (fd 9) either, so the
-# next call is not held up by it
-if [[ -n "$asked" ]] && qs_running && compositor_locked; then
+# The reserve. Only with a PAM service that has a password check: a locker
+# that cannot unlock would be worse than none.
+if compositor_locked; then
   exit 0
+fi
+if [[ ! -f "$reserve_pam" || -L "$reserve_pam" ]] || ! grep -qE '^[[:space:]]*auth[[:space:]]' "$reserve_pam"; then
+  warn "A tela não travou (o shell não respondeu e falta o $reserve_pam)"
+  exit 1
 fi
 if ! command -v hyprlock >/dev/null; then
   warn "A tela não travou (o shell não respondeu e não há bloqueio reserva)"
   exit 1
 fi
-if ! hyprlock_running; then
-  if ! timeout 0.5 hyprctl dispatch 'hl.dsp.exec_cmd("hyprlock")' 2>/dev/null | grep -qx ok; then
+
+# Started by Hyprland itself (like Quickshell): a child of the session,
+# outside the caller's systemd unit (called by hypridle, it would die with
+# hypridle on a restart, leaving the session in "lock screen died"). setsid
+# only if Hyprland does not take the request, without our flock (fd 9).
+attempts=0
+launched=0
+launch() {
+  local t
+  attempts=$(( attempts + 1 ))
+  launched="$(now_ms)"
+  if ! { t="$(limit)" && timeout "$t" hyprctl dispatch 'hl.dsp.exec_cmd("hyprlock")' 2>/dev/null | grep -qx ok; }; then
     setsid -f hyprlock 9>&- </dev/null >/dev/null 2>&1
   fi
-  warn "Bloqueio reserva: o shell não respondeu"
+}
+
+if hyprlock_running; then
+  launched="$(now_ms)"      # one already starting: give it its time first
+else
+  launch
 fi
+warn "Bloqueio reserva: o shell não respondeu"
+
+# A hyprlock that died without locking (after 0.4 s) or that runs without a
+# lock for 1 s (on this VM a healthy one takes about 0.5 s) has failed: it is
+# stopped (it holds no lock) and started again, 3 times in all
 while (( $(now_ms) - start < deadline_ms )); do
-  if hyprlock_running && compositor_locked; then
+  if compositor_locked; then
     exit 0
   fi
-  if [[ -n "$asked" ]] && qs_running && compositor_locked; then
-    exit 0
+  since=$(( $(now_ms) - launched ))
+  if (( attempts < 3 )); then
+    if hyprlock_running; then
+      if (( since > 1000 )); then
+        pkill -TERM -u "$uid" -x hyprlock
+        sleep 0.1
+        launch
+      fi
+    elif (( since > 400 )); then
+      launch
+    fi
   fi
   sleep 0.1
 done

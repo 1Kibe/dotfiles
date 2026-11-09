@@ -77,8 +77,20 @@ Singleton {
         // or a lock screen that died): asking then makes Hyprland refuse our
         // lock surfaces as a protocol error and drop Quickshell. Ask the
         // compositor first; lockChecked() goes on
-        if (!heldCheck.running)
+        if (!heldCheck.running && !heldRecheck.running) {
+            heldRechecked = false
             heldCheck.running = true
+        }
+    }
+
+    // A lock that just ended can still show for a moment: a "held" answer is
+    // asked once more, 300 ms later, before giving up
+    property bool heldRechecked: false
+
+    Timer {
+        id: heldRecheck
+        interval: 300
+        onTriggered: heldCheck.running = true
     }
 
     // Every monitor lists "LOCK" when some lock holds the session (the same
@@ -97,6 +109,11 @@ Singleton {
         if (wanted || unlocking)
             return
         if (held) {
+            if (!heldRechecked) {
+                heldRechecked = true
+                heldRecheck.start()
+                return
+            }
             error = "held"
             warn("A tela já está travada por outro bloqueio")
             return
