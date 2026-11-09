@@ -15,6 +15,9 @@ import "lock/text.js" as Clean
 FloatingWindow {
     id: window
 
+    // cage has no layer shell: the window asks for the whole output itself
+    // (no frame either: start-greeter runs cage -d and turns off Qt's own)
+    fullscreen: true
     color: Theme.bgDeep
 
     // "reboot" | "poweroff" while waiting for the second click

@@ -17,6 +17,9 @@
 #   folder, checks the COPY (regular file, at most 30 MB, PNG signature, at
 #   most 8192×8192) and only then shows it. Anything wrong: plain color. Qt
 #   may use at most 64 MB to decode any one picture.
+# - No window frame: cage -d asks the window not to draw its own decoration
+#   (cage draws none), and Qt is told never to draw one; the window itself
+#   asks for the whole screen (Greeter.qml, fullscreen).
 set -u
 
 SHARED_PICTURE=/usr/local/share/dotfiles/login/fundo.png
@@ -46,6 +49,7 @@ if systemd-detect-virt --quiet --vm; then
 fi
 
 export QT_IMAGEIO_MAXALLOC=64
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 
 # Big-endian 4-byte number at an offset of the copy (IHDR width 16, height 20)
 be32() {
@@ -75,4 +79,4 @@ if [ -d "$CACHE" ] && [ -w "$CACHE" ]; then
   fi
 fi
 
-exec cage -s -mlast -- qs -p /etc/greetd/quickshell
+exec cage -d -s -mlast -- qs -p /etc/greetd/quickshell
