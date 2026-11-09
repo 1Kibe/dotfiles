@@ -13,6 +13,9 @@ Column {
     readonly property string shownName: Clean.clean(name, 60)
     // Absolute path of the picture; a missing or broken file shows the initial
     property string photo: ""
+    // false: never open a picture, only the initial (the login screen, which
+    // must not decode files from users' folders)
+    property bool usePhoto: true
     property int size: Theme.lockAvatarSize
     // The login screen draws the name itself (with "1 de 2")
     property bool showName: true
@@ -50,7 +53,7 @@ Column {
             Image {
                 id: picture
                 anchors.fill: parent
-                source: root.photo !== "" ? `file://${root.photo}` : ""
+                source: root.usePhoto && root.photo !== "" ? `file://${root.photo}` : ""
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 cache: false

@@ -767,13 +767,15 @@ install_greeter_files() {
     return 1
   fi
 
-  sudo install -d -m755 -o root -g root "${dir}" "${dir}/greeter" "${dir}/theme" "${dir}/lock"
+  # Every step returns on failure: the caller only points greetd at the
+  # new screen when all of it is in place
+  sudo install -d -m755 -o root -g root "${dir}" "${dir}/greeter" "${dir}/theme" "${dir}/lock" || return 1
   for pair in "${GREETER_FILES[@]}"; do
-    sudo install -m644 -o root -g root "${DOTFILES_DIR}/${pair%%:*}" "${dir}/${pair#*:}"
+    sudo install -m644 -o root -g root "${DOTFILES_DIR}/${pair%%:*}" "${dir}/${pair#*:}" || return 1
   done
-  sudo install -m755 -o root -g root "${DOTFILES_DIR}/system/greetd/start-greeter" "${GREETD_DIR}/start-greeter"
+  sudo install -m755 -o root -g root "${DOTFILES_DIR}/system/greetd/start-greeter" "${GREETD_DIR}/start-greeter" || return 1
   if id greeter &>/dev/null; then
-    sudo install -d -m700 -o greeter -g greeter "${GREETER_CACHE}"
+    sudo install -d -m700 -o greeter -g greeter "${GREETER_CACHE}" || return 1
   else
     warn "No greeter user (greetd's package creates it): the login screen won't remember the last choices."
   fi
@@ -786,7 +788,15 @@ install_greeter_files() {
 configure_login_screen() {
   local src="${DOTFILES_DIR}/system/greetd"
 
-  install_greeter_files || return 0
+  if [[ ! -d "${GREETD_DIR}" ]]; then
+    warn "greetd is not installed, skipping the login screen."
+    return 0
+  fi
+  # config.toml only changes once every file of the new screen is in place
+  if ! install_greeter_files; then
+    err "Could not install the login screen files; greetd keeps the old login screen (config.toml unchanged)."
+    return 0
+  fi
   if [[ -f "${GREETD_DIR}/config.toml" && ! -e "${GREETD_DIR}/config.toml.bak" \
         && "$(< "${GREETD_DIR}/config.toml")" != "$(< "${src}/config.toml")" ]]; then
     sudo cp -p "${GREETD_DIR}/config.toml" "${GREETD_DIR}/config.toml.bak"

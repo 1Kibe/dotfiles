@@ -141,3 +141,12 @@ function session(fileName, text, kind) {
         tryExec: entry.TryExec ?? ""
     }
 }
+
+// greetd 0.10 joins the command's words with spaces and runs
+// `[ -f /etc/profile ] && . /etc/profile; …; exec <words>` through /bin/sh -c:
+// each word goes in single quotes, so nothing in it is read by that shell
+function shellQuote(args) {
+    if (!Array.isArray(args))
+        return []
+    return args.map(a => "'" + String(a).replace(/'/g, "'\\''") + "'")
+}

@@ -5,13 +5,15 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Greetd
 import "sessions.js" as Sessions
+import "../lock/text.js" as Clean
 
 // State of the login screen (runs as the greetd "greeter" user, inside
 // cage): the people who can log in, the sessions, the last choices, the
 // password through greetd (PAM runs in greetd, as root), power. It reads
-// only /etc/passwd (getent), /etc/shells, the two session folders, the
-// AccountsService pictures and the shared background; it writes only
-// /var/cache/qs-greeter/state.json. Nobody's home is read.
+// only /etc/passwd (getent), /etc/shells, the two session folders and its
+// own cache folder (state.json, and the copy of the background that
+// start-greeter checked); it writes only state.json. Nobody's home is read,
+// and no user picture is decoded (the initial is shown instead).
 //
 // The password lives in memory only, between Enter and greetd's prompt; it
 // never goes to a log, a file or a binding. greetd's own texts never reach
@@ -21,8 +23,12 @@ Singleton {
 
     // ── Fixed paths (no setting, env or file changes them) ──
     readonly property string stateFile: "/var/cache/qs-greeter/state.json"
-    readonly property string picturePath: "/usr/local/share/dotfiles/login/fundo.png"
-    readonly property int pictureMaxBytes: 30 * 1024 * 1024
+    // The background as start-greeter left it: a private copy, already
+    // checked (no copy: plain color)
+    readonly property string picturePath: "/var/cache/qs-greeter/fundo.png"
+    // A greetd session left waiting longer than this (no answer at all) is
+    // cancelled and the screen shows an error
+    readonly property int checkTimeout: 30000
     readonly property var sessionDirs: [
         { dir: "/usr/share/wayland-sessions", kind: "wayland" },
         { dir: "/usr/share/xsessions", kind: "x11" }
@@ -31,7 +37,7 @@ Singleton {
     readonly property string defaultSession: "wayland:hyprland-uwsm.desktop"
 
     // ── Read by Greeter.qml ──
-    property var users: []              // [{ name, display, photo }]
+    property var users: []              // [{ name, display }]
     property int userIndex: 0
     readonly property var current: users.length > 0 ? users[Math.min(userIndex, users.length - 1)] : null
     property var sessions: []           // [{ id, name, command }]
@@ -41,8 +47,9 @@ Singleton {
     property string error: ""           // "" | "wrong" | "tooMany" | "unknown"
     property int retryMinutes: 0
     property bool capsLock: false
-    // The shared background, only once checked (regular PNG, not a link, size)
-    property string picture: ""
+    // The background (start-greeter's checked copy; LockBackground shows the
+    // plain color when it is missing)
+    readonly property string picture: picturePath
     // Keyboard layout of cage (the install writes it from localectl)
     readonly property string layout: Quickshell.env("XKB_DEFAULT_LAYOUT") || "us"
 
@@ -69,6 +76,7 @@ Singleton {
     function selectUser(index) {
         if (checking || users.length === 0)
             return
+        cancelOpenSession()
         userIndex = (index + users.length) % users.length
         error = ""
         retryMinutes = 0
@@ -99,7 +107,27 @@ Singleton {
         error = ""
         sawLockout = false
         sawMinutes = 0
+        sessionOpen = true
         Greetd.createSession(current.name)
+    }
+
+    // A greetd session still open (between createSession and the launch or
+    // a failure) is cancelled before anything else starts
+    property bool sessionOpen: false
+
+    function cancelOpenSession() {
+        if (!sessionOpen)
+            return
+        sessionOpen = false
+        Greetd.cancelSession()
+    }
+
+    // No answer from greetd in time: forget the password and give up
+    Timer {
+        id: watchdog
+        interval: root.checkTimeout
+        running: root.checking
+        onTriggered: root.failed("unknown")
     }
 
     // Too many attempts: pam_faillock says so in an error message, in
@@ -116,6 +144,7 @@ Singleton {
     function failed(kind) {
         pending = ""
         checking = false
+        cancelOpenSession()
         if (kind === "wrong" && sawLockout)
             kind = "tooMany"
         error = kind
@@ -162,7 +191,6 @@ Singleton {
             // A visible prompt (a user name, a code): never answer it with
             // the password
             if (echoResponse || root.pending === "") {
-                Greetd.cancelSession()
                 root.failed("unknown")
                 return
             }
@@ -176,16 +204,20 @@ Singleton {
             root.failed("wrong")
         }
 
+        // Only while checking: a cancel of ours can also end in an error
         function onError(text) {
-            Greetd.cancelSession()
-            root.failed("unknown")
+            if (root.checking)
+                root.failed("unknown")
         }
 
-        // Saves the choices, then starts the session; the greeter quits
+        // Saves the choices, then starts the session; the greeter quits.
+        // greetd joins the words with spaces and runs them through sh -c,
+        // so each one goes quoted
         function onReadyToLaunch() {
             root.pending = ""
+            root.sessionOpen = false
             root.saveState()
-            Greetd.launch(root.session.command, [], true)
+            Greetd.launch(Sessions.shellQuote(root.session.command), [], true)
         }
     }
 
@@ -267,12 +299,19 @@ Singleton {
                 continue
             if (!shells.includes(shell) || /(nologin|false)$/.test(shell))
                 continue
-            const gecos = (f[4] || "").split(",")[0].trim()
+            const gecos = Clean.clean((f[4] || "").split(",")[0], 60)
             list.push({
                 name: f[0],
-                display: gecos !== "" ? gecos : f[0],
-                photo: `/var/lib/AccountsService/icons/${f[0]}`
+                display: gecos !== "" ? gecos : f[0]
             })
+        }
+        // Two people shown with the same name: add the login to both
+        const seen = {}
+        for (const u of list)
+            seen[u.display.toLowerCase()] = (seen[u.display.toLowerCase()] || 0) + 1
+        for (const u of list) {
+            if (seen[u.display.toLowerCase()] > 1 && u.display !== u.name)
+                u.display = `${u.display} (${u.name})`
         }
         users = list
         usersLoaded = true
@@ -348,19 +387,6 @@ Singleton {
         }
     }
 
-    // ── Background: shown only when it is a regular PNG up to 30 MB ──
-    Process {
-        id: checkPicture
-        command: ["sh", "-c",
-            'f=$1; [ -f "$f" ] && [ ! -L "$f" ] || exit 0; '
-            + '[ "$(stat -c %s -- "$f")" -le "$2" ] || exit 0; '
-            + '[ "$(file -b --mime-type -- "$f")" = image/png ] && echo ok',
-            "sh", root.picturePath, String(root.pictureMaxBytes)]
-        stdout: StdioCollector {
-            onStreamFinished: root.picture = text.trim() === "ok" ? root.picturePath : ""
-        }
-    }
-
     // ── Power: suspend at once; reboot and power off after a second click
     // (Greeter.qml) ──
     function power(action) {
@@ -409,7 +435,6 @@ Singleton {
     Component.onCompleted: {
         readUsers.running = true
         readSessions.running = true
-        checkPicture.running = true
         findLeds.running = true
     }
 }

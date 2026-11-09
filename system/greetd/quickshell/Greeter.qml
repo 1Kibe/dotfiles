@@ -10,7 +10,8 @@ import "lock/text.js" as Clean
 // veil, the big clock, the user picture and the password field. Around
 // them: the session menu (top left), the status pill (top right), the user
 // switcher (arrows or a click on a neighbor) and the power buttons (bottom
-// right; reboot and power off ask for a second click).
+// right; reboot and power off ask for a second click). The users show their
+// initial only: the greeter never decodes a picture from a user's folder.
 FloatingWindow {
     id: window
 
@@ -280,7 +281,7 @@ FloatingWindow {
                                 showName: false
                                 size: Theme.loginNeighbor
                                 name: parent.user ? parent.user.display : ""
-                                photo: parent.user ? parent.user.photo : ""
+                                usePhoto: false
                             }
 
                             MouseArea {
@@ -312,7 +313,7 @@ FloatingWindow {
                                 showName: false
                                 size: Theme.loginAvatar
                                 name: GreeterState.current ? GreeterState.current.display : ""
-                                photo: GreeterState.current ? GreeterState.current.photo : ""
+                                usePhoto: false
                             }
 
                             // A new user slides in from the side of the arrow
@@ -351,7 +352,7 @@ FloatingWindow {
                                 showName: false
                                 size: Theme.loginNeighbor
                                 name: parent.user ? parent.user.display : ""
-                                photo: parent.user ? parent.user.photo : ""
+                                usePhoto: false
                             }
 
                             MouseArea {

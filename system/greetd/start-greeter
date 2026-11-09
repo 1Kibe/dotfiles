@@ -7,16 +7,29 @@
 # - The keyboard of the login screen is the system's (localectl), so a
 #   password is typed with the same layout as in the session. localectl gets
 #   2 s and may fail: the login screen comes up anyway, with cage's default
-#   keyboard.
+#   keyboard. Empty or "n/a" values are not passed on.
 # - On a virtual machine (vmwgfx) wlroots' GLES renderer fails to import
 #   buffers and cage dies right after start: software renderer and cursor
 #   there. Real hardware keeps the GPU.
+# - The background is the user's picture (lock/BackgroundPicker), in a
+#   folder the user owns. The greeter never decodes it in place: it copies it
+#   (no link followed, 2 s at most, in case it is a FIFO) into its own cache
+#   folder, checks the COPY (regular file, at most 30 MB, PNG signature, at
+#   most 8192×8192) and only then shows it. Anything wrong: plain color. Qt
+#   may use at most 64 MB to decode any one picture.
 set -u
+
+SHARED_PICTURE=/usr/local/share/dotfiles/login/fundo.png
+CACHE=/var/cache/qs-greeter
+MAX_BYTES=$((30 * 1024 * 1024))
+MAX_SIDE=8192
 
 status="$(timeout 2 localectl status 2>/dev/null)" || status=""
 
-xkb() {   # localectl field → its value, or nothing
-  printf '%s\n' "$status" | sed -n "s/^ *$1: *//p" | head -n 1
+xkb() {   # localectl field → its value, or nothing (also for "n/a")
+  v="$(printf '%s\n' "$status" | sed -n "s/^ *$1: *//p" | head -n 1)"
+  [ "$v" = "n/a" ] && v=""
+  printf '%s' "$v"
 }
 
 layout="$(xkb 'X11 Layout')"
@@ -30,6 +43,36 @@ options="$(xkb 'X11 Options')"
 
 if systemd-detect-virt --quiet --vm; then
   export WLR_RENDERER=pixman WLR_NO_HARDWARE_CURSORS=1
+fi
+
+export QT_IMAGEIO_MAXALLOC=64
+
+# Big-endian 4-byte number at an offset of the copy (IHDR width 16, height 20)
+be32() {
+  head -c "$(($2 + 4))" -- "$1" | tail -c 4 | od -An -tu1 \
+    | awk '{ print ($1 * 16777216) + ($2 * 65536) + ($3 * 256) + $4 }'
+}
+
+# The background: copy, check the copy, then swap it in; else none
+picture_ok() {
+  f="$1"
+  [ -f "$f" ] && [ ! -L "$f" ] || return 1
+  size="$(stat -c %s -- "$f")" || return 1
+  [ "$size" -ge 24 ] && [ "$size" -le "$MAX_BYTES" ] || return 1
+  [ "$(head -c 8 -- "$f" | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a" ] || return 1
+  [ "$(head -c 16 -- "$f" | tail -c 4)" = "IHDR" ] || return 1
+  w="$(be32 "$f" 16)" && h="$(be32 "$f" 20)" || return 1
+  [ "$w" -ge 1 ] && [ "$w" -le "$MAX_SIDE" ] && [ "$h" -ge 1 ] && [ "$h" -le "$MAX_SIDE" ]
+}
+
+if [ -d "$CACHE" ] && [ -w "$CACHE" ]; then
+  rm -f -- "$CACHE/fundo.tmp"
+  if timeout 2 cp --no-dereference -- "$SHARED_PICTURE" "$CACHE/fundo.tmp" 2>/dev/null \
+      && picture_ok "$CACHE/fundo.tmp"; then
+    mv -f -- "$CACHE/fundo.tmp" "$CACHE/fundo.png"
+  else
+    rm -f -- "$CACHE/fundo.tmp" "$CACHE/fundo.png"
+  fi
 fi
 
 exec cage -s -mlast -- qs -p /etc/greetd/quickshell
