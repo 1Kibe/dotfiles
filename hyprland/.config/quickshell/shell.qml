@@ -35,6 +35,11 @@ ShellRoot {
             CaptureState.openOcr()
         }
 
+        // Super+Alt+R: record the focused monitor, or stop the recording
+        function record(): void {
+            CaptureState.toggleRecord()
+        }
+
         // A quick print (hypr-print) was saved: its card in the corner.
         // Only a PNG inside the Capturas folder is accepted.
         function card(path: string): void {

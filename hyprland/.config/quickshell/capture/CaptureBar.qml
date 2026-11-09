@@ -9,7 +9,7 @@ import qs.state
 Rectangle {
     id: root
 
-    property string hint: [bArea, bWin, bScreen, bPhoto, bVideo, bSound, bMic, bDelay, bOcr, bClose]
+    property string hint: [bArea, bWin, bScreen, bPhoto, bVideo, bSound, bMic, bRecord, bDelay, bOcr, bClose]
                           .filter(b => b.visible && b.hovered).map(b => b.hint)[0] || ""
 
     implicitWidth: row.implicitWidth + 16
@@ -87,10 +87,19 @@ Rectangle {
         }
         CaptureButton {
             id: bVideo
-            icon: "󰕧"
-            hint: "Vídeo (em breve)"
-            enabled: false      // Tarefa 5
-            active: CaptureState.kind === "video"
+            // During a recording this button stops it
+            icon: CaptureState.recording ? "󰓛" : "󰕧"
+            hint: CaptureState.recording ? "Parar a gravação (Super+Alt+R)" : "Vídeo"
+            danger: CaptureState.recording
+            active: CaptureState.kind === "video" && !CaptureState.recording
+            onPressed: {
+                if (CaptureState.recording) {
+                    CaptureState.stopRecord()
+                    CaptureState.close()
+                } else {
+                    CaptureState.kind = "video"
+                }
+            }
         }
         CaptureButton {
             id: bSound
@@ -107,6 +116,16 @@ Rectangle {
             hint: CaptureState.audioMic ? "Microfone: ligado" : "Microfone: desligado"
             active: CaptureState.audioMic
             onPressed: CaptureState.audioMic = !CaptureState.audioMic
+        }
+        // Vídeo: start recording the chosen area (or Enter)
+        CaptureButton {
+            id: bRecord
+            visible: CaptureState.kind === "video" && !CaptureState.recording
+            icon: "󰑊"
+            label: "Gravar"
+            hint: "Gravar a área escolhida (Enter)"
+            danger: true
+            onPressed: CaptureState.exportRequested(true)
         }
 
         Divider {}
@@ -153,6 +172,7 @@ Rectangle {
             anchors.centerIn: parent
             text: root.hint !== "" ? root.hint
                   : CaptureState.purpose === "ocr" ? "Arraste sobre o texto: ele vai para o clipboard"
+                  : CaptureState.kind === "video" && !CaptureState.recording ? "Escolha a área e clique em Gravar (ou Enter)"
                   : CaptureState.phase === "choose" ? `Escolha Área, Janela ou Tela (ou Enter): a contagem de ${CaptureState.delay} s começa`
                   : ""
             color: Theme.fg4

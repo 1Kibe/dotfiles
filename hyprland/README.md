@@ -92,6 +92,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
 | `Super+Shift+T` | Copiar o texto de uma área (OCR) |
+| `Super+Alt+R` | Gravar a tela / parar a gravação |
 | `XF86Calculator` | Calculadora |
 | `Super+Shift+R` | Recarregar a config do Hyprland |
 | `Super+Shift+Esc` | Sair da sessão (emergência, sem confirmação) |

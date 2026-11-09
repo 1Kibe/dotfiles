@@ -79,6 +79,8 @@ PanelWindow {
         anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.spacing
 
+        // Only while recording the screen (Super+Alt+R)
+        RecordingPill {}
         VolumeStatus {
             monitor: root.hyprMonitor
         }

@@ -75,11 +75,15 @@ Singleton {
         width = widths[(widths.indexOf(width) + 1) % widths.length]
     }
 
-    // ── Recording (Tarefa 5) ──
+    // ── Recording (gpu-screen-recorder) ──
     property bool recording: false
-    property int elapsed: 0
+    property int elapsed: 0               // seconds
     property string recordFile: ""
-    property bool micOn: false
+    property bool micOn: false            // the microphone is in this recording
+    property bool isVm: false             // no GPU encoder: -encoder cpu
+    property var pendingRecord: null      // { geometry, screen } waiting for the countdown
+    property real recordStart: 0
+    property bool stopping: false
 
     // ── Card of a quick print (hypr-print) ──
     property string cardFile: ""          // checked path inside the Capturas folder
@@ -234,12 +238,13 @@ Singleton {
         tool = "arrow"
         Quickshell.execDetached(["sh", "-c", "umask 077; mkdir -p \"$1\"", "sh", tmpDir])
         open = true
-        phase = purpose === "capture" && delay > 0 ? "choose" : "select"
+        phase = purpose === "capture" && delay > 0 && kind === "photo" ? "choose" : "select"
     }
 
     function close() {
         tick.stop()
         settle.stop()
+        pendingRecord = null      // a cancelled countdown records nothing
         open = false
         phase = "idle"
         selOwner = ""
@@ -257,7 +262,7 @@ Singleton {
 
     function cycleDelay() {
         delay = delays[(delays.indexOf(delay) + 1) % delays.length]
-        if (open && purpose === "capture" && (phase === "choose" || phase === "select")) {
+        if (open && purpose === "capture" && kind === "photo" && (phase === "choose" || phase === "select")) {
             selOwner = ""
             phase = delay > 0 ? "choose" : "select"
         }
@@ -329,10 +334,85 @@ Singleton {
         })
     }
 
+    // ── Recording ──
+
+    // Super+Alt+R: stops, or records the focused monitor with the last
+    // sound choices and no delay
+    function toggleRecord() {
+        if (recording) {
+            stopRecord()
+            return
+        }
+        if (open)
+            close()
+        const monitor = Hyprland.focusedMonitor
+        if (monitor)
+            recordLater(null, monitor.name)
+    }
+
+    // From the capture bar in Vídeo: the chosen area (global logical
+    // coordinates; null = the whole monitor). With a delay the countdown runs
+    // first; the overlay is gone before the recording starts.
+    function recordSelection(geometry, screen) {
+        if (recording)
+            return
+        if (delay > 0) {
+            pendingRecord = { geometry: geometry, screen: screen }
+            countdownLeft = delay
+            phase = "countdown"     // hides the overlay, shows the countdown
+            tick.restart()
+            return
+        }
+        close()
+        recordLater(geometry, screen)
+    }
+
+    function recordLater(geometry, screen) {
+        pendingRecord = { geometry: geometry, screen: screen }
+        recordDelay.restart()
+    }
+
+    function startRecord(geometry, screen) {
+        if (recording || recorder.running)
+            return
+        const name = Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss")
+        recordFile = `${videosDir}/${name}.mp4`
+        const args = ["gpu-screen-recorder", "-f", "30", "-k", "h264", "-c", "mp4", "-o", recordFile]
+        if (geometry)
+            args.push("-w", "region", "-region", `${Math.round(geometry.w)}x${Math.round(geometry.h)}+${Math.round(geometry.x)}+${Math.round(geometry.y)}`)
+        else
+            args.push("-w", screen)
+        // System sound, microphone, both mixed in one track, or none
+        if (audioSystem && audioMic)
+            args.push("-a", "default_output|default_input")
+        else if (audioSystem)
+            args.push("-a", "default_output")
+        else if (audioMic)
+            args.push("-a", "default_input")
+        if (isVm)
+            args.push("-encoder", "cpu")
+        micOn = audioMic
+        stopping = false
+        // exec: the recorder itself gets the SIGINT that stops it
+        recorder.command = ["sh", "-c", 'mkdir -p "$1" && shift && exec "$@"', "sh", videosDir].concat(args)
+        recordStart = Date.now()
+        elapsed = 0
+        recording = true
+        recorder.running = true
+    }
+
+    // SIGINT: the recorder stops and closes the MP4 properly
+    function stopRecord() {
+        if (recorder.running) {
+            stopping = true
+            recorder.signal(2)
+        }
+    }
+
     function stats() {
         return {
             open: open, purpose: purpose, phase: phase, mode: mode, kind: kind, delay: delay,
-            recording: recording, elapsed: elapsed, windows: windows.length,
+            recording: recording, elapsed: elapsed, micOn: micOn, windows: windows.length,
             tool: tool, blur: blurMode, strokes: strokes.length, redo: redoStack.length,
             card: cardFile !== "", cardSerial: cardSerial,
             toast: toastText, toastSerial: toastSerial,   // notices never carry content
@@ -412,6 +492,12 @@ Singleton {
             root.countdownLeft--
             if (root.countdownLeft <= 0) {
                 stop()
+                if (root.pendingRecord) {
+                    const p = root.pendingRecord
+                    root.close()
+                    root.recordLater(p.geometry, p.screen)
+                    return
+                }
                 root.phase = "settle"
                 settle.restart()
             }
@@ -441,7 +527,12 @@ Singleton {
             saveTimer.restart()
     }
     onModeChanged: save()
-    onKindChanged: save()
+    onKindChanged: {
+        save()
+        // In Vídeo the delay comes before recording: pick the area right away
+        if (open && kind === "video" && phase === "choose")
+            phase = "select"
+    }
     onDelayChanged: save()
     onAudioSystemChanged: save()
     onAudioMicChanged: save()
@@ -488,6 +579,55 @@ Singleton {
         onLoadFailed: root.loaded = true
         onSaved: Quickshell.execDetached(["chmod", "600", root.statePath])
     }
+
+    // The overlay (or the countdown) is off the screen before recording
+    Timer {
+        id: recordDelay
+        interval: 250
+        onTriggered: {
+            const p = root.pendingRecord
+            root.pendingRecord = null
+            if (p)
+                root.startRecord(p.geometry, p.screen)
+        }
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.recording
+        onTriggered: root.elapsed = Math.floor((Date.now() - root.recordStart) / 1000)
+    }
+
+    Process {
+        id: recorder
+        stderr: StdioCollector {
+            id: recorderErr
+        }
+        onExited: code => {
+            const quick = Date.now() - root.recordStart < 1000
+            root.recording = false
+            root.elapsed = 0
+            if (!quick && (code === 0 || root.stopping)) {
+                root.toast("󰕧", "Vídeo salvo", root.videosDir)
+            } else {
+                // Only the recorder's messages, with any path taken out
+                const why = recorderErr.text.trim().split("\n").slice(-3).join(" | ").replace(/\/\S+/g, "<caminho>")
+                console.warn(`capture: o gravador saiu (código ${code}): ${why}`)
+                root.toast("󰀦", "Não deu para gravar", "")
+            }
+        }
+    }
+
+    // A VM has no GPU encoder for the recorder
+    Process {
+        running: true
+        command: ["systemd-detect-virt", "--vm", "--quiet"]
+        onExited: code => root.isVm = code === 0
+    }
+
+    // The shell is closing (logout, reload): stop the recording properly
+    Component.onDestruction: stopRecord()
 
     Component.onCompleted: {
         Quickshell.execDetached(["sh", "-c", "umask 077; mkdir -p \"$1\"; chmod 700 \"$1\"", "sh", stateDir])

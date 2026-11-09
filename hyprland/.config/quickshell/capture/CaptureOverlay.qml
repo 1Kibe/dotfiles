@@ -153,6 +153,12 @@ Scope {
                 function exportSelection(copy) {
                     if (!hasSel)
                         return
+                    // Vídeo: record the area (Tela = the monitor by name)
+                    if (CaptureState.kind === "video" && CaptureState.purpose === "capture") {
+                        CaptureState.recordSelection(CaptureState.pickMode === "screen" ? null
+                            : { x: originX + selX, y: originY + selY, w: selW, h: selH }, name)
+                        return
+                    }
                     if (annot.editingText)
                         annot.commitText()
                     exportDelay.copy = copy
@@ -466,7 +472,8 @@ Scope {
                     // it, at the bottom, when there is room on neither side (Tela,
                     // a maximized window). Never over the capture bar.
                     AnnotateBar {
-                        visible: win.hasSel && CaptureState.purpose !== "ocr" && !(picker.pressed && picker.drag !== "")
+                        visible: win.hasSel && CaptureState.purpose !== "ocr" && (CaptureState.kind === "photo" || win.editing)
+                                 && !(picker.pressed && picker.drag !== "")
                         readonly property real hint: 34      // its own hint shows under it
                         readonly property bool fitsBelow: win.selY + win.selH + 10 + height + hint <= win.height
                         readonly property bool fitsAbove: win.selY - 10 - height >= win.topFree

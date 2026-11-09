@@ -156,3 +156,4 @@ xdg-utils                    # xdg-open: Capturas folder from the capture notice
 tesseract                    # OCR of the capture (Super+Shift+T)
 tesseract-data-por           # its Portuguese
 tesseract-data-eng           # and English
+gpu-screen-recorder          # screen recording of the capture (Super+Alt+R)
