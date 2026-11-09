@@ -8,8 +8,11 @@ Item {
 
     property real value: 0
     property bool muted: false
+    // The slider never sets `value` itself: the owner applies the new value
+    // and it comes back through the binding (VolumePanel sets the node volume)
     signal moved(real value)
 
+    // Clamped to 0..1 and rounded to whole percents
     function emit(v) {
         root.moved(Math.round(Math.min(1, Math.max(0, v)) * 100) / 100)
     }
@@ -31,6 +34,7 @@ Item {
             height: parent.height
             radius: parent.radius
             color: root.muted ? Theme.gray : Theme.accentLight
+            // No animation while dragging, so the fill sticks to the pointer
             Behavior on width {
                 enabled: !mouse.pressed
                 NumberAnimation { duration: Theme.animFast; easing.type: Easing.OutCubic }
@@ -43,6 +47,7 @@ Item {
         height: 12
         radius: 6
         anchors.verticalCenter: parent.verticalCenter
+        // Travels the width minus its own, so it never sticks out at the ends
         x: (root.width - width) * Math.min(1, root.value)
         color: Theme.text
         scale: mouse.pressed ? 1.2 : mouse.containsMouse ? 1.1 : 1
@@ -63,11 +68,13 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        // Pointer x over the width gives 0..1; emit() clamps a drag past the ends
         onPressed: event => root.emit(event.x / width)
         onPositionChanged: event => {
             if (pressed)
                 root.emit(event.x / width)
         }
+        // 120 = one wheel notch = one 5% step
         onWheel: event => {
             wheel += event.angleDelta.y
             while (wheel >= 120) {

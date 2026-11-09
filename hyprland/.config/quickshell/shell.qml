@@ -10,6 +10,8 @@ import qs.state
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
 // get their own folder and a line here.
 ShellRoot {
+    // Each Bar gets its screen as modelData; bars are added and removed as
+    // monitors are plugged in and out
     Variants {
         model: Quickshell.screens
         delegate: Component {
@@ -26,6 +28,7 @@ ShellRoot {
     IpcHandler {
         target: "capture"
 
+        // Print: the capture bar over a frozen screen
         function open(): void {
             CaptureState.openCapture()
         }
@@ -59,6 +62,8 @@ ShellRoot {
         target: "clipboard"
 
         function toggle(): void {
+            // focusedMonitor can be null for a moment (monitors changing):
+            // then the key does nothing. Same in the handlers below.
             const monitor = Hyprland.focusedMonitor
             if (monitor)
                 ClipboardStore.toggle(monitor.name)
@@ -76,6 +81,7 @@ ShellRoot {
 
         function toggle(): void {
             const monitor = Hyprland.focusedMonitor
+            // By key, so the panel uses a focus grab (see ShellState.openedByKey)
             if (monitor)
                 ShellState.toggleByKey("power", monitor.name)
         }

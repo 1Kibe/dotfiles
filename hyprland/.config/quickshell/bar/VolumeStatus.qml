@@ -12,7 +12,9 @@ BarItem {
     readonly property string monitorName: monitor ? monitor.name : ""
     readonly property bool open: ShellState.isOpen("volume", monitorName)
 
+    // Follows the system default output, wherever it is changed
     readonly property var sink: Pipewire.defaultAudioSink
+    // A node can exist before its audio params are bound: every read checks ok
     readonly property bool ok: sink !== null && sink.ready && sink.audio !== null
     readonly property real volume: ok ? sink.audio.volume : 0
     readonly property bool muted: ok && sink.audio.muted
@@ -28,13 +30,17 @@ BarItem {
             return "󰝟"
         if (muted)
             return `󰝟 ${percent}%`
+        // Low, medium, high by thirds of the range
         const icon = volume < 0.34 ? "󰕿" : volume < 0.67 ? "󰖀" : "󰕾"
         return `${icon} ${percent}%`
     }
     textColor: !ok ? Theme.gray : muted ? Theme.red : Theme.text
+    // The friendliest name the node has; nothing while the panel is open
     tooltip: open ? "" : ok ? (sink.description || sink.nickname || sink.name) : "Sem saída de áudio"
 
     onClicked: ShellState.toggle("volume", monitorName)
+    // steps: ±1 per wheel notch (BarItem); rounded to whole percents like
+    // the panel slider
     onScrolled: steps => {
         if (!ok)
             return
@@ -45,6 +51,7 @@ BarItem {
         sink.audio.volume = Math.round(next * 100) / 100
     }
 
+    // A child of the button so it anchors under it; ShellState opens it
     VolumePanel {
         button: root
         open: root.open

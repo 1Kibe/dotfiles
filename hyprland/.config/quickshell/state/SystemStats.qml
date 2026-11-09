@@ -11,6 +11,8 @@ import qs.theme
 Singleton {
     id: root
 
+    // Read by bar/SystemStatus (rings), bar/SystemPanel and the
+    // "taskmanager stats" IPC in shell.qml
     property real cpu: 0          // percent of the whole machine
     property int cores: 0
     property real memUsed: 0      // kB (MemTotal - MemAvailable)
@@ -30,6 +32,8 @@ Singleton {
     // Never offered for "end process": the session itself and its sound
     readonly property var protectedNames: /^(qs|quickshell|Hyprland|hyprland|Xwayland|uwsm.*|pipewire.*|wireplumber|systemd.*)$/
 
+    // CPU use is the difference between two reads of cumulative counters,
+    // so the previous read is kept here and the very first one shows nothing
     property var lastCpu: null        // { total, idle } of the previous /proc/stat read
     property var lastTicks: ({})      // pid -> utime + stime of the previous list read
     property real lastTotal: 0        // all-CPU jiffies at that read
@@ -48,18 +52,23 @@ Singleton {
     }
 
     function readCpu(text) {
+        // One "cpuN" line per core; the first line ("cpu ") is the sum of all
         cores = (text.match(/^cpu\d+ /gm) || []).length
         const f = cpuLine(text)
         if (f.length < 5)
             return
         const total = sumFields(f)
+        // Waiting on disk (iowait) counts as idle: the CPU is free meanwhile
         const idle = Number(f[3]) + Number(f[4])
+        // Busy share of the time since the last read; skipped on the first
+        // read or if the counters did not move
         if (lastCpu && total > lastCpu.total)
             cpu = Math.max(0, Math.min(100, (1 - (idle - lastCpu.idle) / (total - lastCpu.total)) * 100))
         lastCpu = { total: total, idle: idle }
     }
 
     function readMem(text) {
+        // MemAvailable, not MemFree: cache the kernel can drop is not "used"
         const total = text.match(/^MemTotal:\s+(\d+)/m)
         const avail = text.match(/^MemAvailable:\s+(\d+)/m)
         if (total && avail) {
@@ -72,10 +81,14 @@ Singleton {
     // "@", the pids of this user
     function readProcesses(text) {
         const parts = text.split("\n@\n")
+        // A read that ends after the panel closed is dropped
         if (!watching || parts.length < 3)
             return
         const total = sumFields(cpuLine(parts[0]))
+        // Pids of this user: the only ones a plain kill (no sudo) can end
         const own = new Set(parts[2].trim().split(/\s+/))
+        // Measured against the jiffies of all CPUs, so a process's cpu is a
+        // share of the whole machine, on the same scale as root.cpu
         const span = total - lastTotal
         const ticks = {}
         const list = []
@@ -87,6 +100,8 @@ Singleton {
                 continue
             const pid = line.slice(0, open)
             const name = line.slice(open + 2, close)
+            // f[0] is field 3 (state) of proc_pid_stat(5), so utime and
+            // stime (fields 14, 15) are f[11], f[12] and rss (24) is f[21]
             const f = line.slice(close + 2).split(" ")
             const used = Number(f[11]) + Number(f[12])   // utime + stime
             const rss = Number(f[21]) * 4                 // pages of 4 kB
@@ -102,9 +117,12 @@ Singleton {
                 killable: own.has(pid) && !protectedNames.test(name)
             })
         }
+        // Without previous ticks (first read after opening) every cpu is 0,
+        // and bar/SystemPanel does not freeze its rows on that first order
         processesReady = Object.keys(lastTicks).length > 0
         lastTicks = ticks
         lastTotal = total
+        // Counts kernel threads too (they are in ticks, not in the list)
         processCount = Object.keys(ticks).length
         processes = list
     }
@@ -131,12 +149,15 @@ Singleton {
     }
 
     function endProcess(pid) {
+        // Called by bar/SystemPanel. Checked again here: only a pid still in
+        // the list and marked killable gets SIGTERM, so it can exit cleanly
         const p = processes.find(x => x.pid === pid)
         if (p && p.killable)
             Quickshell.execDetached(["kill", "-TERM", String(pid)])
     }
 
     function refreshProcesses() {
+        // A read still running is not restarted, so slow reads never pile up
         if (watching && !list.running)
             list.running = true
     }
@@ -150,10 +171,13 @@ Singleton {
             refreshProcesses()
             quickSecond.restart()
         } else {
+            // Closed: no stale rows the next time it opens
             processes = []
         }
     }
 
+    // One tick for everything; the process list only runs while the panel
+    // is open (see refreshProcesses)
     Timer {
         interval: 2000
         running: true
@@ -169,6 +193,7 @@ Singleton {
         }
     }
 
+    // 600 ms is enough ticks for a first CPU column, short enough not to wait
     Timer {
         id: quickSecond
         interval: 600
@@ -193,6 +218,8 @@ Singleton {
         onLoaded: root.uptime = Number(text().split(" ")[0]) || 0
     }
 
+    // Reloaded only when a sensor was found (see the Timer); the value is in
+    // millidegrees
     FileView {
         id: tempFile
         path: root.tempPath
@@ -202,6 +229,9 @@ Singleton {
     // One cat for the whole list, only while the panel is open
     Process {
         id: list
+        // Sections split by "@" lines (see readProcesses). The bare echo keeps
+        // "@" on its own line even if the last stat failed (process gone);
+        // owners come from find -user, since stat has no uid field
         command: ["sh", "-c", "cat /proc/stat; echo @; cat /proc/[0-9]*/stat 2>/dev/null; echo; echo @; "
                   + "find /proc -mindepth 1 -maxdepth 1 -user \"$(id -u)\" -name '[0-9]*' -printf '%f '"]
         stdout: StdioCollector {
@@ -227,6 +257,7 @@ Singleton {
             for z in /sys/class/thermal/thermal_zone*; do
               if [ "$(cat "$z/type" 2>/dev/null)" = x86_pkg_temp ]; then echo "$z/temp"; exit; fi
             done`]
+        // No output (no CPU sensor): tempPath stays "" and hasTemp false
         stdout: StdioCollector {
             onStreamFinished: root.tempPath = text.trim()
         }

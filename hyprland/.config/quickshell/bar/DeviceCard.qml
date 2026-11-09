@@ -10,12 +10,19 @@ import qs.theme
 Rectangle {
     id: root
 
+    // A BluetoothDevice from Bluetooth.defaultAdapter, passed in by
+    // BluetoothPanel's Repeaters
     required property var device
     property string attempt: ""   // "connect" or "pair" while trying
+    // A connect attempt fails only after BlueZ went through Connecting:
+    // right after connect() the state can still read Disconnected
     property bool sawConnecting: false
+    // Shown in the state line (red) until the next attempt or a connection
     property string error: ""
 
     readonly property int battery: device.batteryAvailable ? Math.round(device.battery * 100) : -1
+    // From the freedesktop icon name BlueZ gives the device (its class);
+    // a plain Bluetooth icon for anything unknown
     readonly property string typeIcon: {
         const i = device.icon || ""
         if (i.startsWith("audio-head"))
@@ -36,6 +43,8 @@ Rectangle {
             return "󰌢"
         return "󰂯"
     }
+    // First match wins: an error, then the transient states, then what a
+    // click would do
     readonly property string status: {
         if (error !== "")
             return error
@@ -70,6 +79,8 @@ Rectangle {
             device.connect()
     }
 
+    // Only connect and pair are tracked as attempts; a disconnect just shows
+    // up in the state line as "Desconectando…"
     function activate() {
         if (device.connected)
             device.disconnect()
@@ -86,19 +97,26 @@ Rectangle {
     Behavior on color {
         ColorAnimation { duration: Theme.animFast }
     }
+    // Pressed: a bit smaller; hover: a bit bigger. The spring gives a small
+    // bounce instead of a linear change.
     scale: mouse.pressed ? 0.98 : mouse.containsMouse ? 1.01 : 1
     Behavior on scale {
         SpringAnimation { spring: 4; damping: 0.4; epsilon: 0.005 }
     }
 
+    // Last resort when BlueZ never reports a state change: the attempt is
+    // called failed after 20 s
     Timer {
         id: timeout
         interval: 20000
         onTriggered: root.fail(root.attempt === "pair" ? "Não pareou" : "Não conectou")
     }
 
+    // Follows the attempt through the device's property changes, since no
+    // failure signal comes (see the header)
     Connections {
         target: root.device
+        // Connected by any path (this click, auto reconnect): attempt over
         function onConnectedChanged() {
             if (root.device.connected) {
                 root.attempt = ""
@@ -114,6 +132,7 @@ Rectangle {
             else if (root.device.state === BluetoothDeviceState.Disconnected && root.sawConnecting)
                 root.fail("Não conectou")
         }
+        // Pairing ended: paired means go on to connect, otherwise it failed
         function onPairingChanged() {
             if (root.attempt !== "pair" || root.device.pairing)
                 return
@@ -140,6 +159,7 @@ Rectangle {
         anchors.rightMargin: 12
         spacing: 12
 
+        // Icon circle: accent while connected
         Rectangle {
             implicitWidth: Theme.cardIcon
             implicitHeight: Theme.cardIcon
@@ -164,6 +184,7 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
+                // Some devices only announce their address
                 text: root.device.name || root.device.address
                 elide: Text.ElideRight
                 color: Theme.text
@@ -178,6 +199,8 @@ Rectangle {
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
+            // Battery bar, only for devices that report one (-1 otherwise):
+            // red up to 15%, yellow up to 30%
             Rectangle {
                 visible: root.battery >= 0
                 Layout.fillWidth: true

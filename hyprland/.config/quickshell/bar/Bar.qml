@@ -16,6 +16,8 @@ PanelWindow {
 
     required property var modelData
     screen: modelData
+    // Hyprland's view of this screen: its name is the key ShellState uses to
+    // open a panel on this bar only, so every button below gets it
     readonly property var hyprMonitor: Hyprland.monitorFor(modelData)
 
     anchors {
@@ -23,6 +25,7 @@ PanelWindow {
         left: true
         right: true
     }
+    // Same side gaps as the windows, so the strip lines up with them
     margins {
         left: Theme.gap
         right: Theme.gap
@@ -39,11 +42,14 @@ PanelWindow {
                                          && hyprMonitor !== null && ShellState.openOn === hyprMonitor.name
     WlrLayershell.keyboardFocus: keyPanelHere ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
+    // Gets the keys only while keyPanelHere gives the bar keyboard focus
     Item {
         focus: true
         Keys.onEscapePressed: ShellState.close()
     }
 
+    // The window itself is clear; this strip paints the bar, so the rounded
+    // bottom corners show what is behind them
     Rectangle {
         anchors.fill: parent
         color: Theme.barFill
@@ -66,6 +72,9 @@ PanelWindow {
         }
     }
 
+    // Centered on the whole bar, not between the two rows, so the clock stays
+    // put while the side rows change width. Top-anchored: the island fills the
+    // full bar height.
     CenterIsland {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -81,6 +90,8 @@ PanelWindow {
 
         // Only while recording the screen (Super+Alt+R)
         RecordingPill {}
+        // Each status button owns its drop panel; the monitor tells it which
+        // bar the panel belongs to
         VolumeStatus {
             monitor: root.hyprMonitor
         }

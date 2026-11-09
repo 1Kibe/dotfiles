@@ -24,12 +24,16 @@ Item {
     implicitWidth: Theme.ringSize
     implicitHeight: implicitWidth
 
+    // The stroke is centered on the path: half the thickness goes outside,
+    // so this radius keeps the whole ring inside the item
     readonly property real radius: (width - thickness) / 2
 
     Shape {
         anchors.fill: parent
+        // Smooth arcs at these small sizes without multisampling
         preferredRendererType: Shape.CurveRenderer
 
+        // Track: the full circle behind the value
         ShapePath {
             fillColor: "transparent"
             strokeColor: Theme.ringTrack
@@ -55,12 +59,14 @@ Item {
                 centerY: root.height / 2
                 radiusX: root.radius
                 radiusY: root.radius
+                // Degrees clockwise from 3 o'clock: -90 starts at the top
                 startAngle: -90
                 sweepAngle: 360 * root.shown
             }
         }
     }
 
+    // Eases between normal, yellow and red as the load changes
     Behavior on color {
         ColorAnimation { duration: Theme.animNormal }
     }
@@ -70,6 +76,7 @@ Item {
         text: root.text
         color: Theme.text
         font.family: Theme.font
+        // Pixels, not points: it has to fit a ring sized in pixels
         font.pixelSize: root.textSize
         font.bold: root.bold
     }

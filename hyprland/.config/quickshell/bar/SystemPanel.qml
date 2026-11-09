@@ -12,11 +12,14 @@ DropPanel {
     id: root
 
     property string sortBy: "cpu"      // "cpu" or "mem"
+    // A copy picked from SystemStats.processes by pickRows(), not a binding,
+    // so the order can be held still while the mouse is over the list
     property var rows: []              // processes on screen
     property int armedPid: -1          // process waiting for its second click
     property bool frozenReady: false   // rows on screen already sorted with CPU numbers
     readonly property int maxRows: 8
 
+    // The rings sit on the left of the bar: grow right from them
     alignLeft: true
     panelWidth: 360
 
@@ -28,8 +31,11 @@ DropPanel {
             frozenReady = false
         }
     }
+    // A tab change re-sorts at once, even under the mouse
     onSortByChanged: pickRows(true)
 
+    // SystemStats reads the processes every 2 s only while this panel is
+    // open (its `watching`); each new list refreshes the rows
     Connections {
         target: SystemStats
         function onProcessesChanged() {
@@ -43,8 +49,11 @@ DropPanel {
     // not before the first CPU numbers, and not after a tab change.
     function pickRows(resort) {
         const key = sortBy
+        // Ties (often 0% CPU) fall back to memory, so the order is stable
         const sorted = SystemStats.processes.slice().sort((a, b) => b[key] - a[key] || b.mem - a.mem)
         let picked
+        // Frozen: the same pids in the same order with fresh numbers; ended
+        // processes drop out and the free slots fill from the top of the sort
         if (listHover.hovered && rows.length > 0 && !resort && frozenReady) {
             const byPid = {}
             for (const p of sorted)
@@ -60,11 +69,15 @@ DropPanel {
             picked = sorted.slice(0, maxRows)
         }
         rows = picked
+        // The first list has 0% CPU everywhere (one read only): never freeze
+        // that order. An armed process that left the list is disarmed.
         frozenReady = SystemStats.processesReady
         if (armedPid !== -1 && !rows.some(r => r.pid === armedPid))
             armedPid = -1
     }
 
+    // Two clicks: the first arms the row (red, "Clique de novo"), the second
+    // on the same pid sends SIGTERM. SystemStats checks `killable` again.
     function end(proc) {
         if (armedPid !== proc.pid) {
             armedPid = proc.pid
@@ -74,6 +87,8 @@ DropPanel {
         SystemStats.endProcess(proc.pid)
     }
 
+    // A big ring with a title and a detail line. value is 0-100; warn and
+    // crit pick the ring color (temperature passes its own limits).
     component BigGauge: ColumnLayout {
         id: gauge
 
@@ -113,6 +128,7 @@ DropPanel {
         }
     }
 
+    // Sort tab, a pill: tinted accent when active, veil on hover
     component Tab: Rectangle {
         id: tab
 
@@ -120,6 +136,7 @@ DropPanel {
         required property string key
         readonly property bool active: root.sortBy === key
 
+        // 10 px of padding on each side of the label
         implicitWidth: tabText.implicitWidth + 20
         implicitHeight: 24
         radius: height / 2
@@ -171,6 +188,7 @@ DropPanel {
             title: "Memória"
             detail: `${SystemStats.memText(SystemStats.memUsed)} / ${SystemStats.memText(SystemStats.memTotal)}`
         }
+        // Hidden where no sensor is found (a VM usually has none)
         BigGauge {
             visible: SystemStats.hasTemp
             value: SystemStats.temp
@@ -192,6 +210,8 @@ DropPanel {
         font.pointSize: Theme.fontSize - 1
     }
 
+    // Tabs on the left, column headers on the right. Same margins and cell
+    // widths as the rows below, so the headers sit over their numbers.
     RowLayout {
         Layout.fillWidth: true
         Layout.leftMargin: 8
@@ -229,6 +249,8 @@ DropPanel {
         Layout.fillWidth: true
         spacing: 0
 
+        // Read by pickRows() to hold the order; a HoverHandler sees the
+        // pointer even over the rows' own MouseAreas
         HoverHandler {
             id: listHover
         }
@@ -255,6 +277,7 @@ DropPanel {
                 readonly property var proc: index < root.rows.length ? root.rows[index] : null
                 readonly property bool armed: proc !== null && root.armedPid === proc.pid
 
+                // Fewer processes than maxRows: the spare rows just hide
                 visible: proc !== null
                 Layout.fillWidth: true
                 implicitHeight: 30
@@ -264,6 +287,7 @@ DropPanel {
                     ColorAnimation { duration: Theme.animFast }
                 }
 
+                // Hover only (veil and showing the ✕); the row has no click
                 MouseArea {
                     id: lineMouse
                     anchors.fill: parent
@@ -284,6 +308,7 @@ DropPanel {
                         font.family: Theme.font
                         font.pointSize: Theme.fontSize
                     }
+                    // The column being sorted by is brighter
                     Cell {
                         text: line.proc ? SystemStats.percentText(line.proc.cpu) : ""
                         color: root.sortBy === "cpu" ? Theme.text : Theme.fg4
@@ -292,6 +317,9 @@ DropPanel {
                         text: line.proc ? SystemStats.memText(line.proc.mem) : ""
                         color: root.sortBy === "mem" ? Theme.text : Theme.fg4
                     }
+                    // ✕: only for this user's processes (SystemStats `killable`),
+                    // on hover or while armed. Faded with opacity, not hidden,
+                    // so the column keeps its width and the numbers stay aligned.
                     Rectangle {
                         implicitWidth: 22
                         implicitHeight: 22
@@ -314,6 +342,7 @@ DropPanel {
                         MouseArea {
                             id: closeMouse
                             anchors.fill: parent
+                            // An invisible ✕ must not take clicks
                             enabled: parent.shown
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor

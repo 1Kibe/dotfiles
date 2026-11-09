@@ -10,7 +10,10 @@ import qs.state
 PanelWindow {
     id: root
 
+    // The monitor of the capture bar (focusName is set when the session starts)
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
+    // At 0 the phase moves to "settle" for a moment, so this window is
+    // already gone when the frozen frame is taken
     visible: CaptureState.open && CaptureState.phase === "countdown"
     implicitWidth: Theme.countdownSize
     implicitHeight: Theme.countdownSize
@@ -18,6 +21,7 @@ PanelWindow {
     color: Theme.clear
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-capture-countdown"
+    // Takes the keyboard only while shown, so Esc reaches it
     WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     Rectangle {
@@ -36,6 +40,8 @@ PanelWindow {
             font.pixelSize: 38
             font.bold: true
 
+            // CaptureState's 1 s tick changes the number: each one fades up
+            // from 0.2 and shrinks from 1.3x to its size
             onTextChanged: pop.restart()
             ParallelAnimation {
                 id: pop
@@ -45,6 +51,8 @@ PanelWindow {
         }
     }
 
+    // Esc closes the whole session, not only the count: a recording waiting
+    // for it is dropped too
     Item {
         focus: true
         Keys.onEscapePressed: CaptureState.cancelCountdown()

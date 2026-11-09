@@ -14,19 +14,26 @@ DropPanel {
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property bool powered: adapter !== null && adapter.enabled
     readonly property var devices: powered ? adapter.devices.values : []
+    // The three lists of cards are disjoint; a nearby device without a name
+    // is left out, as it could not be told apart
     readonly property var connected: devices.filter(d => d.connected)
     readonly property var paired: devices.filter(d => d.paired && !d.connected)
     readonly property var nearby: devices.filter(d => !d.paired && !d.connected && d.name !== "")
     readonly property bool scanning: adapter !== null && adapter.discovering
+    // rfkill soft block: enabling the adapter alone does nothing, it has to
+    // be unblocked first (see the switch below)
     readonly property bool blocked: adapter !== null && adapter.state === BluetoothAdapterState.Blocked
 
     panelWidth: 320
 
+    // A scan never outlives the panel: stop it when the panel closes
     onOpenChanged: {
         if (!open && scanning)
             adapter.discovering = false
     }
 
+    // After an rfkill unblock: BlueZ takes a moment to see the adapter as
+    // usable, so the power on waits 1 s instead of failing right away
     Timer {
         id: powerOn
         interval: 1000
@@ -36,6 +43,7 @@ DropPanel {
         }
     }
 
+    // Grey caption above each list; wraps for the long rfkill message
     component SectionLabel: Text {
         Layout.fillWidth: true
         Layout.leftMargin: 12
@@ -77,6 +85,8 @@ DropPanel {
         }
     }
 
+    // Off or blocked: the only thing in the panel besides the switch and the
+    // "Mais opções…" row
     SectionLabel {
         visible: !root.powered
         Layout.bottomMargin: 6
@@ -141,6 +151,8 @@ DropPanel {
             onClicked: root.adapter.discovering = !root.scanning
         }
     }
+    // BlueZ keeps devices found by an earlier scan, so they stay listed after
+    // "Parar" until they drop off
     Repeater {
         model: root.scanning || root.nearby.length > 0 ? root.nearby : []
         DeviceCard {
@@ -166,6 +178,8 @@ DropPanel {
     PanelRow {
         icon: "󰒓"
         text: "Mais opções…"
+        // Closes the panel first so the new terminal gets the focus. The
+        // window class matches a float rule in hypr/modules/rules.lua.
         onClicked: {
             ShellState.close()
             Quickshell.execDetached(["alacritty", "--class", "bluetui", "-e", "bluetui"])

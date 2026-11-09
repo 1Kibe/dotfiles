@@ -6,6 +6,8 @@ Item {
     id: root
 
     property bool checked: false
+    // Only reports the click: the owner flips the real setting and `checked`
+    // follows it (NetworkPanel, BluetoothPanel)
     signal toggled()
 
     implicitWidth: 36
@@ -19,6 +21,8 @@ Item {
             ColorAnimation { duration: Theme.animFast }
         }
 
+        // Knob: 14 px in the 20 px track leaves 3 px all around; it slides
+        // between the two ends
         Rectangle {
             width: 14
             height: 14

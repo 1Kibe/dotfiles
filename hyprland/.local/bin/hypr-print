@@ -10,6 +10,7 @@ set -euo pipefail
 mode="${1:-}"
 case "$mode" in
   tela)
+    # No geometry: grim takes every monitor
     geometry=""
     ;;
   area)
@@ -23,6 +24,8 @@ case "$mode" in
     geometry="$(slurp)" || exit 0
     ;;
   janela)
+    # Focused window as "x,y wxh" (the format grim -g takes); no window
+    # focused (empty workspace) saves nothing
     geometry="$(hyprctl -j activewindow \
       | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else "" end')"
     [[ -n "$geometry" ]] || exit 0
@@ -33,6 +36,8 @@ case "$mode" in
     ;;
 esac
 
+# xdg-user-dir gives the localized Pictures folder; without it, ~/Pictures.
+# One file per second: the name is the date and time.
 pictures="$(xdg-user-dir PICTURES 2>/dev/null || true)"
 dir="${pictures:-$HOME/Pictures}/Capturas"
 file="${dir}/$(date +%Y-%m-%d_%H-%M-%S).png"

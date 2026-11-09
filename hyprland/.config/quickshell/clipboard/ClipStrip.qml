@@ -15,7 +15,9 @@ Rectangle {
     property string tab: "history"       // "history" or "emoji"
     property string kind: "all"         // filter chip
     property string emojiCat: "faces"   // emoji group chip
+    // Filters the cards (matches) and the emoji (EmojiStore.list)
     property string query: search.text
+    // "Limpar" waiting for its second click; reset on each opening
     property bool clearArmed: false
     property int selected: 0             // index among the cards (headers skipped)
 
@@ -34,6 +36,7 @@ Rectangle {
         if (query === "")
             return true
         const q = query.toLowerCase()
+        // Images have no text: they match "imagem" or their format (png, jpeg)
         if (entry.kind === "image")
             return "imagem".includes(q) || entry.mime.toLowerCase().includes(q)
         return entry.text.toLowerCase().includes(q)
@@ -43,16 +46,20 @@ Rectangle {
     // a narrow header before each group
     readonly property var cards: {
         const pinned = ClipboardStore.pins.filter(matches)
+        // Texts are compared by content; images are always listed
         const pinnedTexts = new Set(ClipboardStore.pins.filter(p => p.kind !== "image").map(p => p.text))
         const recent = ClipboardStore.items.filter(i => matches(i) && !(i.kind !== "image" && pinnedTexts.has(i.text)))
         return pinned.concat(recent)
     }
     readonly property int pinnedCount: ClipboardStore.pins.filter(matches).length
+    // ListView rows: { header } or { card, index }; index is the place in
+    // cards, which is what selected counts
     readonly property var model: {
         const out = []
         if (pinnedCount > 0)
             out.push({ header: "Fixados" })
         cards.forEach((c, i) => {
+            // Before the first recent card (also when nothing is pinned)
             if (i === pinnedCount && cards.length > pinnedCount)
                 out.push({ header: "Recentes" })
             out.push({ card: c, index: i })
@@ -60,15 +67,19 @@ Rectangle {
         return out
     }
 
+    // A delete or a new filter keeps the selection inside the list
     onCardsChanged: selected = Math.max(0, Math.min(selected, cards.length - 1))
     onKindChanged: selected = 0
     onQueryChanged: selected = 0
     onSelectedChanged: {
         const row = model.findIndex(m => m.card !== undefined && m.index === selected)
+        // Row 1 is the first card after a header: go to the very start so
+        // the header shows too
         if (row >= 0)
             row === 1 ? strip.positionViewAtBeginning() : strip.positionViewAtIndex(row, ListView.Contain)
     }
 
+    // Called by ClipboardOverlay on each opening
     function reset() {
         search.text = ""
         tab = "history"
@@ -86,10 +97,12 @@ Rectangle {
         tab = "emoji"
     }
 
+    // Called by ClipboardOverlay when a note gives up the keyboard
     function focusSearch() {
         search.forceActiveFocus()
     }
 
+    // The card that Enter, Ctrl+P and Del act on
     function current() {
         return cards.length > 0 ? cards[selected] : null
     }
@@ -102,6 +115,7 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.AllButtons
+        // A vertical wheel scrolls the row sideways (x8 for a useful speed)
         onWheel: event => strip.flick(event.angleDelta.y * 8, 0)
     }
 
@@ -113,6 +127,7 @@ Rectangle {
         property bool enabled: true
         signal pressed()
 
+        // 10 px each side of the label; a radius of half the height makes a pill
         implicitWidth: chipText.implicitWidth + 20
         implicitHeight: 26
         radius: height / 2
@@ -173,6 +188,7 @@ Rectangle {
                 color: Theme.bg2
             }
             Repeater {
+                // Kind filters on the history tab, emoji groups on the Emoji tab
                 model: root.tab === "history" ? root.chips : EmojiStore.categories
 
                 Chip {
@@ -186,6 +202,7 @@ Rectangle {
                             root.kind = modelData.key
                         } else {
                             root.emojiCat = modelData.key
+                            // Otherwise the search would still cover every group
                             search.text = ""
                         }
                         search.forceActiveFocus()
@@ -234,6 +251,8 @@ Rectangle {
                         font: search.font
                     }
 
+                    // Every key lands here: navigation keys are handled and
+                    // accepted, any other key types into the field
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
                         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
@@ -242,11 +261,13 @@ Rectangle {
                             else
                                 root.tab = "history"
                         } else if (event.key === Qt.Key_Escape) {
+                            // First Esc clears the search, the next one closes
                             if (search.text !== "")
                                 search.text = ""
                             else
                                 ClipboardStore.close()
                         } else if (root.tab === "emoji") {
+                            // Arrows and Enter go to the emoji grid; other keys type
                             if (!emojiGrid.key(event))
                                 return
                         } else if (event.key === Qt.Key_Left) {
@@ -265,6 +286,7 @@ Rectangle {
                         } else {
                             return
                         }
+                        // Only reached by a handled key (the others returned above)
                         event.accepted = true
                     }
                 }
@@ -301,6 +323,7 @@ Rectangle {
                         } else {
                             root.clearArmed = true
                         }
+                        // A click takes the focus from the search: give it back
                         search.forceActiveFocus()
                     }
                 }
@@ -316,6 +339,8 @@ Rectangle {
                 id: emojiGrid
                 anchors.fill: parent
                 visible: root.tab === "emoji"
+                // Filtered only on the Emoji tab, so typing in the history
+                // never walks the whole emoji list
                 model: root.tab === "emoji" ? EmojiStore.list(root.emojiCat, root.query) : []
                 emptyText: root.query === "" && root.emojiCat === "recent" ? "Nenhum emoji usado ainda" : "Nada encontrado"
             }
@@ -328,6 +353,7 @@ Rectangle {
                 spacing: 10
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+                // Two cards past each edge stay created (with their previews)
                 cacheBuffer: Theme.cardSize * 2
                 model: root.model
 
@@ -337,6 +363,7 @@ Rectangle {
                     required property var modelData
                     readonly property bool isHeader: modelData.header !== undefined
 
+                    // A header is a narrow column with its title rotated
                     width: isHeader ? 22 : Theme.cardSize
                     height: Theme.cardSize
 
@@ -352,6 +379,7 @@ Rectangle {
                     }
 
                     Loader {
+                        // A ClipCard needs an entry: none for header rows
                         active: !slot.isHeader
                         anchors.fill: parent
                         sourceComponent: ClipCard {
@@ -364,6 +392,7 @@ Rectangle {
             }
 
             Text {
+                // Waits for the first load, so "empty" never flashes while cliphist runs
                 visible: root.tab === "history" && ClipboardStore.loaded && root.cards.length === 0
                 anchors.centerIn: parent
                 text: root.query !== "" || root.kind !== "all" ? "Nada encontrado" : "Nada copiado ainda"
@@ -377,6 +406,8 @@ Rectangle {
             Layout.fillHeight: true
         }
 
+        // Key hints; on the Emoji tab they start with the English name of the
+        // selected emoji
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: root.tab === "history"

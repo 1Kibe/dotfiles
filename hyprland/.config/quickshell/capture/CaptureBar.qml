@@ -9,9 +9,12 @@ import qs.state
 Rectangle {
     id: root
 
+    // Hint of the hovered button; hidden ones (sound, mic, record in Foto)
+    // are skipped
     property string hint: [bArea, bWin, bScreen, bPhoto, bVideo, bSound, bMic, bRecord, bDelay, bOcr, bClose]
                           .filter(b => b.visible && b.hovered).map(b => b.hint)[0] || ""
 
+    // 8 px around the row of buttons (6 px above and below)
     implicitWidth: row.implicitWidth + 16
     implicitHeight: Theme.captureButtonHeight + 12
     radius: Theme.pillRadius
@@ -51,6 +54,8 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 2
 
+        // No mode is lit during OCR (it always takes an area); a click on one
+        // goes back to a normal capture (CaptureState.chooseMode)
         CaptureButton {
             id: bArea
             icon: "󰩭"
@@ -93,6 +98,7 @@ Rectangle {
             danger: CaptureState.recording
             active: CaptureState.kind === "video" && !CaptureState.recording
             onPressed: {
+                // Stopping also closes this overlay, opened over the recording
                 if (CaptureState.recording) {
                     CaptureState.stopRecord()
                     CaptureState.close()
@@ -101,6 +107,7 @@ Rectangle {
                 }
             }
         }
+        // Saved choices (capture.json), read when the next recording starts
         CaptureButton {
             id: bSound
             visible: CaptureState.kind === "video"
@@ -125,11 +132,15 @@ Rectangle {
             label: "Gravar"
             hint: "Gravar a área escolhida (Enter)"
             danger: true
+            // Same path as Enter: the monitor holding the selection starts it
+            // (CaptureOverlay's exportSelection)
             onPressed: CaptureState.exportRequested(true)
         }
 
         Divider {}
 
+        // 0 → 3 → 5 → 10 s; with a delay a photo goes back to the "choose"
+        // phase (pick the mode, then the count runs)
         CaptureButton {
             id: bDelay
             icon: "󱎫"
@@ -138,6 +149,7 @@ Rectangle {
             active: CaptureState.delay > 0
             onPressed: CaptureState.cycleDelay()
         }
+        // Turns the open session into OCR (no new overlay); again closes it
         CaptureButton {
             id: bOcr
             icon: "󱄽"
@@ -170,6 +182,7 @@ Rectangle {
         Text {
             id: hintText
             anchors.centerIn: parent
+            // No hover: the next step for the current purpose, kind and phase
             text: root.hint !== "" ? root.hint
                   : CaptureState.purpose === "ocr" ? "Arraste sobre o texto: ele vai para o clipboard"
                   : CaptureState.kind === "video" && !CaptureState.recording ? "Escolha a área e clique em Gravar (ou Enter)"

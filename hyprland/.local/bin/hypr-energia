@@ -11,6 +11,7 @@ suspend="󰤄  Suspender"
 reboot="󰜉  Reiniciar"
 poweroff="󰐥  Desligar"
 
+# rofi exits non-zero on Esc: nothing chosen, nothing done
 choice="$(printf '%s\n' "$logout" "$suspend" "$reboot" "$poweroff" \
   | rofi -dmenu -i -p Energia)" || exit 0
 

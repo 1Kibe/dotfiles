@@ -13,7 +13,10 @@ import qs.theme
 Singleton {
     id: root
 
+    // Read by bar/CenterIsland and bar/MediaPanel (player, track, artUrl, tint)
     readonly property var players: Mpris.players.values
+    // The pick from the music panel while that player still exists, else
+    // the one playing, else the first
     readonly property var player: players.find(p => p.dbusName === ShellState.mediaPlayer)
                                   ?? players.find(p => p.isPlaying) ?? players[0] ?? null
     readonly property string track: {
@@ -28,8 +31,11 @@ Singleton {
     readonly property color tint: {
         let best = null
         let score = -1
+        // quantizer.item is null while there is no cover file (LazyLoader below)
         const colors = quantizer.item ? quantizer.item.colors : []
         for (const c of colors) {
+            // Most vivid = saturation x brightness; dark colors are skipped
+            // since the tint is drawn on dark backgrounds
             const s = c.hsvSaturation * c.hsvValue
             if (c.hsvValue > 0.35 && s > score) {
                 score = s
@@ -38,6 +44,8 @@ Singleton {
         }
         if (artUrl === "" || best === null || best.hsvSaturation < 0.25)
             return Theme.accentLight
+        // A bit more saturation and at least 0.8 brightness, so text and
+        // rings in this color stay readable
         return Qt.hsva(best.hsvHue, Math.min(1, best.hsvSaturation * 1.1), Math.max(0.8, best.hsvValue), 1)
     }
 
@@ -53,6 +61,7 @@ Singleton {
     onArtUrlChanged: {
         if (artUrl === "")
             return
+        // Local covers go to the quantizer as they are, no copy needed
         if (artUrl.startsWith("file://")) {
             coverFile = artUrl
             return
@@ -62,6 +71,8 @@ Singleton {
             coverFile = ""
             return
         }
+        // Into the other slot, after stopping any download still running for
+        // the previous track
         coverSlot = 1 - coverSlot
         fetch.running = false
         fetch.target = Quickshell.cachePath(`cover-${coverSlot}`)
@@ -73,10 +84,13 @@ Singleton {
 
     Process {
         id: fetch
+        // Kept on the Process so the exit handler knows which file finished
         property string target
         onExited: code => root.coverFile = code === 0 ? `file://${target}` : ""
     }
 
+    // The quantizer only exists while there is a cover; without one, tint
+    // falls back to accentLight
     LazyLoader {
         id: quantizer
         active: root.coverFile !== ""
@@ -84,6 +98,7 @@ Singleton {
         ColorQuantizer {
             source: root.coverFile
             depth: 3            // up to 8 colors
+            // Shrunk first: a few colors do not need the full image
             rescaleSize: 64
         }
     }

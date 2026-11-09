@@ -30,10 +30,14 @@ keys=(
 )
 
 mkdir -p "$(dirname "$cfg")"
+# A new file still needs the [General] header, or awk below has no section
+# to add the keys to
 [[ -f "$cfg" ]] || printf '\n[General]\n' > "$cfg"
 
 # Replace each key inside [General], or add it at the end of that section
 tmp="$(mktemp "$cfg.XXXXXX")"
+# awk reads the wanted keys first (stdin, "-"), then the config; the keys
+# not found are printed when [General] ends, in the order of the list
 printf '%s\n' "${keys[@]}" | awk '
   NR == FNR { i = index($0, "="); want[substr($0, 1, i - 1)] = $0; order[++n] = substr($0, 1, i - 1); next }
   function flush() { for (k = 1; k <= n; k++) if (!(order[k] in done)) print want[order[k]]; flushed = 1 }
@@ -43,6 +47,7 @@ printf '%s\n' "${keys[@]}" | awk '
   { print }
   END { if (in_general && !flushed) flush() }
 ' - "$cfg" > "$tmp"
+# mktemp creates the file as 0600: keep the permissions of the old one
 chmod --reference="$cfg" "$tmp"
 mv -f "$tmp" "$cfg"
 

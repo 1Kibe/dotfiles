@@ -11,6 +11,8 @@ import qs.state
 DropPanel {
     id: root
 
+    // Both set by CenterIsland from MediaState, so the panel and the island
+    // always show the same player
     required property var player
     required property var players
     readonly property bool hasPlayer: player !== null
@@ -31,6 +33,7 @@ DropPanel {
         return null
     }
 
+    // m:ss for the progress labels (MPRIS position and length are seconds)
     function time(seconds) {
         const s = Math.max(0, Math.floor(seconds))
         return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
@@ -41,6 +44,9 @@ DropPanel {
     // The blurred cover behind the panel (shared look with the center island)
     underlay: CoverBackdrop {
         anchors.fill: parent
+        // CoverBackdrop defaults to the island's shape (only the bottom
+        // corners rounded): the panel rounds all four. Clear fill, since
+        // DropPanel already paints the background under it.
         radius: Theme.radius
         topLeftRadius: Theme.radius
         topRightRadius: Theme.radius
@@ -61,6 +67,9 @@ DropPanel {
     }
 
     // Player chips
+    // A click stores the pick in ShellState.mediaPlayer, which MediaState
+    // follows, so the center island switches too. Flow wraps the chips when
+    // the names do not fit in one line.
     Flow {
         visible: root.players.length > 1
         Layout.fillWidth: true
@@ -106,6 +115,7 @@ DropPanel {
                 source: root.hasPlayer ? root.player.trackArtUrl : ""
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
+                // Twice the 72 px box, sharp on scaled screens
                 sourceSize.width: 144
                 sourceSize.height: 144
             }
@@ -124,6 +134,8 @@ DropPanel {
                 font.pointSize: Theme.fontSize + 1
                 font.bold: true
             }
+            // Artist and album hide when the player sends none (videos,
+            // streams), so the column does not keep empty lines
             Text {
                 Layout.fillWidth: true
                 visible: text !== ""
@@ -154,6 +166,7 @@ DropPanel {
     }
 
     // Progress: click to seek
+    // Hidden for live streams and players that report no length.
     ColumnLayout {
         visible: root.hasPlayer && root.player.lengthSupported && root.player.length > 0
         Layout.fillWidth: true
@@ -182,12 +195,16 @@ DropPanel {
                     Behavior on color {
                         ColorAnimation { duration: Theme.animNormal }
                     }
+                    // Smooths the 1 s ticks of the Timer above and the jump
+                    // after a seek
                     Behavior on width {
                         NumberAnimation { duration: Theme.animNormal }
                     }
                 }
             }
 
+            // Covers the full 12 px row, taller than the 4 px track, so the
+            // bar is easy to hit. The click's x is the fraction of the track.
             MouseArea {
                 anchors.fill: parent
                 enabled: root.hasPlayer && root.player.canSeek
@@ -216,6 +233,8 @@ DropPanel {
     }
 
     // Controls
+    // Previous and next grey out when the player cannot do them; play/pause
+    // is bigger and tinted with the cover color.
     RowLayout {
         visible: root.hasPlayer
         Layout.alignment: Qt.AlignHCenter
@@ -254,6 +273,8 @@ DropPanel {
         icon: "󰁔"
         text: `Ir para o ${root.hasPlayer ? root.player.identity : "player"}`
         onClicked: {
+            // The address can come without the 0x prefix; the dispatcher's
+            // "address:" selector needs it
             const address = root.playerWindow.address
             const hex = address.startsWith("0x") ? address : `0x${address}`
             ShellState.close()

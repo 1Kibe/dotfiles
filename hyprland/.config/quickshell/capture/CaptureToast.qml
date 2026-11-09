@@ -13,11 +13,13 @@ import qs.state
 PanelWindow {
     id: root
 
+    // On while the notice is up; the window stays mapped while the fade runs
     property bool shown: false
 
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
     visible: shown || fade.running
     anchors.top: true
+    // Just under the top bar
     margins.top: Theme.barHeight + Theme.gap
     implicitWidth: pill.width
     implicitHeight: pill.height
@@ -26,6 +28,8 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-capture-toast"
 
+    // CaptureState.toast() bumps toastSerial, so the same text twice in a row
+    // still shows again and restarts the 3 s
     Connections {
         target: CaptureState
         function onToastSerialChanged() {
@@ -35,6 +39,7 @@ PanelWindow {
         }
     }
 
+    // Never hides under the mouse: while hovered it checks again every 3 s
     Timer {
         id: timer
         interval: 3000
@@ -48,6 +53,7 @@ PanelWindow {
 
     Rectangle {
         id: pill
+        // 12 px on each side of the row; 5 px above and below a button
         width: row.implicitWidth + 24
         height: Theme.captureButtonHeight + 10
         radius: height / 2
@@ -78,6 +84,7 @@ PanelWindow {
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
+            // Only on "Vídeo salvo"; openVideo checks the path again before mpv
             CaptureButton {
                 visible: CaptureState.toastVideo !== ""
                 icon: "󰐊"
@@ -87,6 +94,7 @@ PanelWindow {
                     root.shown = false
                 }
             }
+            // The folder the file went to, in the default file manager
             CaptureButton {
                 visible: CaptureState.toastFolder !== ""
                 icon: "󰉋"

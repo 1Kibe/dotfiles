@@ -7,10 +7,15 @@ import qs.state
 Item {
     id: root
 
+    // Set by ClipStrip from EmojiStore.list(group, search)
     property var model: []
     property int selected: 0
     property string emptyText: "Nada encontrado"
+    // Read by ClipStrip for the name in the key hints; clamped because the
+    // model can shrink before selected is reset
     readonly property var current: model.length > 0 ? model[Math.min(selected, model.length - 1)] : null
+    // Cells per column: the grid fills top to bottom, so Left/Right jump
+    // by this many and Up/Down by one
     readonly property int rows: Math.max(1, Math.floor(height / Theme.emojiCell))
 
     onModelChanged: {
@@ -35,12 +40,14 @@ Item {
             EmojiStore.pick(current.e)
         else
             return false
+        // Scrolls only as much as needed to keep the selection on screen
         grid.positionViewAtIndex(selected, GridView.Contain)
         return true
     }
 
     MouseArea {
         anchors.fill: parent
+        // Wheel only (clicks reach the cells); a vertical wheel scrolls sideways
         acceptedButtons: Qt.NoButton
         onWheel: event => grid.flick(event.angleDelta.y * 8, 0)
     }
@@ -62,6 +69,7 @@ Item {
             required property int index
             readonly property bool isSelected: index === root.selected
 
+            // 4 px smaller than the cell, for a gap between emoji
             width: Theme.emojiCell - 4
             height: Theme.emojiCell - 4
             radius: Theme.radius
@@ -81,6 +89,7 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                // Hover moves the selection, so the hints name the emoji under the mouse
                 onEntered: root.selected = cell.index
                 onClicked: EmojiStore.pick(cell.modelData.e)
             }

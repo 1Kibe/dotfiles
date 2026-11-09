@@ -15,6 +15,9 @@ DropPanel {
     readonly property var devices: Networking.devices.values
     readonly property var wifiDevice: devices.find(d => d.type === DeviceType.Wifi) ?? null
     readonly property var wiredDevice: devices.find(d => d.type === DeviceType.Wired) ?? null
+    // From Quickshell.Networking (NetworkManager). Copied with slice() since
+    // sort() works in place and the list belongs to the device. The connected
+    // network comes first, then by signal (0-1).
     readonly property var networks: {
         if (!wifiDevice)
             return []
@@ -22,6 +25,9 @@ DropPanel {
             .sort((a, b) => (b.connected - a.connected) || (b.signalStrength - a.signalStrength))
     }
 
+    // Kept here by name rather than inside each row: the Repeater rebuilds
+    // its rows whenever the sorted list changes (a signal update). Only one
+    // row is expanded at a time.
     property string selected: ""   // network with the password field or actions open
     property string failed: ""     // network of the last failed connection
 
@@ -29,6 +35,7 @@ DropPanel {
         return strength < 25 ? "󰤟" : strength < 50 ? "󰤢" : strength < 75 ? "󰤥" : "󰤨"
     }
 
+    // Every opening starts clean: no row expanded, no old error
     onOpenChanged: {
         selected = ""
         failed = ""
@@ -64,6 +71,7 @@ DropPanel {
         }
     }
 
+    // Information only: the cable has nothing to configure here
     PanelRow {
         visible: root.wiredDevice !== null && root.wiredDevice.connected
         icon: "󰈀"
@@ -71,6 +79,7 @@ DropPanel {
         clickable: false
     }
 
+    // Why the list is empty, if it is; hidden once networks show up
     Text {
         Layout.fillWidth: true
         Layout.leftMargin: 12
@@ -87,6 +96,8 @@ DropPanel {
     Repeater {
         model: Networking.wifiEnabled ? root.networks : []
 
+        // One network: its row, the error line, and under it either the
+        // actions (connected) or the password field (new secured network)
         ColumnLayout {
             id: entry
 
@@ -100,6 +111,8 @@ DropPanel {
             Layout.fillWidth: true
             spacing: 2
 
+            // Opening or closing the row always wipes the field and hides the
+            // password again; focus goes to it so typing can start at once
             onExpandedChanged: {
                 password.text = ""
                 showPassword = false
@@ -109,6 +122,8 @@ DropPanel {
 
             Connections {
                 target: entry.modelData
+                // The reason is not shown. A new secured network reopens its
+                // password field to try again.
                 function onConnectionFailed(reason) {
                     root.failed = entry.name
                     if (entry.secured && !entry.modelData.known)
@@ -123,6 +138,8 @@ DropPanel {
                 detail: entry.modelData.connected ? "conectada"
                       : entry.modelData.stateChanging ? "conectando…"
                       : entry.secured ? "󰌾" : ""
+                // Connected or needing a password: toggle the row open.
+                // Known or open: connect right away with what NetworkManager has.
                 onClicked: {
                     root.failed = ""
                     if (entry.modelData.connected || (entry.secured && !entry.modelData.known))
@@ -131,6 +148,8 @@ DropPanel {
                         entry.modelData.connect()
                 }
 
+                // Inside the row (PanelRow's trailing slot), only on hover, so
+                // the list stays clean
                 BarItem {
                     visible: entry.modelData.known && !entry.modelData.connected && row.hovered
                     text: "Esquecer"
@@ -199,8 +218,10 @@ DropPanel {
                         font.family: Theme.font
                         font.pointSize: Theme.fontSize
                         clip: true
+                        // Enter does the same as the Conectar button
                         onAccepted: connectButton.clicked(Qt.LeftButton)
 
+                        // Placeholder: TextInput has none of its own
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: password.text === ""
@@ -222,6 +243,8 @@ DropPanel {
                         if (password.text === "")
                             return
                         root.failed = ""
+                        // Handed to NetworkManager, then the field is wiped
+                        // right away so the text does not linger in memory here
                         entry.modelData.connectWithPsk(password.text)
                         password.text = ""
                         root.selected = ""
@@ -246,6 +269,7 @@ DropPanel {
         text: "Mais opções…"
         onClicked: {
             ShellState.close()
+            // Anything the panel does not cover (VPN, static IP, hidden networks)
             Quickshell.execDetached(["nm-connection-editor"])
         }
     }

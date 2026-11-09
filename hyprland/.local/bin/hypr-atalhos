@@ -32,6 +32,9 @@ binds_tsv() {
     echo "hypr-atalhos: hyprctl falhou (rodando fora do Hyprland?)" >&2
     return 1
   fi
+  # Only binds whose description has a "Group: " prefix are listed. modmask
+  # is a bit field (Shift 1, Ctrl 4, Alt 8, Super 64); a bind on Super_L
+  # itself shows just "Super", not "Super+Super".
   jq -r '
     def pretty:
       {"Super_L": "Super", "space": "Espaço", "Return": "Enter",
@@ -71,6 +74,8 @@ binds_tsv() {
 markdown() {
   local tsv section g
   tsv="$(binds_tsv)"
+  # Fixed section order; a group with no binds gets no empty table, and a
+  # group missing from SECTIONS is not shown
   for section in "${SECTIONS[@]}"; do
     grep -q "^${section}"$'\t' <<< "$tsv" || continue
     printf '\n### %s\n\n| Atalho | Ação |\n|---|---|\n' "$section"
@@ -106,6 +111,9 @@ update_readme() {
     return 1
   fi
   table="$(markdown)"
+  # The table goes in through the environment (awk -v would turn its
+  # backslashes into escapes). The old lines between the markers are
+  # skipped; a temp file plus mv never leaves a half-written README.
   TABLE="$table" awk '
     /<!-- atalhos:inicio -->/ { print; print ENVIRON["TABLE"]; print ""; skip = 1; next }
     /<!-- atalhos:fim -->/ { skip = 0 }

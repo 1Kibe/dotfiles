@@ -12,6 +12,7 @@ Rectangle {
     property string detail
     property bool clickable: true
     property bool danger: false
+    // Read by NetworkPanel to show a row's extra buttons only on hover
     readonly property bool hovered: mouse.containsMouse
     default property alias trailing: trail.data   // extra buttons at the end
 
@@ -20,11 +21,14 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: 34
     radius: Theme.radius
+    // danger wins over hover, so an armed row stays red under the pointer
     color: danger ? Theme.danger : clickable && mouse.containsMouse ? Theme.veil : Theme.clear
     Behavior on color {
         ColorAnimation { duration: Theme.animFast }
     }
 
+    // Declared before the RowLayout, so buttons in `trailing` sit on top of
+    // it and get their own clicks
     MouseArea {
         id: mouse
         anchors.fill: parent
@@ -49,6 +53,7 @@ Rectangle {
             font.family: Theme.font
             font.pointSize: Theme.fontSize
         }
+        // Takes the free space and elides, so the detail and buttons stay whole
         Text {
             Layout.fillWidth: true
             text: root.text

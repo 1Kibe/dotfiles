@@ -12,12 +12,16 @@ Singleton {
     id: root
 
     // { nid, title, body, color (index in Theme.noteColors) }
+    // The model of the GridView in NotesGrid, used as is
     property ListModel model: ListModel {}
+    // Cleared by the NoteCard that takes it (NotesGrid)
     property string focusNid: ""          // new note: its card takes the keyboard
+    // NotesGrid shows "Nenhuma nota ainda" only once ready
     property bool ready: false            // file read (or missing)
 
     readonly property string dataDir: `${Quickshell.env("XDG_DATA_HOME") || Quickshell.env("HOME") + "/.local/share"}/quickshell/clipboard`
     readonly property string path: `${dataDir}/notes.json`
+    // Length of Theme.noteColors
     readonly property int colorCount: 5
     property int seq: 0                   // keeps ids apart within one millisecond
 
@@ -31,13 +35,16 @@ Singleton {
 
     function add() {
         const nid = `n${Date.now()}-${seq++}`
+        // Each new note takes the color after the last one
         const last = model.count > 0 ? model.get(model.count - 1).color : -1
         model.append({ nid: nid, title: "", body: "", color: (last + 1) % colorCount })
+        // Its card sees this when created and starts editing
         focusNid = nid
         save()
         return nid
     }
 
+    // Called by NoteCard on every keystroke; an unchanged value is not saved
     function update(nid, field, value) {
         const i = indexOf(nid)
         if (i < 0 || model.get(i)[field] === value)
@@ -62,6 +69,8 @@ Singleton {
         }
     }
 
+    // Called by NotesGrid while a note is dragged over another slot; a
+    // ListModel move keeps the dragged card alive
     function move(from, to) {
         if (from !== to && from >= 0 && to >= 0 && from < model.count && to < model.count) {
             model.move(from, to, 1)
@@ -76,10 +85,12 @@ Singleton {
             return
         const n = model.get(i)
         const text = n.body !== "" ? n.body : n.title
+        // Through the stdin of a ClipboardStore job, never on a command line
         if (text !== "")
             ClipboardStore.run(["wl-copy"], text)
     }
 
+    // Debounced: while typing, the file is written once typing stops
     function save() {
         saveTimer.restart()
     }
@@ -102,6 +113,7 @@ Singleton {
             if (!Array.isArray(data))
                 throw new Error("not a list")
             for (const n of data) {
+                // Every field is checked, so a hand-edited file cannot break the cards
                 model.insert(at++, {
                     nid: String(n.nid || `n${Date.now()}-${seq++}`),
                     title: String(n.title || ""),
@@ -114,6 +126,7 @@ Singleton {
             Quickshell.execDetached(["mv", "-f", "--", path, path + ".bak"])
         }
         ready = true
+        // Saved notes and notes made before the read: write both together
         if (at > 0 && at < model.count)
             save()
     }
@@ -135,6 +148,7 @@ Singleton {
                 root.load(text())
         }
         onLoadFailed: root.ready = true    // no notes yet
+        // An atomic write makes a new file, so the mode is set after every save
         onSaved: Quickshell.execDetached(["chmod", "600", root.path])
     }
 }

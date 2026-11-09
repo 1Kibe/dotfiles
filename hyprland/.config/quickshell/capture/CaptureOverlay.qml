@@ -77,6 +77,9 @@ Scope {
                 WlrLayershell.namespace: "quickshell-capture"
                 WlrLayershell.keyboardFocus: shown && isFocus ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+                // Showing: opacity drops to 0 and follows ready again (a new
+                // binding), so nothing shows before the frame is in. Hiding: the
+                // window stays mapped (closing) until the fade-out ends
                 onShownChanged: {
                     if (shown) {
                         closing = false
@@ -90,6 +93,8 @@ Scope {
                         fadeOut.restart()
                     }
                 }
+                // In or out of the frozen phase: the old selection and frame are
+                // dropped, and a new frame waits for the overlay to be clear again
                 onFrozenPhaseChanged: {
                     clearSelection()
                     armed = false
@@ -109,6 +114,8 @@ Scope {
                     ScriptAction { script: win.closing = false }
                 }
 
+                // Called by AnnotationLayer when its text box is done, so the
+                // shortcuts work again
                 function focusKeys() {
                     keys.forceActiveFocus()
                 }
@@ -124,6 +131,8 @@ Scope {
                     return Math.round(v * outScale) / outScale
                 }
 
+                // Snapped, kept inside the monitor and normalized (a drag up or
+                // left gives a negative w / h); this monitor now owns the selection
                 function setSel(x, y, w, h) {
                     const x0 = Math.max(0, Math.min(snap(x), width))
                     const y0 = Math.max(0, Math.min(snap(y), height))
@@ -203,6 +212,8 @@ Scope {
                     }
                 }
 
+                // Sent to every monitor (Enter, the bars' buttons); only the one
+                // holding the selection answers
                 Connections {
                     target: CaptureState
                     function onExportRequested(copy) {
@@ -220,6 +231,9 @@ Scope {
 
                     Image {
                         id: editImage
+                        // The file's pixels in logical points of this monitor; k only
+                        // shrinks it (never above 1): 60 px each side, and room for
+                        // the top bar above and the annotation bar below
                         readonly property real natW: implicitWidth / win.outScale
                         readonly property real natH: implicitHeight / win.outScale
                         readonly property real k: natW > 0 ? Math.min(1, (win.width - 120) / natW,
@@ -334,6 +348,8 @@ Scope {
                                    && y >= win.selY && y <= win.selY + win.selH
                         }
 
+                        // Pressed: grow the new area or draw. Not pressed and nothing
+                        // picked yet: Janela / Tela light up what a click would take
                         onPositionChanged: mouse => {
                             if (pressed && drag === "new") {
                                 win.setSel(startX, startY, mouse.x - startX, mouse.y - startY)
@@ -375,6 +391,8 @@ Scope {
                             else if (drag === "draw")
                                 annot.end(mouse.modifiers & Qt.ShiftModifier)
                         }
+                        // Janela / Tela take their pick on a plain click (not after a
+                        // drag, and never over an annotated selection)
                         onClicked: mouse => {
                             if (drag !== "" || win.editing || CaptureState.strokes.length > 0)
                                 return
@@ -415,6 +433,8 @@ Scope {
                             readonly property int s: Theme.handleSize
 
                             visible: win.hasSel && CaptureState.pickMode === "area" && !win.editing
+                            // (h + 1) / 2 is 0, 0.5 or 1: left edge, middle or right
+                            // edge (same for v); - s / 2 centers the handle on it
                             x: win.selX + (modelData.h + 1) / 2 * win.selW - s / 2
                             y: win.selY + (modelData.v + 1) / 2 * win.selH - s / 2
                             width: s
@@ -426,12 +446,15 @@ Scope {
 
                             MouseArea {
                                 anchors.fill: parent
+                                // Grab area 4 px bigger than the handle on each side
                                 anchors.margins: -4
                                 cursorShape: handle.modelData.h === 0 ? Qt.SizeVerCursor
                                              : handle.modelData.v === 0 ? Qt.SizeHorCursor
                                              : handle.modelData.h === handle.modelData.v ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
                                 property rect from
                                 onPressed: from = Qt.rect(win.selX, win.selY, win.selW, win.selH)
+                                // Only the edges of this handle follow the mouse, from the
+                                // rect at the press; past the other edge setSel flips it
                                 onPositionChanged: mouse => {
                                     if (!pressed)
                                         return
@@ -472,11 +495,13 @@ Scope {
                     // it, at the bottom, when there is room on neither side (Tela,
                     // a maximized window). Never over the capture bar.
                     AnnotateBar {
+                        // Photo or editor only, and hidden while a drag or a stroke is under way
                         visible: win.hasSel && CaptureState.purpose !== "ocr" && (CaptureState.kind === "photo" || win.editing)
                                  && !(picker.pressed && picker.drag !== "")
                         readonly property real hint: 34      // its own hint shows under it
                         readonly property bool fitsBelow: win.selY + win.selH + 10 + height + hint <= win.height
                         readonly property bool fitsAbove: win.selY - 10 - height >= win.topFree
+                        // Centered on the selection, kept 8 px inside the monitor
                         x: Math.max(8, Math.min(win.selX + win.selW / 2 - width / 2, win.width - width - 8))
                         y: fitsBelow ? win.selY + win.selH + 10
                            : fitsAbove ? win.selY - height - 10
@@ -507,6 +532,7 @@ Scope {
                             else
                                 CaptureState.undo()
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            // In "choose" Enter keeps the current mode and starts the count
                             if (CaptureState.phase === "choose")
                                 CaptureState.startCountdown()
                             else
@@ -518,6 +544,7 @@ Scope {
                         } else if (!ctrl && event.text.length === 1 && Tools.byKey(event.text.toUpperCase())) {
                             CaptureState.chooseTool(Tools.byKey(event.text.toUpperCase()).id)
                         } else {
+                            // Not ours: left unaccepted
                             return
                         }
                         event.accepted = true

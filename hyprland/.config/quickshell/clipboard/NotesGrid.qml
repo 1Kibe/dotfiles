@@ -20,6 +20,7 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.AllButtons
+        // A click on an empty spot also leaves the note being edited
         onClicked: root.leave()
     }
 
@@ -63,6 +64,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                // The new note lands at the end and opens for typing (see the delegate)
                 onClicked: NotesStore.add()
             }
         }
@@ -87,6 +89,7 @@ Rectangle {
         anchors.topMargin: 10
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        // Six equal columns; a cell is never taller than a note plus its 10 px gap
         cellWidth: Math.floor(width / root.columns)
         cellHeight: Math.min(cellWidth, Theme.noteSize + 10)
         model: NotesStore.model
@@ -118,23 +121,29 @@ Rectangle {
 
             width: grid.cellWidth
             height: grid.cellHeight
+            // A note dragged over this slot moves here at once; the model move
+            // makes the others slide (displaced)
             onEntered: drag => NotesStore.move(drag.source.slotIndex, slot.index)
 
             NoteCard {
                 id: card
 
+                // Read by the DropArea it is dragged over (drag.source.slotIndex)
                 property int slotIndex: slot.index
 
                 nid: slot.nid
                 title: slot.title
                 body: slot.body
                 colorIndex: slot.color
+                // Centered in the cell with 5 px around: a 10 px gap between notes
                 width: grid.cellWidth - 10
                 height: grid.cellHeight - 10
                 anchors.horizontalCenter: slot.horizontalCenter
                 anchors.verticalCenter: slot.verticalCenter
                 onLeave: root.leave()
 
+                // Dragged by the grip; the hot spot sits there too (top center),
+                // so the slot under the mouse is the one that takes the note
                 Drag.active: card.grip.drag.active
                 Drag.source: card
                 Drag.hotSpot.x: width / 2

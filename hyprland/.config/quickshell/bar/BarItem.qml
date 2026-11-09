@@ -13,12 +13,16 @@ Item {
     property int maxWidth: 0      // > 0: cut the text with "…" at this width
     property int fontSize: Theme.fontSize
 
+    // Qt.LeftButton, MiddleButton or RightButton; only sent when clickable
     signal clicked(int button)
     signal scrolled(int steps)    // +1 per wheel notch up, -1 per notch down
 
+    // 6 px on each side of the label, inside the hover veil
     implicitWidth: label.width + 12
     implicitHeight: Theme.itemHeight
 
+    // Pressed shrinks, hover grows; the spring overshoots a little for a
+    // bouncy feel. Items that only show info do not move.
     scale: !clickable ? 1 : mouse.pressed ? 0.96 : mouse.containsMouse ? 1.04 : 1
     Behavior on scale {
         SpringAnimation { spring: 4; damping: 0.35; epsilon: 0.005 }
@@ -47,6 +51,7 @@ Item {
         property real wheel: 0   // touchpads send small steps: add them up to whole notches
 
         anchors.fill: parent
+        // Hover is tracked even when not clickable: the tooltip needs it
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
         cursorShape: root.clickable ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -54,6 +59,7 @@ Item {
             if (root.clickable)
                 root.clicked(event.button)
         }
+        // 120 angle units = one notch; the remainder waits for the next event
         onWheel: event => {
             wheel += event.angleDelta.y
             while (wheel >= 120) {
@@ -67,6 +73,7 @@ Item {
         }
     }
 
+    // Hidden while pressed, so it does not linger over a click
     Tooltip {
         target: root
         text: root.tooltip

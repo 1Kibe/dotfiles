@@ -14,9 +14,11 @@ PanelWindow {
     id: root
 
     property bool shown: false
+    // Already checked by CaptureState.showCard: a PNG inside Capturas
     readonly property string file: CaptureState.cardFile
 
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
+    // Stays mapped until the fade-out ends
     visible: shown || leave.running
     anchors.bottom: true
     anchors.right: true
@@ -38,6 +40,8 @@ PanelWindow {
 
     Connections {
         target: CaptureState
+        // showCard bumps cardSerial for every print, also for the same file
+        // again after an edit: the card starts over from the slide-in
         function onCardSerialChanged() {
             if (CaptureState.cardFile === "")
                 return
@@ -50,6 +54,7 @@ PanelWindow {
             thumb.source = `file://${CaptureState.cardFile}`   // reloads after an edit
             time.restart()
         }
+        // Emptied by trashCard: the print is gone, so is the card
         function onCardFileChanged() {
             if (CaptureState.cardFile === "")
                 root.hide()
@@ -61,6 +66,7 @@ PanelWindow {
         }
     }
 
+    // From x 40 back to its place at 20 (the slide room), fading in
     ParallelAnimation {
         id: enter
         NumberAnimation { target: card; property: "x"; to: 20; duration: Theme.animNormal; easing.type: Easing.OutCubic }
@@ -80,6 +86,7 @@ PanelWindow {
         id: time
         target: bar
         property: "width"
+        // The card's width minus its 12 px margins
         from: Theme.captureCardWidth - 24
         to: 0
         duration: 5000
@@ -116,6 +123,8 @@ PanelWindow {
                     id: thumb
                     anchors.fill: parent
                     fillMode: Image.PreserveAspectCrop
+                    // Decoded at twice the card width (sharp on a 2x screen, not
+                    // the full print); no cache, so an edited print shows anew
                     sourceSize.width: Theme.captureCardWidth * 2
                     asynchronous: true
                     cache: false
@@ -138,6 +147,7 @@ PanelWindow {
                     font.family: Theme.font
                     font.pointSize: Theme.fontSize - 1
                 }
+                // The editor opens the overlay, and that hides the card (onOpenChanged)
                 CaptureButton {
                     icon: "󰏫"
                     hint: "Anotar"
@@ -151,6 +161,7 @@ PanelWindow {
                         root.hide()
                     }
                 }
+                // Hides through onCardFileChanged once the file is in the trash
                 CaptureButton {
                     icon: "󰩹"
                     hint: "Mandar para a lixeira"

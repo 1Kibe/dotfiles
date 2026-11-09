@@ -10,6 +10,7 @@ import qs.state
 Rectangle {
     id: root
 
+    // Model roles, passed on by the NotesGrid delegate
     required property string nid
     required property string title
     required property string body
@@ -17,10 +18,13 @@ Rectangle {
     property alias grip: gripMouse         // drag handle, used by NotesGrid
     property bool armed: false             // delete waiting for its second click
     readonly property bool hovered: hover.hovered
+    // Keeps the actions fully visible while typing, even with the mouse away
     readonly property bool editing: titleInput.activeFocus || bodyInput.activeFocus
 
+    // Esc: NotesGrid passes it on and the search takes the keyboard back
     signal leave()
 
+    // Called by NotesGrid for a new note
     function edit() {
         titleInput.forceActiveFocus()
     }
@@ -30,11 +34,14 @@ Rectangle {
     Behavior on color {
         ColorAnimation { duration: Theme.animNormal }
     }
+    // Moving away from the note disarms the delete
     onHoveredChanged: {
         if (!hovered)
             armed = false
     }
 
+    // A HoverHandler, not a MouseArea: it still sees the mouse over the
+    // fields and buttons, which have their own mouse handling
     HoverHandler {
         id: hover
     }
@@ -67,6 +74,7 @@ Rectangle {
             MouseArea {
                 id: gripMouse
                 anchors.fill: parent
+                // Moves the whole card; NotesGrid lifts it out of its slot while dragged
                 drag.target: root
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             }
@@ -81,8 +89,10 @@ Rectangle {
             font.family: Theme.font
             font.pointSize: Theme.fontSize
             font.bold: true
+            // textEdited is user input only, not the first fill in Component.onCompleted
             onTextEdited: NotesStore.update(root.nid, "title", text)
             Keys.onEscapePressed: root.leave()
+            // The title is one line: Tab and Enter go on to the body
             Keys.onTabPressed: bodyInput.forceActiveFocus()
             Keys.onReturnPressed: bodyInput.forceActiveFocus()
 
@@ -99,6 +109,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            // The body scrolls inside the note once it is taller than the card
             contentHeight: bodyInput.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
 
@@ -110,6 +121,8 @@ Rectangle {
                 selectionColor: Theme.alpha(Theme.noteInk, 0.3)
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
+                // TextEdit has no textEdited: only a change while focused is
+                // typing (the first fill is not)
                 onTextChanged: {
                     if (activeFocus)
                         NotesStore.update(root.nid, "body", text)
@@ -136,6 +149,7 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             spacing: 2
+            // Faint until the note is hovered or edited
             opacity: root.hovered || root.editing ? 1 : 0.35
             Behavior on opacity {
                 NumberAnimation { duration: Theme.animFast }
@@ -194,6 +208,7 @@ Rectangle {
             }
             Action {
                 icon: "󰅖"
+                // Red while armed; the second click deletes
                 danger: root.armed
                 onPressed: {
                     if (root.armed)

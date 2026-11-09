@@ -26,6 +26,7 @@ RowLayout {
 
     // The Hyprland config is Lua, so dispatch takes Lua
     function go(workspace) {
+        // Ids go as-is; relative names like "e+1" need Lua quotes
         const value = typeof workspace === "number" ? workspace : `"${workspace}"`
         Hyprland.dispatch(`hl.dsp.focus({ workspace = ${value} })`)
     }
@@ -38,6 +39,8 @@ RowLayout {
 
             required property int modelData
 
+            // The live workspace for this id; null for one of 1-5 that does not
+            // exist yet (Hyprland only creates a workspace when it is used)
             readonly property var ws: {
                 for (const w of Hyprland.workspaces.values) {
                     if (w.id === modelData)
@@ -45,9 +48,11 @@ RowLayout {
                 }
                 return null
             }
+            // Each monitor has its own active workspace: only this bar's counts
             readonly property bool here: ws !== null && ws.active && ws.monitor === root.monitor
             readonly property bool busy: ws !== null && ws.toplevels.values.length > 0
 
+            // The active dot stretches into a dash, with a small spring bounce
             implicitWidth: here ? Theme.dotActiveWidth : Theme.dotSize
             implicitHeight: Theme.itemHeight
             Behavior on implicitWidth {
@@ -59,6 +64,7 @@ RowLayout {
                 width: parent.width
                 height: Theme.dotSize
                 radius: height / 2
+                // Hover first, then active, with windows, empty
                 color: mouse.containsMouse ? Theme.text : dot.here ? Theme.dotActive : dot.busy ? Theme.dotBusy : Theme.dotEmpty
                 Behavior on color {
                     ColorAnimation { duration: 150 }
@@ -76,6 +82,8 @@ RowLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.go(dot.modelData)
+                // Wheel up = previous. "e-1"/"e+1" step through the workspaces
+                // open on the focused monitor, like Super+wheel.
                 onWheel: event => {
                     wheel += event.angleDelta.y
                     while (wheel >= 120) {

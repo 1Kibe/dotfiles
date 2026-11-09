@@ -9,12 +9,15 @@ BarItem {
 
     required property var monitor   // HyprlandMonitor of this bar
     readonly property string monitorName: monitor ? monitor.name : ""
+    // ShellState is shared with the keybinds, so a menu opened by Super+X
+    // shows here as open too
     readonly property bool open: ShellState.isOpen("power", monitorName)
 
     text: "󰐥"
     tooltip: open ? "" : "Energia"
     onClicked: ShellState.toggle("power", monitorName)
 
+    // A child of the button so it anchors under it
     PowerMenu {
         button: root
         open: root.open

@@ -8,11 +8,13 @@ BarItem {
 
     clickable: false
 
+    // Ticks on the minute: no seconds are shown
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
     }
 
+    // Theme.locale (pt_BR), whatever the system locale is
     function format(pattern) {
         return clock.date.toLocaleString(Theme.locale, pattern)
     }

@@ -15,6 +15,7 @@ PanelWindow {
     property bool closing: false
     readonly property bool shown: ClipboardStore.open
 
+    // The monitor Super+V was pressed on; the first one if it is gone
     screen: Quickshell.screens.find(s => s.name === ClipboardStore.openOn) ?? Quickshell.screens[0]
     visible: shown || closing
     anchors {
@@ -23,29 +24,37 @@ PanelWindow {
         left: true
         right: true
     }
+    // Covers the bar too and never pushes windows aside
     exclusionMode: ExclusionMode.Ignore
     color: Theme.clear
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-clipboard"
+    // Exclusive so every key reaches the search; dropped as soon as it
+    // starts closing, so the keyboard goes back without waiting for the animation
     WlrLayershell.keyboardFocus: shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     onShownChanged: {
         if (shown) {
+            // Also when reopened mid-close: stop it and start from the hidden pose
             leave.stop()
             closing = false
             shade.opacity = 0
             notes.opacity = 0
             drop.y = -12
             rise.y = strip.height + 20
+            // Empty search, history tab, first card, keyboard in the search
             strip.reset()
             enter.restart()
         } else {
             enter.stop()
+            // The window stays visible until leave ends
             closing = true
             leave.restart()
         }
     }
 
+    // Opening: shade and notes fade in, the notes drop 12 px into place and
+    // the strip rises from below the edge (its height + 20 also hides the margin)
     ParallelAnimation {
         id: enter
         NumberAnimation { target: shade; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
@@ -54,6 +63,7 @@ PanelWindow {
         NumberAnimation { target: rise; property: "y"; to: 0; duration: Theme.animNormal; easing.type: Easing.OutCubic }
     }
 
+    // Closing: the same moves, shorter and eased in; then the window hides
     SequentialAnimation {
         id: leave
         ParallelAnimation {
@@ -88,6 +98,7 @@ PanelWindow {
         anchors.topMargin: Theme.barHeight + Theme.gap   // the bar stays readable above
         opacity: 0
         transform: Translate { id: drop }   // slides down a little while it fades in
+        // Esc in a note, or a click on an empty spot: the search takes the keyboard back
         onLeave: strip.focusSearch()
     }
 

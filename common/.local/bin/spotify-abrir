@@ -19,6 +19,8 @@ spotify-launcher --no-exec >/dev/null 2>&1 || true
 
 version="$(grep -oE '"version":"[^"]+"' "$launcher_state" 2>/dev/null | cut -d'"' -f4 || true)"
 
+# Apply when the client version changed since the last apply, or when the
+# client files no longer carry Spicetify (wiped by a reinstall)
 needs_apply() {
   [[ "$version" != "$(cat "$applied" 2>/dev/null || true)" ]] && return 0
   ! grep -qi spicetify "$client/Apps/xpui/index.html" 2>/dev/null
@@ -45,4 +47,5 @@ if command -v spicetify >/dev/null && [[ -f "$prefs" ]] \
   echo "$version" > "$applied"
 fi
 
+# The update already ran at the top, so it is not checked a second time
 exec spotify-launcher --skip-update "$@"

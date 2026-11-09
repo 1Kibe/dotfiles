@@ -10,6 +10,8 @@ import "tools.js" as Tools
 Rectangle {
     id: root
 
+    // Set by each button's onHoveredChanged: the tool buttons come from a
+    // Repeater, so they cannot be listed by id as in CaptureBar
     property string hint: ""
 
     implicitWidth: row.implicitWidth + 16
@@ -36,11 +38,13 @@ Rectangle {
         anchors.centerIn: parent
         spacing: 2
 
+        // The tools of tools.js; their letters are also read by the overlay's Keys
         Repeater {
             model: Tools.TOOLS
 
             CaptureButton {
                 required property var modelData
+                // The mosaic button shows blur instead while blurMode is on
                 readonly property bool isMosaic: modelData.id === "mosaic"
                 icon: isMosaic && CaptureState.blurMode ? "󰂵" : modelData.icon
                 hint: isMosaic && CaptureState.blurMode ? `Borrar (${modelData.key}; clique de novo: mosaico)` : `${modelData.label} (${modelData.key})`
@@ -52,6 +56,7 @@ Rectangle {
 
         Divider {}
 
+        // Theme color names: the choice is saved as a name, Theme[name] gives the color
         Repeater {
             model: CaptureState.colors
 
@@ -93,6 +98,7 @@ Rectangle {
 
             Rectangle {
                 anchors.centerIn: parent
+                // + 4 so even the 2 px width reads as a dot
                 width: CaptureState.width + 4
                 height: width
                 radius: width / 2
@@ -102,6 +108,7 @@ Rectangle {
 
         Divider {}
 
+        // Dimmed when there is nothing to undo / redo
         CaptureButton {
             icon: "󰕌"
             hint: "Desfazer (Ctrl+Z)"
@@ -119,6 +126,8 @@ Rectangle {
 
         Divider {}
 
+        // Save and copy go through exportRequested: the monitor holding the
+        // selection does the export (false = save only)
         CaptureButton {
             icon: "󰆓"
             hint: "Salvar (Ctrl+S)"
@@ -129,6 +138,7 @@ Rectangle {
             icon: "󰆏"
             label: "Copiar"
             hint: "Copiar e salvar (Enter)"
+            // Always highlighted: it is what Enter does
             active: true
             onPressed: CaptureState.exportRequested(true)
             onHoveredChanged: root.hint = hovered ? hint : ""

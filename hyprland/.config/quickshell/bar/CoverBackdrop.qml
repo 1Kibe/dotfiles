@@ -16,9 +16,12 @@ ClippingRectangle {
     property color shade: Theme.coverShade
 
     color: Theme.islandFill       // shown under the cover (and without one)
+    // Bottom corners only: the center island hangs from the top edge
+    // (MediaPanel rounds all four)
     bottomLeftRadius: Theme.barRadius
     bottomRightRadius: Theme.barRadius
     opacity: shown ? 1 : 0
+    // Slower in than out, like the panels
     Behavior on opacity {
         NumberAnimation {
             duration: root.shown ? Theme.animNormal : Theme.animFast
@@ -30,6 +33,8 @@ ClippingRectangle {
     onSourceChanged: {
         if (source === "")
             return
+        // Back layer already holds this URL (back to the previous cover): it
+        // is loaded, so just swap; a new URL swaps from onReadyChanged below
         const back = front === 0 ? layerB : layerA
         if (String(back.source) !== source)
             back.source = source
@@ -45,6 +50,8 @@ ClippingRectangle {
         readonly property bool ready: image.status === Image.Ready
 
         anchors.fill: parent
+        // Each layer fades on its own: the old cover fades out while the new
+        // one fades in, which makes the crossfade
         opacity: active && ready ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
@@ -59,11 +66,14 @@ ClippingRectangle {
             sourceSize.width: 96      // small on purpose: it is blurred anyway
             sourceSize.height: 96
             asynchronous: true
+            // Only the blurred copy below is drawn
             visible: false
         }
         MultiEffect {
             anchors.fill: parent
             source: image
+            // No padding: the blur stays inside the cover's rectangle. Full blur
+            // and little color leave only a soft tint of the cover.
             autoPaddingEnabled: false
             blurEnabled: true
             blur: 1.0
@@ -75,6 +85,8 @@ ClippingRectangle {
     CoverLayer {
         id: layerA
         active: root.front === 0
+        // Swap only if this layer still holds the wanted cover: the source may
+        // have changed again while it was loading
         onReadyChanged: {
             if (ready && String(source) === root.source)
                 root.front = 0

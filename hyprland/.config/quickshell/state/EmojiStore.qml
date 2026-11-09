@@ -13,6 +13,7 @@ Singleton {
 
     // { e: "😀", name: "grinning face", cat: "faces" }
     property var all: []
+    // Read by EmojiGrid: "Carregando…" until loaded, a hint when missing
     property bool loaded: false
     property bool missing: false          // no emoji-test.txt (package not installed)
     property var recent: []               // emoji strings, newest first
@@ -47,6 +48,8 @@ Singleton {
         "Flags": "flags"
     })
 
+    // Called by ClipStrip when the Emoji tab opens. testFile has no path
+    // until then, so nothing is read for people who never use the tab
     function ensureLoaded() {
         if (!loaded && testFile.path === "")
             testFile.path = source
@@ -58,12 +61,14 @@ Singleton {
         const out = []
         let cat = ""
         for (const line of text.split("\n")) {
+            // A group without a chip (Component) sets "" and its lines are skipped
             if (line.startsWith("# group: ")) {
                 cat = groups[line.slice(9).trim()] || ""
                 continue
             }
             if (cat === "" || !line.includes("; fully-qualified"))
                 continue
+            // After "#": 1 the emoji, then its version (E1.0), 2 the name
             const m = line.match(/#\s*(\S+)\s+E[\d.]+\s+(.+)$/)
             if (!m || m[2].includes("skin tone"))
                 continue
@@ -77,16 +82,21 @@ Singleton {
     function list(cat, query) {
         const q = query.trim().toLowerCase()
         if (q !== "") {
+            // Unicode names are already lowercase; a search covers every group
             const words = q.split(/\s+/)
             return all.filter(x => words.every(w => x.name.includes(w)))
         }
+        // Recent ones keep their order; one not in the list (older file)
+        // still shows, without a name
         if (cat === "recent")
             return recent.map(e => all.find(x => x.e === e) || { e: e, name: "", cat: "recent" })
         return all.filter(x => x.cat === cat)
     }
 
+    // Called by EmojiGrid (click or Enter); closes the overlay like a card copy
     function pick(e) {
         ClipboardStore.run(["wl-copy"], e)
+        // Moved to the front, no repeats; saved at once
         recent = [e].concat(recent.filter(x => x !== e)).slice(0, maxRecent)
         recentFile.setText(JSON.stringify(recent))
         ClipboardStore.close()
@@ -94,6 +104,7 @@ Singleton {
 
     FileView {
         id: testFile
+        // Set by ensureLoaded()
         path: ""
         printErrors: false
         onLoaded: root.parse(text())
@@ -119,6 +130,7 @@ Singleton {
                 Quickshell.execDetached(["mv", "-f", "--", root.recentPath, root.recentPath + ".bak"])
             }
         }
+        // Private like the pins and notes; set again after each atomic write
         onSaved: Quickshell.execDetached(["chmod", "600", root.recentPath])
     }
 }

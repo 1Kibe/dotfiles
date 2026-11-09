@@ -8,6 +8,8 @@ PopupWindow {
 
     required property Item target
     property string text
+    // Hover state from the owner (BarItem, SystemStatus, Workspaces); the
+    // window follows it after the delay, with a fade
     property bool shown: false
 
     anchor.item: target
@@ -15,10 +17,13 @@ PopupWindow {
     anchor.gravity: Edges.Bottom
     anchor.margins.top: 8
     color: Theme.clear
+    // 8 px of padding on each side of the label
     implicitWidth: label.implicitWidth + 16
     implicitHeight: label.implicitHeight + 16
     visible: false
 
+    // Shown: wait Theme.hoverDelay, so a pointer passing by does not flash it.
+    // Hidden: fade out first, the window hides at the end. Empty text never opens.
     onShownChanged: {
         if (shown && text !== "") {
             fadeOut.stop()
@@ -34,6 +39,7 @@ PopupWindow {
         id: delay
         interval: Theme.hoverDelay
         onTriggered: {
+            // Map the window fully transparent, then fade the content in
             pane.opacity = 0
             root.visible = true
             fadeIn.restart()
@@ -47,6 +53,7 @@ PopupWindow {
         ScriptAction { script: root.visible = false }
     }
 
+    // The fades act on this item; the window itself only shows or hides
     Item {
         id: pane
         anchors.fill: parent

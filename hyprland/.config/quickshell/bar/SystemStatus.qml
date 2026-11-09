@@ -11,11 +11,15 @@ Item {
 
     required property var monitor   // HyprlandMonitor of this bar
     readonly property string monitorName: monitor ? monitor.name : ""
+    // From ShellState; the click and the keybind (shell.qml) toggle the same panel
     readonly property bool open: ShellState.isOpen("system", monitorName)
 
+    // Same 6 px side padding as a BarItem
     implicitWidth: row.implicitWidth + 12
     implicitHeight: Theme.itemHeight
 
+    // Same hover veil and spring as BarItem, rebuilt here because this
+    // holds rings instead of a single label
     scale: mouse.pressed ? 0.96 : mouse.containsMouse ? 1.04 : 1
     Behavior on scale {
         SpringAnimation { spring: 4; damping: 0.35; epsilon: 0.005 }
@@ -35,6 +39,8 @@ Item {
         text: "100%"
     }
 
+    // One ring and its number. warn/crit are where it turns yellow and red
+    // (Theme.loadColor).
     component Gauge: RowLayout {
         id: gauge
 
@@ -47,6 +53,7 @@ Item {
         spacing: 4
 
         Ring {
+            // Ring takes 0 to 1: the temperature ring is full at 100 °C
             value: gauge.value / 100
             color: Theme.loadColor(gauge.value, gauge.warn, gauge.crit)
             text: gauge.icon
@@ -65,6 +72,7 @@ Item {
         anchors.centerIn: parent
         spacing: 6
 
+        // SystemStats reads /proc and the CPU sensor every 2 s
         Gauge {
             value: SystemStats.cpu
             icon: "󰍛"
@@ -80,6 +88,7 @@ Item {
             value: SystemStats.temp
             icon: "󰔏"
             label: `${Math.round(SystemStats.temp)}°`
+            // Its own thresholds, in °C
             warn: Theme.tempWarn
             crit: Theme.tempCrit
         }
@@ -93,6 +102,7 @@ Item {
         onClicked: ShellState.toggle("system", root.monitorName)
     }
 
+    // The exact numbers, with memory as used of total; not while the panel is open
     Tooltip {
         target: root
         shown: mouse.containsMouse && !mouse.pressed && !root.open
@@ -104,6 +114,7 @@ Item {
         }
     }
 
+    // A child of the button so it anchors under it
     SystemPanel {
         button: root
         open: root.open
