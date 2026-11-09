@@ -57,6 +57,7 @@ run("Print", "capture", "Sistema: Captura de tela (área, janela ou tela, com an
 run("SHIFT + Print", "print_tela", "Sistema: Print da tela inteira")
 run("SUPER + SHIFT + S", "print_area", "Sistema: Print de uma área")
 run("ALT + Print", "print_janela", "Sistema: Print da janela ativa")
+run("SUPER + SHIFT + T", "capture_ocr", "Sistema: Copiar o texto de uma área (OCR)")
 run("XF86Calculator", "calculator", "Sistema: Calculadora")
 bind("SUPER + SHIFT + R", hl.dsp.reload_config(), "Sistema: Recarregar a config do Hyprland")
 run("SUPER + SHIFT + Escape", "logout", "Sistema: Sair da sessão (emergência, sem confirmação)")

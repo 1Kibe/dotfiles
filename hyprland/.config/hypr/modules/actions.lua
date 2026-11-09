@@ -16,6 +16,7 @@ return {
   powermenu     = qs("powermenu"),
   taskmanager   = qs("taskmanager"),   -- system panel; btop is in its footer
   capture       = qs("capture", "open"),   -- Print: capture bar
+  capture_ocr   = qs("capture", "ocr"),    -- text of an area to the clipboard
   overview      = qs("overview"),
   lock          = qs("lock", "lock"),
 

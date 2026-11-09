@@ -56,7 +56,7 @@ Rectangle {
             icon: "󰩭"
             label: "Área"
             hint: "Arrastar para escolher uma área"
-            active: CaptureState.mode === "area"
+            active: CaptureState.mode === "area" && CaptureState.purpose !== "ocr"
             onPressed: CaptureState.chooseMode("area")
         }
         CaptureButton {
@@ -64,7 +64,7 @@ Rectangle {
             icon: "󰖯"
             label: "Janela"
             hint: "Clicar numa janela"
-            active: CaptureState.mode === "window"
+            active: CaptureState.mode === "window" && CaptureState.purpose !== "ocr"
             onPressed: CaptureState.chooseMode("window")
         }
         CaptureButton {
@@ -72,7 +72,7 @@ Rectangle {
             icon: "󰍹"
             label: "Tela"
             hint: "Clicar num monitor"
-            active: CaptureState.mode === "screen"
+            active: CaptureState.mode === "screen" && CaptureState.purpose !== "ocr"
             onPressed: CaptureState.chooseMode("screen")
         }
 
@@ -122,8 +122,9 @@ Rectangle {
         CaptureButton {
             id: bOcr
             icon: "󱄽"
-            hint: "Copiar o texto de uma área (em breve)"
-            enabled: false      // Tarefa 4
+            hint: "Copiar o texto de uma área (Super+Shift+T)"
+            active: CaptureState.purpose === "ocr"
+            onPressed: CaptureState.openOcr()
         }
 
         Divider {}
@@ -151,6 +152,7 @@ Rectangle {
             id: hintText
             anchors.centerIn: parent
             text: root.hint !== "" ? root.hint
+                  : CaptureState.purpose === "ocr" ? "Arraste sobre o texto: ele vai para o clipboard"
                   : CaptureState.phase === "choose" ? `Escolha Área, Janela ou Tela (ou Enter): a contagem de ${CaptureState.delay} s começa`
                   : ""
             color: Theme.fg4

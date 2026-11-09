@@ -153,3 +153,6 @@ bluetui                      # Bluetooth TUI opened by the bar, until the contro
 nm-connection-editor         # "Mais opções…" of the bar's network panel
 qalculate-gtk                # calculator key (XF86Calculator)
 xdg-utils                    # xdg-open: Capturas folder from the capture notices and card
+tesseract                    # OCR of the capture (Super+Shift+T)
+tesseract-data-por           # its Portuguese
+tesseract-data-eng           # and English

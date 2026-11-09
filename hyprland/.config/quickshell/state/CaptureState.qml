@@ -105,6 +105,58 @@ Singleton {
     readonly property var colors: ["red", "yellow", "green", "blue", "fg"]
 
     // ── Session control ──
+    // Mode used to pick: OCR always takes an area
+    readonly property string pickMode: purpose === "ocr" ? "area" : mode
+
+    // Super+Shift+T, or the OCR button of the bar: pick an area, its text
+    // goes to the clipboard
+    function openOcr() {
+        if (open && purpose === "ocr") {
+            close()
+            return
+        }
+        if (open) {
+            purpose = "ocr"
+            selOwner = ""
+            strokes = []
+            redoStack = []
+            if (phase === "choose")
+                phase = "select"   // no delay for OCR
+            return
+        }
+        start("ocr")
+    }
+
+    // The area as an image in the tmpfs: tesseract (por+eng, 15 s at most) and
+    // wl-copy run together in their own process, so the text never reaches
+    // the shell or a log; only the number of lines comes back. The picture
+    // is removed on any way out.
+    function runOcr(imageFile) {
+        const script = 'f=$1\n'
+            + 'trap \'rm -f -- "$f"\' EXIT\n'
+            + 'chmod 600 "$f" 2>/dev/null\n'
+            + 'command -v tesseract >/dev/null 2>&1 || exit 3\n'
+            + 'text=$(timeout 15 tesseract "$f" - -l por+eng 2>/dev/null); rc=$?\n'
+            + '[ "$rc" -eq 124 ] && exit 4\n'
+            + '[ "$rc" -eq 0 ] || exit 5\n'
+            + 'text=$(printf "%s" "$text" | tr -d "\\f" | sed -e "s/[[:space:]]*$//" -e "/./,\\$!d")\n'
+            + 'n=$(printf "%s\\n" "$text" | grep -c .)\n'
+            + '[ "$n" -gt 0 ] || { echo 0; exit 0; }\n'
+            + 'printf "%s" "$text" | wl-copy || exit 6\n'
+            + 'echo "$n"'
+        run(["sh", "-c", script, "sh", imageFile], (code, out) => {
+            const n = parseInt(out.trim())
+            if (code === 3)
+                toast("󰀦", "OCR precisa do tesseract", "")
+            else if (code !== 0 || isNaN(n))
+                toast("󰀦", "Não deu para ler o texto", "")
+            else if (n === 0)
+                toast("󱄽", "Nenhum texto encontrado", "")
+            else
+                toast("󰄬", n === 1 ? "Texto copiado · 1 linha" : `Texto copiado · ${n} linhas`, "")
+        })
+    }
+
     function openCapture() {
         if (open) {
             close()
@@ -195,6 +247,8 @@ Singleton {
     }
 
     function chooseMode(m) {
+        if (purpose === "ocr")
+            purpose = "capture"
         mode = m
         selOwner = ""
         if (phase === "choose")
@@ -281,6 +335,7 @@ Singleton {
             recording: recording, elapsed: elapsed, windows: windows.length,
             tool: tool, blur: blurMode, strokes: strokes.length, redo: redoStack.length,
             card: cardFile !== "", cardSerial: cardSerial,
+            toast: toastText, toastSerial: toastSerial,   // notices never carry content
             monitors: Object.keys(monitors).length
         }
     }

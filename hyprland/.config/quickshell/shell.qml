@@ -30,6 +30,11 @@ ShellRoot {
             CaptureState.openCapture()
         }
 
+        // Super+Shift+T: the text of an area goes to the clipboard
+        function ocr(): void {
+            CaptureState.openOcr()
+        }
+
         // A quick print (hypr-print) was saved: its card in the corner.
         // Only a PNG inside the Capturas folder is accepted.
         function card(path: string): void {

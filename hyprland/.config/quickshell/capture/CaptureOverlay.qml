@@ -174,15 +174,21 @@ Scope {
                         return
                     }
                     const d = win.devicePixelRatio || 1
-                    const w = Math.max(1, Math.round(selW * pixelScale / d))
-                    const h = Math.max(1, Math.round(selH * pixelScale / d))
-                    const tmp = `${CaptureState.tmpDir}/shot-${Date.now()}.png`
+                    // OCR reads small letters better twice as big; PPM is quick to
+                    // write even for the whole screen
+                    const ocr = CaptureState.purpose === "ocr"
+                    const k = ocr ? 2 : 1
+                    const w = Math.max(1, Math.round(selW * pixelScale * k / d))
+                    const h = Math.max(1, Math.round(selH * pixelScale * k / d))
+                    const tmp = `${CaptureState.tmpDir}/${ocr ? "ocr" : "shot"}-${Date.now()}.${ocr ? "ppm" : "png"}`
                     // The frame must stay until the grab is done: close only then
                     const ok = annot.exportItem.grabToImage(result => {
-                        if (result.saveToFile(tmp))
-                            CaptureState.finishPhoto(tmp, copy)
+                        if (!result.saveToFile(tmp))
+                            CaptureState.toast("󰀦", ocr ? "Não deu para ler o texto" : "Não deu para salvar o print", "")
+                        else if (ocr)
+                            CaptureState.runOcr(tmp)
                         else
-                            CaptureState.toast("󰀦", "Não deu para salvar o print", "")
+                            CaptureState.finishPhoto(tmp, copy)
                         CaptureState.close()
                     }, Qt.size(w, h))
                     if (!ok) {
@@ -311,7 +317,7 @@ Scope {
                         hoverEnabled: true
                         cursorShape: containsMouse && inside(mouseX, mouseY)
                                      ? (CaptureState.tool === "text" ? Qt.IBeamCursor : Qt.CrossCursor)
-                                     : CaptureState.mode === "area" ? Qt.CrossCursor : Qt.PointingHandCursor
+                                     : CaptureState.pickMode === "area" ? Qt.CrossCursor : Qt.PointingHandCursor
 
                         property real startX
                         property real startY
@@ -328,9 +334,9 @@ Scope {
                             } else if (pressed && drag === "draw") {
                                 annot.update(mouse.x, mouse.y, mouse.modifiers & Qt.ShiftModifier)
                             } else if (!pressed && !win.hasSel) {
-                                if (CaptureState.mode === "window")
+                                if (CaptureState.pickMode === "window")
                                     win.hover = win.windowAt(mouse.x, mouse.y)
-                                else if (CaptureState.mode === "screen")
+                                else if (CaptureState.pickMode === "screen")
                                     win.hover = { x: 0, y: 0, w: win.width, h: win.height }
                             }
                         }
@@ -341,11 +347,12 @@ Scope {
                         onPressed: mouse => {
                             startX = mouse.x
                             startY = mouse.y
-                            if (inside(mouse.x, mouse.y) && (CaptureState.kind === "photo" || win.editing)) {
+                            if (inside(mouse.x, mouse.y) && (CaptureState.kind === "photo" || win.editing)
+                                    && CaptureState.purpose !== "ocr") {
                                 // Inside the selection the chosen tool draws
                                 drag = "draw"
                                 annot.begin(mouse.x, mouse.y)
-                            } else if (win.editing || CaptureState.strokes.length > 0 || CaptureState.mode !== "area") {
+                            } else if (win.editing || CaptureState.strokes.length > 0 || CaptureState.pickMode !== "area") {
                                 // An annotated selection stays; Janela/Tela pick by click
                                 drag = ""
                             } else {
@@ -357,17 +364,19 @@ Scope {
                         onReleased: mouse => {
                             if (drag === "new" && (win.selW < 2 || win.selH < 2))
                                 win.clearSelection()   // an empty or 1 px selection is ignored
+                            else if (drag === "new" && CaptureState.purpose === "ocr")
+                                CaptureState.exportRequested(true)   // OCR reads the area as soon as it is let go
                             else if (drag === "draw")
                                 annot.end(mouse.modifiers & Qt.ShiftModifier)
                         }
                         onClicked: mouse => {
                             if (drag !== "" || win.editing || CaptureState.strokes.length > 0)
                                 return
-                            if (CaptureState.mode === "window") {
+                            if (CaptureState.pickMode === "window") {
                                 const w = win.windowAt(mouse.x, mouse.y)
                                 if (w)
                                     win.setSel(w.x, w.y, w.w, w.h)
-                            } else if (CaptureState.mode === "screen") {
+                            } else if (CaptureState.pickMode === "screen") {
                                 win.setSel(0, 0, win.width, win.height)
                             }
                         }
@@ -399,7 +408,7 @@ Scope {
                             required property var modelData
                             readonly property int s: Theme.handleSize
 
-                            visible: win.hasSel && CaptureState.mode === "area" && !win.editing
+                            visible: win.hasSel && CaptureState.pickMode === "area" && !win.editing
                             x: win.selX + (modelData.h + 1) / 2 * win.selW - s / 2
                             y: win.selY + (modelData.v + 1) / 2 * win.selH - s / 2
                             width: s
@@ -457,7 +466,7 @@ Scope {
                     // it, at the bottom, when there is room on neither side (Tela,
                     // a maximized window). Never over the capture bar.
                     AnnotateBar {
-                        visible: win.hasSel && !(picker.pressed && picker.drag !== "")
+                        visible: win.hasSel && CaptureState.purpose !== "ocr" && !(picker.pressed && picker.drag !== "")
                         readonly property real hint: 34      // its own hint shows under it
                         readonly property bool fitsBelow: win.selY + win.selH + 10 + height + hint <= win.height
                         readonly property bool fitsAbove: win.selY - 10 - height >= win.topFree
