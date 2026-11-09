@@ -93,6 +93,7 @@ Singleton {
     property string toastIcon: ""
     property string toastText: ""
     property string toastFolder: ""
+    property string toastVideo: ""        // the saved recording, checked again before it opens
     property int toastSerial: 0
 
     // ── Folders ──
@@ -176,6 +177,8 @@ Singleton {
     readonly property string checkScript: 'd=$(realpath -e -- "$1" 2>/dev/null) || exit 0\n'
         + 'f=$(realpath -e -- "$2" 2>/dev/null) || exit 0\n'
         + 'case "$f" in "$d"/*.png) [ -f "$f" ] && printf %s "$f" ;; esac'
+    // The same check for a recording: a .mp4 inside the Capturas of Videos
+    readonly property string checkVideoScript: checkScript.replace('"$d"/*.png)', () => '"$d"/*.mp4)')
 
     // A quick print was taken: show its card (only for a file in Capturas)
     function showCard(path) {
@@ -284,11 +287,26 @@ Singleton {
         close()
     }
 
-    function toast(icon, text, folder) {
+    function toast(icon, text, folder, video) {
         toastIcon = icon
         toastText = text
         toastFolder = folder || ""
+        toastVideo = video || ""
         toastSerial++
+    }
+
+    // The "Vídeo salvo" notice's play button: the recording opens in mpv,
+    // only when it is still a .mp4 inside the Capturas folder of Videos
+    function openVideo(path) {
+        if (path === "" || path !== toastVideo)
+            return
+        run(["sh", "-c", checkVideoScript, "sh", videosDir, path], (code, out) => {
+            if (out === "") {
+                console.warn("capture: vídeo ignorado (não é um MP4 da pasta Capturas)")
+                return
+            }
+            Quickshell.execDetached(["mpv", "--", out])
+        })
     }
 
     // A finished photo, written to the tmpfs: saved in Capturas and, when
@@ -416,6 +434,7 @@ Singleton {
             tool: tool, blur: blurMode, strokes: strokes.length, redo: redoStack.length,
             card: cardFile !== "", cardSerial: cardSerial,
             toast: toastText, toastSerial: toastSerial,   // notices never carry content
+            toastVideo: toastVideo !== "",
             monitors: Object.keys(monitors).length
         }
     }
@@ -609,7 +628,7 @@ Singleton {
             root.recording = false
             root.elapsed = 0
             if (!quick && (code === 0 || root.stopping)) {
-                root.toast("󰕧", "Vídeo salvo", root.videosDir)
+                root.toast("󰕧", "Vídeo salvo", root.videosDir, root.recordFile)
             } else {
                 // Only the recorder's messages, with any path taken out
                 const why = recorderErr.text.trim().split("\n").slice(-3).join(" | ").replace(/\/\S+/g, "<caminho>")

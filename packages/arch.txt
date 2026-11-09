@@ -73,6 +73,8 @@ networkmanager   # network backend of the Quickshell bar (nmtui comes with it); 
 spotify-launcher   # official Spotify client, installed and updated by the launcher; MPRIS for the bar
 aur:spicetify-cli              # Spotify customization; applied by ~/.local/bin/spotify-abrir
 aur:spicetify-marketplace-bin  # Spicetify store (extensions, themes), same as on Windows
+mpv                # default video player (install.sh: set_default_apps); config in common/.config/mpv
+aur:mpv-uosc       # mpv interface (controls, menus), in the shell's colors
 
 # ── File manager ──
 thunar
@@ -157,3 +159,6 @@ tesseract                    # OCR of the capture (Super+Shift+T)
 tesseract-data-por           # its Portuguese
 tesseract-data-eng           # and English
 gpu-screen-recorder          # screen recording of the capture (Super+Alt+R)
+
+# ── Viewers ──
+swayimg                      # default image viewer of the session (install.sh: set_default_apps)

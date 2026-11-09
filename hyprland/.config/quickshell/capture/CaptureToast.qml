@@ -6,7 +6,8 @@ import qs.theme
 import qs.state
 
 // Small notice at the top middle of the focused monitor ("Copiado ·
-// salvo", "Vídeo salvo", failures), with an optional folder button. Fades
+// salvo", "Vídeo salvo", failures), with an optional folder button (and a
+// play button for a saved video, which opens in mpv). Fades
 // in, goes away after about 3 s (stays while the mouse is on it). Lives
 // here until there is a notifications module.
 PanelWindow {
@@ -76,6 +77,15 @@ PanelWindow {
                 color: Theme.text
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
+            }
+            CaptureButton {
+                visible: CaptureState.toastVideo !== ""
+                icon: "󰐊"
+                hint: "Abrir o vídeo"
+                onPressed: {
+                    CaptureState.openVideo(CaptureState.toastVideo)
+                    root.shown = false
+                }
             }
             CaptureButton {
                 visible: CaptureState.toastFolder !== ""

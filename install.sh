@@ -667,6 +667,50 @@ create_user_dirs() {
   done < "$conf"
 }
 
+# ── Default apps ─────────────────────────────────────────────────────────────
+# Prints the path of an installed .desktop file, or fails
+find_desktop_file() {
+  local dir IFS=:
+
+  for dir in ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
+    if [[ -f "${dir}/applications/$1" ]]; then
+      echo "${dir}/applications/$1"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Makes an app the default for every type its .desktop file declares under a
+# prefix (image/, video/): xdg-mime has no wildcards. Skipped when the app is
+# not installed. Writes ~/.config/mimeapps.list (not in the repo).
+set_default_app() {
+  local desktop="$1" prefix="$2" file
+  local -a types
+
+  file="$(find_desktop_file "$desktop")" || return 0
+  mapfile -t types < <(grep -m1 '^MimeType=' "$file" | cut -d= -f2- | tr ';' '\n' | grep "^${prefix}")
+  if ((${#types[@]} == 0)); then
+    return 0
+  fi
+  if xdg-mime default "$desktop" "${types[@]}"; then
+    log "Default for ${prefix}*: ${desktop%.desktop} (${#types[@]} types)"
+  else
+    warn "Could not set ${desktop%.desktop} as the default for ${prefix}*"
+  fi
+}
+
+# Images open in swayimg and videos in mpv. swayimg needs Wayland: in the
+# XFCE session (X11) images don't open (README).
+set_default_apps() {
+  if ! command -v xdg-mime &>/dev/null; then
+    warn "xdg-mime not found (xdg-utils), skipping the default apps."
+    return 0
+  fi
+  set_default_app swayimg.desktop image/
+  set_default_app mpv.desktop video/
+}
+
 # ── XFCE ─────────────────────────────────────────────────────────────────────
 # The wallpaper is not in xfce4-desktop.xml: xfdesktop keys it by monitor name.
 # ~/.local/bin/xfce-wallpaper sets it at every XFCE login (autostart).
@@ -850,6 +894,7 @@ main() {
   create_user_dirs
   info "Running xdg-user-dirs-update to populate user directories..."
   xdg-user-dirs-update 2>/dev/null || true
+  set_default_apps
 
   print_summary
 }
