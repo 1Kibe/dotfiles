@@ -104,6 +104,19 @@ Singleton {
     readonly property real highlightAlpha: 0.35                // capture marker (highlighter)
     readonly property int blurRadius: 64                       // capture "borrar": strong, text unreadable
 
+    // Lock screen (and the login screen, which copies this file): big clock,
+    // user picture, password pill. The lock surface itself is bgDeep, so the
+    // screen is covered at once, before the content fades in.
+    readonly property int lockClockSize: 64
+    readonly property int lockDateSize: 15
+    readonly property int lockAvatarSize: 96
+    readonly property int lockFieldWidth: 300
+    readonly property int lockFieldHeight: 44
+    readonly property int lockShake: 10          // px the field moves on a wrong password
+    readonly property int lockMediaWidth: 360
+    readonly property color lockFieldFill: root.alpha(bgHard, 0.75)
+    readonly property color lockPillFill: root.alpha(bgHard, 0.6)
+
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {
         return value >= crit ? red : value >= warn ? yellow : ringNormal

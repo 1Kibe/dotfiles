@@ -19,7 +19,8 @@ return {
   capture_ocr   = qs("capture", "ocr"),    -- text of an area to the clipboard
   capture_record = qs("capture", "record"), -- record the screen / stop
   overview      = qs("overview"),
-  lock          = qs("lock", "lock"),
+  -- Waits for the compositor to confirm the lock (also used by hypridle)
+  lock          = "hypr-travar",
 
   -- Apps and tools (until a Quickshell module replaces them)
   cheatsheet    = "alacritty --class hypr-atalhos -e hypr-atalhos",

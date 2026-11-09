@@ -71,6 +71,7 @@ BACKUPS_DIR="${DOTFILES_DIR}/.backups"
 PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
 GREETD_DIR="/etc/greetd"
+PAM_DIR="/etc/pam.d"
 LOGIN_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
 
 # Wallpaper in common/.config/wallpapers (also the default of xfce-wallpaper)
@@ -752,6 +753,16 @@ configure_login_screen() {
   log "Login screen set (greetd + ReGreet)."
 }
 
+# PAM service of the Quickshell lock screen (hyprland/.config/quickshell/lock).
+# Without it PAM falls back to "other" (deny) and no password would unlock,
+# so hypr-travar refuses to lock while it is missing. A regular root file,
+# never a link into the repo: a user-owned link would let the user rewrite
+# the rules that guard the lock.
+install_lock_pam() {
+  sudo install -o root -g root -m644 "${DOTFILES_DIR}/system/pam.d/quickshell-lock" "${PAM_DIR}/quickshell-lock"
+  log "Lock screen PAM service installed (${PAM_DIR}/quickshell-lock)."
+}
+
 # ── Install ──────────────────────────────────────────────────────────────────
 print_summary() {
   echo ""
@@ -889,6 +900,9 @@ main() {
   fi
   if has_env xfce || has_env hyprland; then
     configure_login_screen
+  fi
+  if has_env hyprland; then
+    install_lock_pam
   fi
 
   create_user_dirs

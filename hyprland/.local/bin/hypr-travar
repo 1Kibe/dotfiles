@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Locks the screen with the Quickshell lock screen (lock/LockScreen.qml) and
+# waits until the compositor confirms every screen is covered. The single
+# way to lock: Super+L, hypridle and the suspend paths all call it.
+#
+# Exit: 0 locked, 1 not locked in time, 2 /etc/pam.d/quickshell-lock missing
+# (PAM would deny every password, so the screen is not locked at all).
+set -uo pipefail
+
+pam=/etc/pam.d/quickshell-lock
+runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# A regular file only: a missing one (install.sh not run) falls back to
+# PAM's "other" service, which denies everything
+if [[ ! -f "$pam" || -L "$pam" ]]; then
+  echo "hypr-travar: $pam não existe (rode o install.sh); a tela não foi travada" >&2
+  exit 2
+fi
+
+# One call at a time (Super+L pressed while hypridle locks): the second waits
+# for the first, then finds the screen locked
+exec 9>"$runtime/hypr-travar.lock"
+flock -w 8 9 || exit 1
+
+# One deadline for the whole run, counted on the clock (each IPC call also
+# takes time): 4.5 s fits inside logind's 5 s wait before a suspend
+now_ms() { echo $(( $(date +%s%N) / 1000000 )); }
+start="$(now_ms)"
+deadline_ms=4500
+
+# Locked = the compositor confirmed it, never "asked to lock". Two sources:
+# - the lock screen's stats: the compositor's confirmation to our lock;
+# - Hyprland itself: every monitor lists "LOCK" ("session lock") among the
+#   reasons in solitaryBlockedBy. After a Quickshell reload while locked,
+#   Hyprland restores the lock to the new instance without confirming it
+#   again, so only this one sees it.
+locked() {
+  qs ipc call lock stats 2>/dev/null | jq -e '.locked == true' >/dev/null 2>&1 && return 0
+  hyprctl -j monitors 2>/dev/null \
+    | jq -e 'length > 0 and all(.[]; (.solitaryBlockedBy // []) | index("LOCK") != null)' >/dev/null 2>&1
+}
+
+if locked; then
+  exit 0
+fi
+
+# Quickshell not running: start it like autostart.lua does (a child of
+# Hyprland, with the session's environment). Running but its IPC not ready
+# (the second right after a reload): only wait, never start a second one.
+if ! pgrep -u "$(id -u)" -x qs >/dev/null; then
+  hyprctl dispatch 'hl.dsp.exec_cmd("qs")' >/dev/null 2>&1 || true
+fi
+if ! qs ipc call lock stats >/dev/null 2>&1; then
+  while (( $(now_ms) - start < deadline_ms )); do
+    qs ipc call lock stats >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+fi
+
+# Ask, then check every 100 ms for the compositor's confirmation. At 2.5 s
+# ask once more (the first call may have hit an IPC that was not ready yet,
+# right after a reload); asking twice is harmless, lock() ignores it.
+qs ipc call lock lock >/dev/null 2>&1 || true
+asked_again=""
+while (( $(now_ms) - start < deadline_ms )); do
+  if locked; then
+    exit 0
+  fi
+  if [[ -z "$asked_again" ]] && (( $(now_ms) - start >= 2500 )); then
+    qs ipc call lock lock >/dev/null 2>&1 || true
+    asked_again=1
+  fi
+  sleep 0.1
+done
+
+echo "hypr-travar: a tela não travou" >&2
+exit 1

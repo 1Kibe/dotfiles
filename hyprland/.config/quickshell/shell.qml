@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import qs.bar
 import qs.capture
 import qs.clipboard
+import qs.lock
 import qs.state
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
@@ -52,6 +53,28 @@ ShellRoot {
         // State and counts only, never paths or content: qs ipc call capture stats
         function stats(): string {
             return JSON.stringify(CaptureState.stats())
+        }
+    }
+
+    // Lock screen (Super+L through hypr-travar, hypridle)
+    LockScreen {}
+
+    // Only these two: unlocking is never reachable from outside, only
+    // through a PAM success on the lock screen
+    IpcHandler {
+        target: "lock"
+
+        // Asks to lock; does nothing when already locked. hypr-travar then
+        // waits for stats().locked
+        function lock(): void {
+            LockState.lock()
+        }
+
+        // {"locked","checking","dimmed","error"}: locked is the compositor's
+        // confirmation that every screen is covered; never the password or
+        // the user
+        function stats(): string {
+            return JSON.stringify(LockState.stats())
         }
     }
 

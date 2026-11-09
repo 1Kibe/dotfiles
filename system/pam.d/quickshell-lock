@@ -1,0 +1,5 @@
+#%PAM-1.0
+# Quickshell lock screen (hyprland/.config/quickshell/lock). Password only:
+# Quickshell calls pam_authenticate and nothing else (no account, session
+# or password stacks). Installed by install.sh as a regular root file.
+auth include system-local-login

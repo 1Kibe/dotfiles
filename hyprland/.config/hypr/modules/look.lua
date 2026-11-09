@@ -38,6 +38,11 @@ hl.config({
     -- (c.bg_hard) so windows stand out
     background_color = rgb(c.bg_deep),
     font_family = "Agave Nerd Font Propo",
+    -- A Quickshell that restarts (crash, hypr-travar) can take over the lock
+    -- of a dead one; the screen stays locked meanwhile. A running process of
+    -- the user could already do anything, so this adds no risk against
+    -- someone at the keyboard.
+    allow_session_lock_restore = true,
   },
   ecosystem = { no_update_news = true, no_donation_nag = true },
   animations = { enabled = true },
