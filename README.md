@@ -32,13 +32,14 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 <summary>Passo a passo do que o <code>install.sh</code> faz</summary>
 
 1. Detecta a distro pelo `/etc/os-release` e escolhe a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
-2. Pergunta os ambientes: `xfce` (padrão sim) e `hyprland` (padrão não). O `common` entra sempre
+2. Pergunta os ambientes: `xfce` e `hyprland` (padrão sim nos dois). O `common` entra sempre
 3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
 4. Ativa NetworkManager e Bluetooth (e o greetd, a tela de login, nos ambientes `xfce` e `hyprland`) e pergunta se deve ativar o `sshd`
 5. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
 6. Configura o filtro git que mantém nomes de redes Wi-Fi fora dos commits
 7. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
 8. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
+9. Deixa o swayimg como padrão para imagens e o mpv para vídeos (`xdg-mime`), se estiverem instalados
 
 </details>
 
@@ -48,9 +49,9 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
+| `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
-| `hyprland/` | `~/.config/hypr`, `quickshell`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
+| `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
@@ -199,6 +200,8 @@ Window manager em mosaico, com `Super` como tecla principal. `Super+Enter` abre 
 |---|---|
 | **Alacritty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal) |
 | **Rofi** | Tema gruvbox-dark |
+| **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
+| **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
 | **GTK 3** | Bookmarks do gerenciador de arquivos |
@@ -234,6 +237,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 dotfiles/
 ├── common/.config/
 │   ├── alacritty/alacritty.toml
+│   ├── mpv/                              [mpv.conf, input.conf, script-opts/uosc.conf]
 │   ├── nvim/
 │   │   ├── init.lua
 │   │   ├── atalhos.txt
@@ -241,6 +245,7 @@ dotfiles/
 │   │   └── lua/
 │   │       ├── dashboard.lua
 │   │       └── plugins.lua
+│   ├── paru/paru.conf
 │   ├── rofi/config.rasi
 │   └── wallpapers/
 ├── xfce/.local/bin/xfce-wallpaper        [aplica o wallpaper no login]
@@ -272,7 +277,8 @@ dotfiles/
 │   ├── README.md
 │   └── .config/
 │       ├── hypr/
-│       └── quickshell/
+│       ├── quickshell/
+│       └── swayimg/init.lua
 ├── packages/
 │   ├── arch.txt
 │   ├── fedora.txt                        [TODO]
@@ -314,7 +320,7 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis e clipboard prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard e captura de tela prontos; próximos módulos: launcher, notificações e central de controle
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 

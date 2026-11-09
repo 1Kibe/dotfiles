@@ -1,12 +1,13 @@
 # hyprland
 
-Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis e o clipboard), no tema
-Gruvbox.
+Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis, o clipboard e a
+captura de tela), no tema Gruvbox, e do visualizador de imagens **swayimg**.
 
 | Pasta no repo | Vira, depois do `stow` |
 |---|---|
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
+| `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
 | `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
@@ -229,6 +230,47 @@ Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `60
 **Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as notas. Um arquivo que não dá para ler vira `.bak` e o
 clipboard começa vazio, sem perder o original.
 
+### Captura de tela (Print)
+
+| Tecla | Faz |
+|---|---|
+| `Print` | Abre a barra de captura no topo: **Área / Janela / Tela**, **Foto / Vídeo**, som do sistema e microfone (em Vídeo), **atraso** (0, 3, 5 ou 10 s), **OCR** e fechar. A tela congela por baixo |
+| `Super+Shift+S` | Print rápido de uma área |
+| `Alt+Print` | Print rápido da janela ativa |
+| `Shift+Print` | Print rápido da tela inteira |
+| `Super+Shift+T` | OCR: o texto de uma área vai para o clipboard |
+| `Super+Alt+R` | Grava o monitor em foco (com o último som escolhido, sem atraso); de novo, para |
+
+- **Foto:** depois de escolher a área, a barra de anotação aparece junto da seleção: seta (`A`), retângulo (`R`; com Shift,
+  cheio), linha (`L`), caneta (`P`), marca-texto (`H`), texto (`T`), números (`N`) e mosaico (`M`; clique de novo no ícone
+  para borrar). Tem 5 cores, 4 espessuras, desfazer e refazer.
+- **Print rápido:** salva, copia e mostra um cartão no canto de baixo por 5 s (para com o mouse em cima). O lápis (ou clique
+  na miniatura) abre o print na barra de anotação, e salvar **substitui o mesmo arquivo**. A pasta abre `Capturas`; a lixeira
+  manda para a lixeira (a cópia no clipboard fica).
+- **OCR:** em português e inglês (`tesseract`). O aviso diz quantas linhas foram copiadas, ou "Nenhum texto encontrado".
+- **Vídeo:** grava a área, a janela (onde ela estava no começo) ou o monitor, com o som do sistema, o microfone, os dois
+  misturados numa faixa ou nenhum. O **microfone começa desligado**; ligado, a pílula mostra o ícone dele. Enquanto grava,
+  uma pílula vermelha com o tempo fica na barra, antes do volume: clique nela, em `Super+Alt+R` ou em Parar para terminar.
+  O aviso "Vídeo salvo" tem o play (abre no mpv) e a pasta.
+- **Atraso:** a barra some, a contagem roda e só depois a tela congela (dá para pegar um menu aberto). `Esc` cancela.
+
+Dentro da captura:
+
+| Tecla | Faz |
+|---|---|
+| `Enter` / `Ctrl+C` | Copia e salva (em Vídeo, `Enter` começa a gravar) |
+| `Ctrl+S` | Só salva |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Desfaz / refaz |
+| Letra da ferramenta | Troca de ferramenta (lista acima) |
+| `Esc` | Sai sem salvar |
+
+| O quê | Onde |
+|---|---|
+| Fotos | `~/Imagens/Capturas/AAAA-MM-DD_HH-MM-SS.png` (a pasta Imagens do `xdg-user-dir`), na resolução real da tela |
+| Vídeos | `~/Vídeos/Capturas/AAAA-MM-DD_HH-MM-SS.mp4` |
+| Últimas escolhas (modo, foto/vídeo, atraso, som, cor, espessura) | `~/.local/state/quickshell/capture.json` |
+| Tela congelada, recortes do OCR e do editor | Memória e `$XDG_RUNTIME_DIR/quickshell-capture` (apagados ao fechar) |
+
 ### Atalhos do shell
 
 Os atalhos chamam `qs ipc call <alvo> <função>`; um módulo fica ligado ao atalho quando expõe o alvo abaixo (`IpcHandler`).
@@ -253,6 +295,9 @@ Outros alvos, para scripts:
 | `qs ipc call panel toggle <nome>` | Abre ou fecha um painel no monitor em foco: `power`, `network`, `volume`, `bluetooth`, `media`, `system` |
 | `qs ipc call taskmanager stats` | Os números do painel do sistema em JSON |
 | `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
+| `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
+| `qs ipc call capture card <arquivo>` | Mostra o cartão de um print (só PNG da pasta `Capturas`; o `hypr-print` chama no fim) |
+| `qs ipc call capture stats` | O estado da captura em JSON (aberta, modo, gravando, tempo); nunca caminhos ou conteúdo |
 
 O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.
 
@@ -277,3 +322,34 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 - O `wl-copy` não chega aos apps do XWayland (o Spotify, por exemplo); para eles, use `xclip -selection clipboard` (vem
   com o ambiente `xfce`) ou, no Spotify, o "Import from file".
 - Apps X11 só usam o cursor Bibata por causa do `~/.local/share/icons/default/index.theme` (pacote `common`).
+- Na VM a gravação sai **preta**: o gravador não acha uma placa de vídeo de verdade. O arquivo, o tempo e o som saem certos.
+- Na VM (VMware com o teclado preso), a `PrtSc` chega como `Super+Shift+S` e `Fn+PrtSc` como `Print`; `Shift+PrtSc` não
+  chega.
+
+## Visualizadores (imagem e vídeo)
+
+O `install.sh` deixa o **swayimg** como padrão para imagens e o **mpv** para vídeos (`xdg-mime`, no
+`~/.config/mimeapps.list`). Os dois usam as cores e a fonte do shell.
+
+**swayimg** (imagens, `~/.config/swayimg/init.lua`). Abrir uma imagem lista as outras da mesma pasta.
+
+| Tecla | Faz |
+|---|---|
+| `←` `→` / roda com Shift | Imagem anterior / próxima |
+| `Enter` / `G` | Troca entre a imagem e a galeria de miniaturas (na galeria, clique abre) |
+| `I` | Painel de informações (arquivo, formato, tamanho, data, câmera) |
+| `+` `−` / roda | Zoom (a roda aproxima onde está o mouse); `0` volta ao normal. Na galeria, `+` `−` e `Ctrl`+roda mudam o tamanho das miniaturas |
+| `R` / `Shift+R` | Gira |
+| `F` / `F11` | Tela cheia |
+| `S` | Apresentação (5 s por imagem) |
+| `Delete` | Manda para a lixeira: aperte de novo em até 3 s para confirmar. Nunca apaga de vez |
+| `Esc` / `Q` | Fecha |
+
+**mpv** (vídeos, `~/.config/mpv`, com a interface **uosc**). Os controles aparecem com o mouse perto da borda de baixo;
+o botão direito abre o menu (legendas, faixas de áudio, capítulos) e `Tab` mostra os controles por um instante. As
+outras teclas são as do mpv (`Espaço` pausa, `←` `→` voltam e avançam 5 s, `F` tela cheia, `Q` fecha). No fim, o vídeo
+fica parado na tela em vez de fechar.
+
+- O swayimg só funciona no Wayland: na sessão XFCE as imagens não abrem por ele (ele também é o único visualizador
+  instalado lá).
+- Na VM o mpv desenha pelo processador (`gpu-sw=yes` no `mpv.conf`), porque não há placa de vídeo.
