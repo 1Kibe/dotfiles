@@ -16,12 +16,19 @@ Column {
     property bool capsLock: false
     // Another screen's field has text (the dots show on every screen)
     property bool othersTyping: false
+    // Size of the pill (the login screen's is smaller)
+    property int fieldWidth: Theme.lockFieldWidth
+    property int fieldHeight: Theme.lockFieldHeight
 
     // Enter with text. The field is emptied right after: the caller keeps
     // the password only until it hands it to PAM.
     signal submitted(string password)
     // The field went from empty to typed or back (for othersTyping)
     signal typingChanged(bool typing)
+    // Esc (the field is also emptied): the login screen closes its menus
+    signal cancelled()
+    // Left or right with the field empty: the login screen changes user
+    signal sideKey(int step)
 
     readonly property bool lockedOut: error === "tooMany"
     readonly property bool hasText: input.text.length > 0
@@ -44,13 +51,13 @@ Column {
     Rectangle {
         id: pill
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Theme.lockFieldWidth
-        height: Theme.lockFieldHeight
+        width: root.fieldWidth
+        height: root.fieldHeight
         radius: height / 2
         color: Theme.lockFieldFill
         border.width: root.error === "wrong" || root.error === "unknown" ? 2 : 0
         border.color: Theme.red
-        opacity: root.lockedOut ? 0.45 : 1
+        opacity: root.lockedOut ? Theme.lockLockedOpacity : 1
 
         transform: Translate {
             id: offset
@@ -98,7 +105,22 @@ Column {
 
             Keys.onReturnPressed: root.send()
             Keys.onEnterPressed: root.send()
-            Keys.onEscapePressed: input.clear()
+            Keys.onEscapePressed: {
+                input.clear()
+                root.cancelled()
+            }
+            Keys.onLeftPressed: event => {
+                if (input.text.length === 0)
+                    root.sideKey(-1)
+                else
+                    event.accepted = false
+            }
+            Keys.onRightPressed: event => {
+                if (input.text.length === 0)
+                    root.sideKey(1)
+                else
+                    event.accepted = false
+            }
         }
 
         // Placeholder, or three dots that pulse while typing (on any screen)
@@ -139,13 +161,36 @@ Column {
             }
         }
 
-        Text {
+        // Checking: a turning spinner and the word
+        Row {
             anchors.centerIn: input
             visible: root.checking
-            text: "Conferindo…"
-            color: Theme.fg4
-            font.family: Theme.font
-            font.pixelSize: 15
+            spacing: 8
+
+            Text {
+                id: spinner
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\u{f0772}"
+                color: Theme.fg4
+                font.family: Theme.font
+                font.pixelSize: 15
+
+                RotationAnimation on rotation {
+                    running: root.checking
+                    loops: Animation.Infinite
+                    from: 0
+                    to: 360
+                    duration: Theme.spinnerPeriod
+                }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Conferindo…"
+                color: Theme.fg4
+                font.family: Theme.font
+                font.pixelSize: 15
+            }
         }
 
         // Enter arrow: same as the key
@@ -180,7 +225,8 @@ Column {
     // One fixed line under the pill: never PAM's own text
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
-        width: Theme.lockFieldWidth + 80
+        // Never narrower than the lock's: the long message fits in one line
+        width: Math.max(root.fieldWidth, Theme.lockFieldWidth) + 80
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         textFormat: Text.PlainText

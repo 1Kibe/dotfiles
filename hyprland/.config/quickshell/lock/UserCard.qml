@@ -14,6 +14,8 @@ Column {
     // Absolute path of the picture; a missing or broken file shows the initial
     property string photo: ""
     property int size: Theme.lockAvatarSize
+    // The login screen draws the name itself (with "1 de 2")
+    property bool showName: true
 
     spacing: 10
 
@@ -61,6 +63,7 @@ Column {
 
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
+        visible: root.showName
         text: root.shownName
         textFormat: Text.PlainText
         maximumLineCount: 1

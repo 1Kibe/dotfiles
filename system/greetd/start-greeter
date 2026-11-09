@@ -1,0 +1,35 @@
+#!/bin/sh
+# Starts the login screen: Quickshell (/etc/greetd/quickshell) inside the
+# cage kiosk compositor, on the last monitor. greetd runs it as the
+# "greeter" user (config.toml); install.sh copies it to /etc/greetd, owned by
+# root.
+#
+# - The keyboard of the login screen is the system's (localectl), so a
+#   password is typed with the same layout as in the session. localectl gets
+#   2 s and may fail: the login screen comes up anyway, with cage's default
+#   keyboard.
+# - On a virtual machine (vmwgfx) wlroots' GLES renderer fails to import
+#   buffers and cage dies right after start: software renderer and cursor
+#   there. Real hardware keeps the GPU.
+set -u
+
+status="$(timeout 2 localectl status 2>/dev/null)" || status=""
+
+xkb() {   # localectl field → its value, or nothing
+  printf '%s\n' "$status" | sed -n "s/^ *$1: *//p" | head -n 1
+}
+
+layout="$(xkb 'X11 Layout')"
+model="$(xkb 'X11 Model')"
+variant="$(xkb 'X11 Variant')"
+options="$(xkb 'X11 Options')"
+[ -n "$layout" ] && export XKB_DEFAULT_LAYOUT="$layout"
+[ -n "$model" ] && export XKB_DEFAULT_MODEL="$model"
+[ -n "$variant" ] && export XKB_DEFAULT_VARIANT="$variant"
+[ -n "$options" ] && export XKB_DEFAULT_OPTIONS="$options"
+
+if systemd-detect-virt --quiet --vm; then
+  export WLR_RENDERER=pixman WLR_NO_HARDWARE_CURSORS=1
+fi
+
+exec cage -s -mlast -- qs -p /etc/greetd/quickshell

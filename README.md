@@ -26,7 +26,7 @@ Para rodar sem nenhuma pergunta, usando os padrões (ambientes `xfce` e `hyprlan
 
 Pode clonar em qualquer pasta, por exemplo `~/Projetos/dotfiles`. Só não mova a pasta depois de linkar (veja [Cuidados](#cuidados)).
 
-Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (com áudio **pipewire** e rede **NetworkManager**): o script instala o Xorg, o PipeWire e a tela de login (greetd + ReGreet). No fim, reinicie e escolha a sessão na tela de login.
+Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (com áudio **pipewire** e rede **NetworkManager**): o script instala o Xorg, o PipeWire e a tela de login (greetd com uma tela em Quickshell). No fim, reinicie e escolha a sessão na tela de login.
 
 <details>
 <summary>Passo a passo do que o <code>install.sh</code> faz</summary>
@@ -158,7 +158,7 @@ Depois de instalar, rode `:Mason` dentro do `nvim` para conferir os LSPs e forma
 
 ### XFCE
 
-Dois painéis: em cima ficam menu, janelas abertas, sessão, área de notificação e bateria; embaixo, relógio, janelas abertas e áreas de trabalho. Tema GTK Adwaita-dark com ícones breeze-dark, fonte Agave Nerd Font e cursor Bibata Modern Classic (o mesmo do Windows). A tela de login (greetd + ReGreet) usa o mesmo visual e o wallpaper do desktop.
+Dois painéis: em cima ficam menu, janelas abertas, sessão, área de notificação e bateria; embaixo, relógio, janelas abertas e áreas de trabalho. Tema GTK Adwaita-dark com ícones breeze-dark, fonte Agave Nerd Font e cursor Bibata Modern Classic (o mesmo do Windows). A tela de login (greetd com uma tela em Quickshell) é a mesma em todos os ambientes, com o fundo e o visual do bloqueio do Hyprland.
 
 O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todos os monitores. Ele não fica no `xfce4-desktop.xml` porque o XFCE salva o wallpaper pelo nome do monitor (`eDP-1`, `Virtual-1`...), que muda de máquina para máquina. Depois de ligar um monitor novo, rode `xfce-wallpaper` de novo.
 
@@ -223,7 +223,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 - **Wallpaper por monitor.** O XFCE também grava no `xfce4-desktop.xml` o nome de cada monitor e o caminho do wallpaper com a sua pasta pessoal (`/home/<usuário>`). O filtro `tools/xfce-desktop-clean.awk` tira esse bloco antes de cada commit.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
-- **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com o ReGreet, que lista Hyprland, Xfce e i3. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
+- **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com a tela de login em Quickshell (`system/greetd/quickshell`), que lista Hyprland, Xfce e i3. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
 - **Se a tela de login não abrir.** Aperte `Ctrl+Alt+F2`, entre pelo terminal e rode `uwsm start hyprland.desktop` (Hyprland) ou `startx /usr/bin/startxfce4` (XFCE).
 - **Não mova a pasta depois de linkar.** Para mover: `./install.sh unlink`, mova a pasta e rode `./install.sh link` no lugar novo.
 - **Backups ficam fora do git.** A pasta `.backups/` está no `.gitignore`, porque um backup do `~/.config` pode ter tokens e cookies de outros programas.
@@ -285,8 +285,8 @@ dotfiles/
 │   └── ubuntu.txt                        [TODO]
 ├── system/greetd/                         [tela de login, copiada para /etc/greetd]
 │   ├── config.toml
-│   ├── regreet.toml
-│   └── regreet.css
+│   ├── start-greeter                      [teclado do sistema; software em VM; abre o cage]
+│   └── quickshell/                        [a tela de login (Quickshell)]
 ├── assets/preview.png
 ├── tools/
 │   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]

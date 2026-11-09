@@ -116,6 +116,36 @@ Singleton {
     readonly property int lockMediaWidth: 360
     readonly property color lockFieldFill: root.alpha(bgHard, 0.75)
     readonly property color lockPillFill: root.alpha(bgHard, 0.6)
+    readonly property real lockLockedOpacity: 0.55   // the field while locked out (too many attempts)
+    readonly property int spinnerPeriod: 900        // one turn of the "Conferindo…" spinner, ms
+
+    // Login screen (system/greetd/quickshell, which copies this file): the
+    // lock's clock, field and status pill, plus the session menu, the user
+    // switcher and the power buttons
+    readonly property color fg2: "#d5c4a1"                      // the date
+    readonly property color loginVeil: root.alpha(bgDeep, 0.55)  // over the background picture
+    readonly property color loginPill: root.alpha(bg, 0.88)
+    readonly property color loginHighlight: root.alpha(fg, 0.14) // chosen session, hover
+    readonly property int loginEdge: 14            // pills from the screen edges
+    readonly property int loginSmallText: 12       // session pill, "1 de 2", power hint
+    readonly property int loginHintText: 11        // "← → troca de usuário"
+    readonly property int loginNameText: 14
+    readonly property int loginAvatar: 60
+    readonly property int loginNeighbor: 34        // the users beside the current one
+    readonly property real loginNeighborOpacity: 0.45
+    readonly property int loginNeighborGap: 18
+    readonly property int loginChevron: 18
+    readonly property int loginChevronGap: 16
+    readonly property int loginRing: 2             // outline of the current user
+    readonly property int loginFieldWidth: 250
+    readonly property int loginFieldHeight: 38
+    readonly property int loginSessionMinWidth: 170   // the session list: as wide as its
+    readonly property int loginSessionMaxWidth: 260   // longest name, between these
+    readonly property int loginPad: 6
+    readonly property int loginButton: 34          // suspend, reboot, power off
+    readonly property int loginButtonRadius: 10
+    readonly property int loginConfirmHeight: 32   // "Clique de novo para desligar"
+    readonly property int loginConfirmTimeout: 4000
 
     // Warning before the idle lock (lock/DimOverlay): veil over every screen
     // and a pill under the bar

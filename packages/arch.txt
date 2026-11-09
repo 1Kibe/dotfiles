@@ -80,11 +80,11 @@ aur:mpv-uosc       # mpv interface (controls, menus), in the shell's colors
 thunar
 thunar-archive-plugin
 
-# ── Login screen (greetd + ReGreet, for every environment) ──
+# ── Login screen (greetd + Quickshell in cage, for every environment) ──
 greetd
-greetd-regreet
 cage
-gnome-themes-extra     # Adwaita-dark GTK theme (desktop and login screen)
+quickshell             # the login screen (system/greetd/quickshell) and Hyprland's shell
+gnome-themes-extra     # Adwaita-dark GTK theme
 breeze-icons           # breeze-dark icon theme
 
 [xfce]
@@ -136,9 +136,6 @@ xdg-desktop-portal-hyprland  # screen sharing, screenshots for apps
 xdg-desktop-portal-gtk       # file picker and dark mode for GTK apps
 hyprpolkitagent              # password dialog for apps (polkit)
 qt6-wayland
-
-# ── Shell (own Quickshell config in hyprland/.config/quickshell) ──
-quickshell
 
 # ── Clipboard, screenshots, media keys ──
 wl-clipboard

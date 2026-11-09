@@ -72,7 +72,24 @@ PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
 GREETD_DIR="/etc/greetd"
 PAM_DIR="/etc/pam.d"
-LOGIN_BACKGROUND="/usr/share/backgrounds/dotfiles/login.png"
+# Login screen (Quickshell in cage): its files under /etc/greetd, root's,
+# copied by this explicit list (repo path → path inside
+# ${GREETD_DIR}/quickshell); its state (last user and session) in the
+# greeter's own cache folder
+GREETER_CACHE="/var/cache/qs-greeter"
+GREETER_FILES=(
+  "system/greetd/quickshell/shell.qml:shell.qml"
+  "system/greetd/quickshell/Greeter.qml:Greeter.qml"
+  "system/greetd/quickshell/greeter/GreeterState.qml:greeter/GreeterState.qml"
+  "system/greetd/quickshell/greeter/sessions.js:greeter/sessions.js"
+  "hyprland/.config/quickshell/theme/Theme.qml:theme/Theme.qml"
+  "hyprland/.config/quickshell/lock/LockBackground.qml:lock/LockBackground.qml"
+  "hyprland/.config/quickshell/lock/BigClock.qml:lock/BigClock.qml"
+  "hyprland/.config/quickshell/lock/UserCard.qml:lock/UserCard.qml"
+  "hyprland/.config/quickshell/lock/PasswordField.qml:lock/PasswordField.qml"
+  "hyprland/.config/quickshell/lock/StatusIcons.qml:lock/StatusIcons.qml"
+  "hyprland/.config/quickshell/lock/text.js:lock/text.js"
+)
 
 # Wallpaper in common/.config/wallpapers (also the default of xfce-wallpaper)
 WALLPAPER_FILE="wallpaper-padrao.png"
@@ -735,32 +752,47 @@ configure_xfce() {
   fi
 }
 
-# Login screen (greetd + ReGreet) with the desktop's theme, cursor, font and
-# wallpaper. The greeter can't read $HOME, so the wallpaper is copied to
-# /usr/share/backgrounds. greetd's packaged config.toml is kept as .bak once.
-configure_login_screen() {
-  local wallpaper="${DOTFILES_DIR}/common/.config/wallpapers/${WALLPAPER_FILE}"
-  local src="${DOTFILES_DIR}/system/greetd"
-  local file
+# Files of the login screen (Quickshell in cage, run by greetd as the
+# "greeter" user): the greeter's QML, the session's theme and the parts of
+# the lock screen it shares, and start-greeter. Regular root files, never
+# links into the repo: the greeter must not run code the user can edit.
+# Only the files of the list go in. The greeter's cache folder (last user
+# and session) is its own, 700. Does not touch config.toml: greetd keeps
+# showing the old login screen until configure_login_screen.
+install_greeter_files() {
+  local pair dir="${GREETD_DIR}/quickshell"
 
   if [[ ! -d "${GREETD_DIR}" ]]; then
     warn "greetd is not installed, skipping the login screen."
-    return 0
+    return 1
   fi
 
-  if [[ -f "$wallpaper" ]]; then
-    sudo install -Dm644 "$wallpaper" "${LOGIN_BACKGROUND}"
+  sudo install -d -m755 -o root -g root "${dir}" "${dir}/greeter" "${dir}/theme" "${dir}/lock"
+  for pair in "${GREETER_FILES[@]}"; do
+    sudo install -m644 -o root -g root "${DOTFILES_DIR}/${pair%%:*}" "${dir}/${pair#*:}"
+  done
+  sudo install -m755 -o root -g root "${DOTFILES_DIR}/system/greetd/start-greeter" "${GREETD_DIR}/start-greeter"
+  if id greeter &>/dev/null; then
+    sudo install -d -m700 -o greeter -g greeter "${GREETER_CACHE}"
   else
-    warn "Wallpaper not found: ${wallpaper}"
+    warn "No greeter user (greetd's package creates it): the login screen won't remember the last choices."
   fi
+  log "Login screen files installed (${dir})."
+}
+
+# Points greetd at the Quickshell login screen (config.toml). The packaged
+# config.toml is kept as .bak once. The old ReGreet files in /etc/greetd stay
+# where they are (unused).
+configure_login_screen() {
+  local src="${DOTFILES_DIR}/system/greetd"
+
+  install_greeter_files || return 0
   if [[ -f "${GREETD_DIR}/config.toml" && ! -e "${GREETD_DIR}/config.toml.bak" \
         && "$(< "${GREETD_DIR}/config.toml")" != "$(< "${src}/config.toml")" ]]; then
     sudo cp -p "${GREETD_DIR}/config.toml" "${GREETD_DIR}/config.toml.bak"
   fi
-  for file in config.toml regreet.toml regreet.css; do
-    sudo install -m644 "${src}/${file}" "${GREETD_DIR}/${file}"
-  done
-  log "Login screen set (greetd + ReGreet)."
+  sudo install -m644 -o root -g root "${src}/config.toml" "${GREETD_DIR}/config.toml"
+  log "Login screen set (greetd + Quickshell)."
 }
 
 # PAM service of the Quickshell lock screen (hyprland/.config/quickshell/lock).
