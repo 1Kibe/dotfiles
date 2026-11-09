@@ -2,8 +2,10 @@
 -- tap to click, two-finger tap = right click, tap and drag, natural scroll.
 hl.config({
   input = {
+    -- ABNT2 is the keyboard model, not a variant of "br" (the same as
+    -- install.sh's XKB_LAYOUT / XKB_MODEL, and localectl's)
     kb_layout = "br",
-    kb_variant = "abnt2",
+    kb_model = "abnt2",
     follow_mouse = 1,
     sensitivity = 0,
     touchpad = {

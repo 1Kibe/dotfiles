@@ -72,6 +72,14 @@ PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
 GREETD_DIR="/etc/greetd"
 PAM_DIR="/etc/pam.d"
+
+# System language and keyboard: the console, X11/Wayland (XFCE, cage and the
+# login screen read it from localectl) and Hyprland (hypr/modules/input.lua)
+SYSTEM_LOCALE="pt_BR.UTF-8"
+CONSOLE_KEYMAP="br-abnt2"
+XKB_LAYOUT="br"
+XKB_MODEL="abnt2"
+LOCALE_GEN="/etc/locale.gen"
 # Login screen (Quickshell in cage): its files under /etc/greetd, root's,
 # copied by this explicit list (repo path → path inside
 # ${GREETD_DIR}/quickshell); its state (last user and session) in the
@@ -834,6 +842,79 @@ setup_shared_login() {
   log "Lock and login background folder ready (${SHARED_LOGIN_DIR})."
 }
 
+# System language and keyboard (Arch). Each part checks first: on a system
+# already set, no sudo runs. The language only changes after a question
+# (yes with --yes) and keeps every LC_* already set; it applies from the next
+# login. The keyboard keeps the current X11 options (localectl would drop
+# what is not passed); --no-convert keeps the console and X11 keymaps apart.
+# Never fatal: a step that fails only warns, the install goes on.
+setup_locale_keyboard() {
+  local status lang others options line done_any="" generated=1
+  local -a extra=()
+
+  if [[ "${DISTRO}" != "arch" ]]; then
+    warn "Language and keyboard: only set automatically on Arch; set ${SYSTEM_LOCALE} and ${CONSOLE_KEYMAP} by hand."
+    return 0
+  fi
+
+  # The locale, generated once
+  if ! locale -a 2>/dev/null | grep -qix "${SYSTEM_LOCALE/UTF-8/utf8}"; then
+    if grep -qE "^#[[:space:]]*${SYSTEM_LOCALE//./\\.} UTF-8" "${LOCALE_GEN}" 2>/dev/null; then
+      sudo sed -i "s/^#[[:space:]]*${SYSTEM_LOCALE//./\\.} UTF-8/${SYSTEM_LOCALE} UTF-8/" "${LOCALE_GEN}" \
+        || warn "Could not enable ${SYSTEM_LOCALE} in ${LOCALE_GEN}."
+    elif ! grep -qE "^${SYSTEM_LOCALE//./\\.} UTF-8" "${LOCALE_GEN}" 2>/dev/null; then
+      echo "${SYSTEM_LOCALE} UTF-8" | sudo tee -a "${LOCALE_GEN}" >/dev/null \
+        || warn "Could not add ${SYSTEM_LOCALE} to ${LOCALE_GEN}."
+    fi
+    sudo locale-gen || warn "locale-gen failed."
+    done_any=1
+    # Switching to a locale that does not exist would break every program
+    if ! locale -a 2>/dev/null | grep -qix "${SYSTEM_LOCALE/UTF-8/utf8}"; then
+      generated=""
+      warn "${SYSTEM_LOCALE} is not available: the system language stays as it is."
+    fi
+  fi
+
+  status="$(localectl status 2>/dev/null || true)"
+  # "System Locale: LANG=… LC_TIME=…" (the extra ones on the lines below)
+  # (grep finds nothing on most systems: no LC_* set; that is not an error)
+  lang="$(sed -n '/System Locale:/,/Keymap:/p' <<<"${status}" | grep -oE 'LANG=[^[:space:]]+' | head -n 1 || true)"
+  others="$(sed -n '/System Locale:/,/Keymap:/p' <<<"${status}" | grep -oE '[A-Z_]+=[^[:space:]]+' | grep -v '^LANG=' | tr '\n' ' ' || true)"
+  # One argument per LC_*, with no word splitting or globbing
+  read -r -a extra <<<"${others}"
+  if [[ -n "${generated}" && "${lang}" != "LANG=${SYSTEM_LOCALE}" ]]; then
+    if [[ "$(ask "Use ${SYSTEM_LOCALE} as the system language (now ${lang:-unset})? [Y/n] " "y")" =~ ^[Yy] ]]; then
+      if sudo localectl set-locale "LANG=${SYSTEM_LOCALE}" "${extra[@]}"; then
+        log "System language: ${SYSTEM_LOCALE}${others:+ (kept: ${others% })} (from the next login)."
+      else
+        warn "Could not set the system language to ${SYSTEM_LOCALE}."
+      fi
+      done_any=1
+    else
+      info "System language kept (${lang:-unset})."
+    fi
+  fi
+
+  line="$(sed -n 's/^ *VC Keymap: *//p' <<<"${status}")"
+  if [[ "${line}" != "${CONSOLE_KEYMAP}" ]]; then
+    sudo localectl set-keymap --no-convert "${CONSOLE_KEYMAP}" \
+      || warn "Could not set the console keyboard to ${CONSOLE_KEYMAP}."
+    done_any=1
+  fi
+
+  if [[ "$(sed -n 's/^ *X11 Layout: *//p' <<<"${status}")" != "${XKB_LAYOUT}" \
+        || "$(sed -n 's/^ *X11 Model: *//p' <<<"${status}")" != "${XKB_MODEL}" ]]; then
+    options="$(sed -n 's/^ *X11 Options: *//p' <<<"${status}")"
+    sudo localectl set-x11-keymap --no-convert "${XKB_LAYOUT}" "${XKB_MODEL}" "" "${options}" \
+      || warn "Could not set the X11/Wayland keyboard to ${XKB_LAYOUT} ${XKB_MODEL}."
+    done_any=1
+  fi
+
+  if [[ -z "${done_any}" ]]; then
+    log "Language and keyboard already ${SYSTEM_LOCALE} / ${CONSOLE_KEYMAP}."
+  fi
+}
+
 # ── Install ──────────────────────────────────────────────────────────────────
 print_summary() {
   echo ""
@@ -962,6 +1043,7 @@ main() {
 
   choose_envs "$@"
   install_packages
+  setup_locale_keyboard
   enable_services
   install_optional_deps
   link_configs
