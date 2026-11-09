@@ -291,7 +291,8 @@ bootstrap_paru() {
   git clone https://aur.archlinux.org/paru.git "$tmp/paru"
   (
     cd "$tmp/paru" || exit 1
-    makepkg -s --noconfirm || exit 1
+    # -r: rust (build-only dependency) doesn't stay installed
+    makepkg -sr --noconfirm || exit 1
     mapfile -t pkgs < <(makepkg --packagelist | grep -v -- '-debug-')
     sudo pacman -U --noconfirm "${pkgs[@]}"
   )
