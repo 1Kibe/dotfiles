@@ -813,6 +813,16 @@ configure_login_screen() {
   log "Login screen set (greetd + Quickshell)."
 }
 
+# Text consoles log out by themselves after 10 minutes without a command
+# (system/profile.d/tmout.sh): a console left open after a lock-screen
+# recovery does not stay logged in. SSH and the graphical session's
+# terminals are not touched. A regular root file; not fatal.
+install_console_timeout() {
+  sudo install -o root -g root -m644 "${DOTFILES_DIR}/system/profile.d/tmout.sh" /etc/profile.d/tmout.sh \
+    && log "Text consoles log out after 10 minutes idle (/etc/profile.d/tmout.sh)." \
+    || warn "Could not install /etc/profile.d/tmout.sh (text consoles keep no time limit)."
+}
+
 # PAM service of the Quickshell lock screen (hyprland/.config/quickshell/lock).
 # Without it PAM falls back to "other" (deny) and no password would unlock,
 # so hypr-travar refuses to lock while it is missing. A regular root file,
@@ -1060,6 +1070,7 @@ main() {
   if has_env hyprland; then
     install_lock_pam
   fi
+  install_console_timeout
 
   create_user_dirs
   info "Running xdg-user-dirs-update to populate user directories..."
