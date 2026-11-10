@@ -54,6 +54,7 @@ run("SUPER + A", "controlcenter", "Sistema: Central de controle")
 -- Gear key (F9) of the Yoga sends Super+I
 run("SUPER + I", "controlcenter", "Sistema: Central de controle (tecla engrenagem)")
 run("SUPER + X", "powermenu", "Sistema: Menu de energia")
+run("SUPER + S", "settings", "Sistema: Configurações")
 run("CTRL + ALT + Delete", "powermenu", "Sistema: Menu de energia")
 run("SUPER + Tab", "overview", "Sistema: Visão geral das janelas")
 run("SUPER + F1", "cheatsheet", "Sistema: Lista de atalhos")

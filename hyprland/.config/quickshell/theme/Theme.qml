@@ -184,9 +184,13 @@ Singleton {
     readonly property int animNormal: 200   // opening, size changes
 
     // Motion of the panels that hang from the bar (Material 3 values, which
-    // are public): durations go through dur(), so one speed scales them all
-    // (1 until the settings set it; 0 = animations off)
-    readonly property real speed: 1
+    // are public): durations go through dur(), so one speed scales them all.
+    // Speed and "reduce motion" are the settings' (Fontes e animações), set
+    // here by state/SettingsApply: 0 = animations off, 0.7 fast, 1 normal,
+    // 1.4 calm; reduce motion swaps slides for fades. This file imports
+    // nothing of the shell: the login screen (greeter) uses it alone.
+    property real speed: 1
+    property bool reduceMotion: false
     function dur(ms) {
         return speed <= 0 ? 0 : Math.round(ms * speed)
     }
@@ -200,9 +204,33 @@ Singleton {
     readonly property var curveDecel: [0.2, 0, 0, 1, 1, 1]
     readonly property var curveAccel: [0.4, 0, 1, 1, 1, 1]
 
-    // Room under the bar kept by its window for the panels (Bar.qml): the
-    // window never changes size while they open and close (a resize shows one
-    // stretched frame of the bar), and grows only if a panel needs more
+    // A panel that touches the screen's left or right edge (the settings,
+    // bar/EdgeTimeline): one timeline (Ryan, 2026-11-10, version C, "barra
+    // primeiro"): the bar first stretches that end to the screen's edge and
+    // squares that corner (the first edgeBarShare of the time), then the
+    // panel comes out (from edgePanelFrom to the end), each part with the
+    // curve Padrão (curveDecel); closing plays it backwards, shorter
+    readonly property int motionEdgeOpen: 450
+    readonly property int motionEdgeClose: 300
+    readonly property real edgeBarShare: 0.3
+    readonly property real edgePanelFrom: 0.2
+
+    // The settings panel (settings/SettingsPanel): on the screen's left edge,
+    // from the bar to the bottom, on the timeline above. Its list and cards
+    // come in one after another with the expressive curve (a slight
+    // overshoot) and leave the other way
+    readonly property int settingsWidth: 720
+    readonly property int cascadeStart: 160     // after the panel starts opening
+    readonly property int cascadeItem: 220      // each item coming in
+    readonly property int cascadeStagger: 35    // between two items
+    readonly property int cascadeOutItem: 120   // each item leaving
+    readonly property int cascadeOutStagger: 12
+    readonly property int cascadeShift: 24      // px an item travels coming in
+    readonly property int searchFlash: 900      // the found card's highlight
+    readonly property var curveExpressive: [0.38, 1.21, 0.22, 1, 1, 1]
+
+    // Room under the bar for the panels when the screen's height is not
+    // known yet (Bar.qml takes the rest of the screen)
     readonly property int panelRoom: 480
 
     // Dates always in Brazilian Portuguese, whatever the system locale

@@ -2,10 +2,12 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.theme
 
-// Takes each new choice of SettingsStore out of the shell: the generated
-// Hyprland files (~/.config/hypr/settings.lua, monitors.lua), hypridle,
-// xdg-mime, localectl, sysfs. Each area comes with its own task; this is
+// Takes each new choice of SettingsStore where it goes: inside the shell,
+// the Theme's motion; out of it, later, the generated Hyprland files
+// (~/.config/hypr/settings.lua, monitors.lua), hypridle, xdg-mime,
+// localectl, sysfs. Each area comes with its own task; this is
 // the frame they hang on: a handler per key, and `failed` with a short
 // fixed message in pt-BR, after which the page shows the value as it was.
 Singleton {
@@ -27,4 +29,19 @@ Singleton {
                 handler(SettingsStore.get(key))
         }
     }
+
+    // Inside the shell: the motion of the Theme (which imports nothing, so
+    // the login screen can use it alone)
+    function applyMotion() {
+        if (!SettingsStore.ready)
+            return
+        Theme.speed = SettingsStore.get("animSpeed")
+        Theme.reduceMotion = SettingsStore.get("reduceMotion") === true
+    }
+    Connections {
+        target: SettingsStore
+        function onReadyChanged() { root.applyMotion() }
+        function onValuesChanged() { root.applyMotion() }
+    }
+    Component.onCompleted: applyMotion()
 }

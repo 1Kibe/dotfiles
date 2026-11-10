@@ -23,6 +23,13 @@ import qs.state
 // rolls it back up, and only then the panel hides. Every opening starts
 // rolled up; a click in the middle of an animation goes on from where it is.
 // Esc and a click outside (the frame's focus grab) close it the same way.
+//
+// edgeSide "left"/"right": the body goes to that screen edge, past the
+// bar's side gap, and opens on the edge timeline (version C, "barra
+// primeiro", Ryan 2026-11-10; bar/EdgeTimeline): the bar first stretches that
+// end to the screen's edge and squares that corner, then the body unrolls;
+// closing, the other way round. No panel uses it yet (the settings, on the
+// left, are their own piece).
 Item {
     id: root
 
@@ -32,6 +39,7 @@ Item {
     property bool centered: false      // under the middle of the button
     property bool alignLeft: false     // left edges lined up (buttons on the left of the bar)
     property string side: "center"     // "right": continues the bar's right end
+    property string edgeSide: ""       // "left"/"right": to the screen's edge (see above)
     // One piece with the button (the music panel and the center island): the
     // shape also takes the button's box, from the screen's top edge down, and
     // the body is never narrower than the button plus its inner corners
@@ -65,8 +73,15 @@ Item {
     readonly property var frame: button ? button.QsWindow.window : null
     parent: frame ? frame.panelLayer : null
 
-    // 0 = rolled up, 1 = open; drives the shape, the content and the mask
+    // 0 = rolled up, 1 = open; drives the shape, the content and the mask.
+    // On the edge timeline, its panel part
     property real progress: 0
+    Binding on progress {
+        when: root.edgeSide !== ""
+        value: edgeTimeline.panelStep
+    }
+    // What the frame reads to stretch the bar's end (Bar.qml)
+    readonly property real edgeStep: edgeSide !== "" ? edgeTimeline.barStep : 0
     // Set by place(): whether the body continues one of the bar's ends
     property bool atLeftEnd: false
     property bool atRightEnd: false
@@ -114,14 +129,23 @@ Item {
                  : p.x + button.width - panelWidth
         let atRight = side === "right"
         let atLeft = false
-        // A concave corner must never hang past the bar's end
-        if (atRight || left + panelWidth > barWidth - shape.fullReach) {
-            left = barWidth - panelWidth
+        if (edgeSide === "right") {
+            // To the screen's edge: past the bar's side gap
+            left = barWidth - panelWidth + bar.x
             atRight = true
-        }
-        if (left < shape.fullReach) {
-            left = 0
+        } else if (edgeSide === "left") {
+            left = -bar.x
             atLeft = true
+        } else {
+            // A concave corner must never hang past the bar's end
+            if (atRight || left + panelWidth > barWidth - shape.fullReach) {
+                left = barWidth - panelWidth
+                atRight = true
+            }
+            if (left < shape.fullReach) {
+                left = 0
+                atLeft = true
+            }
         }
         atLeftEnd = atLeft
         atRightEnd = atRight
@@ -159,7 +183,8 @@ Item {
     // Rolled up and hidden: the frame shrinks back and the bar's end rounds
     function hidden() {
         visible = false
-        progress = 0
+        if (edgeSide === "")
+            progress = 0
         unsquare()
         if (frame)
             frame.hidePanel(root)
@@ -183,19 +208,30 @@ Item {
             leave.stop()
             // Reopening in the middle of a close goes on from where it is;
             // a hidden panel starts rolled up
-            if (!visible)
-                progress = 0
+            if (!visible) {
+                if (edgeSide === "")
+                    progress = 0
+                else
+                    edgeTimeline.reset()
+            }
             place()
             square()
             frame.showPanel(root)
             visible = true
-            enter.restart()
+            if (edgeSide === "")
+                enter.restart()
+            else
+                edgeTimeline.open()
             // Focus on the body so Esc reaches its key handler
             body.forceActiveFocus()
         } else {
             enter.stop()
-            if (visible)
-                leave.restart()
+            if (visible) {
+                if (edgeSide === "")
+                    leave.restart()
+                else
+                    edgeTimeline.close()
+            }
         }
     }
 
@@ -222,6 +258,11 @@ Item {
             easing.bezierCurve: Theme.curveAccel
         }
         ScriptAction { script: root.hidden() }
+    }
+
+    EdgeTimeline {
+        id: edgeTimeline
+        onClosed: root.hidden()
     }
 
     // Drawn in the frame's shape layer (under the bar's items), at this
@@ -339,7 +380,7 @@ Item {
             y: shape.visibleHeight - root.bodyHeight
             // Drawn once into a texture while it moves, so its children are
             // not repainted on every frame of the animation
-            layer.enabled: enter.running || leave.running
+            layer.enabled: enter.running || leave.running || edgeTimeline.running
 
             // Children of the panel land here (the `content` alias); its
             // implicit height sizes the body

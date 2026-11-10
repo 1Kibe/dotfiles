@@ -93,6 +93,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+A` | Central de controle |
 | `Super+I` | Central de controle (tecla engrenagem) |
 | `Super+X / Ctrl+Alt+Del` | Menu de energia |
+| `Super+S` | Configurações |
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |
 | `Ctrl+Shift+Esc` | Monitor do sistema (processos) |

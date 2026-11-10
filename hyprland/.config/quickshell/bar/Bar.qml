@@ -1,21 +1,20 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.theme
 import qs.state
-import "../theme/corners.js" as Corners
+import qs.settings
+import "edgemotion.js" as EdgeMotion
 
 // The frame of one monitor: the top bar and the panel that hangs from it,
 // drawn in one surface, so Hyprland blurs them as one shape (Ryan,
-// 2026-11-10: "Sim, B"). The window takes the whole width and a fixed height:
-// the bar plus Theme.panelRoom for the panels, so it never changes size while
-// they open and close (a resize shows one stretched frame of the bar); it
-// grows only if a panel needs more, and never shrinks. Clicks reach it only
-// where something is drawn (mask); the space under it is reserved by
-// BarZone, so windows never move.
+// 2026-11-10: "Sim, B"). The window takes the whole screen and never changes
+// size while the panels open and close (a resize shows one stretched frame
+// of the bar; see `room`). Clicks reach it only where something is drawn
+// (mask); the space under the bar is reserved by BarZone, so windows never
+// move.
 //
 // The bar: one translucent strip with the windows' side gap and rounded
 // (continuous) bottom corners. Left: workspaces and the CPU, memory and
@@ -49,13 +48,13 @@ PanelWindow {
     function hidePanel(panel) {
         shown = shown.filter(p => p !== panel)
     }
-    readonly property real panelRoom: shown.reduce((room, p) => Math.max(room, p.roomHeight), 0)
-    // The room under the bar: grows (never shrinks) when a panel needs more
-    property real room: Theme.panelRoom
-    onPanelRoomChanged: {
-        if (panelRoom > room)
-            room = Math.ceil(panelRoom)
-    }
+    // The room under the bar: the rest of the screen, always. The window
+    // never changes size (each resize showed one squeezed or stretched frame
+    // of the bar, in T1 and again when the settings closed in T3); it is
+    // clear and takes clicks only where something is drawn (mask). Measured
+    // in the VM (2026-11-10): 800 instead of 510 px high costs the shell
+    // ~1 point of one CPU at rest, Hyprland nothing.
+    readonly property real room: screen ? screen.height - Theme.barHeight : Theme.panelRoom
 
     anchors {
         top: true
@@ -81,7 +80,22 @@ PanelWindow {
     // of opening a panel)
     mask: Region {
         item: root.overCapture ? null : bar
-        regions: root.shown.map(p => p.maskRegion)
+        regions: root.shown.map(p => p.maskRegion).concat([stretchLeftRegion, stretchRightRegion])
+    }
+    // The stretched ends take clicks too (empty while not stretched)
+    readonly property Region stretchLeftRegion: Region { item: stretchLeftArea }
+    readonly property Region stretchRightRegion: Region { item: stretchRightArea }
+    Item {
+        id: stretchLeftArea
+        x: bar.x - width
+        width: Math.round(Theme.gap * root.edgeLeft)
+        height: Theme.barHeight
+    }
+    Item {
+        id: stretchRightArea
+        x: bar.x + bar.width
+        width: Math.round(Theme.gap * root.edgeRight)
+        height: Theme.barHeight
     }
 
     // A panel open here: the keyboard (Esc, the Wi-Fi password) and a click
@@ -89,10 +103,27 @@ PanelWindow {
     readonly property bool panelOpenHere: monitorName !== "" && ShellState.openPanel !== ""
                                           && ShellState.openOn === monitorName
     WlrLayershell.keyboardFocus: panelOpenHere ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // The grab gives the keyboard to the open panel at once (Esc); a click
+    // outside closes the bar's panels, but not the settings (Ryan,
+    // 2026-11-10): the windows beside them stay usable
     HyprlandFocusGrab {
+        id: grab
         active: root.panelOpenHere
         windows: [root]
-        onCleared: ShellState.close()
+        onCleared: {
+            if (ShellState.openPanel !== "settings")
+                ShellState.close()
+        }
+    }
+    // A cleared grab turns itself off. With the settings still open nothing
+    // else changes (panelOpenHere stays true), so the next panel opened here
+    // gets the grab back: a new binding arms it again
+    Connections {
+        target: ShellState
+        function onOpenPanelChanged() {
+            if (root.panelOpenHere && !grab.active)
+                grab.active = Qt.binding(() => root.panelOpenHere)
+        }
     }
     Item {
         focus: true
@@ -101,13 +132,27 @@ PanelWindow {
 
     // A panel that continues one of the bar's ends (ShellState.attachedLeft/
     // Right) squares that corner while it shows, so bar and panel read as
-    // one shape
-    property real cornerLeft: monitorName !== "" && ShellState.attachedLeft === monitorName ? 0 : Theme.barRadius
-    property real cornerRight: monitorName !== "" && ShellState.attachedRight === monitorName ? 0 : Theme.barRadius
+    // one shape; the bar's panels switch it with a short animation.
+    // A panel that touches the screen's left or right edge (edgeSide, the
+    // settings on the left) asks for more, version C ("barra primeiro", Ryan
+    // 2026-11-10): the bar stretches that end over its side gap to the
+    // screen's edge and squares that corner first, along the panel's own
+    // timeline (its edgeStep, bar/EdgeTimeline), and goes back at the end of
+    // its closing. Two panels on one side: the most open request wins
+    readonly property bool edgeLeftAsked: EdgeMotion.sideAsked(shown, "left")
+    readonly property bool edgeRightAsked: EdgeMotion.sideAsked(shown, "right")
+    readonly property real edgeLeft: EdgeMotion.sideStep(shown, "left")
+    readonly property real edgeRight: EdgeMotion.sideStep(shown, "right")
+    property real cornerLeft: edgeLeftAsked ? Theme.barRadius * (1 - edgeLeft)
+                              : monitorName !== "" && ShellState.attachedLeft === monitorName ? 0 : Theme.barRadius
+    property real cornerRight: edgeRightAsked ? Theme.barRadius * (1 - edgeRight)
+                               : monitorName !== "" && ShellState.attachedRight === monitorName ? 0 : Theme.barRadius
     Behavior on cornerLeft {
+        enabled: !root.edgeLeftAsked
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.OutCubic }
     }
     Behavior on cornerRight {
+        enabled: !root.edgeRightAsked
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.OutCubic }
     }
 
@@ -119,25 +164,14 @@ PanelWindow {
         height: Theme.barHeight
 
         // The window is clear; this shape paints the bar, so the rounded
-        // bottom corners show what is behind them (continuous corners, like
-        // the panels', theme/corners.js)
-        Shape {
-            id: strip
+        // bottom corners show what is behind them. Its ends reach the
+        // screen's edges when a panel there asks for it
+        BarStrip {
             anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
-            ShapePath {
-                fillColor: Theme.barFill
-                strokeWidth: -1
-                PathSvg {
-                    path: {
-                        const w = strip.width, h = strip.height, s = Theme.cornerSmoothing
-                        return `M 0 0 L ${w} 0 `
-                            + Corners.corner(w, h, 0, 1, -1, 0, root.cornerRight, s)
-                            + Corners.corner(0, h, -1, 0, 0, -1, root.cornerLeft, s)
-                            + "Z"
-                    }
-                }
-            }
+            cornerLeft: root.cornerLeft
+            cornerRight: root.cornerRight
+            stretchLeft: Theme.gap * root.edgeLeft
+            stretchRight: Theme.gap * root.edgeRight
         }
 
         // The panels' shapes (AttachedPanel), in the window's coordinates:
@@ -207,5 +241,12 @@ PanelWindow {
     Item {
         id: panels
         anchors.fill: parent
+    }
+
+    // The settings (Super+S), on this monitor's left edge
+    SettingsPanel {
+        id: settingsPanel
+        frame: root
+        monitorName: root.monitorName
     }
 }

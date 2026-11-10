@@ -8,6 +8,7 @@ import qs.clipboard
 import qs.lock
 import qs.wallpaper
 import qs.state
+import "settings/schema.js" as Schema
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
 // get their own folder and a line here.
@@ -33,6 +34,13 @@ ShellRoot {
         model: Quickshell.screens
         delegate: Component {
             BarZone {}
+        }
+    }
+    // The settings' space on the left, only while they show
+    Variants {
+        model: Quickshell.screens
+        delegate: Component {
+            SettingsZone {}
         }
     }
 
@@ -183,6 +191,35 @@ ShellRoot {
             const monitor = Hyprland.focusedMonitor
             if (monitor)
                 ShellState.toggleByKey(name, monitor.name)
+        }
+    }
+
+    // The settings (Super+S), on the focused monitor:
+    // qs ipc call settings toggle | open <page> | close
+    // A page that is not in settings/schema.js is refused
+    IpcHandler {
+        target: "settings"
+
+        function open(page: string): string {
+            const monitor = Hyprland.focusedMonitor
+            if (!monitor || (page !== "" && !Schema.PAGE_IDS.includes(page)))
+                return "página desconhecida"
+            ShellState.settingsPage = ""
+            ShellState.settingsPage = page
+            if (!ShellState.isOpen("settings", monitor.name))
+                ShellState.toggleByKey("settings", monitor.name)
+            return "ok"
+        }
+        function close(): void {
+            if (ShellState.openPanel === "settings")
+                ShellState.close()
+        }
+        function toggle(): void {
+            const monitor = Hyprland.focusedMonitor
+            if (monitor) {
+                ShellState.settingsPage = ""
+                ShellState.toggleByKey("settings", monitor.name)
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ return {
   controlcenter = qs("controlcenter"),
   powermenu     = qs("powermenu"),
   taskmanager   = qs("taskmanager"),   -- system panel; btop is in its footer
+  settings      = qs("settings"),      -- Configurações, on the left edge
   capture       = qs("capture", "open"),   -- Print: capture bar
   capture_ocr   = qs("capture", "ocr"),    -- text of an area to the clipboard
   capture_record = qs("capture", "record"), -- record the screen / stop

@@ -47,6 +47,9 @@ Item {
     property real bodyWidth: 0
     property real bodyHeight: 0
     property real progress: 0             // 0 = closed, 1 = open
+    // false: the body is always whole (the settings panel slides in from the
+    // side instead of unrolling); only the concave corners follow progress
+    property bool unroll: true
     property real radius: Theme.radius
     property real smoothing: Theme.cornerSmoothing
     property color fill: Theme.barFill
@@ -58,7 +61,7 @@ Item {
     readonly property real fullReach: Math.ceil(Corners.reach(radius, smoothing))
     readonly property real bodyX: (flareLeft && !hasStrip) ? fullReach : 0
     readonly property real junctionY: hasStrip ? stripHeight : hasIsland ? islandHeight : 0
-    readonly property real visibleHeight: bodyHeight * Math.max(0, Math.min(1, progress))
+    readonly property real visibleHeight: unroll ? bodyHeight * Math.max(0, Math.min(1, progress)) : bodyHeight
     // The concave corners' radius now, and how far they reach
     readonly property real flare: radius * Math.max(0, Math.min(1, progress / 0.3))
     readonly property real flareReach: Corners.reach(flare, smoothing)

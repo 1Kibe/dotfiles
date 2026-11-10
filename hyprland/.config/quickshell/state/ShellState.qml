@@ -5,7 +5,7 @@ import Quickshell
 
 // Shared state of the shell's popups: one panel open at a time, on one
 // monitor. Panels: "power", "network", "volume", "bluetooth", "media",
-// "system".
+// "system", and "settings" (settings/SettingsPanel, Super+S).
 Singleton {
     id: root
 
@@ -21,6 +21,11 @@ Singleton {
     // bar squares the corner on that end
     property string attachedLeft: ""
     property string attachedRight: ""
+    // The settings page asked for (IPC open(page), shell.qml); "" = the first
+    property string settingsPage: ""
+    // The monitor whose settings panel shows (opening, open or closing), for
+    // bar/SettingsZone
+    property string settingsOn: ""
 
     // A click on a bar button (PowerButton, NetworkStatus, CenterIsland...)
     function toggle(panel, monitor) {
