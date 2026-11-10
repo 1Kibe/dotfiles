@@ -8,7 +8,7 @@ import qs.state
 // Music panel: cover, title, artist, album and player; progress with time
 // (click to seek); previous, play/pause, next. With more than one player,
 // chips on top pick which one the bar and this panel control.
-DropPanel {
+AttachedPanel {
     id: root
 
     // Both set by CenterIsland from MediaState, so the panel and the island
@@ -44,12 +44,9 @@ DropPanel {
     // The blurred cover behind the panel (shared look with the center island)
     underlay: CoverBackdrop {
         anchors.fill: parent
-        // CoverBackdrop defaults to the island's shape (only the bottom
-        // corners rounded): the panel rounds all four. Clear fill, since
-        // DropPanel already paints the background under it.
-        radius: Theme.radius
-        topLeftRadius: Theme.radius
-        topRightRadius: Theme.radius
+        // Square on top, where the panel meets the bar; the bottom corners
+        // like the panel's. Clear fill, since AttachedPanel already paints
+        // the background under it.
         bottomLeftRadius: Theme.radius
         bottomRightRadius: Theme.radius
         color: Theme.clear

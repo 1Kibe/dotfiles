@@ -9,7 +9,7 @@ import qs.state
 // signal. Known or open networks connect on click; new ones ask for the
 // password right under the row. The password is never stored or logged
 // here: it goes to NetworkManager and the field is cleared.
-DropPanel {
+AttachedPanel {
     id: root
 
     readonly property var devices: Networking.devices.values

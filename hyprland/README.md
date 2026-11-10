@@ -35,6 +35,7 @@ E o Quickshell, em `.config/quickshell/`:
 |---|---|
 | `shell.qml` | Uma barra por monitor e os alvos de IPC dos atalhos |
 | `theme/Theme.qml` | Cores, tamanhos, animações e limiares de carga: nenhum componente tem cor própria |
+| `theme/corners.js` | Os cantos contínuos (a curva entra aos poucos, sem o degrau do quarto de círculo), usados pela barra e pelos painéis |
 | `state/ShellState.qml` | Qual painel está aberto e em que monitor (um por vez) |
 | `state/MediaState.qml` | Player escolhido, música, capa (baixada para o cache) e a cor dela |
 | `state/SystemStats.qml` | CPU, memória, temperatura e a lista de processos, lidos do `/proc` e do `/sys` |
@@ -43,7 +44,7 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
-| `bar/` | A barra (`Bar.qml`), os itens dela e os painéis que descem (`*Panel.qml`, base em `DropPanel.qml`) |
+| `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: tela escura, faixa com os cartões, notas e emoji |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
@@ -185,7 +186,9 @@ Uma faixa translúcida colada no topo (o Hyprland desfoca o que está atrás), c
 
 ### Painéis
 
-Descem da barra, um por vez. Esc ou um clique fora fecham. Os atalhos abrem o mesmo painel no monitor em foco.
+Descem da barra, um por vez, colados nela: barra e painel são uma forma só, com cantos contínuos que crescem enquanto o painel
+abre. O de energia continua a ponta direita da barra. Esc ou um clique fora fecham, sempre com a animação. Os atalhos abrem o
+mesmo painel no monitor em foco.
 
 | Painel | O que tem |
 |---|---|

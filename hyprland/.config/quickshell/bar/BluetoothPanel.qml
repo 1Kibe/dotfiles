@@ -8,7 +8,7 @@ import qs.state
 // Bluetooth panel: adapter on/off and a card per device: connected,
 // paired, and "Por perto" (found by "Procurar", which only scans while
 // the panel is open).
-DropPanel {
+AttachedPanel {
     id: root
 
     readonly property var adapter: Bluetooth.defaultAdapter

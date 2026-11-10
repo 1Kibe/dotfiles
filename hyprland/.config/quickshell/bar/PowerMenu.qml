@@ -5,7 +5,7 @@ import qs.state
 
 // Power menu that drops down from the power button (and Super+X): lock, log
 // out, suspend, reboot, power off. Reboot and power off need a second click.
-DropPanel {
+AttachedPanel {
     id: root
 
     property string armed: ""   // action waiting for its second click
@@ -40,6 +40,8 @@ DropPanel {
     }
 
     panelWidth: 290
+    // Continues the bar's right end (Ryan, 2026-11-10: only the power menu)
+    side: "right"
     // Opening or closing disarms, so a stale arm never turns one click into a reboot
     onOpenChanged: armed = ""
 

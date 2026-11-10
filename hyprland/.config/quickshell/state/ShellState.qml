@@ -16,31 +16,27 @@ Singleton {
     property string openOn: ""      // monitor name
     // Set by bar/MediaPanel, read by state/MediaState
     property string mediaPlayer: "" // dbusName of the player picked in the music panel
-    // Opened by a keybind (IPC) rather than a click: the popup grab needs a
-    // recent click on the bar, so those panels use a Hyprland focus grab
-    property bool openedByKey: false
+    // A panel that continues one of the bar's ends (bar/AttachedPanel: the
+    // power menu on the right) names its monitor here while it shows; that
+    // bar squares the corner on that end
+    property string attachedLeft: ""
+    property string attachedRight: ""
 
     // A click on a bar button (PowerButton, NetworkStatus, CenterIsland...)
     function toggle(panel, monitor) {
         if (isOpen(panel, monitor)) {
             close()
         } else {
-            openedByKey = false
             openPanel = panel
             openOn = monitor
         }
     }
 
-    // The IPC handlers in shell.qml (keybinds and scripts): same as toggle,
-    // but marks the panel for the Hyprland focus grab
+    // The IPC handlers in shell.qml (keybinds and scripts). The same as a
+    // click now: the panels live in the bar's own window (Bar.qml), whose
+    // focus grab and keyboard work the same either way
     function toggleByKey(panel, monitor) {
-        if (isOpen(panel, monitor)) {
-            close()
-        } else {
-            openedByKey = true
-            openPanel = panel
-            openOn = monitor
-        }
+        toggle(panel, monitor)
     }
 
     // Esc, a click outside, a panel action that is done, or another popup

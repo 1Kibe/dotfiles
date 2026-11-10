@@ -5,7 +5,7 @@ import qs.theme
 
 // Volume panel: output and microphone, each with mute, a slider and the
 // list of devices (the default one checked; click to make it the default).
-DropPanel {
+AttachedPanel {
     id: root
 
     readonly property var sink: Pipewire.defaultAudioSink

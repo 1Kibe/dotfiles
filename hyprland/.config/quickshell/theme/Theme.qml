@@ -56,6 +56,10 @@ Singleton {
     readonly property int barRadius: 12    // bottom corners of the bar
     readonly property int itemHeight: 22
     readonly property int radius: 8        // tooltips, hover (= decoration.rounding)
+    // Corners drawn by a Shape (panels hanging from the bar, the bar's own
+    // bottom corners) are "continuous": the curve eases in over (1 + this) ×
+    // the radius instead of starting the arc at once (theme/corners.js)
+    readonly property real cornerSmoothing: 0.6
     readonly property int gap: 10          // = general.gaps_out (sides of the bar)
     readonly property int padding: 16      // inside the bar, at both ends
     readonly property int spacing: 8
@@ -178,6 +182,26 @@ Singleton {
     // Animations: short, no bounce on panels (the spring is only on items)
     readonly property int animFast: 120     // closing, hover, tooltips
     readonly property int animNormal: 200   // opening, size changes
+
+    // Motion of the panels that hang from the bar (Material 3 values, which
+    // are public): durations go through dur(), so one speed scales them all
+    // (1 until the settings set it; 0 = animations off)
+    readonly property real speed: 1
+    function dur(ms) {
+        return speed <= 0 ? 0 : Math.round(ms * speed)
+    }
+    readonly property int motionPanelOpen: 300
+    readonly property int motionPanelClose: 200
+    // easing.bezierCurve, Material's standard pair (Ryan, 2026-11-10:
+    // "Padrão"): opening settles without a jump or a long tail, closing
+    // leaves without standing still
+    readonly property var curveDecel: [0.2, 0, 0, 1, 1, 1]
+    readonly property var curveAccel: [0.4, 0, 1, 1, 1, 1]
+
+    // Room under the bar kept by its window for the panels (Bar.qml): the
+    // window never changes size while they open and close (a resize shows one
+    // stretched frame of the bar), and grows only if a panel needs more
+    readonly property int panelRoom: 480
 
     // Dates always in Brazilian Portuguese, whatever the system locale
     readonly property var locale: Qt.locale("pt_BR")

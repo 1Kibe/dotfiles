@@ -15,12 +15,19 @@ ShellRoot {
     // Desktop wallpaper, below every window
     Wallpaper {}
 
-    // Each Bar gets its screen as modelData; bars are added and removed as
-    // monitors are plugged in and out
+    // Each Bar (the frame: bar and its panels) gets its screen as modelData;
+    // bars are added and removed as monitors are plugged in and out. BarZone
+    // reserves the bar's space, since the frame grows over the windows.
     Variants {
         model: Quickshell.screens
         delegate: Component {
             Bar {}
+        }
+    }
+    Variants {
+        model: Quickshell.screens
+        delegate: Component {
+            BarZone {}
         }
     }
 
@@ -132,7 +139,6 @@ ShellRoot {
 
         function toggle(): void {
             const monitor = Hyprland.focusedMonitor
-            // By key, so the panel uses a focus grab (see ShellState.openedByKey)
             if (monitor)
                 ShellState.toggleByKey("power", monitor.name)
         }

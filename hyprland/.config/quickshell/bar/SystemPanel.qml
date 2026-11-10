@@ -8,7 +8,7 @@ import qs.state
 // temperature, uptime, and the processes using the most CPU or memory
 // (instant CPU, refreshed every 2 s while open). ✕ on a process of this
 // user arms "end process"; a second click sends SIGTERM. Footer opens btop.
-DropPanel {
+AttachedPanel {
     id: root
 
     property string sortBy: "cpu"      // "cpu" or "mem"

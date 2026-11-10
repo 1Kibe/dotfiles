@@ -1,0 +1,251 @@
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Widgets
+import qs.theme
+import qs.state
+
+// Base of the panels that hang from the bar: drawn inside the bar's own
+// window (the frame, Bar.qml), right under the bar, by AttachedShape, with
+// concave corners where its sides meet the bar. One surface for bar and
+// panel, so they blur as one shape (Ryan, 2026-11-10: "Sim, B").
+//
+// Under `button`, right-aligned to it (alignLeft: left edges lined up;
+// centered: under its middle). side "right" continues the bar's right end
+// instead (the power menu), and the bar squares that corner while the panel
+// shows; a panel whose concave corner would pass one of the bar's ends snaps
+// to that end the same way.
+//
+// Opening unrolls the body from the bar while the concave corners grow
+// (AttachedShape.progress) and the content slides down with it; closing
+// rolls it back up, and only then the panel hides. Every opening starts
+// rolled up; a click in the middle of an animation goes on from where it is.
+// Esc and a click outside (the frame's focus grab) close it the same way.
+Item {
+    id: root
+
+    required property Item button
+    required property bool open        // from ShellState
+    property int panelWidth: Theme.panelWidth
+    property bool centered: false      // under the middle of the button
+    property bool alignLeft: false     // left edges lined up (buttons on the left of the bar)
+    property string side: "center"     // "right": continues the bar's right end
+    default property alias content: body.data
+    property alias underlay: under.data   // behind the content (e.g. a cover)
+
+    // The frame this panel hangs from (the button's window): drawn in its
+    // panel layer, above the bar
+    readonly property var frame: button ? button.QsWindow.window : null
+    parent: frame ? frame.panelLayer : null
+
+    // 0 = rolled up, 1 = open; drives the shape, the content and the mask
+    property real progress: 0
+    // Set by place(): whether the body continues one of the bar's ends
+    property bool atLeftEnd: false
+    property bool atRightEnd: false
+    // The monitor it was opened on, for the bar's square corner
+    property string shownOn: ""
+
+    // The room it needs under the bar (the frame grows to it) and the
+    // clickable pieces: the visible body and the two concave corners
+    readonly property real roomHeight: shape.implicitHeight
+    readonly property Region maskRegion: Region {
+        item: bodyArea
+        Region { item: leftCorner }
+        Region { item: rightCorner }
+    }
+
+    visible: false
+    width: shape.implicitWidth
+    height: shape.implicitHeight
+
+    // Full height of the body: the content plus its 6 px margin above and
+    // below. Animated, so a panel whose content grows (a list loading)
+    // resizes smoothly.
+    property real bodyHeight: body.implicitHeight + 12
+    Behavior on bodyHeight {
+        NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
+    }
+
+    // Body position on the bar, in the frame's coordinates: under the bar,
+    // one corner's room left of the body
+    function place() {
+        if (!frame || !button)
+            return
+        const bar = frame.barArea
+        const p = button.mapToItem(bar, 0, 0)
+        const barWidth = bar.width
+        let left = centered ? p.x + button.width / 2 - panelWidth / 2
+                 : alignLeft ? p.x
+                 : p.x + button.width - panelWidth
+        let atRight = side === "right"
+        let atLeft = false
+        // A concave corner must never hang past the bar's end
+        if (atRight || left + panelWidth > barWidth - shape.fullReach) {
+            left = barWidth - panelWidth
+            atRight = true
+        }
+        if (left < shape.fullReach) {
+            left = 0
+            atLeft = true
+        }
+        atLeftEnd = atLeft
+        atRightEnd = atRight
+        x = Math.round(bar.x + left) - shape.bodyX
+        y = bar.y + bar.height
+    }
+
+    // The bar squares its end while a panel continues it
+    function square() {
+        shownOn = ShellState.openOn
+        if (atRightEnd)
+            ShellState.attachedRight = shownOn
+        if (atLeftEnd)
+            ShellState.attachedLeft = shownOn
+    }
+    function unsquare() {
+        if (shownOn !== "" && ShellState.attachedRight === shownOn)
+            ShellState.attachedRight = ""
+        if (shownOn !== "" && ShellState.attachedLeft === shownOn)
+            ShellState.attachedLeft = ""
+        shownOn = ""
+    }
+
+    // Rolled up and hidden: the frame shrinks back and the bar's end rounds
+    function hidden() {
+        visible = false
+        progress = 0
+        unsquare()
+        if (frame)
+            frame.hidePanel(root)
+    }
+
+    // A button that moves or resizes (the island growing with the music, a
+    // status item appearing) takes the panel with it
+    Connections {
+        target: root.button
+        function onXChanged() { if (root.visible) root.place() }
+        function onWidthChanged() { if (root.visible) root.place() }
+    }
+    Connections {
+        target: root.button ? root.button.parent : null
+        function onXChanged() { if (root.visible) root.place() }
+        function onWidthChanged() { if (root.visible) root.place() }
+    }
+
+    onOpenChanged: {
+        if (open) {
+            leave.stop()
+            // Reopening in the middle of a close goes on from where it is;
+            // a hidden panel starts rolled up
+            if (!visible)
+                progress = 0
+            place()
+            square()
+            frame.showPanel(root)
+            visible = true
+            enter.restart()
+            // Focus on the body so Esc reaches its key handler
+            body.forceActiveFocus()
+        } else {
+            enter.stop()
+            if (visible)
+                leave.restart()
+        }
+    }
+
+    NumberAnimation {
+        id: enter
+        target: root
+        property: "progress"
+        to: 1
+        duration: Theme.dur(Theme.motionPanelOpen)
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Theme.curveDecel
+    }
+
+    // Shorter than the entry: closing should feel quicker. The panel hides
+    // only after the body is rolled up.
+    SequentialAnimation {
+        id: leave
+        NumberAnimation {
+            target: root
+            property: "progress"
+            to: 0
+            duration: Theme.dur(Theme.motionPanelClose)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.curveAccel
+        }
+        ScriptAction { script: root.hidden() }
+    }
+
+    AttachedShape {
+        id: shape
+        anchors.fill: parent
+        flareLeft: !root.atLeftEnd
+        flareRight: !root.atRightEnd
+        bodyWidth: root.panelWidth
+        bodyHeight: root.bodyHeight
+        progress: root.progress
+    }
+
+    // Mask pieces (see maskRegion): the visible body and the two corners
+    Item {
+        id: bodyArea
+        x: shape.bodyX
+        width: root.panelWidth
+        height: shape.visibleHeight
+    }
+    Item {
+        id: leftCorner
+        x: shape.bodyX - width
+        width: shape.flareLeft ? shape.flareReach : 0
+        height: width
+    }
+    Item {
+        id: rightCorner
+        x: shape.bodyX + root.panelWidth
+        width: shape.flareRight ? shape.flareReach : 0
+        height: width
+    }
+
+    // The visible part of the body: the content slides down inside it as the
+    // body unrolls. Its round corners take the continuous corner's whole
+    // reach, so the clip always stays inside the shape's corners.
+    ClippingRectangle {
+        x: shape.bodyX
+        width: root.panelWidth
+        height: shape.visibleHeight
+        color: Theme.clear
+        bottomLeftRadius: shape.bottomReach
+        bottomRightRadius: shape.bottomReach
+
+        Item {
+            id: slide
+            width: parent.width
+            height: root.bodyHeight
+            y: shape.visibleHeight - root.bodyHeight
+            // Drawn once into a texture while it moves, so its children are
+            // not repainted on every frame of the animation
+            layer.enabled: enter.running || leave.running
+
+            Item {
+                id: under
+                anchors.fill: parent
+            }
+
+            // Children of the panel land here (the `content` alias); its
+            // implicit height sizes the body
+            ColumnLayout {
+                id: body
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 6
+                spacing: 2
+                focus: true
+                Keys.onEscapePressed: ShellState.close()
+            }
+        }
+    }
+}

@@ -79,6 +79,9 @@ hl.layer_rule({
   blur = true,
   blur_popups = true,
   ignore_alpha = 0.1,
+  -- The frame grows and shrinks with its panels and animates them itself;
+  -- Hyprland's layer animation would stretch the bar over that
+  no_anim = true,
 })
 -- Screen capture: its own animations only. Without this, Hyprland's fade
 -- of the closing countdown could still be on screen when the frame is taken
