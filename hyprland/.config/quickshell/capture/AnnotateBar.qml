@@ -4,20 +4,19 @@ import qs.theme
 import qs.state
 import "tools.js" as Tools
 
-// Under the selection (above it when there is no room): the tools | 5
-// colors (a ring on the chosen one) | width 2/3/5/8 (click cycles) | undo /
-// redo | save | copy (the default, highlighted).
-Rectangle {
+// The annotation tools: the tools | 5 colors (a ring on the chosen one) |
+// width 2/3/5/8 (click cycles) | undo / redo | save | copy (the default,
+// highlighted). Drawn in the bar that grows from the screen's bottom edge
+// (bar/EdgePanel, in CaptureOverlay, which also shows `hint` above it).
+Item {
     id: root
 
     // Set by each button's onHoveredChanged: the tool buttons come from a
     // Repeater, so they cannot be listed by id as in CaptureBar
     property string hint: ""
 
-    implicitWidth: row.implicitWidth + 16
-    implicitHeight: Theme.captureButtonHeight + 12
-    radius: Theme.pillRadius
-    color: Theme.stripFill
+    implicitWidth: row.implicitWidth + 4
+    implicitHeight: Theme.captureButtonHeight
 
     // Clicks on the bar never draw under it
     MouseArea {
@@ -142,27 +141,6 @@ Rectangle {
             active: true
             onPressed: CaptureState.exportRequested(true)
             onHoveredChanged: root.hint = hovered ? hint : ""
-        }
-    }
-
-    // What the hovered button does
-    Rectangle {
-        anchors.top: parent.bottom
-        anchors.topMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: hintText.implicitWidth + 16
-        height: hintText.implicitHeight + 8
-        radius: height / 2
-        color: Theme.stripFill
-        visible: root.hint !== ""
-
-        Text {
-            id: hintText
-            anchors.centerIn: parent
-            text: root.hint
-            color: Theme.fg4
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 2
         }
     }
 }

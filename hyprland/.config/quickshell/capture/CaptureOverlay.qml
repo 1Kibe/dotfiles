@@ -1,6 +1,8 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import qs.bar
 import qs.theme
 import qs.state
 import "tools.js" as Tools
@@ -49,9 +51,19 @@ Scope {
                 // picture's own size in the editor (it keeps its resolution)
                 readonly property real pixelScale: editing && editImage.width > 0 ? editImage.implicitWidth / editImage.width : outScale
                 property real readyAt: 0
-                // First free line under the capture bar and its hint (top edge elsewhere)
-                readonly property real topFree: captureBar.visible ? captureBar.y + captureBar.height + 36 : 8
+                // First free line under the bar's capture pill and its hint
+                // (bar/CapturePanel, on the focused monitor); under the bar
+                // elsewhere
+                readonly property real topFree: isFocus && !editing ? Theme.barHeight + Theme.captureButtonHeight + 12 + 36
+                                                : Theme.barHeight + 8
                 onReadyChanged: readyAt = ready ? Date.now() : 0
+                // The pill hangs from the bar, outside this overlay: it opens
+                // only once this monitor's frozen frame is taken
+                readonly property bool barReadyHere: isFocus && shown && ready
+                onBarReadyHereChanged: {
+                    if (isFocus)
+                        CaptureState.barReady = barReadyHere
+                }
                 property bool closing: false
 
                 // Selection, in this window's logical coordinates
@@ -287,26 +299,41 @@ Scope {
                     }
 
                     // ── Dim outside the selection (or the hovered window/monitor) ──
+                    // Not over the bar's strip: the live bar is drawn over this
+                    // overlay while it is open (Bar.qml) and must look as usual
                     readonly property rect hole: win.hasSel ? Qt.rect(win.selX, win.selY, win.selW, win.selH)
                                                 : win.hover ? Qt.rect(win.hover.x, win.hover.y, win.hover.w, win.hover.h)
                                                 : Qt.rect(0, 0, 0, 0)
-                    Rectangle {   // above
-                        x: 0; y: 0; width: win.width; height: content.hole.y
-                        color: Theme.dim
-                    }
-                    Rectangle {   // below
-                        x: 0; y: content.hole.y + content.hole.height
-                        width: win.width; height: win.height - y
-                        color: Theme.dim
-                    }
-                    Rectangle {   // left
-                        x: 0; y: content.hole.y; width: content.hole.x; height: content.hole.height
-                        color: Theme.dim
-                    }
-                    Rectangle {   // right
-                        x: content.hole.x + content.hole.width; y: content.hole.y
-                        width: win.width - x; height: content.hole.height
-                        color: Theme.dim
+                    Item {
+                        y: Theme.barHeight
+                        width: win.width
+                        height: win.height - y
+                        clip: true
+
+                        Item {
+                            y: -Theme.barHeight
+                            width: win.width
+                            height: win.height
+
+                            Rectangle {   // above
+                                x: 0; y: 0; width: win.width; height: content.hole.y
+                                color: Theme.dim
+                            }
+                            Rectangle {   // below
+                                x: 0; y: content.hole.y + content.hole.height
+                                width: win.width; height: win.height - y
+                                color: Theme.dim
+                            }
+                            Rectangle {   // left
+                                x: 0; y: content.hole.y; width: content.hole.x; height: content.hole.height
+                                color: Theme.dim
+                            }
+                            Rectangle {   // right
+                                x: content.hole.x + content.hole.width; y: content.hole.y
+                                width: win.width - x; height: content.hole.height
+                                color: Theme.dim
+                            }
+                        }
                     }
 
                     // Hovered window or monitor
@@ -490,30 +517,41 @@ Scope {
                         }
                     }
 
-                    // After a selection: the annotation bar, under it (above if no room)
-                    // Under the selection; above it if there is no room below; inside
-                    // it, at the bottom, when there is room on neither side (Tela,
-                    // a maximized window). Never over the capture bar.
-                    AnnotateBar {
-                        // Photo or editor only, and hidden while a drag or a stroke is under way
-                        visible: win.hasSel && CaptureState.purpose !== "ocr" && (CaptureState.kind === "photo" || win.editing)
-                                 && !(picker.pressed && picker.drag !== "")
-                        readonly property real hint: 34      // its own hint shows under it
-                        readonly property bool fitsBelow: win.selY + win.selH + 10 + height + hint <= win.height
-                        readonly property bool fitsAbove: win.selY - 10 - height >= win.topFree
-                        // Centered on the selection, kept 8 px inside the monitor
-                        x: Math.max(8, Math.min(win.selX + win.selW / 2 - width / 2, win.width - width - 8))
-                        y: fitsBelow ? win.selY + win.selH + 10
-                           : fitsAbove ? win.selY - height - 10
-                           : Math.max(win.topFree, win.selY + win.selH - height - hint - 16)
-                    }
+                    // After a selection: the annotation bar, growing from the
+                    // bottom edge, centered on the monitor. Its place is fixed:
+                    // it does not follow the selection; over a full screen
+                    // selection it covers the picture, but it is not part of
+                    // the exported PNG (annot.exportItem)
+                    EdgePanel {
+                        id: annotatePanel
+                        // Photo or editor only
+                        open: win.hasSel && CaptureState.purpose !== "ocr" && (CaptureState.kind === "photo" || win.editing)
+                        panelWidth: annotate.implicitWidth + 12
 
-                    // ── The capture bar, on the focused monitor ──
-                    CaptureBar {
-                        id: captureBar
-                        visible: win.isFocus && !win.editing
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: Theme.barHeight + Theme.gap
+                        AnnotateBar {
+                            id: annotate
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+                    }
+                    // What the hovered tool does, above the bar
+                    Rectangle {
+                        anchors.horizontalCenter: annotatePanel.horizontalCenter
+                        y: annotatePanel.y + annotatePanel.height - annotatePanel.bodyHeight * annotatePanel.progress - height - 8
+                        width: annotateHint.implicitWidth + 16
+                        height: annotateHint.implicitHeight + 8
+                        radius: height / 2
+                        color: Theme.stripFill
+                        visible: annotatePanel.visible && annotate.hint !== ""
+                        opacity: annotatePanel.progress
+
+                        Text {
+                            id: annotateHint
+                            anchors.centerIn: parent
+                            text: annotate.hint
+                            color: Theme.fg4
+                            font.family: Theme.font
+                            font.pointSize: Theme.fontSize - 2
+                        }
                     }
                 }
 

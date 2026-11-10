@@ -29,6 +29,10 @@ Singleton {
     property string editFile: ""
     property string phase: "idle"
     property string focusName: ""         // monitor with the bar, countdown and notices
+    // The focused monitor's overlay is showing (its frozen frame is taken):
+    // only then the pill opens from the bar, which is not in the overlay and
+    // would end up in the frame (bar/CapturePanel)
+    property bool barReady: false
     property string selOwner: ""          // monitor holding the selection
     property var monitors: ({})           // name -> { id, x, y, w, h (logical), scale, ws }
     property var windows: []              // visible windows, topmost first: { x, y, w, h (global logical), monitor, floating }
@@ -201,6 +205,7 @@ Singleton {
         purpose = "edit"
         selOwner = ""
         focusName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+        barReady = false
         ShellState.close()
         ClipboardStore.close()
         if (!layout.running)
@@ -229,6 +234,7 @@ Singleton {
         editFile = ""
         selOwner = ""
         focusName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+        barReady = false
         ShellState.close()
         ClipboardStore.close()
         if (!layout.running)
@@ -250,6 +256,7 @@ Singleton {
         pendingRecord = null      // a cancelled countdown records nothing
         open = false
         phase = "idle"
+        barReady = false
         selOwner = ""
         cleanup.restart()
     }

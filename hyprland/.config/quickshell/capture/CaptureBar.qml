@@ -3,43 +3,26 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 
-// The bar of Print, on top of the focused monitor: Área / Janela / Tela |
-// Foto / Vídeo | (Vídeo) system sound and microphone | delay | OCR |
-// (Vídeo) Gravar | Fechar. It drops in when the overlay opens.
-Rectangle {
+// The buttons of Print: Área / Janela / Tela | Foto / Vídeo | (Vídeo)
+// system sound and microphone | delay | OCR | (Vídeo) Gravar | Fechar.
+// Drawn in the pill that hangs from the bar's clock (bar/CapturePanel),
+// which also shows `text`: the hovered button's hint, or the next step.
+Item {
     id: root
 
     // Hint of the hovered button; hidden ones (sound, mic, record in Foto)
     // are skipped
-    property string hint: [bArea, bWin, bScreen, bPhoto, bVideo, bSound, bMic, bRecord, bDelay, bOcr, bClose]
-                          .filter(b => b.visible && b.hovered).map(b => b.hint)[0] || ""
+    readonly property string hint: [bArea, bWin, bScreen, bPhoto, bVideo, bSound, bMic, bRecord, bDelay, bOcr, bClose]
+                                   .filter(b => b.visible && b.hovered).map(b => b.hint)[0] || ""
+    // No hover: the next step for the current purpose, kind and phase
+    readonly property string text: hint !== "" ? hint
+                                   : CaptureState.purpose === "ocr" ? "Arraste sobre o texto: ele vai para o clipboard"
+                                   : CaptureState.kind === "video" && !CaptureState.recording ? "Escolha a área e clique em Gravar (ou Enter)"
+                                   : CaptureState.phase === "choose" ? `Escolha Área, Janela ou Tela (ou Enter): a contagem de ${CaptureState.delay} s começa`
+                                   : ""
 
-    // 8 px around the row of buttons (6 px above and below)
-    implicitWidth: row.implicitWidth + 16
-    implicitHeight: Theme.captureButtonHeight + 12
-    radius: Theme.pillRadius
-    color: Theme.stripFill
-
-    // Drops in from above
-    transform: Translate { id: drop }
-    onVisibleChanged: {
-        if (visible) {
-            drop.y = -16
-            opacity = 0
-            enter.restart()
-        }
-    }
-    ParallelAnimation {
-        id: enter
-        NumberAnimation { target: drop; property: "y"; to: 0; duration: Theme.animNormal; easing.type: Easing.OutCubic }
-        NumberAnimation { target: root; property: "opacity"; to: 1; duration: Theme.animNormal; easing.type: Easing.OutCubic }
-    }
-
-    // Clicks on the bar never start a selection under it
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.AllButtons
-    }
+    implicitWidth: row.implicitWidth + 4
+    implicitHeight: Theme.captureButtonHeight
 
     component Divider: Rectangle {
         implicitWidth: 1
@@ -165,32 +148,6 @@ Rectangle {
             icon: "󰅖"
             hint: "Fechar (Esc)"
             onPressed: CaptureState.close()
-        }
-    }
-
-    // What the hovered button does, or what to do next
-    Rectangle {
-        anchors.top: parent.bottom
-        anchors.topMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: hintText.implicitWidth + 16
-        height: hintText.implicitHeight + 8
-        radius: height / 2
-        color: Theme.stripFill
-        visible: hintText.text !== ""
-
-        Text {
-            id: hintText
-            anchors.centerIn: parent
-            // No hover: the next step for the current purpose, kind and phase
-            text: root.hint !== "" ? root.hint
-                  : CaptureState.purpose === "ocr" ? "Arraste sobre o texto: ele vai para o clipboard"
-                  : CaptureState.kind === "video" && !CaptureState.recording ? "Escolha a área e clique em Gravar (ou Enter)"
-                  : CaptureState.phase === "choose" ? `Escolha Área, Janela ou Tela (ou Enter): a contagem de ${CaptureState.delay} s começa`
-                  : ""
-            color: Theme.fg4
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 2
         }
     }
 }

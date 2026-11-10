@@ -244,16 +244,16 @@ clipboard começa vazio, sem perder o original.
 
 | Tecla | Faz |
 |---|---|
-| `Print` | Abre a barra de captura no topo: **Área / Janela / Tela**, **Foto / Vídeo**, som do sistema e microfone (em Vídeo), **atraso** (0, 3, 5 ou 10 s), **OCR** e fechar. A tela congela por baixo |
+| `Print` | Abre a barra de captura, que desce do relógio colada na barra: **Área / Janela / Tela**, **Foto / Vídeo**, som do sistema e microfone (em Vídeo), **atraso** (0, 3, 5 ou 10 s), **OCR** e fechar. A tela congela por baixo |
 | `Super+Shift+S` | Print rápido de uma área |
 | `Alt+Print` | Print rápido da janela ativa |
 | `Shift+Print` | Print rápido da tela inteira |
 | `Super+Shift+T` | OCR: o texto de uma área vai para o clipboard |
 | `Super+Alt+R` | Grava o monitor em foco (com o último som escolhido, sem atraso); de novo, para |
 
-- **Foto:** depois de escolher a área, a barra de anotação aparece junto da seleção: seta (`A`), retângulo (`R`; com Shift,
-  cheio), linha (`L`), caneta (`P`), marca-texto (`H`), texto (`T`), números (`N`) e mosaico (`M`; clique de novo no ícone
-  para borrar). Tem 5 cores, 4 espessuras, desfazer e refazer.
+- **Foto:** depois de escolher a área, a barra de anotação sobe da borda de baixo da tela, centralizada (fica fora do PNG):
+  seta (`A`), retângulo (`R`; com Shift, cheio), linha (`L`), caneta (`P`), marca-texto (`H`), texto (`T`), números (`N`) e
+  mosaico (`M`; clique de novo no ícone para borrar). Tem 5 cores, 4 espessuras, desfazer e refazer.
 - **Print rápido:** salva, copia e mostra um cartão no canto de baixo por 5 s (para com o mouse em cima). O lápis (ou clique
   na miniatura) abre o print na barra de anotação, e salvar **substitui o mesmo arquivo**. A pasta abre `Capturas`; a lixeira
   manda para a lixeira (a cópia no clipboard fica).

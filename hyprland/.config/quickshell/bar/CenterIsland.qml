@@ -161,4 +161,10 @@ Item {
         player: MediaState.player
         players: MediaState.players
     }
+
+    // Print's buttons, hanging from the clock while the capture is open
+    CapturePanel {
+        button: root
+        monitorName: root.monitorName
+    }
 }

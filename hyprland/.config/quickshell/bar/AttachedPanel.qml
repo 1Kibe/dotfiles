@@ -36,6 +36,9 @@ Item {
     // shape also takes the button's box, from the screen's top edge down, and
     // the body is never narrower than the button plus its inner corners
     property bool joinButton: false
+    // Hangs over Print's capture (CapturePanel): the frame stays in the
+    // Overlay layer until it has rolled back
+    property bool overCapture: false
     default property alias content: body.data
     // Over the content, not clipped by the body (the music panel's cover and
     // equalizer flying in from the island), in this item's coordinates
@@ -128,6 +131,13 @@ Item {
         y = joinButton ? bar.y : bar.y + bar.height
         if (joinButton)
             shape.islandX = bar.x + p.x - x
+    }
+
+    // A body that changes width while it shows (the capture pill gains
+    // buttons in Vídeo) is placed again
+    onBodyWidthChanged: {
+        if (visible)
+            place()
     }
 
     // The bar squares its end while a panel continues it

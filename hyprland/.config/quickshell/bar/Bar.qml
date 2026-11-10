@@ -68,9 +68,19 @@ PanelWindow {
     color: Theme.clear
     WlrLayershell.namespace: "quickshell-bar"
 
-    // Only the bar and the panels showing take clicks
+    // Print (T2b): the capture covers the screen in the Overlay layer, with
+    // the frozen screen and its shade; the frame goes up over it while it is
+    // open, so its pill (CapturePanel) hangs from the live bar. Hyprland puts
+    // a surface that changes layer on top of that layer, without
+    // re-creating it. It stays up until the pill has rolled back.
+    readonly property bool overCapture: CaptureState.open || shown.some(p => p.overCapture)
+    WlrLayershell.layer: overCapture ? WlrLayer.Overlay : WlrLayer.Top
+
+    // Only the bar and the panels showing take clicks; over the capture, only
+    // its pill (a click on the bar's strip starts a selection there instead
+    // of opening a panel)
     mask: Region {
-        item: bar
+        item: root.overCapture ? null : bar
         regions: root.shown.map(p => p.maskRegion)
     }
 
