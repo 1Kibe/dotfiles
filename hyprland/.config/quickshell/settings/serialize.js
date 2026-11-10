@@ -52,8 +52,10 @@ function luaValue(v) {
 }
 
 // hyprlang takes the rest of the line as the value: no line breaks or any
-// other control character, no "#" (a comment) and no "$" (a variable);
-// texts with them are refused, never written
+// other control character, no "#" (a comment), no "$" (a variable) and no
+// "{{" (an expression); texts with them are refused, never written. This
+// keeps only the hyprlang syntax safe: a text that hypridle runs as a
+// command (on-timeout = ...) goes through shellQuote() first.
 function confValue(v) {
     switch (typeof v) {
     case "number":
@@ -61,7 +63,7 @@ function confValue(v) {
     case "boolean":
         return v ? "true" : "false"
     case "string":
-        if (/[\u0000-\u001f\u007f#$]/.test(v) || v !== v.trim())
+        if (/[\u0000-\u001f\u007f#$]/.test(v) || v.includes("{{") || v !== v.trim())
             throw new Error("serialize: texto não aceito no hyprlang")
         return v
     default:
@@ -69,15 +71,25 @@ function confValue(v) {
     }
 }
 
-// Names that go into the generated files
+// One argument for a shell command line (hypridle and exec run their
+// commands through sh): between single quotes, a quote inside as '\''. Rule:
+// every text that goes into a command passes here, and then confValue()
+function shellQuote(s) {
+    if (typeof s !== "string")
+        throw new Error("serialize: só texto vai para o shell")
+    return "'" + s.replace(/'/g, "'\\''") + "'"
+}
+
+// Names that go into the generated files: they start with a letter or a
+// digit (never an option, "." or "..")
 function monitorName(name) {
-    if (typeof name !== "string" || !/^[A-Za-z0-9._-]{1,32}$/.test(name))
+    if (typeof name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(name))
         throw new Error("serialize: nome de monitor inválido")
     return name
 }
 
 function desktopId(id) {
-    if (typeof id !== "string" || !/^[A-Za-z0-9._-]{1,96}\.desktop$/.test(id))
+    if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/.test(id))
         throw new Error("serialize: app inválido")
     return id
 }

@@ -52,13 +52,18 @@ var CARDS = {
 }
 
 // ── Shared limits ──
-// Names that go into generated files are checked against these first
-var FONT_NAME = /^[A-Za-z0-9 ._+-]{1,64}$/
-var THEME_NAME = /^[A-Za-z0-9._-]{1,64}$/
-var MONITOR_NAME = /^[A-Za-z0-9._-]{1,32}$/
-var DESKTOP_ID = /^[A-Za-z0-9._-]{1,96}\.desktop$/
+// Names that go into generated files are checked against these first. They
+// start with a letter or a digit, so none can pass for an option ("-x") or
+// for "." / ".." (and later tasks still pass values after "--" or as
+// absolute paths)
+var FONT_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/
+var THEME_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+var MONITOR_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
+var OPT_MONITOR = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
+var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
+var OPT_DESKTOP_ID = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var TIME_HM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
-var FILE_NAME_FORMAT = /^[yMdHhmsz_.-]{1,40}$/
+var FILE_NAME_FORMAT = /^[yMdHhmsz][yMdHhmsz_.-]{0,39}$/
 
 // Idle times: 0 is "Nunca"
 var IDLE = { min: 0, max: 14400, step: 10 }
@@ -101,7 +106,7 @@ var KEYS = {
     // ── Papel de parede ──
     wallpaper: { def: "~/.config/wallpapers/wallpaper-padrao.png", type: "path", page: "papel", card: "imagem",
                  label: "Imagem", syn: ["fundo", "wallpaper"] },
-    wallpaperMonitor: { def: "", type: "string", pattern: /^$|^[A-Za-z0-9._-]{1,32}$/, machine: true, page: "papel",
+    wallpaperMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "papel",
                         card: "ajuste", label: "Tela", desc: "Vazio é todas", syn: ["monitor"] },
     wallpaperFill: { def: "fill", type: "enum", page: "papel", card: "ajuste", label: "Preenchimento",
                      options: opts([["fill", "Preencher"], ["fit", "Ajustar"], ["center", "Centralizar"],
@@ -189,7 +194,7 @@ var KEYS = {
                     label: "Pedem um segundo clique", syn: ["confirmar"] },
 
     // ── Monitores (this machine only) ──
-    barMonitor: { def: "", type: "string", pattern: /^$|^[A-Za-z0-9._-]{1,32}$/, machine: true, page: "monitores",
+    barMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "monitores",
                   card: "barra", label: "Tela da barra", desc: "Vazio é todas" },
     nightLight: { def: false, type: "bool", machine: true, page: "monitores", card: "luz", label: "Luz noturna",
                   syn: ["hyprsunset", "filtro azul"] },
@@ -203,7 +208,7 @@ var KEYS = {
     // ── Teclado e mouse ──
     kbLayout: { def: "br", type: "string", pattern: /^[a-z]{2,8}$/, machine: true, page: "teclado", card: "teclado",
                 label: "Layout do sistema", syn: ["abnt", "idioma"] },
-    kbModel: { def: "abnt2", type: "string", pattern: /^[a-z0-9_]{0,24}$/, machine: true, page: "teclado",
+    kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, page: "teclado",
                card: "teclado", label: "Modelo do teclado" },
     repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, page: "teclado", card: "teclado",
                    label: "Atraso da repetição", desc: "Em ms" },
@@ -240,7 +245,7 @@ var KEYS = {
 }
 
 function appKey(label, syn) {
-    return { def: "", type: "string", pattern: /^$|^[A-Za-z0-9._-]{1,96}\.desktop$/, machine: true, page: "apps",
+    return { def: "", type: "string", pattern: OPT_DESKTOP_ID, machine: true, page: "apps",
              card: "apps", label: label, syn: syn }
 }
 
