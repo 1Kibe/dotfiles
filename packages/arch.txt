@@ -112,6 +112,7 @@ noto-fonts             # fallback for accents, symbols and other scripts
 
 # ── Audio ──
 pavucontrol
+libpulse               # pactl in the i3 config (volume keys)
 
 # ── Network applet ──
 network-manager-applet

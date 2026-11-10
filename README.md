@@ -34,12 +34,15 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 1. Detecta a distro pelo `/etc/os-release` e escolhe a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
 2. Pergunta os ambientes: `xfce` e `hyprland` (padrão sim nos dois). O `common` entra sempre
 3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
-4. Ativa NetworkManager e Bluetooth (e o greetd, a tela de login, nos ambientes `xfce` e `hyprland`) e pergunta se deve ativar o `sshd`
-5. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
-6. Configura o filtro git que mantém nomes de redes Wi-Fi fora dos commits
-7. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
-8. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
-9. Deixa o swayimg como padrão para imagens e o mpv para vídeos (`xdg-mime`), se estiverem instalados
+4. Deixa o sistema e o teclado em pt-BR (veja [Idioma e teclado](#idioma-e-teclado))
+5. Ativa NetworkManager e Bluetooth (e o greetd, a tela de login, nos ambientes `xfce` e `hyprland`) e pergunta se deve ativar o `sshd`
+6. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
+7. Configura os filtros git que mantêm nomes de redes Wi-Fi, nomes de monitor e tamanhos de janela fora dos commits
+8. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
+9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
+10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio))
+11. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
+12. Deixa o swayimg como padrão para imagens e o mpv para vídeos (`xdg-mime`), se estiverem instalados
 
 </details>
 
@@ -51,7 +54,8 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 |---|---|---|
 | `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
-| `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
+| `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
+| `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio) e `/etc/profile.d/tmout.sh` (console de texto) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM no `hyprland`; o `tmout.sh` sempre |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
@@ -194,6 +198,25 @@ O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todo
 
 Window manager em mosaico, com `Super` como tecla principal. `Super+Enter` abre o terminal, `Super+D` abre o Rofi (igual ao XFCE), `Super+Shift+Q` fecha a janela, `Super+1` a `Super+0` trocam de área de trabalho e `Super+Shift+R` reinicia o i3. Junto com ele sobem o `nm-applet`, o `xss-lock` com `i3lock` (trava a tela ao suspender) e os programas de autostart, pelo `dex`.
 
+### Login e bloqueio
+
+A tela de login é do **greetd**, com uma tela própria em **Quickshell** dentro do compositor **cage**
+(`system/greetd`, copiada para `/etc/greetd`). O `start-greeter` sobe a tela com o teclado do sistema e, na VM, desenha
+pela CPU. Ela lista as sessões (Hyprland, Xfce, i3), lembra o último usuário e usa o mesmo fundo do bloqueio, guardado em
+`/usr/local/share/dotfiles/login` (o login copia para `/var/cache/qs-greeter` e confere antes de mostrar).
+
+No Hyprland, a tela trava com o bloqueio do Quickshell (`Super+L`, menu de energia, tampa, ou sozinha pelo **hypridle**
+depois de 5 minutos parado), com a senha pelo PAM (`/etc/pam.d/quickshell-lock`). Se o Quickshell não responder, o
+`hyprlock` entra como bloqueio reserva. Tempos, fundo, senha errada muitas vezes e como voltar se uma das telas cair estão em
+[hyprland/README.md](hyprland/README.md#bloqueio-e-login).
+
+### Idioma e teclado
+
+O `install.sh` deixa o sistema em português do Brasil (`pt_BR.UTF-8`, gerado no `/etc/locale.gen`), o console de texto
+em `br-abnt2` e o teclado gráfico em `br` com o modelo `abnt2` (`localectl`, que o XFCE e a tela de login leem; o
+Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude as variáveis `SYSTEM_LOCALE`,
+`CONSOLE_KEYMAP`, `XKB_LAYOUT` e `XKB_MODEL` no topo do `install.sh`. Se algum passo falhar, o script avisa e segue.
+
 ### Outros
 
 | Programa | Configuração |
@@ -224,7 +247,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
 - **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com a tela de login em Quickshell (`system/greetd/quickshell`), que lista Hyprland, Xfce e i3. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
-- **Se a tela de login não abrir.** Aperte `Ctrl+Alt+F2`, entre pelo terminal e rode `uwsm start hyprland.desktop` (Hyprland) ou `startx /usr/bin/startxfce4` (XFCE).
+- **Se a tela de login não abrir.** Aperte `Ctrl+Alt+F2` (na VM VMware: `Ctrl+Alt+Espaço` e depois `F2` segurando `Ctrl+Alt`), entre pelo terminal e troque o login pelo `agreety`, o de texto que vem com o greetd: `sudo cp /etc/greetd/config.toml.bak /etc/greetd/config.toml && sudo systemctl restart greetd`. A volta está em [hyprland/README.md](hyprland/README.md#tela-de-login). Para entrar direto dali: `uwsm start hyprland.desktop` (Hyprland) ou `startx /usr/bin/startxfce4` (XFCE).
 - **Não mova a pasta depois de linkar.** Para mover: `./install.sh unlink`, mova a pasta e rode `./install.sh link` no lugar novo.
 - **Backups ficam fora do git.** A pasta `.backups/` está no `.gitignore`, porque um backup do `~/.config` pode ter tokens e cookies de outros programas.
 
@@ -275,22 +298,28 @@ dotfiles/
 │   └── user-dirs.locale
 ├── hyprland/
 │   ├── README.md
-│   └── .config/
-│       ├── hypr/
-│       ├── quickshell/
-│       └── swayimg/init.lua
+│   ├── .config/
+│   │   ├── hypr/                         [inclui hypridle.conf e hyprlock.conf]
+│   │   ├── quickshell/
+│   │   ├── swayimg/init.lua
+│   │   └── systemd/user/hypridle.service.d/
+│   └── .local/bin/                       [hypr-travar, hypr-print, hypr-energia...]
 ├── packages/
 │   ├── arch.txt
 │   ├── fedora.txt                        [TODO]
 │   └── ubuntu.txt                        [TODO]
-├── system/greetd/                         [tela de login, copiada para /etc/greetd]
-│   ├── config.toml
-│   ├── start-greeter                      [teclado do sistema; software em VM; abre o cage]
-│   └── quickshell/                        [a tela de login (Quickshell)]
+├── system/                                [copiada como root pelo install.sh]
+│   ├── greetd/                            [tela de login, em /etc/greetd]
+│   │   ├── config.toml
+│   │   ├── start-greeter                  [teclado do sistema; software em VM; abre o cage]
+│   │   └── quickshell/                    [a tela de login (Quickshell)]
+│   ├── pam.d/quickshell-lock              [senha do bloqueio, em /etc/pam.d]
+│   └── profile.d/tmout.sh                 [console de texto sai em 10 min, em /etc/profile.d]
 ├── assets/preview.png
 ├── tools/
 │   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]
-│   └── xfce-desktop-clean.awk             [filtro git: wallpaper por monitor]
+│   ├── xfce-desktop-clean.awk             [filtro git: wallpaper por monitor]
+│   └── xfce-thunar-clean.awk              [filtro git: tamanho da janela do Thunar]
 ├── install.sh
 ├── LICENSE
 └── README.md
@@ -320,7 +349,8 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard e captura de tela prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard, captura de tela, bloqueio e tela de login prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Conferir no notebook o bloqueio pela tampa, a suspensão de verdade e o login na placa de vídeo
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 

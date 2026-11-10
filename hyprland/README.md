@@ -1,14 +1,14 @@
 # hyprland
 
-Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis, o clipboard e a
-captura de tela), no tema Gruvbox, e do visualizador de imagens **swayimg**.
+Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis, o clipboard, a
+captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do visualizador de imagens **swayimg**.
 
 | Pasta no repo | Vira, depois do `stow` |
 |---|---|
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
 | `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
-| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
+| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-calculadora`, `hypr-travar`, `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
 
@@ -26,6 +26,8 @@ Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pa
 | `modules/rules.lua` | Janelas que flutuam |
 | `modules/autostart.lua` | Polkit, histórico do clipboard, tema GTK e o Quickshell |
 | `local.lua.example` | Modelo dos ajustes da máquina (VM e notebook) |
+| `hypridle.conf` | Tempos de inatividade: escurecer, travar, apagar a tela e suspender (veja [Bloqueio e login](#bloqueio-e-login)) |
+| `hyprlock.conf` | O bloqueio reserva, usado só quando o Quickshell não responde |
 
 E o Quickshell, em `.config/quickshell/`:
 
@@ -39,8 +41,12 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
 | `state/NotesStore.qml` | Notas rápidas (post-its) |
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
+| `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
+| `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
 | `bar/` | A barra (`Bar.qml`), os itens dela e os painéis que descem (`*Panel.qml`, base em `DropPanel.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: tela escura, faixa com os cartões, notas e emoji |
+| `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
+| `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
 ## Entrar no Hyprland
 
@@ -187,7 +193,7 @@ Descem da barra, um por vez. Esc ou um clique fora fecham. Os atalhos abrem o me
 | Volume | Saída e microfone: mudo, volume e a lista de dispositivos (clique escolhe o padrão) |
 | Bluetooth | Liga/desliga e um cartão por aparelho (conectados, pareados e "Por perto", achados com "Procurar"). "Mais opções…" abre o `bluetui` |
 | Música | Capa desfocada ao fundo, música, artista e álbum, progresso (clique pula), anterior/tocar/próxima e "Ir para o player". Com mais de um player, botões no topo escolhem qual a barra controla |
-| Energia | Sair, Suspender, Reiniciar e Desligar. Reiniciar e Desligar pedem um segundo clique |
+| Energia | Bloquear, Sair, Suspender, Reiniciar e Desligar. Suspender trava antes; Reiniciar e Desligar pedem um segundo clique |
 | Sistema | Anéis grandes de CPU, memória e temperatura, tempo ligado e os 8 processos que mais gastam CPU ou memória (CPU do momento, atualizado a cada 2 s). O ✕ de um processo seu pede um segundo clique e encerra ele; os da sessão (Hyprland, Xwayland, PipeWire, o próprio Quickshell) não têm ✕. "Abrir o btop" no rodapé |
 
 ### Clipboard (Super+V)
@@ -299,6 +305,11 @@ Outros alvos, para scripts:
 | `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
 | `qs ipc call capture card <arquivo>` | Mostra o cartão de um print (só PNG da pasta `Capturas`; o `hypr-print` chama no fim) |
 | `qs ipc call capture stats` | O estado da captura em JSON (aberta, modo, gravando, tempo); nunca caminhos ou conteúdo |
+| `qs ipc call lock stats` | O estado do bloqueio em JSON (travado, conferindo, escurecido, erro); nunca a senha |
+| `qs ipc call lock background` | Abre o escolhedor do fundo do bloqueio e do login (não abre com a tela travada) |
+| `qs ipc call lock dim <segundos>` / `undim` | O escurecer antes de travar (o `hypridle` chama); só visual, nunca trava nem destrava |
+
+Não existe alvo para destravar: só a senha, pelo PAM, destrava.
 
 O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.
 
@@ -326,6 +337,120 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 - Na VM a gravação sai **preta**: o gravador não acha uma placa de vídeo de verdade. O arquivo, o tempo e o som saem certos.
 - Na VM (VMware com o teclado preso), a `PrtSc` chega como `Super+Shift+S` e `Fn+PrtSc` como `Print`; `Shift+PrtSc` não
   chega.
+- Na VM no Windows, o `Super+L` é do Windows: ele tranca a sessão do Windows antes de chegar ao Hyprland. Na VM, trave pelo
+  menu de energia (Bloquear) ou por `hyprctl dispatch 'hl.dsp.exec_cmd("hypr-travar")'`. No notebook o `Super+L` vai direto.
+
+## Bloqueio e login
+
+A tela de bloqueio e a tela de login são do Quickshell, com o mesmo tema, relógio, cartão do usuário e campo de senha. A
+senha passa só pelo PAM: o bloqueio usa o serviço `/etc/pam.d/quickshell-lock`, o login usa o do greetd. Nada destrava
+sem a senha. O serviço do bloqueio vem do `install.sh`; o do greetd vem com o pacote.
+
+### Travar
+
+- `Super+L`, **Bloquear** no menu de energia (`Super+X`) ou fechar a tampa. Tudo chama o `hypr-travar`, que espera o
+  Hyprland confirmar que todas as telas estão cobertas. Suspender (pelos menus, pela tampa ou pelo `hypridle`) também trava
+  antes.
+- Na VM no Windows, o `Super+L` é do Windows (veja [Problemas conhecidos](#problemas-conhecidos)).
+- No Hyprland, `allow_session_lock_restore` fica desligado (`modules/look.lua`): ligado, qualquer programa poderia
+  trocar a tela de bloqueio por outra e destravar sem senha. O custo está em
+  [Se a tela de bloqueio cair](#se-a-tela-de-bloqueio-cair).
+
+### Tempos de inatividade
+
+Ficam no `hypridle.conf` (os mesmos do plano "Equilibrado" do Windows, na tomada e na bateria):
+
+| Parado há | Acontece |
+|---|---|
+| 4 min 30 s | A tela escurece, com uma contagem de 30 s até travar |
+| 5 min | Trava |
+| 5 min 10 s | Apaga a tela |
+| 60 min | Suspende, só na bateria |
+
+Qualquer tecla ou movimento do mouse desfaz o escurecer. Um vídeo tocando segura tudo; música não. Para mudar, edite o
+`timeout` de cada `listener`; o `30` do `dim 30` é a contagem, e tem que ser a diferença entre travar e escurecer
+(300 − 270). Depois, `systemctl --user restart hypridle`.
+
+### Fundo
+
+`qs ipc call lock background` abre o escolhedor do fundo, que vale para o bloqueio e para o login. Ele mostra três abas
+(os papéis de parede do repo, a pasta Imagens e as Capturas), confere cada imagem e grava um PNG em
+`/usr/local/share/dotfiles/login/fundo.png`, de onde o login copia. Não abre com a tela travada. Sem fundo, ou com um
+arquivo que não passa na checagem, fica a cor do tema.
+
+A foto do cartão do bloqueio vem de `/var/lib/AccountsService/icons/<usuário>`, se existir; sem ela fica a inicial do
+nome. A tela de login nunca abre a foto (mostra sempre a inicial), porque ela roda antes de qualquer login e não lê
+arquivos dos usuários.
+
+### Senha errada muitas vezes
+
+O PAM (`pam_faillock`, com os valores do Arch) trava a conta depois de **3 senhas erradas em 15 minutos**, por **10
+minutos**. Na tela aparece "Muitas tentativas" com a contagem. Para destravar antes, como root, num console:
+
+    sudo faillock --user <usuário> --reset
+
+Limitações:
+
+- No login, o aviso só aparece na tentativa **seguinte** à que travou a conta (o PAM trava na 3ª errada, mas só diz isso na
+  4ª). O "Aguarde" some com a contagem ou trocando de usuário; quem decide é o PAM: conta ainda travada, o aviso volta;
+  conta liberada, entra.
+- No bloqueio, o limite só vale se você entrou com senha desde que o computador ligou (é o login, como root, que cria o
+  registro em `/run/faillock`). Numa sessão aberta sem senha, o bloqueio não tem limite de tentativas.
+
+### Se a tela de bloqueio cair
+
+Se o Quickshell parar de responder, o `hypr-travar` chama o **bloqueio reserva** (`hyprlock`, com o `hyprlock.conf`), que
+mostra "Bloqueio reserva" na tela e usa o serviço `/etc/pam.d/hyprlock`. Ele aceita a senha normalmente. Ele não mostra o
+"Muitas tentativas", mas o limite de tentativas vale do mesmo jeito (é o mesmo `pam_faillock`). Risco aceito: com o
+reserva na tela, um programa da sua sessão pode destravá-lo mandando um sinal (`SIGUSR1`); com o bloqueio do Quickshell
+isso não existe.
+
+Se o Quickshell cair **com a tela travada**, o Hyprland deixa a tela coberta com um aviso de que a tela de bloqueio parou
+(é o custo do `allow_session_lock_restore` desligado). Para voltar, por SSH ou por um console de texto (`Ctrl+Alt+F2` no
+notebook; na VM VMware, `Ctrl+Alt+Espaço` e depois `F2` segurando `Ctrl+Alt`):
+
+    hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'
+    hyprctl --instance 0 dispatch 'hl.dsp.exec_cmd("hypr-travar")'
+    exit
+
+O primeiro comando tira a tela coberta, o segundo trava de novo de dentro da sessão (o `hypr-travar` sobe o Quickshell se
+precisar; rodado direto no console ele não acha a sessão), e o `exit` fecha o console. Volte para a sessão com
+`Ctrl+Alt+F1` e digite a senha. Um console de texto esquecido sai sozinho depois de 10 minutos sem comando
+(`/etc/profile.d/tmout.sh`); um `bash` aberto dentro dele não tem esse limite.
+
+Não edite os `.qml` do `~/.config/quickshell` com a tela travada: o Quickshell recarrega sozinho quando um arquivo muda, e
+um erro no meio da edição derruba a tela de bloqueio.
+
+### Tela de login
+
+O greetd abre o `/etc/greetd/start-greeter`, que sobe o Quickshell (`/etc/greetd/quickshell`) dentro do **cage**, no
+último monitor, como o usuário `greeter`. O teclado do login é o do sistema (`localectl`), então a senha sai com o mesmo
+layout da sessão. Na VM, o `start-greeter` desenha pela CPU (o cage não sobe com a placa de vídeo da VMware).
+
+**Se o login não abrir**, troque para o `agreety` (o login de texto que vem com o greetd). Por SSH ou pelo console de
+texto (`Ctrl+Alt+F2` no notebook; na VM, `Ctrl+Alt+Espaço` e `F2` segurando `Ctrl+Alt`), que no notebook é o único
+caminho:
+
+    sudo cp /etc/greetd/config.toml.bak /etc/greetd/config.toml
+    sudo systemctl restart greetd
+
+O `config.toml.bak` é a config que o greetd tinha antes do `install.sh` (a do pacote usa o `agreety`). Para voltar ao
+login do Quickshell:
+
+    sudo install -m644 -o root -g root ~/dotfiles/system/greetd/config.toml /etc/greetd/config.toml
+    sudo systemctl restart greetd
+
+### O que isto protege
+
+Contra alguém que senta na frente do computador quando você saiu: com a tela travada, só a senha entra. Sem criptografia
+do disco (LUKS), quem tira o disco ou liga por um pendrive lê tudo; o bloqueio e o login não mudam isso.
+
+### Falta conferir no notebook
+
+- Fechar a tampa trava e suspende de verdade (na VM não existe tampa nem suspensão real).
+- O nome da tampa no Hyprland (`hyprctl devices`); se não for `Lid Switch`, o `local.lua.example` mostra como trocar.
+- O `Super+L` e a `PrtSc` chegando direto ao Hyprland.
+- O login e o bloqueio na placa de vídeo (Intel Arc), sem o desenho pela CPU da VM.
 
 ## Visualizadores (imagem e vídeo)
 
