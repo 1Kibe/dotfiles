@@ -398,17 +398,27 @@ Singleton {
     }
 
     // A file that could not be read or trusted is kept as
-    // settings.json.bad-<date>; if that copy fails, nothing is written
+    // settings.json.bad-<date>; if that copy fails, nothing is written. Only
+    // a regular file is copied (stat follows no link): a link, a FIFO or a
+    // device is never read, and `mv -T` then replaces only that entry of the
+    // folder, leaving whatever it pointed to untouched
     function backupIfBroken(next) {
         if (!broken)
             return next()
-        const copy = `${userFile}.bad-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")}`
-        run(["cp", "-p", "-T", "--", userFile, copy], code => {
-            if (code !== 0)
-                return failWrite()
-            broken = false
-            notice(`Suas configurações antigas foram guardadas em ${copy.split("/").pop()}`)
-            next()
+        run(["stat", "-c", "%u %f", "--", userFile], (code, out) => {
+            const m = out.trim().match(/^(\d+) ([0-9a-fA-F]+)$/)
+            if (code !== 0 || !m || (parseInt(m[2], 16) & 0o170000) !== 0o100000) {
+                broken = false
+                return next()
+            }
+            const copy = `${userFile}.bad-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")}`
+            run(["cp", "-P", "-p", "-T", "--", userFile, copy], code2 => {
+                if (code2 !== 0)
+                    return failWrite()
+                broken = false
+                notice(`Suas configurações antigas foram guardadas em ${copy.split("/").pop()}`)
+                next()
+            })
         })
     }
 
