@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.theme
 import qs.state
+import "mediaflight.js" as Flight
 
 // Music panel: cover, title, artist, album and player; progress with time
 // (click to seek); previous, play/pause, next. With more than one player,
@@ -16,6 +17,11 @@ AttachedPanel {
     required property var player
     required property var players
     readonly property bool hasPlayer: player !== null
+    // The island's cover and equalizer (set by CenterIsland): they fly into
+    // the panel while it opens (mediaflight.js) and back while it closes
+    property Item islandCover: null
+    property Item islandEq: null
+    readonly property bool hasArt: MediaState.artUrl !== ""
 
     // The player's window in Hyprland, matched by app id / class against the
     // MPRIS desktop entry or name (Spotify: "spotify" ~ class "Spotify").
@@ -40,22 +46,110 @@ AttachedPanel {
     }
 
     panelWidth: 340
+    // One piece with the center island (T1b): island, panel and corners
+    // filled with the cover, blurred like the island's (AttachedPanel, from
+    // CoverBackdrop), with a shade going from the island's to the panel's.
+    // Without a cover: the island's color into the bar's. A new track's
+    // cover crossfades in, together with its title.
+    joinButton: true
+    fillCover: hasArt ? MediaState.artUrl : ""
+    fillColor: mix(Theme.islandFill, Theme.barFill, progress)
+    fillShade: mix(Theme.coverShade, Theme.panelShade, progress)
 
-    // The blurred cover behind the panel (shared look with the center island)
-    underlay: CoverBackdrop {
-        anchors.fill: parent
-        // Square on top, where the panel meets the bar; the bottom corners
-        // like the panel's. Clear fill, since AttachedPanel already paints
-        // the background under it.
-        bottomLeftRadius: Theme.radius
-        bottomRightRadius: Theme.radius
-        color: Theme.clear
-        shade: Theme.panelShade
-        shown: MediaState.artUrl !== ""
-        source: MediaState.artUrl
+    // Secondary text (album, player, times): on the cover the theme's grey
+    // gets lost, so it is the main text color at 70%
+    readonly property color softText: hasArt ? Theme.alpha(Theme.text, 0.7) : Theme.gray
+
+    function mix(a, b, t) {
+        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t)
     }
 
-    // position is not reactive: refresh it while playing, only when visible
+    // Where the cover and the equalizer start (in the island) and end (fixed
+    // spots of the open panel). The start is read while the island has not
+    // started narrowing (phase 1), then kept.
+    property var coverFrom: ({ x: 0, y: 0, w: 20, h: 20, r: 5 })
+    property var coverTo: ({ x: 0, y: 0, w: 72, h: 72, r: Theme.radius })
+    property var eqFrom: ({ x: 0, y: 0, w: 13, h: 12, r: 1.5 })
+    readonly property real eqScale: 1.6
+    property var eqTo: ({ x: 0, y: 0, w: 13 * eqScale, h: 12 * eqScale, r: 1.5 * eqScale })
+    function measure() {
+        if (islandCover) {
+            const p = islandCover.mapToItem(root, 0, 0)
+            coverFrom = { x: p.x, y: p.y, w: 20, h: 20, r: 5 }
+        }
+        if (islandEq) {
+            const q = islandEq.mapToItem(root, 0, 0)
+            eqFrom = { x: q.x, y: q.y, w: 13, h: 12, r: 1.5 }
+        }
+        const c = openPos(coverSlot)
+        coverTo = { x: c.x, y: c.y, w: 72, h: 72, r: Theme.radius }
+        eqTo = { x: bodyLeft + bodyWidth - 14 - 13 * eqScale, y: junctionY + 14,
+                 w: 13 * eqScale, h: 12 * eqScale, r: 1.5 * eqScale }
+    }
+    onProgressChanged: {
+        if (Flight.islandShrink(progress) === 0)
+            measure()
+    }
+    // Also on showing: the island may have moved since the last opening,
+    // and the first frame must start from where it is now
+    onVisibleChanged: {
+        if (visible)
+            measure()
+    }
+    readonly property var coverNow: Flight.rectAt(progress, coverFrom, coverTo, junctionY + 6)
+    readonly property var eqNow: Flight.rectAt(progress, eqFrom, eqTo, junctionY + 6)
+
+    overlay: [
+        // The one cover: from the island down into its place in the panel
+        ClippingRectangle {
+            visible: root.visible
+            x: root.coverNow.x
+            y: root.coverNow.y
+            width: root.coverNow.w
+            height: root.coverNow.h
+            radius: root.coverNow.r
+            color: Theme.bg1
+
+            // A note while the cover loads, or when the player sends none
+            Text {
+                anchors.centerIn: parent
+                visible: !cover.ready
+                text: "󰝚"
+                color: Theme.gray
+                font.family: Theme.font
+                font.pointSize: Math.max(1, (Theme.fontSize + 10) * parent.width / 72)
+            }
+            // A new track's cover crossfades in once loaded
+            CrossfadeImage {
+                id: cover
+                anchors.fill: parent
+                source: MediaState.artUrl
+                // Twice the 72 px box, sharp on scaled screens
+                sourceSize: 144
+            }
+        },
+        // The equalizer: from the island's right to the panel's top-right
+        // corner, growing; in steps while playing, still while paused
+        Equalizer {
+            visible: root.visible && root.hasPlayer
+            x: root.eqNow.x
+            y: root.eqNow.y
+            width: root.eqNow.w
+            height: root.eqNow.h
+            playing: root.hasPlayer && root.player.isPlaying
+            tint: MediaState.tint
+        }
+    ]
+
+    // position is not reactive: read it once on opening (a paused player
+    // would show 0:00 otherwise), then every second while playing
+    onOpenChanged: {
+        if (!open)
+            return
+        measure()
+        if (hasPlayer)
+            player.positionChanged()
+    }
     Timer {
         interval: 1000
         repeat: true
@@ -92,40 +186,24 @@ AttachedPanel {
         Layout.margins: 8
         spacing: 12
 
-        ClippingRectangle {
+        // The cover's place: the cover itself flies in from the island (see
+        // the overlay above), so there is only ever one
+        Item {
+            id: coverSlot
             implicitWidth: 72
             implicitHeight: 72
-            radius: Theme.radius
-            color: Theme.bg1
-
-            Text {
-                anchors.centerIn: parent
-                visible: cover.status !== Image.Ready
-                text: "󰝚"
-                color: Theme.gray
-                font.family: Theme.font
-                font.pointSize: Theme.fontSize + 10
-            }
-            Image {
-                id: cover
-                anchors.fill: parent
-                source: root.hasPlayer ? root.player.trackArtUrl : ""
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                // Twice the 72 px box, sharp on scaled screens
-                sourceSize.width: 144
-                sourceSize.height: 144
-            }
         }
 
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 2
 
-            Text {
+            // A new track's title crossfades; it ends before the equalizer
+            // in the corner
+            CrossfadeText {
                 Layout.fillWidth: true
                 text: root.hasPlayer ? (root.player.trackTitle || "Sem título") : "Nada tocando"
-                elide: Text.ElideRight
+                rightPadding: 13 * root.eqScale + 8
                 color: Theme.text
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize + 1
@@ -147,7 +225,7 @@ AttachedPanel {
                 visible: text !== ""
                 text: root.hasPlayer ? root.player.trackAlbum : ""
                 elide: Text.ElideRight
-                color: Theme.gray
+                color: root.softText
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
@@ -155,7 +233,7 @@ AttachedPanel {
                 Layout.fillWidth: true
                 text: root.hasPlayer ? root.player.identity : ""
                 elide: Text.ElideRight
-                color: Theme.gray
+                color: root.softText
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 2
             }
@@ -192,11 +270,9 @@ AttachedPanel {
                     Behavior on color {
                         ColorAnimation { duration: Theme.animNormal }
                     }
-                    // Smooths the 1 s ticks of the Timer above and the jump
-                    // after a seek
-                    Behavior on width {
-                        NumberAnimation { duration: Theme.animNormal }
-                    }
+                    // No smoothing: one step a second, so the bar's window
+                    // repaints once a second, not all the time (a smooth
+                    // move would animate without end while playing)
                 }
             }
 
@@ -216,13 +292,13 @@ AttachedPanel {
             Text {
                 Layout.fillWidth: true
                 text: root.hasPlayer ? root.time(root.player.position) : ""
-                color: Theme.gray
+                color: root.softText
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
             Text {
                 text: root.hasPlayer ? root.time(root.player.length) : ""
-                color: Theme.gray
+                color: root.softText
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }

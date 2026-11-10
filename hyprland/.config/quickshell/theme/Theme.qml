@@ -191,6 +191,8 @@ Singleton {
         return speed <= 0 ? 0 : Math.round(ms * speed)
     }
     readonly property int motionPanelOpen: 300
+    // A new track: cover, blurred cover and title crossfade over this
+    readonly property int coverFade: 300
     readonly property int motionPanelClose: 200
     // easing.bezierCurve, Material's standard pair (Ryan, 2026-11-10:
     // "Padrão"): opening settles without a jump or a long tail, closing

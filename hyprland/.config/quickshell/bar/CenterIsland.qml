@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell.Widgets
 import qs.theme
 import qs.state
+import "mediaflight.js" as Flight
 
 // Center of the bar: the clock, which becomes an island when music plays:
 // a lighter background, a small cover on the left and an equalizer on the
@@ -34,11 +35,20 @@ Item {
         }
     }
 
+    // While the music panel shows, the island is part of its shape (T1b):
+    // its own background, cover and equalizer give way to the panel's (the
+    // cover and the equalizer fly into the panel), and it narrows to the
+    // clock during the second phase of the opening, following the panel
+    readonly property bool joined: panel.visible
+    readonly property real shrink: Flight.islandShrink(panel.progress)
+
     implicitHeight: Theme.barHeight
     // Padding on both sides only as an island; the plain clock needs none.
-    // Animated so the island grows out of the clock.
+    // Animated so the island grows out of the clock (not while joined: the
+    // panel's progress drives it then).
     implicitWidth: row.implicitWidth + (active ? 2 * Theme.spacing : 0)
     Behavior on implicitWidth {
+        enabled: !root.joined
         NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
     }
 
@@ -46,6 +56,7 @@ Item {
     // island color without one), fading in and out
     CoverBackdrop {
         anchors.fill: parent
+        visible: !root.joined
         shown: root.active
         source: MediaState.artUrl
     }
@@ -62,43 +73,46 @@ Item {
     RowLayout {
         id: row
         anchors.centerIn: parent
-        spacing: root.active ? 6 : 0
+        spacing: root.active ? 6 * (1 - root.shrink) : 0
 
         // Cover
         // Like the equalizer, it shrinks to width 0 and fades out without
         // music, so the clock alone stays centered.
         ClippingRectangle {
-            Layout.preferredWidth: root.active ? 20 : 0
+            id: coverBox
+            Layout.preferredWidth: root.active ? 20 * (1 - root.shrink) : 0
             implicitHeight: 20
             radius: 5
-            color: Theme.bg1
+            // Joined: the cover is the panel's (it flies in), but its box keeps
+            // its room, so the island narrows with the panel's progress
+            color: root.joined ? Theme.clear : Theme.bg1
             opacity: root.active ? 1 : 0
             Behavior on opacity {
                 NumberAnimation { duration: Theme.animFast }
             }
             Behavior on Layout.preferredWidth {
+                enabled: !root.joined
                 NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
             }
 
             // A note while the cover loads, or when the player sends none
             Text {
                 anchors.centerIn: parent
-                visible: cover.status !== Image.Ready
+                visible: !root.joined && !cover.ready
                 text: "󰝚"
                 color: Theme.gray
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 2
             }
-            Image {
+            // A new track's cover crossfades in once loaded
+            CrossfadeImage {
                 id: cover
                 anchors.fill: parent
+                visible: !root.joined
                 source: MediaState.artUrl
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                // Decoded at twice the 20 px box: sharp on scaled screens
-                // without keeping a full-size cover in memory
-                sourceSize.width: 40
-                sourceSize.height: 40
+                // Twice the 20 px box: sharp on scaled screens without keeping
+                // a full-size cover in memory
+                sourceSize: 40
             }
         }
 
@@ -113,7 +127,8 @@ Item {
         // Equalizer: three bars that move while playing, still when paused
         // 13 px: three 3 px bars with a 2 px gap (x = index * 5)
         Item {
-            Layout.preferredWidth: root.active ? 13 : 0
+            id: eqBox
+            Layout.preferredWidth: root.active ? 13 * (1 - root.shrink) : 0
             implicitHeight: 12
             clip: true
             opacity: root.active ? 1 : 0
@@ -121,47 +136,26 @@ Item {
                 NumberAnimation { duration: Theme.animFast }
             }
             Behavior on Layout.preferredWidth {
+                enabled: !root.joined
                 NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
             }
 
-            Repeater {
-                model: 3
-
-                Rectangle {
-                    required property int index
-                    property real level: 4
-
-                    // Grows up from the bottom of the 12 px box; 4 px when
-                    // paused, a random 4-12 px while playing
-                    x: index * 5
-                    y: 12 - height
-                    width: 3
-                    height: root.playing ? level : 4
-                    radius: 1.5
-                    color: MediaState.tint   // a color from the cover
-                    Behavior on color {
-                        ColorAnimation { duration: Theme.animNormal }
-                    }
-                    // 150 ms: shorter than the fastest timer (170 ms), so each
-                    // step ends before the next level arrives
-                    Behavior on height {
-                        NumberAnimation { duration: 150; easing.type: Easing.InOutSine }
-                    }
-
-                    Timer {
-                        interval: 170 + index * 45   // a different pace per bar
-                        repeat: true
-                        running: root.playing
-                        onTriggered: parent.level = 4 + Math.random() * 8
-                    }
-                }
+            // Joined: the panel's equalizer (it flies in); the box keeps its room
+            Equalizer {
+                anchors.fill: parent
+                visible: !root.joined
+                playing: root.playing
+                tint: MediaState.tint
             }
         }
     }
 
     // Hangs centered under the island, which grows and shrinks with the music
     MediaPanel {
+        id: panel
         button: root
+        islandCover: coverBox
+        islandEq: eqBox
         centered: true
         open: root.open
         player: MediaState.player

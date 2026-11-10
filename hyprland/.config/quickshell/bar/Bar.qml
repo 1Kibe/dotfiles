@@ -31,8 +31,12 @@ PanelWindow {
     readonly property var hyprMonitor: Hyprland.monitorFor(modelData)
     readonly property string monitorName: hyprMonitor ? hyprMonitor.name : ""
 
-    // Where the panels (AttachedPanel) are drawn, and the bar they hang from
+    // Where the panels (AttachedPanel) are drawn, and the bar they hang from.
+    // Their shapes go to shapeLayer, between the bar's strip and the bar's
+    // items, so a shape that takes the island's box (the music panel) stays
+    // under the clock.
     readonly property alias panelLayer: panels
+    readonly property alias shapeLayer: shapes
     readonly property alias barArea: bar
 
     // Panels showing on this bar (opening, open or closing): they set the
@@ -124,6 +128,16 @@ PanelWindow {
                     }
                 }
             }
+        }
+
+        // The panels' shapes (AttachedPanel), in the window's coordinates:
+        // over the strip, under the bar's items
+        Item {
+            id: shapes
+            x: -bar.x
+            y: -bar.y
+            width: root.width
+            height: root.height
         }
 
         RowLayout {

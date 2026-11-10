@@ -10,7 +10,7 @@ import qs.theme
 ClippingRectangle {
     id: root
 
-    property string source        // album art URL; "" keeps the last one while fading out
+    property string source        // album art URL; "" fades the covers out (the island's color stays)
     property bool shown: false
     property int front: 0         // which of the two layers is visible
     property color shade: Theme.coverShade
@@ -31,30 +31,59 @@ ClippingRectangle {
 
     // New cover: load it into the hidden layer, swap when it is ready
     onSourceChanged: {
-        if (source === "")
+        if (source === "") {
+            cleared = true
             return
+        }
+        // Back to the cover in front (after an empty source): show it again
+        const shownLayer = front === 0 ? layerA : layerB
+        if (String(shownLayer.source) === source && shownLayer.ready) {
+            cleared = false
+            return
+        }
         // Back layer already holds this URL (back to the previous cover): it
         // is loaded, so just swap; a new URL swaps from onReadyChanged below
         const back = front === 0 ? layerB : layerA
         if (String(back.source) !== source)
             back.source = source
         else
-            front = front === 0 ? 1 : 0
+            show(front === 0 ? 1 : 0)
+    }
+
+    // The old cover stays under the new one while it fades in
+    property bool swapping: false
+    // Source emptied (a player without a cover): both covers fade out until
+    // a new one is shown
+    property bool cleared: false
+    function show(n) {
+        cleared = false
+        if (front === n)
+            return
+        front = n
+        swapping = true
+        swapDone.restart()
+    }
+    Timer {
+        id: swapDone
+        interval: Theme.coverFade
+        onTriggered: root.swapping = false
     }
 
     component CoverLayer: Item {
-        id: layer
-
         property alias source: image.source
         property bool active: false
         readonly property bool ready: image.status === Image.Ready
 
         anchors.fill: parent
-        // Each layer fades on its own: the old cover fades out while the new
-        // one fades in, which makes the crossfade
-        opacity: active && ready ? 1 : 0
+        // The new cover fades in on top of the old one, which stays fully
+        // visible underneath until the fade is over: never a frame of the
+        // bare background between two covers
+        z: active ? 1 : 0
+        opacity: root.cleared ? 0 : active ? (ready ? 1 : 0) : (root.swapping ? 1 : 0)
+        // Always animated (see CrossfadeImage): the old cover, covered by
+        // then, fades out after the new one is in
         Behavior on opacity {
-            NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Theme.coverFade; easing.type: Easing.OutCubic }
         }
         // Cached as a texture: the blur runs again only when the cover changes
         layer.enabled: true
@@ -89,7 +118,7 @@ ClippingRectangle {
         // have changed again while it was loading
         onReadyChanged: {
             if (ready && String(source) === root.source)
-                root.front = 0
+                root.show(0)
         }
     }
     CoverLayer {
@@ -97,13 +126,15 @@ ClippingRectangle {
         active: root.front === 1
         onReadyChanged: {
             if (ready && String(source) === root.source)
-                root.front = 1
+                root.show(1)
         }
     }
 
-    // Darken for the clock
+    // Darken for the clock: over both covers (the new one is raised while
+    // it fades in)
     Rectangle {
         anchors.fill: parent
+        z: 2
         color: root.shade
     }
 }
