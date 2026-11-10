@@ -18,9 +18,14 @@
 # restore off nobody can replace a lock, so LOCK means locked whoever holds
 # it, also a lock screen that died (Hyprland then keeps the screen covered).
 #
-# Exit: 0 locked, 1 not locked in time, 2 /etc/pam.d/quickshell-lock missing
-# (PAM would deny every password, so the screen is not locked at all). Every
-# failure also shows a notice on the screen.
+# Only from inside the session (Hyprland's binds, hypridle, the menus): from
+# a console or SSH neither hyprctl nor qs ipc finds the session, so it stops
+# at once and says how to ask the session instead.
+#
+# Exit: 0 locked, 1 not locked in time or not run inside the session, 2
+# /etc/pam.d/quickshell-lock missing (PAM would deny every password, so the
+# screen is not locked at all). Every failure inside the session also shows a
+# notice on the screen.
 set -uo pipefail
 
 pam=/etc/pam.d/quickshell-lock
@@ -57,6 +62,15 @@ warn() {
   echo "hypr-travar: $1" >&2
   ( timeout 1 hyprctl notify 3 8000 0 "$1" >/dev/null 2>&1 & )
 }
+
+# Outside the session: no instance, or its socket is gone (Hyprland closed).
+# Nothing is started; on-screen notices would not arrive either.
+sig="${HYPRLAND_INSTANCE_SIGNATURE:-}"
+if [[ -z "$sig" || "$sig" == */* || ! -S "$runtime/hypr/$sig/.socket.sock" ]]; then
+  echo "hypr-travar: fora da sessão do Hyprland, nada foi travado. Para travar a sessão daqui:" >&2
+  echo "  hyprctl --instance 0 dispatch 'hl.dsp.exec_cmd(\"hypr-travar\")'" >&2
+  exit 1
+fi
 
 # A regular file only: a missing one (install.sh not run) falls back to
 # PAM's "other" service, which denies everything
@@ -95,8 +109,19 @@ compositor_lock_seen() {
     | jq -e 'length > 0 and all(.[]; (.solitaryBlockedBy // []) | index("LOCK") != null)' >/dev/null 2>&1
 }
 
+# Sleeps up to $1 ms, never past the deadline; fails when no time is left
+nap() {
+  local ms="$1" left
+  left="$(left_ms)"
+  (( left <= 0 )) && return 1
+  (( ms > left )) && ms="$left"
+  sleep "$(( ms / 1000 )).$(printf '%03d' $(( ms % 1000 )))"
+}
+
+# Both reads inside the deadline: with no time left for the second one, the
+# answer is "not locked" (the safe side; a lock that just ended still shows)
 compositor_locked() {
-  compositor_lock_seen && sleep 0.15 && compositor_lock_seen
+  compositor_lock_seen && nap 150 && compositor_lock_seen
 }
 
 if stats_locked || compositor_locked; then
@@ -126,7 +151,7 @@ while (( $(now_ms) - start < qs_ms )); do
   if stats_locked || compositor_locked; then
     exit 0
   fi
-  sleep 0.1
+  nap 100 || break
 done
 
 # The reserve. Only with a PAM service that has a password check: a locker
@@ -177,14 +202,14 @@ while (( $(now_ms) - start < deadline_ms )); do
     if hyprlock_running; then
       if (( since > 1000 )); then
         pkill -TERM -u "$uid" -x hyprlock
-        sleep 0.1
+        nap 100 || break
         launch
       fi
     elif (( since > 400 )); then
       launch
     fi
   fi
-  sleep 0.1
+  nap 100 || break
 done
 
 warn "A tela não travou"
