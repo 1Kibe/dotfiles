@@ -12,6 +12,11 @@ import qs.state
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
 // get their own folder and a line here.
 ShellRoot {
+    // The settings (Configurações): singletons load when first used, so the
+    // shell touches both at start; the store reads the choices, the other
+    // takes them out of the shell
+    readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
+
     // Desktop wallpaper, below every window
     Wallpaper {}
 
