@@ -76,7 +76,7 @@ bind("SUPER + left", hl.dsp.window.swap({ direction = "left" }), "Janelas: Troca
 bind("SUPER + right", hl.dsp.window.swap({ direction = "right" }), "Janelas: Trocar de lugar com a da direita")
 bind("SUPER + up", hl.dsp.window.fullscreen({ action = "set", mode = "maximized" }), "Janelas: Maximizar")
 bind("SUPER + down", hl.dsp.window.fullscreen({ action = "unset", mode = "maximized" }), "Janelas: Restaurar")
-bind("SUPER + F", hl.dsp.window.float({ action = "toggle" }), "Janelas: Flutuar / voltar ao mosaico")
+run("SUPER + F", "float", "Janelas: Flutuar menor e centralizada / voltar ao mosaico")
 bind("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" }), "Janelas: Tela cheia")
 bind("SUPER + J", hl.dsp.layout("togglesplit"), "Janelas: Alternar divisão horizontal/vertical") -- dwindle only
 bind("ALT + Tab", cycle(false), "Janelas: Próxima janela")

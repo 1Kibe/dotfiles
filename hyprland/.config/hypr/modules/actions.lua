@@ -31,6 +31,8 @@ return {
   print_tela    = "hypr-print tela",
   print_area    = "hypr-print area",
   print_janela  = "hypr-print janela",
+  -- Floats smaller and centered in the free area / back to the tiling
+  float         = "hypr-flutuar",
   -- uwsm session: stop it cleanly; the "Hyprland" entry without uwsm: exit
   logout        = "uwsm check is-active && uwsm stop || hyprctl dispatch 'hl.dsp.exit()'",
 

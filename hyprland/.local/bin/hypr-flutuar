@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Super+F: the focused tiled window floats at 70% of the width and 75% of
+# the height of its monitor's free area (the monitor minus the bar and the
+# outer gaps), centered there, so it is never under the bar, at the top or
+# at the bottom. A window that floated before comes back where it was left,
+# when that still fits in the free area. A floating window goes back to the
+# tiling, and its place is kept for the next time (in XDG_RUNTIME_DIR, so it
+# lasts until logout).
+# A fullscreen window, or anything this script does not understand, gets
+# Hyprland's own toggle.
+set -u
+
+toggle() {
+  hyprctl dispatch 'hl.dsp.window.float({ action = "toggle" })' >/dev/null
+  exit 0
+}
+
+win="$(hyprctl -j activewindow 2>/dev/null)" || exit 0
+# Every value is checked to be a plain number (or a hex address) before it
+# goes into a dispatcher
+read -r addr floating fullscreen mon wx wy ww wh < <(jq -r '
+  if (.address | type) == "string" then
+    [.address, (if .floating then 1 else 0 end), (.fullscreen // 0), .monitor,
+     .at[0], .at[1], .size[0], .size[1]] | map(tostring) | join(" ")
+  else "" end' <<< "$win" 2>/dev/null) || exit 0
+[[ "${addr:-}" =~ ^0x[0-9a-f]{1,16}$ ]] || exit 0
+for n in "$floating" "$fullscreen" "$mon" "$wx" "$wy" "$ww" "$wh"; do
+  [[ "$n" =~ ^-?[0-9]+$ ]] || toggle
+done
+[[ "$fullscreen" == 0 ]] || toggle
+
+# Places kept, one file per window
+store=""
+if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" ]]; then
+  store="$XDG_RUNTIME_DIR/hypr-flutuar"
+  if [[ -L "$store" ]] || ! { mkdir -p -m 700 -- "$store" && [[ -d "$store" && -O "$store" ]]; }; then
+    store=""
+  fi
+fi
+
+if [[ "$floating" == 1 ]]; then
+  if [[ -n "$store" ]]; then
+    tmp="$(mktemp -p "$store" .new-XXXXXX)" \
+      && printf '%s %s %s %s\n' "$wx" "$wy" "$ww" "$wh" > "$tmp" \
+      && mv -T -- "$tmp" "$store/$addr" || rm -f -- "${tmp:-}"
+  fi
+  hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"disable\" })" >/dev/null
+  exit 0
+fi
+
+# The free area of the window's monitor, in layout coordinates
+read -r mx my mw mh mscale mtrans rl rt rr rb < <(hyprctl -j monitors 2>/dev/null | jq -r --argjson id "$mon" '
+  [.[] | select(.id == $id)][0] // empty
+  | [.x, .y, .width, .height, .scale, .transform] + .reserved | map(tostring) | join(" ")' 2>/dev/null) || toggle
+for n in "${mx:-}" "${my:-}" "${mw:-}" "${mh:-}" "${mtrans:-}" "${rl:-}" "${rt:-}" "${rr:-}" "${rb:-}"; do
+  [[ "$n" =~ ^-?[0-9]+$ ]] || toggle
+done
+[[ "${mscale:-}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || toggle
+# gaps_out comes as "top right bottom left"; the border is around the window
+read -r gt gr gb gl < <(hyprctl -j getoption general:gaps_out 2>/dev/null | jq -r '.css // empty' 2>/dev/null)
+border="$(hyprctl -j getoption general:border_size 2>/dev/null | jq -r '.int // empty' 2>/dev/null)"
+for v in gt gr gb gl border; do
+  [[ "${!v:-}" =~ ^[0-9]+$ ]] || printf -v "$v" 0
+done
+
+# width/height are in pixels: the layout size is that over the scale, turned
+# for a rotated monitor
+read -r lw lh < <(awk -v w="$mw" -v h="$mh" -v s="$mscale" -v t="$mtrans" \
+  'BEGIN { if (s <= 0) s = 1; w = int(w / s + 0.5); h = int(h / s + 0.5); if (t % 2) print h, w; else print w, h }')
+fx=$((mx + rl + gl)); fy=$((my + rt + gt))
+fw=$((lw - rl - rr - gl - gr)); fh=$((lh - rt - rb - gt - gb))
+(( fw > 2 * border + 50 && fh > 2 * border + 50 )) || toggle
+
+# The kept place, when it still fits (border included)
+x=""
+if [[ -n "$store" && -f "$store/$addr" && ! -L "$store/$addr" ]]; then
+  read -r kx ky kw kh < "$store/$addr" || true
+  if [[ "${kx:-}" =~ ^-?[0-9]+$ && "${ky:-}" =~ ^-?[0-9]+$ && "${kw:-}" =~ ^[0-9]+$ && "${kh:-}" =~ ^[0-9]+$ ]] \
+     && (( kw > 0 && kh > 0 && kx - border >= fx && ky - border >= fy \
+           && kx + kw + border <= fx + fw && ky + kh + border <= fy + fh )); then
+    x=$kx; y=$ky; w=$kw; h=$kh
+  fi
+fi
+# Otherwise 70% x 75% of the free area, centered in it
+if [[ -z "$x" ]]; then
+  ow=$((fw * 70 / 100)); oh=$((fh * 75 / 100))
+  w=$((ow - 2 * border)); h=$((oh - 2 * border))
+  x=$((fx + (fw - ow) / 2 + border)); y=$((fy + (fh - oh) / 2 + border))
+fi
+
+sel="window = \"address:$addr\""
+hyprctl --batch "dispatch hl.dsp.window.float({ $sel, action = \"enable\" }) ; dispatch hl.dsp.window.resize({ $sel, x = $w, y = $h }) ; dispatch hl.dsp.window.move({ $sel, x = $x, y = $y })" >/dev/null
+
+# Places of windows that are gone are dropped
+if [[ -n "$store" ]]; then
+  alive="$(hyprctl -j clients 2>/dev/null | jq -r '.[].address' 2>/dev/null)" || exit 0
+  [[ -n "$alive" ]] || exit 0
+  for f in "$store"/0x*; do
+    [[ -e "$f" ]] || continue
+    grep -qxF -- "${f##*/}" <<< "$alive" || rm -f -- "$f"
+  done
+fi
+exit 0

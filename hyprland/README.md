@@ -8,7 +8,7 @@ captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do vi
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
 | `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
-| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-calculadora`, `hypr-travar`, `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
+| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
 
@@ -121,7 +121,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+→` | Trocar de lugar com a da direita |
 | `Super+↑` | Maximizar |
 | `Super+↓` | Restaurar |
-| `Super+F` | Flutuar / voltar ao mosaico |
+| `Super+F` | Flutuar menor e centralizada / voltar ao mosaico |
 | `Super+Shift+F` | Tela cheia |
 | `Super+J` | Alternar divisão horizontal/vertical |
 | `Alt+Tab` | Próxima janela |
