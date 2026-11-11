@@ -11,11 +11,13 @@ import "../settings/validate.js" as Validate
 // wallpaperMonitor, wallpaperFill). A picture is shown only after the same
 // check as the lock's picker (BackgroundStore.check: a regular file, no
 // link, up to 30 MB, of real type PNG, JPEG or WebP); one that does not pass
-// leaves the repo's default. Nothing on it is clickable and it never takes
-// the keyboard. Until the picture loads, or on a screen left out, the plain
-// bgDeep shows (the same color as misc.background_color in look.lua, which
-// Hyprland paints under everything). Session only: the login screen has its
-// own background.
+// leaves the repo's default. Between the check and Qt reading it the file
+// could be swapped only in a folder another user can write to; the
+// wallpaper folders are this user's own. Nothing on it is clickable and it
+// never takes the keyboard. Until the picture loads, or on a screen left
+// out, the plain bgDeep shows (the same color as misc.background_color in
+// look.lua, which Hyprland paints under everything). Session only: the
+// login screen has its own background.
 Variants {
     model: Quickshell.screens
 

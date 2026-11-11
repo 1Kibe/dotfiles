@@ -1,7 +1,7 @@
 .pragma library
 
 // The Aparência pages turned into values: the accent pair, the bar's corner,
-// the text size and the generated Hyprland file (~/.config/hypr/settings.lua).
+// the text size and the generated Hyprland file (~/.config/hypr/dotfiles_settings.lua).
 // Plain JS: read by state/SettingsApply and by the tests. Nothing here
 // reads the user's text as code: colors come from a fixed table, numbers are
 // checked by the schema, and every value goes into the Lua through the

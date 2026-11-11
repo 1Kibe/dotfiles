@@ -1,6 +1,6 @@
 .pragma library
 
-// Values for the generated Lua (~/.config/hypr/settings.lua) and hyprlang
+// Values for the generated Lua (~/.config/hypr/dotfiles_settings.lua) and hyprlang
 // (hypridle) files. Only finite numbers, booleans and texts get through;
 // anything else throws, so a generator never writes a value it cannot
 // quote. Names that end up there (monitors, apps) are checked by regex

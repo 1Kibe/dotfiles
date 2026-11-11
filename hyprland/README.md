@@ -16,7 +16,7 @@ Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pa
 
 | Arquivo | O que faz |
 |---|---|
-| `hyprland.lua` | Carrega os módulos, o `settings.lua` e, por último, o `local.lua` |
+| `hyprland.lua` | Carrega os módulos, o `dotfiles_settings.lua` e, por último, o `local.lua` |
 | `modules/colors.lua` | Paleta Gruvbox e a cor de destaque do Windows (borda da janela ativa) |
 | `modules/env.lua` | Variáveis de ambiente: cursor, Qt/Electron no Wayland, `~/.local/bin` no PATH |
 | `modules/look.lua` | Bordas, espaços, cantos, sombra, blur e animações |
@@ -25,7 +25,7 @@ Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pa
 | `modules/keybinds.lua` | Tecla ou gesto → ação, sempre com descrição |
 | `modules/rules.lua` | Janelas que flutuam |
 | `modules/autostart.lua` | Polkit, histórico do clipboard, tema GTK e o Quickshell |
-| `settings.lua` | Gerado pelas Configurações (Aparência): borda da janela ativa, cantos, desfoque e cursor. Fora do git |
+| `dotfiles_settings.lua` | Gerado pelas Configurações (Aparência): borda da janela ativa, cantos, desfoque e cursor. Fora do git |
 | `local.lua.example` | Modelo dos ajustes da máquina (VM e notebook) |
 | `hypridle.conf` | Tempos de inatividade: escurecer, travar, apagar a tela e suspender (veja [Bloqueio e login](#bloqueio-e-login)) |
 | `hyprlock.conf` | O bloqueio reserva, usado só quando o Quickshell não responde |
@@ -65,7 +65,7 @@ O `local.lua` fica fora do git e é carregado por último, então pode mudar qua
 
 Deixe só o bloco da máquina em que você está.
 
-O que você escolhe em Configurações → Aparência (`Super+S`) vai para o `settings.lua`, gerado pelo Quickshell e fora do git;
+O que você escolhe em Configurações → Aparência (`Super+S`) vai para o `dotfiles_settings.lua`, gerado pelo Quickshell e fora do git;
 ele é carregado antes do `local.lua`, então a máquina continua mandando. Os papéis de parede importados pela galeria ficam em
 `~/.local/share/dotfiles/wallpapers`, fora do repo.
 

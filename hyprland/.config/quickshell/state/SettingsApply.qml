@@ -10,14 +10,14 @@ import "../settings/schema.js" as Schema
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
-// (~/.config/hypr/settings.lua, monitors.lua), hypridle, xdg-mime,
+// (~/.config/hypr/dotfiles_settings.lua, monitors.lua), hypridle, xdg-mime,
 // localectl, sysfs. Each area comes with its own task; this is
 // the frame they hang on: a handler per key, and `failed` with a short
 // fixed message in pt-BR, after which the page shows the value as it was.
 Singleton {
     id: root
 
-    readonly property string hyprFile: `${Quickshell.env("HOME")}/.config/hypr/settings.lua`
+    readonly property string hyprFile: `${Quickshell.env("HOME")}/.config/hypr/dotfiles_settings.lua`
     readonly property string monitorsFile: `${Quickshell.env("HOME")}/.config/hypr/monitors.lua`
 
     signal failed(string key, string message)
@@ -52,18 +52,19 @@ Singleton {
             root.applyMotion()
             root.applyAppearance()
         }
-        // The cursor of the apps already running (settings.lua covers the
+        // The cursor of the apps already running (dotfiles_settings.lua covers the
         // ones started later)
         function onChanged(key) {
             if (key === "cursorTheme" || key === "cursorSize")
                 root.applyCursor()
         }
     }
+    // The machine's lists, once read (each list comes before its flag)
     Connections {
         target: SystemLists
-        function onFontsChanged() { root.applyAppearance() }
-        function onMonoFontsChanged() { root.applyAppearance() }
-        function onCursorThemesChanged() { root.applyAppearance() }
+        function onFontsReadChanged() { root.applyAppearance() }
+        function onMonoReadChanged() { root.applyAppearance() }
+        function onCursorsReadChanged() { root.applyAppearance() }
     }
     Component.onCompleted: {
         applyMotion()
@@ -93,10 +94,14 @@ Singleton {
         Theme.textScale = Appearance.textScale(v.textScale)
         Theme.font = SystemLists.usable("fonts", v.fontUi) ? v.fontUi : SettingsStore.defaults.fontUi
         Theme.monoFont = SystemLists.usable("monoFonts", v.fontMono) ? v.fontMono : SettingsStore.defaults.fontMono
+        // The Hyprland file only once the cursor themes are known: before,
+        // it would come out without the cursor lines and be written twice
+        // (two reloads) at every start
+        if (!SystemLists.cursorsRead)
+            return
         let text = ""
         try {
-            text = Appearance.hyprLua(v, pair, SystemLists.cursorsRead && SystemLists.has("cursorThemes", v.cursorTheme),
-                                      Serialize.luaValue)
+            text = Appearance.hyprLua(v, pair, SystemLists.has("cursorThemes", v.cursorTheme), Serialize.luaValue)
         } catch (e) {
             failed("accent", "Não deu para aplicar no Hyprland")
             return
@@ -105,7 +110,7 @@ Singleton {
         hyprTimer.restart()
     }
 
-    // ~/.config/hypr/settings.lua (read by hyprland.lua before local.lua):
+    // ~/.config/hypr/dotfiles_settings.lua (read by hyprland.lua before local.lua):
     // written only when its text changes, a moment after the last change,
     // then Hyprland reads its configuration again. The folder is the repo's
     // (stow); the file is in its .gitignore.

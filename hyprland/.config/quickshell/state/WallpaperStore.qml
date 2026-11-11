@@ -59,7 +59,8 @@ Singleton {
             return
         }
         busy = true
-        run(["sh", "-c", importScript, "sh", path, importDir, String(BackgroundStore.maxBytes)], (code, out) => {
+        // 30 s at most, so `busy` never stays on
+        run(["timeout", "30", "sh", "-c", importScript, "sh", path, importDir, String(BackgroundStore.maxBytes)], (code, out) => {
             root.busy = false
             const dest = out.trim()
             if (code !== 0 || !dest.startsWith(root.importDir + "/") || dest.includes("\n")) {
