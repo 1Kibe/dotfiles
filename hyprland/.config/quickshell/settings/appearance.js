@@ -21,9 +21,9 @@ function mix(a, b, t) {
 
 // The accent (the active window's border, the shell's selections) and its
 // lighter tone. "padrao" keeps today's pair (the Windows accent); a palette
-// color is used as it is, its light tone mixed 45% toward white (Ryan,
-// 2026-11-11: "o tom claro sai calculado"). `palette`: name → "#rrggbb"
-// (the Theme's own colors). Unknown name or color: the default pair.
+// color is used as it is, its light tone mixed 45% toward white. `palette`:
+// name → "#rrggbb" (the Theme's own colors). Unknown name or color: the default
+// pair.
 const DEFAULT_ACCENT = { accent: "#7e735f", light: "#bfb8a3" }
 function accentPair(name, palette) {
     if (name === "padrao" || !palette || !Object.prototype.hasOwnProperty.call(palette, name))
@@ -35,7 +35,7 @@ function accentPair(name, palette) {
 }
 
 // The bar's bottom corners follow the general radius, the same proportion
-// as today (8 → 12; 0 → square) (Ryan, 2026-11-11)
+// as today (8 → 12; 0 → square)
 function barRadius(radius) {
     return Math.round(Math.max(0, radius) * 1.5)
 }

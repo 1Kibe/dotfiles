@@ -6,22 +6,20 @@ import qs.state
 import qs.bar
 import "ui"
 
-// The settings (Super+S): drawn in the bar's own window (the frame,
-// Bar.qml), on the screen's left edge from x = 0, from the bar down to the
-// bottom (Ryan, 2026-11-10: "Na borda da tela"). One shape with the bar,
-// version C ("barra primeiro", Ryan 2026-11-10): the bar first stretches its
-// left end over its side gap to the screen's edge and squares that corner
-// (edgeStep, read by Bar.qml), then the body slides out under it (progress);
-// the only concave corner is where the body's right side meets the bar, and
-// the bottom corners touch the screen's edge and stay square. One clock
-// drives both (bar/EdgeTimeline); closing runs it backwards: the body goes
-// back first, the bar rounds its corner at the end.
+// The settings (Super+S): drawn in the bar's own window (the frame, Bar.qml),
+// on the screen's left edge from x = 0, from the bar down to the bottom. One
+// shape with the bar: the bar first stretches its left end over its side gap to
+// the screen's edge and squares that corner (edgeStep, read by Bar.qml), then
+// the body slides out under it (progress); the only concave corner is where the
+// body's right side meets the bar, and the bottom corners touch the screen's
+// edge and stay square. One clock drives both (bar/EdgeTimeline); closing runs
+// it backwards: the body goes back first, the bar rounds its corner at the end.
 // Bar/SettingsZone keeps the windows out of its way.
 //
-// The frame always has the screen's height (Bar.qml), so opening and
-// closing never resize it. Closing: the rows leave, then the panel slides
-// back. Esc, X and Super+S close it; a click outside does not (Ryan,
-// 2026-11-10).
+// The frame always has the screen's height (Bar.qml), so opening and closing
+// never resize it. Closing: the rows leave, then the panel slides back. Esc, X
+// and Super+S close it; a click outside does not, so the windows beside it stay
+// usable.
 Item {
     id: root
 

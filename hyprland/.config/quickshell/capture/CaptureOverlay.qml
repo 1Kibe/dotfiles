@@ -305,12 +305,11 @@ Scope {
 
                 // ── The shade, cut by the holes below (the bar, the pill, the
                 // annotation bar), so those three lie on what the bar lies on
-                // and come out with the same color (Ryan, 2026-11-10: "o mesmo
-                // padrao de cores e bordas do menu 1"). The inner layer cuts
-                // it; the outer one keeps the result, so a drag of the
-                // selection only moves the frame drawn again inside it
-                // (AnnotationLayer), never this. With a window or the monitor
-                // hovered, the frame again over the shade there ──
+                // and come out with the same color. The inner layer cuts it;
+                // the outer one keeps the result, so a drag of the selection
+                // only moves the frame drawn again inside it (AnnotationLayer),
+                // never this. With a window or the monitor hovered, the frame
+                // again over the shade there ──
                 Item {
                     id: veil
                     anchors.fill: parent

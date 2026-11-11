@@ -3,11 +3,11 @@ import QtQuick.Layouts
 import qs.theme
 
 // A panel that grows from the screen's bottom edge, centered (Print's
-// annotation bar, T2b; Ryan, 2026-11-10: "A, embaixo"). The mirror of the
-// panels that hang from the top bar: the same shape (AttachedShape, edge
-// "bottom"), with its concave corners against the screen's edge, the same
-// curve and times, and the content sliding up from inside the edge while it
-// fades in. Its place is fixed: put it in a full screen item.
+// annotation bar). The mirror of the panels that hang from the top bar: the
+// same shape (AttachedShape, edge "bottom"), with its concave corners against
+// the screen's edge, the same curve and times, and the content sliding up from
+// inside the edge while it fades in. Its place is fixed: put it in a full
+// screen item.
 Item {
     id: root
 

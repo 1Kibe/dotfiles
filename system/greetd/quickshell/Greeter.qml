@@ -383,7 +383,7 @@ FloatingWindow {
                     }
                 }
 
-                // "Ryan · 1 de 2"
+                // "Usuário · 1 de 2"
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
 

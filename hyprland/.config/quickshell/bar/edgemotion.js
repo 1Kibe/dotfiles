@@ -1,10 +1,10 @@
 .pragma library
 
 // The timeline of a panel that touches the screen's left or right edge
-// (version C, "barra primeiro", Ryan 2026-11-10; bar/EdgeTimeline): `u` is
-// the fraction of the time, 0 to 1, at a constant pace (backwards when
-// closing); the bar's part and the panel's part read it each with their own
-// window and curve. Plain JS: read by the shell and by the tests.
+// (bar/EdgeTimeline), the bar's part first and the panel's after it: `u` is the
+// fraction of the time, 0 to 1, at a constant pace (backwards when closing);
+// the bar's part and the panel's part read it each with their own window and
+// curve. Plain JS: read by the shell and by the tests.
 
 // A CSS-like cubic bezier, curve = [x1, y1, x2, y2, ...] (QML's
 // easing.bezierCurve): its value at time t, 0 to 1

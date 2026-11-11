@@ -95,7 +95,7 @@ var KEYS = {
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               syn: ["cor", "acento", "destaque"] },
-    // One for the bar and its panels: they are one shape (Ryan, 2026-11-11)
+    // One for the bar and its panels: they are one shape
     barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, page: "tema", card: "superficies",
                   label: "Transparência da barra e dos painéis", desc: "1 é sólida",
                   syn: ["opacidade", "transparente", "painel"] },

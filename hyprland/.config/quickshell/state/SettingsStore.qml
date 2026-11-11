@@ -107,11 +107,11 @@ Singleton {
         return true
     }
 
-    // Exportar: the current values that are not machine ones become the
-    // repo's defaults (settings/defaults.json); the Ryan commits it later.
-    // A path under the home goes as "~/..."; any other absolute path is not
-    // exported (the repo's value stays) and is listed in `skipped`, for the
-    // page to tell. Nothing before the first read.
+    // Exportar: the current values that are not machine ones become the repo's
+    // defaults (settings/defaults.json), to be committed by hand. A path under
+    // the home goes as "~/..."; any other absolute path is not exported (the
+    // repo's value stays) and is listed in `skipped`, for the page to tell.
+    // Nothing before the first read.
     function exportDefaults() {
         if (!ready)
             return { ok: false, skipped: [] }
@@ -392,7 +392,7 @@ Singleton {
                             // A fresh writer each time: a FileView keeps the
                             // last text and does not write the same text
                             // again, so a save with nothing new never ended
-                            // and every later change was lost (2026-11-11)
+                            // and every later change was lost
                             const writer = tmpWriter.createObject(root, { path: root.tmpFile })
                             writer.setText(content)
                         })

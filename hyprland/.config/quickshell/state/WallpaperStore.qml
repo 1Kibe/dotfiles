@@ -5,15 +5,15 @@ import Quickshell
 import Quickshell.Io
 import "../settings/wallpaper.js" as Wallpaper
 
-// The wallpaper gallery (Configurações → Papel de parede): the pictures of
-// four folders, listed with the same checks as the lock's picker
-// (BackgroundStore: regular files only, no link, up to 30 MB, of real type
-// PNG, JPEG or WebP). Choosing one from the repo's folder or from the
-// imported ones sets it at once; one from Imagens or Capturas is imported
-// first: copied into ~/.local/share/dotfiles/wallpapers (700, outside the
-// repo: ~/.config/wallpapers is the repo's own folder, by stow) under a name
-// made from its content, never its own name (Ryan, 2026-11-11). The copy is
-// checked again (size and real type) before it gets its name.
+// The wallpaper gallery (Configurações → Papel de parede): the pictures of four
+// folders, listed with the same checks as the lock's picker (BackgroundStore:
+// regular files only, no link, up to 30 MB, of real type PNG, JPEG or WebP).
+// Choosing one from the repo's folder or from the imported ones sets it at
+// once; one from Imagens or Capturas is imported first: copied into
+// ~/.local/share/dotfiles/wallpapers (700, outside the repo:
+// ~/.config/wallpapers is the repo's own folder, by stow) under a name made
+// from its content, never its own name. The copy is checked again (size and
+// real type) before it gets its name.
 Singleton {
     id: root
 

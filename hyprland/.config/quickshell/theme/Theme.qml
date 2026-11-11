@@ -192,12 +192,12 @@ Singleton {
     readonly property int animFast: 120     // closing, hover, tooltips
     readonly property int animNormal: 200   // opening, size changes
 
-    // Motion of the panels that hang from the bar (Material 3 values, which
-    // are public): durations go through dur(), so one speed scales them all.
-    // Speed and "reduce motion" are the settings' (Fontes e animações), set
-    // here by state/SettingsApply: 0 = animations off, 0.7 fast, 1 normal,
-    // 1.4 calm; reduce motion swaps slides for fades. This file imports
-    // nothing of the shell: the login screen (greeter) uses it alone.
+    // Motion of the panels that hang from the bar: durations go through dur(),
+    // so one speed scales them all. Speed and "reduce motion" are the settings'
+    // (Fontes e animações), set here by state/SettingsApply: 0 = animations
+    // off, 0.7 fast, 1 normal, 1.4 calm; reduce motion swaps slides for fades.
+    // This file imports nothing of the shell: the login screen (greeter) uses
+    // it alone.
     property real speed: 1
     property bool reduceMotion: false
     function dur(ms) {
@@ -207,18 +207,18 @@ Singleton {
     // A new track: cover, blurred cover and title crossfade over this
     readonly property int coverFade: 300
     readonly property int motionPanelClose: 200
-    // easing.bezierCurve, Material's standard pair (Ryan, 2026-11-10:
-    // "Padrão"): opening settles without a jump or a long tail, closing
-    // leaves without standing still
+    // easing.bezierCurve, the standard decelerate/accelerate pair: opening
+    // settles without a jump or a long tail, closing leaves without standing
+    // still
     readonly property var curveDecel: [0.2, 0, 0, 1, 1, 1]
     readonly property var curveAccel: [0.4, 0, 1, 1, 1, 1]
 
     // A panel that touches the screen's left or right edge (the settings,
-    // bar/EdgeTimeline): one timeline (Ryan, 2026-11-10, version C, "barra
-    // primeiro"): the bar first stretches that end to the screen's edge and
-    // squares that corner (the first edgeBarShare of the time), then the
-    // panel comes out (from edgePanelFrom to the end), each part with the
-    // curve Padrão (curveDecel); closing plays it backwards, shorter
+    // bar/EdgeTimeline): one timeline: the bar first stretches that end to the
+    // screen's edge and squares that corner (the first edgeBarShare of the
+    // time), then the panel comes out (from edgePanelFrom to the end), each
+    // part with the standard curve (curveDecel); closing plays it backwards,
+    // shorter
     readonly property int motionEdgeOpen: 450
     readonly property int motionEdgeClose: 300
     readonly property real edgeBarShare: 0.3

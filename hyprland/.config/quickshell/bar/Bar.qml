@@ -8,13 +8,12 @@ import qs.state
 import qs.settings
 import "edgemotion.js" as EdgeMotion
 
-// The frame of one monitor: the top bar and the panel that hangs from it,
-// drawn in one surface, so Hyprland blurs them as one shape (Ryan,
-// 2026-11-10: "Sim, B"). The window takes the whole screen and never changes
-// size while the panels open and close (a resize shows one stretched frame
-// of the bar; see `room`). Clicks reach it only where something is drawn
-// (mask); the space under the bar is reserved by BarZone, so windows never
-// move.
+// The frame of one monitor: the top bar and the panel that hangs from it, drawn
+// in one surface, so Hyprland blurs them as one shape. The window takes the
+// whole screen and never changes size while the panels open and close (a resize
+// shows one stretched frame of the bar; see `room`). Clicks reach it only where
+// something is drawn (mask); the space under the bar is reserved by BarZone, so
+// windows never move.
 //
 // The bar: one translucent strip with the windows' side gap and rounded
 // (continuous) bottom corners. Left: workspaces and the CPU, memory and
@@ -50,10 +49,9 @@ PanelWindow {
     }
     // The room under the bar: the rest of the screen, always. The window
     // never changes size (each resize showed one squeezed or stretched frame
-    // of the bar, in T1 and again when the settings closed in T3); it is
-    // clear and takes clicks only where something is drawn (mask). Measured
-    // in the VM (2026-11-10): 800 instead of 510 px high costs the shell
-    // ~1 point of one CPU at rest, Hyprland nothing.
+    // of the bar); it is clear and takes clicks only where something is
+    // drawn (mask). Measured in the VM: 800 instead of 510 px high costs the
+    // shell ~1 point of one CPU at rest, Hyprland nothing.
     readonly property real room: screen ? screen.height - Theme.barHeight : Theme.panelRoom
 
     anchors {
@@ -104,8 +102,8 @@ PanelWindow {
                                           && ShellState.openOn === monitorName
     WlrLayershell.keyboardFocus: panelOpenHere ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     // The grab gives the keyboard to the open panel at once (Esc); a click
-    // outside closes the bar's panels, but not the settings (Ryan,
-    // 2026-11-10): the windows beside them stay usable
+    // outside closes the bar's panels, but not the settings: the windows
+    // beside them stay usable
     HyprlandFocusGrab {
         id: grab
         active: root.panelOpenHere
@@ -131,11 +129,10 @@ PanelWindow {
     }
 
     // A panel that continues one of the bar's ends (ShellState.attachedLeft/
-    // Right) squares that corner while it shows, so bar and panel read as
-    // one shape; the bar's panels switch it with a short animation.
-    // A panel that touches the screen's left or right edge (edgeSide, the
-    // settings on the left) asks for more, version C ("barra primeiro", Ryan
-    // 2026-11-10): the bar stretches that end over its side gap to the
+    // Right) squares that corner while it shows, so bar and panel read as one
+    // shape; the bar's panels switch it with a short animation. A panel that
+    // touches the screen's left or right edge (edgeSide, the settings on the
+    // left) asks for more: the bar stretches that end over its side gap to the
     // screen's edge and squares that corner first, along the panel's own
     // timeline (its edgeStep, bar/EdgeTimeline), and goes back at the end of
     // its closing. Two panels on one side: the most open request wins

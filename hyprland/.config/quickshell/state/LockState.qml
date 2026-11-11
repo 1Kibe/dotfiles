@@ -313,7 +313,7 @@ Singleton {
         const interval = parseInt(conf[2]) || 900
         const unlockTime = parseInt(conf[3]) || 600
         const now = parseInt(conf[4]) || Math.floor(Date.now() / 1000)
-        // "2026-11-09 11:36:12 TTY /dev/tty2 V": valid failures in the window
+        // "YYYY-MM-DD HH:MM:SS TTY /dev/tty2 V": valid failures in the window
         let count = 0
         let last = 0
         for (const line of lines) {

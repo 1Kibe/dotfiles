@@ -2,8 +2,8 @@ import QtQuick
 import qs.theme
 import "edgemotion.js" as EdgeMotion
 
-// The clock of a panel that touches the screen's left or right edge
-// (version C, "barra primeiro", Ryan 2026-11-10): open() runs `u` from where
+// The clock of a panel that touches the screen's left or right edge, the
+// bar's part first and the panel's after it: open() runs `u` from where
 // it is to 1 at a constant pace, close() back to 0 (after closeDelay, for
 // rows that leave first) and then says closed(). The panel shows barStep to
 // the frame as its edgeStep (the bar stretches that end to the screen's edge

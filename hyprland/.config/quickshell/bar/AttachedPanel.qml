@@ -10,7 +10,7 @@ import qs.state
 // Base of the panels that hang from the bar: drawn inside the bar's own
 // window (the frame, Bar.qml), right under the bar, by AttachedShape, with
 // concave corners where its sides meet the bar. One surface for bar and
-// panel, so they blur as one shape (Ryan, 2026-11-10: "Sim, B").
+// panel, so they blur as one shape.
 //
 // Under `button`, right-aligned to it (alignLeft: left edges lined up;
 // centered: under its middle). side "right" continues the bar's right end
@@ -25,11 +25,10 @@ import qs.state
 // Esc and a click outside (the frame's focus grab) close it the same way.
 //
 // edgeSide "left"/"right": the body goes to that screen edge, past the
-// bar's side gap, and opens on the edge timeline (version C, "barra
-// primeiro", Ryan 2026-11-10; bar/EdgeTimeline): the bar first stretches that
-// end to the screen's edge and squares that corner, then the body unrolls;
-// closing, the other way round. No panel uses it yet (the settings, on the
-// left, are their own piece).
+// bar's side gap, and opens on the edge timeline (bar/EdgeTimeline): the
+// bar first stretches that end to the screen's edge and squares that
+// corner, then the body unrolls; closing, the other way round. No panel
+// uses it yet (the settings, on the left, are their own piece).
 Item {
     id: root
 

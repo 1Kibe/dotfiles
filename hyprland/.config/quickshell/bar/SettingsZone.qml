@@ -8,8 +8,8 @@ import qs.state
 // The space the settings take on the left of one monitor while they show,
 // reserved by an empty window, like BarZone for the bar: the panel's width;
 // Hyprland adds gaps_out after it, so the gap to the windows is the same as
-// on every other edge (Ryan, 2026-11-10: with the concave corner added too
-// the gap was doubled). The concave corner reaches past the width only on
+// on every other edge (with the concave corner added too the gap came out
+// doubled). The concave corner reaches past the width only on
 // the bar's line (y 30) and is back at the width ~13 px lower, above where
 // the windows start (bar + gaps_out), so it never covers one. Shown from the
 // start of the opening to the end of the closing (ShellState.settingsOn),

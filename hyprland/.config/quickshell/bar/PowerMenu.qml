@@ -40,7 +40,7 @@ AttachedPanel {
     }
 
     panelWidth: 290
-    // Continues the bar's right end (Ryan, 2026-11-10: only the power menu)
+    // Continues the bar's right end (the only panel that does)
     side: "right"
     // Opening or closing disarms, so a stale arm never turns one click into a reboot
     onOpenChanged: armed = ""

@@ -1,9 +1,7 @@
 .pragma library
 
 // Annotation tools of the capture: the tool list and how each stroke is
-// painted on a Canvas 2D context. Ported from dms-screenshot-plus
-// (lib/Tools.js, lib/Hit.js, lib/Renderer.js), cut down to the tools of
-// these dotfiles and to coordinates local to one monitor.
+// painted on a Canvas 2D context, in coordinates local to one monitor.
 //
 // Portions: MIT License
 //

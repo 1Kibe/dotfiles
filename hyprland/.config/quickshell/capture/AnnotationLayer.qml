@@ -1,8 +1,7 @@
 // Annotation layer of one monitor of the capture: what goes into the PNG
 // (the selected part of the frozen frame, mosaics and blurs made from the
 // frame's own pixels, and the strokes) and the text box used while typing,
-// which is never exported. Ported from dms-screenshot-plus
-// (AnnotationLayer.qml), adapted to CaptureState and the Theme here.
+// which is never exported.
 //
 // Portions: MIT License
 //
@@ -214,8 +213,8 @@ Item {
         // on the selection (resizing it never moves them)
         Canvas {
             id: bakedCanvas
-            // Cooperative, as in dms-screenshot-plus: with the default strategy
-            // every export after the first opening came out empty
+            // Cooperative: with the default strategy every export after the
+            // first opening came out empty
             renderStrategy: Canvas.Cooperative
             x: -annot.win.selX
             y: -annot.win.selY
