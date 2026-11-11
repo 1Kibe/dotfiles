@@ -198,19 +198,25 @@ PanelWindow {
         // (bar/baritems.js). The center one sits on the middle of the whole
         // bar, not between the two others, so it stays put while they change
         // width
-        Area {
+        BarArea {
+            frame: root
             ids: root.areas.left
             anchors.left: parent.left
             anchors.leftMargin: Theme.padding
+            anchors.verticalCenter: parent.verticalCenter
         }
-        Area {
+        BarArea {
+            frame: root
             ids: root.areas.center
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
         }
-        Area {
+        BarArea {
+            frame: root
             ids: root.areas.right
             anchors.right: parent.right
             anchors.rightMargin: Theme.padding
+            anchors.verticalCenter: parent.verticalCenter
         }
     }
 
@@ -228,20 +234,6 @@ PanelWindow {
         : BarItems.areas(["workspaces", "system"], ["clock"],
                          ["recording", "volume", "network", "bluetooth", "battery", "power"], [])
 
-    // One area: a row of items, centered on the bar's height
-    component Area: RowLayout {
-        property var ids: []
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: Theme.spacing
-        Repeater {
-            model: parent.ids
-            Loader {
-                required property string modelData
-                Layout.alignment: Qt.AlignVCenter
-                sourceComponent: root.itemComponent(modelData)
-            }
-        }
-    }
     function itemComponent(id) {
         switch (id) {
         case "workspaces": return workspacesItem
