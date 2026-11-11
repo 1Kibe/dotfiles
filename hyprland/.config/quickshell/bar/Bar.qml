@@ -7,6 +7,7 @@ import qs.theme
 import qs.state
 import qs.settings
 import "edgemotion.js" as EdgeMotion
+import "baritems.js" as BarItems
 
 // The frame of one monitor: the top bar and the panel that hangs from it, drawn
 // in one surface, so Hyprland blurs them as one shape. The window takes the
@@ -16,9 +17,10 @@ import "edgemotion.js" as EdgeMotion
 // windows never move.
 //
 // The bar: one translucent strip with the windows' side gap and rounded
-// (continuous) bottom corners. Left: workspaces and the CPU, memory and
-// temperature rings. Center: the clock (an island with the music while a
-// player plays). Right: status and the power button.
+// (continuous) bottom corners. Its items go in three areas chosen in
+// Configurações → Barra; by default, left: workspaces and the CPU, memory
+// and temperature rings; center: the clock (an island with the music while a
+// player plays); right: status and the power button.
 PanelWindow {
     id: root
 
@@ -192,55 +194,23 @@ PanelWindow {
             height: root.height
         }
 
-        RowLayout {
+        // The items, in the three areas chosen in Configurações → Barra
+        // (bar/baritems.js). The center one sits on the middle of the whole
+        // bar, not between the two others, so it stays put while they change
+        // width
+        Area {
+            ids: root.areas.left
             anchors.left: parent.left
             anchors.leftMargin: Theme.padding
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.spacing
-
-            Workspaces {
-                monitor: root.hyprMonitor
-            }
-            Separator {}
-            SystemStatus {
-                monitor: root.hyprMonitor
-            }
         }
-
-        // Centered on the whole bar, not between the two rows, so the clock
-        // stays put while the side rows change width. Top-anchored: the
-        // island fills the full bar height.
-        CenterIsland {
+        Area {
+            ids: root.areas.center
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            monitor: root.hyprMonitor
         }
-
-        RowLayout {
-            id: right
+        Area {
+            ids: root.areas.right
             anchors.right: parent.right
             anchors.rightMargin: Theme.padding
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.spacing
-
-            // Only while recording the screen (Super+Alt+R)
-            RecordingPill {}
-            // Each status button owns its panel; the monitor tells it which
-            // bar the panel belongs to
-            VolumeStatus {
-                monitor: root.hyprMonitor
-            }
-            NetworkStatus {
-                monitor: root.hyprMonitor
-            }
-            BluetoothStatus {
-                monitor: root.hyprMonitor
-            }
-            BatteryStatus {}
-            Separator {}
-            PowerButton {
-                monitor: root.hyprMonitor
-            }
         }
     }
 
@@ -249,6 +219,88 @@ PanelWindow {
     Item {
         id: panels
         anchors.fill: parent
+    }
+
+    // ── Items ──
+    readonly property var areas: SettingsStore.ready
+        ? BarItems.areas(SettingsStore.get("barLeft"), SettingsStore.get("barCenter"),
+                         SettingsStore.get("barRight"), SettingsStore.get("barHidden"))
+        : BarItems.areas(["workspaces", "system"], ["clock"],
+                         ["recording", "volume", "network", "bluetooth", "battery", "power"], [])
+
+    // One area: a row of items, centered on the bar's height
+    component Area: RowLayout {
+        property var ids: []
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Theme.spacing
+        Repeater {
+            model: parent.ids
+            Loader {
+                required property string modelData
+                Layout.alignment: Qt.AlignVCenter
+                sourceComponent: root.itemComponent(modelData)
+            }
+        }
+    }
+    function itemComponent(id) {
+        switch (id) {
+        case "workspaces": return workspacesItem
+        case "system": return systemItem
+        case "clock": return clockItem
+        case "recording": return recordingItem
+        case "volume": return volumeItem
+        case "network": return networkItem
+        case "bluetooth": return bluetoothItem
+        case "battery": return batteryItem
+        case "power": return powerItem
+        case "|": return separatorItem
+        }
+        return null
+    }
+    Component {
+        id: workspacesItem
+        Workspaces { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: systemItem
+        SystemStatus { monitor: root.hyprMonitor }
+    }
+    // The clock, which becomes the music island; its panels (music,
+    // Print's pill) hang from it wherever it is
+    Component {
+        id: clockItem
+        CenterIsland { monitor: root.hyprMonitor }
+    }
+    // Only while recording the screen (Super+Alt+R)
+    Component {
+        id: recordingItem
+        RecordingPill {}
+    }
+    // Each status button owns its panel; the monitor tells it which bar the
+    // panel belongs to
+    Component {
+        id: volumeItem
+        VolumeStatus { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: networkItem
+        NetworkStatus { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: bluetoothItem
+        BluetoothStatus { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: batteryItem
+        BatteryStatus {}
+    }
+    Component {
+        id: powerItem
+        PowerButton { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: separatorItem
+        Separator {}
     }
 
     // The settings (Super+S), on this monitor's left edge

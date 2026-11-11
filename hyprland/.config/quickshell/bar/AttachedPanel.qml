@@ -204,6 +204,12 @@ Item {
         function onXChanged() { if (root.visible) root.place() }
         function onWidthChanged() { if (root.visible) root.place() }
     }
+    // The bar's area the button sits in (a centered row moves when an item
+    // in it grows, as the clock does into the music island)
+    Connections {
+        target: root.button && root.button.parent ? root.button.parent.parent : null
+        function onXChanged() { if (root.visible) root.place() }
+    }
 
     onOpenChanged: {
         if (open) {
