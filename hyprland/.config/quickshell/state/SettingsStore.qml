@@ -389,7 +389,12 @@ Singleton {
                             if (code4 !== 0)
                                 return failWrite()
                             root.pending = content
-                            tmpView.setText(content)
+                            // A fresh writer each time: a FileView keeps the
+                            // last text and does not write the same text
+                            // again, so a save with nothing new never ended
+                            // and every later change was lost (2026-11-11)
+                            const writer = tmpWriter.createObject(root, { path: root.tmpFile })
+                            writer.setText(content)
                         })
                     })
                 })
@@ -424,22 +429,28 @@ Singleton {
 
     property string pending: ""
 
-    FileView {
-        id: tmpView
-        path: root.tmpFile
-        preload: false
-        printErrors: false
-        // In place: the empty file made with mode 600 keeps it
-        atomicWrites: false
-        onSaved: {
-            root.run(["mv", "-T", "--", root.tmpFile, root.userFile], code => {
-                if (code !== 0)
-                    return root.failWrite()
-                root.expected = root.pending
-                root.writeDone(true)
-            })
+    Component {
+        id: tmpWriter
+        FileView {
+            id: writer
+            preload: false
+            printErrors: false
+            // In place: the empty file made with mode 600 keeps it
+            atomicWrites: false
+            onSaved: {
+                root.run(["mv", "-T", "--", root.tmpFile, root.userFile], code => {
+                    writer.destroy()
+                    if (code !== 0)
+                        return root.failWrite()
+                    root.expected = root.pending
+                    root.writeDone(true)
+                })
+            }
+            onSaveFailed: {
+                writer.destroy()
+                root.failWrite()
+            }
         }
-        onSaveFailed: root.failWrite()
     }
 
     function failWrite() {
