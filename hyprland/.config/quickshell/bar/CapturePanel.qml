@@ -23,6 +23,18 @@ AttachedPanel {
           && (CaptureState.phase === "select" || CaptureState.phase === "choose")
           && monitorName !== "" && CaptureState.focusName === monitorName
 
+    // Its shape for the overlay below (CaptureOverlay): there the frozen
+    // screen and its shade leave a hole, so the pill lies on the live screen
+    // like the bar, with the same color (Ryan, 2026-11-10: "o mesmo padrao de
+    // cores e bordas do menu 1")
+    Binding {
+        target: CaptureState
+        property: "pill"
+        when: root.monitorName !== "" && root.monitorName === CaptureState.focusName
+        value: ({ x: root.x, y: root.y, path: root.visible ? root.outline : "" })
+        restoreMode: Binding.RestoreNone
+    }
+
     CaptureBar {
         id: buttons
         Layout.alignment: Qt.AlignHCenter

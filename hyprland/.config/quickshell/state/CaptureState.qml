@@ -33,6 +33,12 @@ Singleton {
     // only then the pill opens from the bar, which is not in the overlay and
     // would end up in the frame (bar/CapturePanel)
     property bool barReady: false
+    // The pill's outline on the focused monitor's frame (bar/CapturePanel),
+    // in that screen's coordinates: the overlay keeps its veil out of it
+    property var pill: ({ x: 0, y: 0, path: "" })
+    // The bar's shape on the focused monitor (Bar.qml: its bottom corners and
+    // ends stretched to the screen's edge), for the same hole
+    property var barShape: ({ cornerLeft: -1, cornerRight: -1, stretchLeft: 0, stretchRight: 0 })
     property string selOwner: ""          // monitor holding the selection
     property var monitors: ({})           // name -> { id, x, y, w, h (logical), scale, ws }
     property var windows: []              // visible windows, topmost first: { x, y, w, h (global logical), monitor, floating }

@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import qs.bar
@@ -278,14 +280,138 @@ Scope {
 
                 // ── Frozen frame (memory only) ──
                 // The source goes off between openings and comes back once the
-                // overlay is clear, so each opening takes a new frame
-                ScreencopyView {
-                    id: frozen
+                // overlay is clear, so each opening takes a new frame. Not on
+                // the bar's line (a plain clip, so it stays opaque and cheap):
+                // the frame has the bar in it, and the live bar drawn over it
+                // came out twice as dense. There the live screen shows instead,
+                // shaded beside the bar like the rest (the same still picture)
+                Item {
+                    y: Theme.barHeight
+                    width: win.width
+                    height: win.height - y
+                    clip: true
+
+                    ScreencopyView {
+                        id: frozen
+                        y: -Theme.barHeight
+                        width: win.width
+                        height: win.height
+                        captureSource: win.frozenPhase && win.armed ? win.modelData : null
+                        live: false     // one frame; live would capture this overlay too
+                        paintCursor: false
+                        visible: win.frozenPhase
+                    }
+                }
+
+                // ── The shade, cut by the holes below (the bar, the pill, the
+                // annotation bar), so those three lie on what the bar lies on
+                // and come out with the same color (Ryan, 2026-11-10: "o mesmo
+                // padrao de cores e bordas do menu 1"). The inner layer cuts
+                // it; the outer one keeps the result, so a drag of the
+                // selection only moves the frame drawn again inside it
+                // (AnnotationLayer), never this. With a window or the monitor
+                // hovered, the frame again over the shade there ──
+                Item {
+                    id: veil
                     anchors.fill: parent
-                    captureSource: win.frozenPhase && win.armed ? win.modelData : null
-                    live: false     // one frame; live would capture this overlay too
-                    paintCursor: false
-                    visible: win.frozenPhase
+                    layer.enabled: true
+
+                    Item {
+                        anchors.fill: parent
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            // out where the holes are, with the shapes' own soft edge
+                            maskEnabled: true
+                            maskInverted: true
+                            maskSource: holesTexture
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1.0
+                        }
+
+                        // The shade, fading in with the rest (content)
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Theme.dim
+                            opacity: content.opacity
+                        }
+                        // The hovered window or monitor (no selection yet): clear
+                        ShaderEffectSource {
+                            readonly property rect r: win.hover ? Qt.rect(win.hover.x, win.hover.y, win.hover.w, win.hover.h)
+                                                      : Qt.rect(0, 0, 1, 1)
+                            visible: !win.hasSel && win.hover !== null
+                            opacity: content.opacity
+                            x: r.x
+                            y: r.y
+                            width: Math.max(1, r.width)
+                            height: Math.max(1, r.height)
+                            sourceItem: win.frame
+                            sourceRect: r
+                            textureSize: Qt.size(Math.max(1, Math.round(r.width * win.pixelScale)),
+                                                 Math.max(1, Math.round(r.height * win.pixelScale)))
+                            hideSource: false
+                        }
+                    }
+                }
+
+                // ── Holes in the shade: the bar, the pill hanging from
+                // it (bar/CapturePanel) and the annotation bar. A white copy of
+                // their shapes, drawn only into a texture (hideSource), never
+                // on the screen ──
+                Item {
+                    id: holes
+                    anchors.fill: parent
+
+                    // The bar's own shape (bar/BarStrip): its side gaps and
+                    // the pockets under its round corners stay shaded
+                    BarStrip {
+                        readonly property var shape: win.isFocus ? CaptureState.barShape : null
+                        x: Theme.gap
+                        width: win.width - 2 * Theme.gap
+                        height: Theme.barHeight
+                        fill: "white"
+                        cornerLeft: shape && shape.cornerLeft >= 0 ? shape.cornerLeft : Theme.barRadius
+                        cornerRight: shape && shape.cornerRight >= 0 ? shape.cornerRight : Theme.barRadius
+                        stretchLeft: shape ? shape.stretchLeft : 0
+                        stretchRight: shape ? shape.stretchRight : 0
+                    }
+                    Shape {
+                        visible: win.isFocus && !win.editing && CaptureState.pill.path !== ""
+                        x: CaptureState.pill.x
+                        y: CaptureState.pill.y
+                        width: win.width
+                        height: win.height
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            fillColor: "white"
+                            strokeWidth: -1
+                            PathSvg { path: CaptureState.pill.path }
+                        }
+                    }
+                    Shape {
+                        visible: annotatePanel.visible
+                        x: annotatePanel.x
+                        y: annotatePanel.y
+                        width: annotatePanel.width
+                        height: annotatePanel.height
+                        preferredRendererType: Shape.CurveRenderer
+                        // Mirrored like its drawing (AttachedShape, edge "bottom")
+                        transform: Scale {
+                            origin.y: annotatePanel.height / 2
+                            yScale: -1
+                        }
+                        ShapePath {
+                            fillColor: "white"
+                            strokeWidth: -1
+                            PathSvg { path: annotatePanel.outline }
+                        }
+                    }
+                }
+                ShaderEffectSource {
+                    id: holesTexture
+                    anchors.fill: parent
+                    sourceItem: holes
+                    hideSource: true
+                    visible: false
                 }
 
                 Item {
@@ -296,44 +422,6 @@ Scope {
                         // Fades in; hiding (waiting for a new frame) is instant
                         enabled: !win.closing && win.ready
                         NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
-                    }
-
-                    // ── Dim outside the selection (or the hovered window/monitor) ──
-                    // Not over the bar's strip: the live bar is drawn over this
-                    // overlay while it is open (Bar.qml) and must look as usual
-                    readonly property rect hole: win.hasSel ? Qt.rect(win.selX, win.selY, win.selW, win.selH)
-                                                : win.hover ? Qt.rect(win.hover.x, win.hover.y, win.hover.w, win.hover.h)
-                                                : Qt.rect(0, 0, 0, 0)
-                    Item {
-                        y: Theme.barHeight
-                        width: win.width
-                        height: win.height - y
-                        clip: true
-
-                        Item {
-                            y: -Theme.barHeight
-                            width: win.width
-                            height: win.height
-
-                            Rectangle {   // above
-                                x: 0; y: 0; width: win.width; height: content.hole.y
-                                color: Theme.dim
-                            }
-                            Rectangle {   // below
-                                x: 0; y: content.hole.y + content.hole.height
-                                width: win.width; height: win.height - y
-                                color: Theme.dim
-                            }
-                            Rectangle {   // left
-                                x: 0; y: content.hole.y; width: content.hole.x; height: content.hole.height
-                                color: Theme.dim
-                            }
-                            Rectangle {   // right
-                                x: content.hole.x + content.hole.width; y: content.hole.y
-                                width: win.width - x; height: content.hole.height
-                                color: Theme.dim
-                            }
-                        }
                     }
 
                     // Hovered window or monitor

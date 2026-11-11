@@ -17,6 +17,9 @@ Item {
 
     // 0 = rolled down into the edge, 1 = open
     property real progress: 0
+    // Its outline (SVG path), at (x, y): Print's overlay keeps its veil out
+    // of it, so it reads like the bar (capture/CaptureOverlay)
+    readonly property alias outline: shape.outline
 
     visible: false
     width: shape.implicitWidth

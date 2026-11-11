@@ -156,6 +156,17 @@ PanelWindow {
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.OutCubic }
     }
 
+    // Print's overlay keeps its shade out of the bar's own shape (its side
+    // gaps stay shaded): the shape now, on the focused monitor
+    Binding {
+        target: CaptureState
+        property: "barShape"
+        when: CaptureState.open && root.monitorName !== "" && root.monitorName === CaptureState.focusName
+        value: ({ cornerLeft: root.cornerLeft, cornerRight: root.cornerRight,
+                  stretchLeft: Theme.gap * root.edgeLeft, stretchRight: Theme.gap * root.edgeRight })
+        restoreMode: Binding.RestoreNone
+    }
+
     // The bar, with the same side gaps as the windows
     Item {
         id: bar

@@ -60,6 +60,9 @@ Item {
     // The bar's edge and the body's left edge, in this item's coordinates
     readonly property real junctionY: shape.junctionY
     readonly property real bodyLeft: shape.bodyX
+    // Its outline (SVG path), at (x, y) in the frame: Print's overlay keeps
+    // its veil out of it (bar/CapturePanel)
+    readonly property alias outline: shape.outline
 
     // Where an item of the content sits once the panel is open, in this
     // item's coordinates: a fixed spot, not the content sliding in
