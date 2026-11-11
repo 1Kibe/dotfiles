@@ -6,7 +6,10 @@ import "schema.js" as Schema
 import "searchindex.js" as SearchIndex
 
 // The search at the top of the list: label, description and synonyms of
-// every option (searchindex.js); a result opens its page on its card
+// every option (searchindex.js); a result opens its page on its card.
+// Results come in with a fade and a short slide, leave with a fade, the
+// others move to their places and the list grows and shrinks smoothly
+// (Theme tokens; reduce motion: fades only)
 ColumnLayout {
     id: root
 
@@ -36,15 +39,73 @@ ColumnLayout {
         root.chosen(r.page, r.card)
     }
 
-    Repeater {
-        model: root.results
+    // The results shown, kept in step with `results` one by one (a new
+    // list each time would rebuild them all, with no way to animate)
+    ListModel {
+        id: shown
+    }
+    onResultsChanged: sync()
+    function sync() {
+        const keys = results.map(r => `${r.page}/${r.card}/${r.key}/${r.label}`)
+        for (let i = shown.count - 1; i >= 0; i--) {
+            if (!keys.includes(shown.get(i).uid))
+                shown.remove(i)
+        }
+        for (let i = 0; i < results.length; i++) {
+            let j = -1
+            for (let k = i; k < shown.count; k++) {
+                if (shown.get(k).uid === keys[i]) {
+                    j = k
+                    break
+                }
+            }
+            const r = results[i]
+            if (j < 0)
+                shown.insert(i, { uid: keys[i], page: r.page, card: r.card, key: r.key, label: r.label })
+            else if (j !== i)
+                shown.move(j, i, 1)
+        }
+    }
 
-        Rectangle {
-            required property var modelData
-            Layout.fillWidth: true
+    ListView {
+        id: list
+        Layout.fillWidth: true
+        Layout.preferredHeight: contentHeight
+        Behavior on Layout.preferredHeight {
+            NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic }
+        }
+        interactive: false
+        model: shown
+
+        add: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.dur(Theme.animNormal) }
+            NumberAnimation {
+                property: "x"; from: Theme.reduceMotion ? 0 : -Theme.cascadeShift / 3; to: 0
+                duration: Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic
+            }
+        }
+        remove: Transition {
+            NumberAnimation { property: "opacity"; to: 0; duration: Theme.dur(Theme.animFast) }
+        }
+        displaced: Transition {
+            NumberAnimation { property: "y"; duration: Theme.reduceMotion ? 0 : Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic }
+            // An item caught mid-entry still ends fully shown
+            NumberAnimation { property: "opacity"; to: 1; duration: Theme.dur(Theme.animFast) }
+        }
+
+        delegate: Rectangle {
+            id: result
+            required property string page
+            required property string card
+            required property string label
+            width: list.width
             implicitHeight: 34
+            height: implicitHeight
             radius: Theme.radius
-            color: mouse.containsMouse ? Theme.veil : Theme.clear
+            color: mouse.containsMouse ? Theme.veil : Theme.alpha(Theme.fg, 0)
+            Behavior on color {
+                ColorAnimation { duration: Theme.dur(Theme.animFast) }
+            }
 
             ColumnLayout {
                 anchors.left: parent.left
@@ -54,7 +115,7 @@ ColumnLayout {
                 spacing: 0
                 Text {
                     Layout.fillWidth: true
-                    text: modelData.label
+                    text: result.label
                     elide: Text.ElideRight
                     color: Theme.text
                     font.family: Theme.font
@@ -62,7 +123,7 @@ ColumnLayout {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: (Schema.PAGES.find(p => p.id === modelData.page) || {}).name || ""
+                    text: (Schema.PAGES.find(p => p.id === result.page) || {}).name || ""
                     elide: Text.ElideRight
                     color: Theme.gray
                     font.family: Theme.font
@@ -74,7 +135,7 @@ ColumnLayout {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: root.pick(modelData)
+                onClicked: root.pick({ page: result.page, card: result.card })
             }
         }
     }

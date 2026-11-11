@@ -9,7 +9,9 @@ import "../validate.js" as Validate
 // The wallpaper gallery (Configurações → Papel de parede): four folders as
 // tabs (WallpaperStore), the pictures of the open one as thumbnails, the
 // current one outlined. A click uses it; one from Imagens or Capturas is
-// imported first (copied outside the repo, under a name of its own).
+// imported first (copied outside the repo, under a name of its own). The
+// ring moves to the chosen one with a fade and a hovered one grows a little
+// (1.03, no growing with reduce motion), all on the Theme's short times.
 ColumnLayout {
     id: root
 
@@ -50,8 +52,15 @@ ColumnLayout {
                 color: Theme.bg1
                 border.width: 2
                 border.color: modelData === root.current ? Theme.accentLight
-                            : mouse.containsMouse ? Theme.bg2 : Theme.clear
+                            : mouse.containsMouse ? Theme.bg2 : Theme.alpha(Theme.bg2, 0)
                 clip: true
+                scale: mouse.containsMouse && !Theme.reduceMotion ? 1.03 : 1
+                Behavior on border.color {
+                    ColorAnimation { duration: Theme.dur(Theme.animNormal) }
+                }
+                Behavior on scale {
+                    NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.OutCubic }
+                }
 
                 Image {
                     anchors.fill: parent

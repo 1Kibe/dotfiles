@@ -2,7 +2,9 @@ import QtQuick
 import qs.theme
 
 // A line of text, sent on Enter or when it loses focus; Esc puts the stored
-// value back. `invalid` paints the border red (the store refused it)
+// value back. `invalid` paints the border red (the store refused it). The
+// border's color and the placeholder change with a short fade
+// (Theme.animFast).
 Rectangle {
     id: root
 
@@ -17,7 +19,10 @@ Rectangle {
     radius: Theme.radius
     color: Theme.bg1
     border.width: 1
-    border.color: invalid ? Theme.red : edit.activeFocus ? Theme.accentLight : Theme.clear
+    border.color: invalid ? Theme.red : edit.activeFocus ? Theme.accentLight : Theme.alpha(Theme.accentLight, 0)
+    Behavior on border.color {
+        ColorAnimation { duration: Theme.dur(Theme.animFast) }
+    }
 
     onValueChanged: {
         if (!edit.activeFocus)
@@ -50,7 +55,11 @@ Rectangle {
 
         Text {
             anchors.fill: parent
-            visible: edit.text === "" && !edit.activeFocus
+            opacity: edit.text === "" && !edit.activeFocus ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.dur(Theme.animFast) }
+            }
             text: root.placeholder
             color: Theme.gray
             font: edit.font

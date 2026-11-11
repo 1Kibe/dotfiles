@@ -170,14 +170,20 @@ Item {
                 onPicked: p => {
                     if (p === root.page)
                         return
-                    root.page = p
-                    pageView.playIn(0)
+                    pageView.leave(() => {
+                        root.page = p
+                        pageView.playIn(0)
+                    })
                 }
                 onSearched: (p, card) => {
-                    root.page = p
-                    Qt.callLater(() => {
-                        pageView.playIn(0)
+                    if (p === root.page) {
                         pageView.showCard(card)
+                        return
+                    }
+                    pageView.leave(() => {
+                        root.page = p
+                        pageView.playIn(0)
+                        Qt.callLater(() => pageView.showCard(card))
                     })
                 }
             }
@@ -204,7 +210,10 @@ Item {
                 width: 28
                 height: 28
                 radius: Theme.radius
-                color: closeMouse.containsMouse ? Theme.veil : Theme.clear
+                color: closeMouse.containsMouse ? Theme.veil : Theme.alpha(Theme.fg, 0)
+                Behavior on color {
+                    ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                }
                 Text {
                     anchors.centerIn: parent
                     text: "󰅖"

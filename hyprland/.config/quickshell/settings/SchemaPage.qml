@@ -56,6 +56,31 @@ Flickable {
         cardItems().forEach(c => c.motion.hidden())
     }
 
+    // A page change: the page going out fades (Theme.animFast), then `done`
+    // switches the page and starts the new cascade; the opacity comes back
+    // in the same step, with the new cards already hidden, so no frame shows
+    // both pages or a half-built one
+    property var afterLeave: null
+    function leave(done) {
+        afterLeave = done
+        fadeOut.restart()
+    }
+    NumberAnimation {
+        id: fadeOut
+        target: column
+        property: "opacity"
+        to: 0
+        duration: Theme.dur(Theme.animFast)
+        easing.type: Easing.InCubic
+        onFinished: {
+            const done = root.afterLeave
+            root.afterLeave = null
+            if (done)
+                done()
+            column.opacity = 1
+        }
+    }
+
     // A search result: scroll to its card and light it up
     function showCard(cardId) {
         for (let i = 0; i < repeater.count; i++) {

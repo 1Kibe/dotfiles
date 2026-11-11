@@ -79,7 +79,10 @@ Item {
                 Layout.topMargin: modelData.header ? 10 : 0
                 implicitHeight: modelData.header ? 22 : 44
                 radius: Theme.radius
-                color: chosen ? Theme.bg1 : !modelData.header && mouse.containsMouse ? Theme.veil : Theme.clear
+                color: chosen ? Theme.bg1 : !modelData.header && mouse.containsMouse ? Theme.veil : Theme.alpha(Theme.bg1, 0)
+                Behavior on color {
+                    ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                }
 
                 transform: Translate { id: shift }
                 readonly property alias motion: motion
@@ -115,6 +118,9 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         text: entry.modelData.header ? "" : entry.modelData.page.icon
                         color: entry.chosen ? Theme.accentLight : Theme.fg4
+                        Behavior on color {
+                            ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                        }
                         font.family: Theme.font
                         font.pointSize: Theme.fontSize + 3
                     }

@@ -1,7 +1,8 @@
 import QtQuick
 import qs.theme
 
-// A text button (with an optional Nerd Font icon)
+// A text button (with an optional Nerd Font icon); hover changes its color
+// with a short fade (Theme.animFast)
 Rectangle {
     id: root
 
@@ -14,6 +15,9 @@ Rectangle {
     implicitHeight: 28
     radius: Theme.radius
     color: danger ? Theme.danger : mouse.containsMouse ? Theme.bg2 : Theme.bg1
+    Behavior on color {
+        ColorAnimation { duration: Theme.dur(Theme.animFast) }
+    }
 
     Text {
         id: label
