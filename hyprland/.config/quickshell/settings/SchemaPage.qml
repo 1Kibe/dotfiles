@@ -25,7 +25,7 @@ Flickable {
     // The special cards built so far (settings/cards/); the others come with
     // the task of their page and stay out until then
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
-                                       "LockSecurity"]
+                                       "LockSecurity", "ClipboardClear"]
     readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
                                                                                     : keysOf(c.id).length > 0)
 
@@ -168,7 +168,9 @@ Flickable {
         readonly property var value: SettingsStore.ready ? SettingsStore.values[key] : spec.def
 
         label: spec.label
-        desc: spec.desc || ""
+        // A file name pattern shows the name it gives now
+        desc: spec.preview === "fileName" && typeof value === "string" && value !== ""
+              ? `Ex.: ${Qt.formatDateTime(new Date(), value)}.png` : (spec.desc || "")
 
         // A list of this machine: its names, the stored one first if it is
         // not there (the list not read yet, or a font that is gone)

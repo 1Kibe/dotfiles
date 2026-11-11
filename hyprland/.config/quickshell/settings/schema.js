@@ -16,6 +16,8 @@
 //   (state/SystemLists: "fonts", "monoFonts", "cursorThemes"); the page shows
 //   only those, and SettingsApply uses a value only if it is one of them;
 //   "monitors" (this machine's screens); emptyLabel: "" as a choice of its own
+// - preview "fileName" (string keys): the description shows the name it
+//   gives now, as an example
 
 // ── Pages, in the order of the sidebar ──
 var PAGES = [
@@ -45,7 +47,7 @@ var CARDS = {
     bloqueio: [{ id: "foto", title: "Foto", component: "UserPhoto" }, { id: "tela", title: "Tela" },
                { id: "seguranca", title: "Segurança", component: "LockSecurity" }],
     captura: [{ id: "capturas", title: "Capturas" }, { id: "gravacao", title: "Gravação" },
-              { id: "clipboard", title: "Clipboard" }],
+              { id: "clipboard", title: "Clipboard" }, { id: "limpar", title: "Histórico", component: "ClipboardClear" }],
     energia: [{ id: "tomada", title: "Na tomada" }, { id: "bateria", title: "Na bateria" }, { id: "tampa", title: "Tampa" },
               { id: "menu", title: "Menu de energia" }],
     monitores: [{ id: "arranjo", title: "Arranjo", component: "MonitorLayout" }, { id: "barra", title: "Barra" },
@@ -164,7 +166,8 @@ var KEYS = {
     captureDir: { def: "~/Pictures/Capturas", type: "path", page: "captura", card: "capturas", label: "Pasta das capturas",
                   syn: ["print", "screenshot"] },
     captureName: { def: "yyyy-MM-dd_HH-mm-ss", type: "string", pattern: FILE_NAME_FORMAT, page: "captura",
-                   card: "capturas", label: "Nome dos arquivos", desc: "Data e hora (yyyy, MM, dd, HH, mm, ss)" },
+                   card: "capturas", label: "Nome dos arquivos", desc: "Data e hora (yyyy, MM, dd, HH, mm, ss)",
+                   preview: "fileName" },
     captureDelay: { def: 0, type: "enum", page: "captura", card: "capturas", label: "Atraso padrão",
                     options: opts([[0, "Sem atraso"], [3, "3 s"], [5, "5 s"], [10, "10 s"]]), syn: ["timer"] },
     captureCopy: { def: true, type: "bool", page: "captura", card: "capturas", label: "Copiar para o clipboard" },

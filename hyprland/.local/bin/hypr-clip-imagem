@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# The image watcher of the clipboard history (autostart.lua: wl-paste
+# --type image --watch hypr-clip-imagem): the copied image goes to cliphist,
+# unless "Guardar imagens" is off in Configurações → Captura e clipboard.
+# The choice is read at every copy, only as a boolean, and only from a
+# regular file (never through a link); anything else keeps the images.
+set -u
+f="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/settings.json"
+if [[ -f "$f" && ! -L "$f" ]] \
+   && [[ "$(jq -r 'if .clipImages == false then "no" else "yes" end' -- "$f" 2>/dev/null)" == no ]]; then
+  cat > /dev/null
+  exit 0
+fi
+exec cliphist store

@@ -47,10 +47,12 @@ Singleton {
         function onReadyChanged() {
             root.applyMotion()
             root.applyAppearance()
+            root.applyClipboard()
         }
         function onValuesChanged() {
             root.applyMotion()
             root.applyAppearance()
+            root.applyClipboard()
         }
         // The cursor of the apps already running (dotfiles_settings.lua covers the
         // ones started later)
@@ -189,6 +191,46 @@ Singleton {
         }
         onSaved: Quickshell.execDetached(["hyprctl", "reload"])
         onSaveFailed: root.failed("accent", "Não deu para salvar a configuração do Hyprland")
+    }
+
+    // ── The clipboard history's size (Configurações → Captura e clipboard) ──
+    // cliphist reads ~/.config/cliphist/config ("max-items N"): a number of
+    // the schema only, written when it changes; the folder is made 700 first
+    readonly property string cliphistDir: `${Quickshell.env("HOME")}/.config/cliphist`
+    property string cliphistWanted: ""
+    function applyClipboard() {
+        if (!SettingsStore.ready)
+            return
+        const n = SettingsStore.get("clipHistory")
+        if (!Number.isInteger(n) || n < 20 || n > 500)
+            return
+        const text = `max-items ${n}\n`
+        if (text === cliphistWanted)
+            return
+        cliphistWanted = text
+        Quickshell.execDetached(["mkdir", "-p", "-m", "700", "--", cliphistDir])
+        cliphistTimer.restart()
+    }
+    Timer {
+        id: cliphistTimer
+        interval: 300
+        onTriggered: {
+            if (cliphistView.text() !== root.cliphistWanted)
+                cliphistView.setText(root.cliphistWanted)
+        }
+    }
+    FileView {
+        id: cliphistView
+        path: `${root.cliphistDir}/config`
+        printErrors: false
+        atomicWrites: true
+        // The folder may not be there yet the first time: once more, later
+        onSaveFailed: cliphistRetry.restart()
+    }
+    Timer {
+        id: cliphistRetry
+        interval: 1000
+        onTriggered: cliphistView.setText(root.cliphistWanted)
     }
 
     // The cursor now: Hyprland's and the GTK apps'. Only a theme this machine

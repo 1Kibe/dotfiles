@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Screenshot saved to Pictures/Capturas and copied to the clipboard.
+# Screenshot saved to the captures folder and copied to the clipboard, with
+# the folder, the file's name and the copy chosen in Configurações → Captura
+# e clipboard (asked to the shell; Pictures/Capturas, the date and a copy
+# when it does not answer).
 # Bound to Shift+Print (tela), Super+Shift+S (area) and Alt+Print (janela)
 # in Hyprland; Print itself opens the Quickshell capture bar.
 # Cancelling the area selection (Esc, or the same key again) saves nothing.
@@ -36,19 +39,40 @@ case "$mode" in
     ;;
 esac
 
+# The shell's answer is used only when it is a plain absolute folder (no
+# "..", no line break) and a name of letters, digits and "-_." (the settings
+# allow only date fields there)
+dir=""
+name=""
+copy=1
+if info="$(timeout 2 qs ipc call capture target 2>/dev/null)" && [[ -n "$info" ]]; then
+  d="$(jq -r 'if (.dir | type) == "string" then .dir else "" end' <<< "$info" 2>/dev/null || true)"
+  n="$(jq -r 'if (.name | type) == "string" then .name else "" end' <<< "$info" 2>/dev/null || true)"
+  c="$(jq -r 'if .copy == false then 0 else 1 end' <<< "$info" 2>/dev/null || echo 1)"
+  if [[ "$d" == /* && "$d" != *$'\n'* && "/$d/" != */../* && "$n" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; then
+    dir="$d"
+    name="$n"
+    copy="$c"
+  fi
+fi
 # xdg-user-dir gives the localized Pictures folder; without it, ~/Pictures.
 # One file per second: the name is the date and time.
-pictures="$(xdg-user-dir PICTURES 2>/dev/null || true)"
-dir="${pictures:-$HOME/Pictures}/Capturas"
-file="${dir}/$(date +%Y-%m-%d_%H-%M-%S).png"
-mkdir -p "$dir"
+if [[ -z "$dir" ]]; then
+  pictures="$(xdg-user-dir PICTURES 2>/dev/null || true)"
+  dir="${pictures:-$HOME/Pictures}/Capturas"
+  name="$(date +%Y-%m-%d_%H-%M-%S)"
+fi
+file="${dir}/${name}.png"
+mkdir -p -- "$dir"
 
 if [[ -n "$geometry" ]]; then
   grim -g "$geometry" "$file"
 else
   grim "$file"
 fi
-wl-copy --type image/png < "$file"
+if [[ "$copy" == 1 ]]; then
+  wl-copy --type image/png < "$file"
+fi
 # Card in the corner (Quickshell); nothing if the shell is not running
 qs ipc call capture card "$file" >/dev/null 2>&1 || true
 echo "$file"

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "../settings/validate.js" as Validate
 
 // Screen capture (Print): the saved choices, the overlay session, the
 // recording and the small notices. The UI is in capture/.
@@ -109,8 +110,35 @@ Singleton {
     // ── Folders ──
     readonly property string home: Quickshell.env("HOME")
     readonly property string tmpDir: `${Quickshell.env("XDG_RUNTIME_DIR")}/quickshell-capture`
-    property string picturesDir: `${home}/Pictures/Capturas`
-    property string videosDir: `${home}/Videos/Capturas`
+    // Configurações → Captura e clipboard: the folders, the files' name, the
+    // OCR language, the defaults of each opening and whether Enter copies
+    readonly property bool settingsReady: SettingsStore.ready
+    // While a folder is the schema's default, this user's own (localized)
+    // Pictures/Videos folder is used (xdg-user-dirs, below); a folder chosen
+    // in the settings is used as it is
+    property string xdgPictures: `${home}/Pictures/Capturas`
+    property string xdgVideos: `${home}/Videos/Capturas`
+    function folder(key, xdg) {
+        if (!settingsReady || SettingsStore.get(key) === SettingsStore.defaults[key])
+            return xdg
+        return Validate.expandPath(SettingsStore.get(key), home)
+    }
+    readonly property string picturesDir: folder("captureDir", xdgPictures)
+    readonly property string videosDir: folder("videoDir", xdgVideos)
+    readonly property string namePattern: settingsReady ? SettingsStore.get("captureName") : "yyyy-MM-dd_HH-mm-ss"
+    // One of the schema's options only ("por+eng", "por", "eng")
+    readonly property string ocrLang: settingsReady ? SettingsStore.get("ocrLang") : "por+eng"
+    readonly property bool copyOnEnter: !settingsReady || SettingsStore.get("captureCopy") === true
+    // The name of a new file (the schema lets only date fields and "-_."
+    // into the pattern, so the name is digits and separators)
+    function fileName() {
+        return Qt.formatDateTime(new Date(), namePattern)
+    }
+    // For hypr-print (the quick prints, IPC "capture target"): where and how
+    // it saves, as JSON
+    function target() {
+        return JSON.stringify({ dir: picturesDir, name: fileName(), copy: copyOnEnter })
+    }
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || home + "/.local/state"}/quickshell`
     readonly property string statePath: `${stateDir}/capture.json`
     property bool loaded: false
@@ -142,7 +170,7 @@ Singleton {
         start("ocr")
     }
 
-    // The area as an image in the tmpfs: tesseract (por+eng, 15 s at most) and
+    // The area as an image in the tmpfs: tesseract (ocrLang, 15 s at most) and
     // wl-copy run together in their own process, so the text never reaches
     // the shell or a log; only the number of lines comes back. The picture
     // is removed on any way out.
@@ -151,7 +179,8 @@ Singleton {
             + 'trap \'rm -f -- "$f"\' EXIT\n'
             + 'chmod 600 "$f" 2>/dev/null\n'
             + 'command -v tesseract >/dev/null 2>&1 || exit 3\n'
-            + 'text=$(timeout 15 tesseract "$f" - -l por+eng 2>/dev/null); rc=$?\n'
+            + 'case "$2" in por+eng|por|eng) ;; *) exit 5 ;; esac\n'
+            + 'text=$(timeout 15 tesseract "$f" - -l "$2" 2>/dev/null); rc=$?\n'
             + '[ "$rc" -eq 124 ] && exit 4\n'
             + '[ "$rc" -eq 0 ] || exit 5\n'
             + 'text=$(printf "%s" "$text" | tr -d "\\f" | sed -e "s/[[:space:]]*$//" -e "/./,\\$!d")\n'
@@ -159,7 +188,7 @@ Singleton {
             + '[ "$n" -gt 0 ] || { echo 0; exit 0; }\n'
             + 'printf "%s" "$text" | wl-copy || exit 6\n'
             + 'echo "$n"'
-        run(["sh", "-c", script, "sh", imageFile], (code, out) => {
+        run(["sh", "-c", script, "sh", imageFile, ocrLang], (code, out) => {
             const n = parseInt(out.trim())
             if (code === 3)
                 toast("󰀦", "OCR precisa do tesseract", "")
@@ -237,6 +266,13 @@ Singleton {
 
     function start(what) {
         purpose = what
+        // Each opening starts from the settings' defaults; the bar may
+        // change them for this capture
+        if (settingsReady) {
+            delay = SettingsStore.get("captureDelay")
+            audioSystem = SettingsStore.get("recordSystemAudio") === true
+            audioMic = SettingsStore.get("recordMic") === true
+        }
         editFile = ""
         selOwner = ""
         focusName = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
@@ -329,7 +365,7 @@ Singleton {
             finishEdit(tmpFile, copy)
             return
         }
-        const name = Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss")
+        const name = fileName()
         const dest = `${picturesDir}/${name}.png`
         const script = 'src=$1 dir=$2 dest=$3 copy=$4\n'
                      + 'if [ "$copy" = 1 ]; then wl-copy --type image/png < "$src" || copy=0; fi\n'
@@ -406,7 +442,7 @@ Singleton {
     function startRecord(geometry, screen) {
         if (recording || recorder.running)
             return
-        const name = Qt.formatDateTime(new Date(), "yyyy-MM-dd_HH-mm-ss")
+        const name = fileName()
         recordFile = `${videosDir}/${name}.mp4`
         const args = ["gpu-screen-recorder", "-f", "30", "-k", "h264", "-c", "mp4", "-o", recordFile]
         if (geometry)
@@ -674,8 +710,8 @@ Singleton {
             onStreamFinished: {
                 const l = text.trim().split("\n")
                 if (l.length >= 2 && l[0] !== "" && l[1] !== "") {
-                    root.picturesDir = `${l[0]}/Capturas`
-                    root.videosDir = `${l[1]}/Capturas`
+                    root.xdgPictures = `${l[0]}/Capturas`
+                    root.xdgVideos = `${l[1]}/Capturas`
                 }
             }
         }

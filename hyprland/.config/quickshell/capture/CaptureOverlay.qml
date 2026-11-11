@@ -18,7 +18,8 @@ import "tools.js" as Tools
 //   Tela: a click takes the whole monitor
 // Then the annotation bar: drawing inside the selection with the chosen
 // tool (AnnotationLayer); Ctrl+Z / Ctrl+Shift+Z undo and redo, letters pick
-// a tool. Enter / Ctrl+C copies and saves, Ctrl+S only saves, Esc closes.
+// a tool. Enter saves (and copies, unless turned off in the settings), Ctrl+C
+// copies and saves, Ctrl+S only saves, Esc closes.
 Scope {
     Variants {
         model: Quickshell.screens
@@ -671,7 +672,7 @@ Scope {
                             if (CaptureState.phase === "choose")
                                 CaptureState.startCountdown()
                             else
-                                CaptureState.exportRequested(true)
+                                CaptureState.exportRequested(CaptureState.copyOnEnter)
                         } else if (ctrl && event.key === Qt.Key_C) {
                             CaptureState.exportRequested(true)
                         } else if (ctrl && event.key === Qt.Key_S) {

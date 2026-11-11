@@ -74,6 +74,12 @@ ShellRoot {
             CaptureState.showCard(path)
         }
 
+        // Where and how a quick print saves (hypr-print): JSON with the
+        // folder, the file's name and whether it copies
+        function target(): string {
+            return CaptureState.target()
+        }
+
         // State and counts only, never paths or content: qs ipc call capture stats
         function stats(): string {
             return JSON.stringify(CaptureState.stats())

@@ -4,9 +4,10 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Clipboard history for the Super+V overlay (clipboard/ClipboardOverlay):
-// the last 100 cliphist entries, their kind, image previews, pinned items
-// and the copy/delete/clear actions. Copied content never goes to the log.
+// Clipboard history for the Super+V overlay (clipboard/ClipboardOverlay): the
+// newest cliphist entries (as many as the history keeps), their kind, image
+// previews, pinned items and the copy/delete/clear actions. Copied content
+// never goes to the log.
 //
 // - History: cliphist (stored by autostart.lua; it already skips items that
 //   password managers mark as sensitive).
@@ -24,6 +25,8 @@ Singleton {
     property var items: []
     // { pid, kind, text, file, mime, width, height }
     property var pins: []
+    // As many entries as cliphist keeps (Configurações; 20–500)
+    readonly property int historySize: SettingsStore.ready ? SettingsStore.get("clipHistory") : 100
     property bool loaded: false           // list read at least once since opening
     property int loadMs: 0                // list + first text batch (first screen), for the tests
     property int fullMs: 0                // until every text is decoded
@@ -122,8 +125,9 @@ Singleton {
                 out.push({ id: id, kind: "image", text: "", mime: `image/${img[1]}`, width: Number(img[2]), height: Number(img[3]) })
             else
                 out.push({ id: id, kind: kindOf(preview), text: preview, mime: "", width: 0, height: 0 })
-            // The list is newest first, so the cut keeps the last 100
-            if (out.length >= 100)
+            // The list is newest first, so the cut keeps the newest ones: the
+            // history's size (Configurações → Captura e clipboard)
+            if (out.length >= root.historySize)
                 break
         }
         items = out

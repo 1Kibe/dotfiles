@@ -26,7 +26,8 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("dbus-update-activation-environment --systemd " .. table.concat(session_env, " ")
     .. " && systemctl --user start hyprpolkitagent hypridle")
   hl.exec_cmd("wl-paste --type text --watch cliphist store")
-  hl.exec_cmd("wl-paste --type image --watch cliphist store")
+  -- Images through hypr-clip-imagem: Configurações can turn them off
+  hl.exec_cmd("wl-paste --type image --watch hypr-clip-imagem")
 
   -- GTK apps read these (no xsettings outside XFCE); GTK4 also through the portal
   local cmds = {}
