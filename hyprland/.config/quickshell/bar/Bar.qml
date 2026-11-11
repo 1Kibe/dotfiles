@@ -56,6 +56,33 @@ PanelWindow {
     // shell ~1 point of one CPU at rest, Hyprland nothing.
     readonly property real room: screen ? screen.height - Theme.barHeight : Theme.panelRoom
 
+    // ── Where the bar is ──
+    // On the top or the bottom edge (Configurações → Barra); the window
+    // always takes the whole screen, so only the bar moves inside it. It
+    // slides out through its edge while it changes edges (Theme.barOut) and
+    // while a window here is in fullscreen (no showing up on the edge's
+    // hover); reduce motion fades it instead.
+    readonly property bool atBottom: Theme.barAtBottom
+    readonly property bool fullscreenHere: hyprMonitor !== null && hyprMonitor.activeWorkspace !== null
+                                           && hyprMonitor.activeWorkspace.hasFullscreen
+    property real fullscreenOut: fullscreenHere && SettingsStore.ready && SettingsStore.get("barHideFullscreen") === true ? 1 : 0
+    Behavior on fullscreenOut {
+        NumberAnimation {
+            duration: Theme.dur(root.fullscreenOut > 0.5 ? Theme.motionPanelOpen : Theme.animNormal)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.fullscreenOut > 0.5 ? Theme.curveDecel : Theme.curveAccel
+        }
+    }
+    readonly property real out: Math.max(Theme.barOut, fullscreenOut)
+    // The bar's top edge in the window: at the edge, plus the slide
+    readonly property real barY: (atBottom ? height - Theme.barHeight : 0)
+                                 + (Theme.reduceMotion ? 0 : out * Theme.barHeight * (atBottom ? 1 : -1))
+    // Going into fullscreen closes this monitor's panel
+    onFullscreenOutChanged: {
+        if (fullscreenOut > 0 && panelOpenHere)
+            ShellState.close()
+    }
+
     anchors {
         top: true
         left: true
@@ -88,12 +115,14 @@ PanelWindow {
     Item {
         id: stretchLeftArea
         x: bar.x - width
+        y: bar.y
         width: Math.round(Theme.gap * root.edgeLeft)
         height: Theme.barHeight
     }
     Item {
         id: stretchRightArea
         x: bar.x + bar.width
+        y: bar.y
         width: Math.round(Theme.gap * root.edgeRight)
         height: Theme.barHeight
     }
@@ -170,14 +199,17 @@ PanelWindow {
     Item {
         id: bar
         x: Theme.gap
+        y: root.barY
         width: root.width - 2 * Theme.gap
         height: Theme.barHeight
+        opacity: Theme.reduceMotion ? 1 - root.out : 1
 
         // The window is clear; this shape paints the bar, so the rounded
         // bottom corners show what is behind them. Its ends reach the
         // screen's edges when a panel there asks for it
         BarStrip {
             anchors.fill: parent
+            flipped: root.atBottom
             cornerLeft: root.cornerLeft
             cornerRight: root.cornerRight
             stretchLeft: Theme.gap * root.edgeLeft

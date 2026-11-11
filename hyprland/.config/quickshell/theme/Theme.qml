@@ -62,7 +62,12 @@ Singleton {
     property real textScale: 1
     readonly property int fontSize: Math.round(11 * textScale)
 
-    readonly property int barHeight: 30
+    // Configurações → Barra: its height (26–40; the items keep their size),
+    // the edge it sits on, and how far it is slid out through that edge
+    // (0 = in place, 1 = out: changing edges, or a window in fullscreen)
+    property int barHeight: 30
+    property bool barAtBottom: false
+    property real barOut: 0
     // The general radius (Configurações → Tema e cores) and the bar's bottom
     // corners, which follow it in the same proportion (8 → 12)
     readonly property int barRadius: Math.round(radius * 1.5)

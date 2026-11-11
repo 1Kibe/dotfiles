@@ -42,6 +42,10 @@ Item {
     // clickable pieces (body and concave corner; the bar's stretched end is
     // the frame's)
     readonly property real roomHeight: frame && frame.screen ? frame.screen.height - Theme.barHeight : Theme.panelRoom
+    // With the bar on the bottom edge the body runs from the screen's top
+    // down to the bar, mirrored (its concave corner at the bottom, by the bar)
+    readonly property bool mirrored: Theme.barAtBottom
+    readonly property real bodyY: mirrored ? 0 : Theme.barHeight
     readonly property Region maskRegion: Region {
         item: bodyArea
         Region { item: cornerArea }
@@ -118,14 +122,14 @@ Item {
     // concave corner, from the slide
     Item {
         id: bodyArea
-        y: Theme.barHeight
+        y: root.bodyY
         width: Math.max(0, Theme.settingsWidth + root.slide)
         height: root.roomHeight
     }
     Item {
         id: cornerArea
         x: Theme.settingsWidth + root.slide
-        y: Theme.barHeight
+        y: root.mirrored ? root.roomHeight - height : Theme.barHeight
         width: shape.flareReach
         height: width
     }
@@ -136,12 +140,13 @@ Item {
     Item {
         id: slider
         x: root.slide
-        y: Theme.barHeight
+        y: root.bodyY
         width: shape.implicitWidth
         height: root.roomHeight
 
         AttachedShape {
             id: shape
+            edge: root.mirrored ? "bottom" : "top"
             flareLeft: false
             flareRight: true
             roundBottomLeft: false

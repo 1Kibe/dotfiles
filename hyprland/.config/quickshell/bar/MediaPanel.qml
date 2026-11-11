@@ -83,7 +83,7 @@ AttachedPanel {
         }
         const c = openPos(coverSlot)
         coverTo = { x: c.x, y: c.y, w: 72, h: 72, r: Theme.radius }
-        eqTo = { x: bodyLeft + bodyWidth - 14 - 13 * eqScale, y: junctionY + 14,
+        eqTo = { x: bodyLeft + bodyWidth - 14 - 13 * eqScale, y: bodyTop + 14,
                  w: 13 * eqScale, h: 12 * eqScale, r: 1.5 * eqScale }
     }
     onProgressChanged: {
@@ -96,8 +96,14 @@ AttachedPanel {
         if (visible)
             measure()
     }
-    readonly property var coverNow: Flight.rectAt(progress, coverFrom, coverTo, junctionY + 6)
-    readonly property var eqNow: Flight.rectAt(progress, eqFrom, eqTo, junctionY + 6)
+    // The open body's top, and where a piece first stops, just past the
+    // bar's edge (below it, or above it with the bar on the bottom edge)
+    readonly property real bodyTop: mirrored ? junctionY - bodyHeight : junctionY
+    function pastBar(h) {
+        return mirrored ? junctionY - 6 - h : junctionY + 6
+    }
+    readonly property var coverNow: Flight.rectAt(progress, coverFrom, coverTo, pastBar(coverFrom.h))
+    readonly property var eqNow: Flight.rectAt(progress, eqFrom, eqTo, pastBar(eqFrom.h))
 
     overlay: [
         // The one cover: from the island down into its place in the panel

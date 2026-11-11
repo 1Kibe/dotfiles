@@ -19,8 +19,8 @@ PanelWindow {
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
     visible: shown || fade.running
     anchors.top: true
-    // Just under the top bar
-    margins.top: Theme.barHeight + Theme.gap
+    // Just under the bar, or at the top with the bar on the bottom edge
+    margins.top: Theme.barAtBottom ? Theme.gap : Theme.barHeight + Theme.gap
     implicitWidth: pill.width
     implicitHeight: pill.height
     exclusionMode: ExclusionMode.Ignore

@@ -43,7 +43,9 @@ AttachedPanel {
     // in and out with it
     overlay: Rectangle {
         x: root.bodyLeft + root.bodyWidth / 2 - width / 2
-        y: root.junctionY + root.bodyHeight * root.progress + 6
+        // Past the pill: below it, or above it with the bar on the bottom edge
+        y: root.mirrored ? root.junctionY - root.bodyHeight * root.progress - 6 - height
+                         : root.junctionY + root.bodyHeight * root.progress + 6
         width: hintText.implicitWidth + 16
         height: hintText.implicitHeight + 8
         radius: height / 2

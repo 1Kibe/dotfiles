@@ -55,8 +55,10 @@ Scope {
                 property real readyAt: 0
                 // First free line under the bar's capture pill and its hint
                 // (bar/CapturePanel, on the focused monitor); under the bar
-                // elsewhere
-                readonly property real topFree: isFocus && !editing ? Theme.barHeight + Theme.captureButtonHeight + 12 + 36
+                // elsewhere. With the bar on the bottom edge the top holds the
+                // annotation bar instead
+                readonly property real topFree: Theme.barAtBottom ? (annotatePanel.visible ? annotatePanel.height + 8 : 8)
+                                                : isFocus && !editing ? Theme.barHeight + Theme.captureButtonHeight + 12 + 36
                                                 : Theme.barHeight + 8
                 onReadyChanged: readyAt = ready ? Date.now() : 0
                 // The pill hangs from the bar, outside this overlay: it opens
@@ -258,7 +260,9 @@ Scope {
                         width: natW * k
                         height: natH * k
                         x: Math.round((win.width - width) / 2)
-                        y: Math.round(Theme.barHeight + Theme.gap + 20)
+                        // Away from the bar; the annotation bar has the other side
+                        y: Theme.barAtBottom ? Math.round(win.height - Theme.barHeight - Theme.gap - 20 - height)
+                                             : Math.round(Theme.barHeight + Theme.gap + 20)
                         // The selection follows the picture's place on screen (its size
                         // is only known a moment after it loads)
                         function syncSelection() {
@@ -286,14 +290,15 @@ Scope {
                 // came out twice as dense. There the live screen shows instead,
                 // shaded beside the bar like the rest (the same still picture)
                 Item {
-                    y: Theme.barHeight
+                    id: frozenClip
+                    y: Theme.barAtBottom ? 0 : Theme.barHeight
                     width: win.width
-                    height: win.height - y
+                    height: win.height - Theme.barHeight
                     clip: true
 
                     ScreencopyView {
                         id: frozen
-                        y: -Theme.barHeight
+                        y: -frozenClip.y
                         width: win.width
                         height: win.height
                         captureSource: win.frozenPhase && win.armed ? win.modelData : null
@@ -365,8 +370,10 @@ Scope {
                     BarStrip {
                         readonly property var shape: win.isFocus ? CaptureState.barShape : null
                         x: Theme.gap
+                        y: Theme.barAtBottom ? win.height - Theme.barHeight : 0
                         width: win.width - 2 * Theme.gap
                         height: Theme.barHeight
+                        flipped: Theme.barAtBottom
                         fill: "white"
                         cornerLeft: shape && shape.cornerLeft >= 0 ? shape.cornerLeft : Theme.barRadius
                         cornerRight: shape && shape.cornerRight >= 0 ? shape.cornerRight : Theme.barRadius
@@ -396,7 +403,7 @@ Scope {
                         // Mirrored like its drawing (AttachedShape, edge "bottom")
                         transform: Scale {
                             origin.y: annotatePanel.height / 2
-                            yScale: -1
+                            yScale: annotatePanel.fromTop ? 1 : -1
                         }
                         ShapePath {
                             fillColor: "white"
@@ -611,6 +618,8 @@ Scope {
                     // the exported PNG (annot.exportItem)
                     EdgePanel {
                         id: annotatePanel
+                        // On the edge away from the bar
+                        edge: Theme.barAtBottom ? "top" : "bottom"
                         // Photo or editor only
                         open: win.hasSel && CaptureState.purpose !== "ocr" && (CaptureState.kind === "photo" || win.editing)
                         panelWidth: annotate.implicitWidth + 12
@@ -620,10 +629,11 @@ Scope {
                             Layout.alignment: Qt.AlignHCenter
                         }
                     }
-                    // What the hovered tool does, above the bar
+                    // What the hovered tool does, past the annotation bar
                     Rectangle {
                         anchors.horizontalCenter: annotatePanel.horizontalCenter
-                        y: annotatePanel.y + annotatePanel.height - annotatePanel.bodyHeight * annotatePanel.progress - height - 8
+                        y: annotatePanel.fromTop ? annotatePanel.y + annotatePanel.bodyHeight * annotatePanel.progress + 8
+                                                 : annotatePanel.y + annotatePanel.height - annotatePanel.bodyHeight * annotatePanel.progress - height - 8
                         width: annotateHint.implicitWidth + 16
                         height: annotateHint.implicitHeight + 8
                         radius: height / 2

@@ -16,10 +16,12 @@ ClippingRectangle {
     property color shade: Theme.coverShade
 
     color: Theme.islandFill       // shown under the cover (and without one)
-    // Bottom corners only: the center island hangs from the top edge
-    // (MediaPanel rounds all four)
-    bottomLeftRadius: Theme.barRadius
-    bottomRightRadius: Theme.barRadius
+    // The corners away from the screen's edge only: the center island hangs
+    // from the bar's edge (the top, or the bottom with the bar there)
+    bottomLeftRadius: Theme.barAtBottom ? 0 : Theme.barRadius
+    bottomRightRadius: Theme.barAtBottom ? 0 : Theme.barRadius
+    topLeftRadius: Theme.barAtBottom ? Theme.barRadius : 0
+    topRightRadius: Theme.barAtBottom ? Theme.barRadius : 0
     opacity: shown ? 1 : 0
     // Slower in than out, like the panels
     Behavior on opacity {

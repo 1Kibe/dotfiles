@@ -2,7 +2,8 @@ import QtQuick
 import Quickshell
 import qs.theme
 
-// Tooltip with the bar's background that opens under `target` after Theme.hoverDelay.
+// Tooltip with the bar's background that opens past `target` after
+// Theme.hoverDelay: under it, or above it with the bar on the bottom edge.
 PopupWindow {
     id: root
 
@@ -13,9 +14,10 @@ PopupWindow {
     property bool shown: false
 
     anchor.item: target
-    anchor.edges: Edges.Bottom
-    anchor.gravity: Edges.Bottom
-    anchor.margins.top: 8
+    anchor.edges: Theme.barAtBottom ? Edges.Top : Edges.Bottom
+    anchor.gravity: Theme.barAtBottom ? Edges.Top : Edges.Bottom
+    anchor.margins.top: Theme.barAtBottom ? 0 : 8
+    anchor.margins.bottom: Theme.barAtBottom ? 8 : 0
     color: Theme.clear
     // 8 px of padding on each side of the label
     implicitWidth: label.implicitWidth + 16

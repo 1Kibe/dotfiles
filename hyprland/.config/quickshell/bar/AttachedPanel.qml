@@ -56,9 +56,15 @@ Item {
     property string fillCover: ""
     property color fillShade: Theme.clear
 
+    // With the bar on the bottom edge the panel hangs above it: the shape is
+    // mirrored (AttachedShape, edge "bottom") and the body, the content and
+    // the clickable pieces are measured from the bottom up
+    readonly property bool mirrored: Theme.barAtBottom
     // The bar's edge and the body's left edge, in this item's coordinates
-    readonly property real junctionY: shape.junctionY
+    readonly property real junctionY: mirrored ? height - shape.junctionY : shape.junctionY
     readonly property real bodyLeft: shape.bodyX
+    // The visible body's edge away from the bar (where it grows to)
+    readonly property real bodyFarEdge: mirrored ? junctionY - shape.visibleHeight : junctionY + shape.visibleHeight
     // Its outline (SVG path), at (x, y) in the frame: Print's overlay keeps
     // its veil out of it (bar/CapturePanel)
     readonly property alias outline: shape.outline
@@ -67,7 +73,7 @@ Item {
     // item's coordinates: a fixed spot, not the content sliding in
     function openPos(item) {
         const p = item.mapToItem(slide, 0, 0)
-        return Qt.point(shape.bodyX + p.x, shape.junctionY + p.y)
+        return Qt.point(shape.bodyX + p.x, (mirrored ? junctionY - bodyHeight : junctionY) + p.y)
     }
 
     // The frame this panel hangs from (the button's window): drawn in its
@@ -154,7 +160,10 @@ Item {
         x = Math.round(bar.x + left) - shape.bodyX
         // Joined to the button: from the screen's top, the button's box over
         // the body
-        y = joinButton ? bar.y : bar.y + bar.height
+        if (mirrored)
+            y = joinButton ? bar.y + bar.height - shape.implicitHeight : bar.y - shape.implicitHeight
+        else
+            y = joinButton ? bar.y : bar.y + bar.height
         if (joinButton)
             shape.islandX = bar.x + p.x - x
     }
@@ -283,6 +292,7 @@ Item {
         width: implicitWidth
         height: implicitHeight
         visible: root.visible
+        edge: root.mirrored ? "bottom" : "top"
         flareLeft: !root.atLeftEnd
         flareRight: !root.atRightEnd
         bodyWidth: root.bodyWidth
@@ -313,6 +323,11 @@ Item {
             id: coverMask
             anchors.fill: parent
             preferredRendererType: Shape.CurveRenderer
+            // Mirrored like the shape's own drawing
+            transform: Scale {
+                origin.y: coverMask.height / 2
+                yScale: root.mirrored ? -1 : 1
+            }
             ShapePath {
                 fillColor: "white"
                 strokeWidth: -1
@@ -333,6 +348,8 @@ Item {
             color: Theme.clear
             bottomLeftRadius: 0
             bottomRightRadius: 0
+            topLeftRadius: 0
+            topRightRadius: 0
             shade: root.fillShade
             layer.enabled: true
             layer.effect: MultiEffect {
@@ -350,42 +367,45 @@ Item {
     Item {
         id: bodyArea
         x: shape.bodyX
-        y: shape.junctionY
+        y: root.mirrored ? root.bodyFarEdge : root.junctionY
         width: root.bodyWidth
         height: shape.visibleHeight
     }
     Item {
         id: leftCorner
         x: shape.bodyX - width
-        y: shape.junctionY
+        y: root.mirrored ? root.junctionY - height : root.junctionY
         width: shape.flareLeft ? shape.flareReach : 0
         height: width
     }
     Item {
         id: rightCorner
         x: shape.bodyX + root.bodyWidth
-        y: shape.junctionY
+        y: root.mirrored ? root.junctionY - height : root.junctionY
         width: shape.flareRight ? shape.flareReach : 0
         height: width
     }
 
-    // The visible part of the body: the content slides down inside it as the
-    // body unrolls. Its round corners take the continuous corner's whole
-    // reach, so the clip always stays inside the shape's corners.
+    // The visible part of the body: the content slides out of the bar inside
+    // it as the body unrolls (down, or up with the bar on the bottom edge).
+    // Its round corners take the continuous corner's whole reach, so the
+    // clip always stays inside the shape's corners.
     ClippingRectangle {
         x: shape.bodyX
-        y: shape.junctionY
+        y: root.mirrored ? root.bodyFarEdge : root.junctionY
         width: root.bodyWidth
         height: shape.visibleHeight
         color: Theme.clear
-        bottomLeftRadius: shape.bottomReach
-        bottomRightRadius: shape.bottomReach
+        bottomLeftRadius: root.mirrored ? 0 : shape.bottomReach
+        bottomRightRadius: root.mirrored ? 0 : shape.bottomReach
+        topLeftRadius: root.mirrored ? shape.bottomReach : 0
+        topRightRadius: root.mirrored ? shape.bottomReach : 0
 
         Item {
             id: slide
             width: parent.width
             height: root.bodyHeight
-            y: shape.visibleHeight - root.bodyHeight
+            y: root.mirrored ? 0 : shape.visibleHeight - root.bodyHeight
             // Drawn once into a texture while it moves, so its children are
             // not repainted on every frame of the animation
             layer.enabled: enter.running || leave.running || edgeTimeline.running

@@ -16,6 +16,9 @@ Item {
     property real stretchLeft: 0
     property real stretchRight: 0
     property color fill: Theme.barFill
+    // The bar on the bottom edge: square at the bottom, the round corners on
+    // top (the same drawing, mirrored)
+    property bool flipped: false
 
     Shape {
         id: strip
@@ -23,6 +26,10 @@ Item {
         width: root.width + root.stretchLeft + root.stretchRight
         height: root.height
         preferredRendererType: Shape.CurveRenderer
+        transform: Scale {
+            origin.y: root.height / 2
+            yScale: root.flipped ? -1 : 1
+        }
         ShapePath {
             fillColor: root.fill
             strokeWidth: -1

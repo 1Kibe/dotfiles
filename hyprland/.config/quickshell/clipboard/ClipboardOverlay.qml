@@ -95,7 +95,8 @@ PanelWindow {
         anchors.top: parent.top
         anchors.bottom: strip.top
         anchors.margins: Theme.gap
-        anchors.topMargin: Theme.barHeight + Theme.gap   // the bar stays readable above
+        // The bar stays readable (above, or below the strip on the bottom edge)
+        anchors.topMargin: Theme.barAtBottom ? Theme.gap : Theme.barHeight + Theme.gap
         opacity: 0
         transform: Translate { id: drop }   // slides down a little while it fades in
         // Esc in a note, or a click on an empty spot: the search takes the keyboard back
@@ -108,6 +109,7 @@ PanelWindow {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: Theme.gap
+        anchors.bottomMargin: Theme.barAtBottom ? Theme.barHeight + Theme.gap : Theme.gap
         transform: Translate { id: rise }
     }
 }

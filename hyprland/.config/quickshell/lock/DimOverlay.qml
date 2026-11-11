@@ -77,7 +77,8 @@ Variants {
                 id: pill
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
-                anchors.topMargin: Theme.barHeight + Theme.idlePillGap
+                // Under the bar, or from the top with the bar on the bottom edge
+                anchors.topMargin: Theme.barAtBottom ? Theme.idlePillGap : Theme.barHeight + Theme.idlePillGap
                 width: content.implicitWidth + 32
                 height: Theme.idlePillHeight
                 radius: height / 2

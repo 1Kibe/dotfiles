@@ -90,6 +90,8 @@ Singleton {
         Theme.accent = pair.accent
         Theme.accentLight = pair.light
         Theme.barOpacity = v.barOpacity
+        Theme.barHeight = v.barHeight
+        moveBar(v.barPosition === "bottom")
         Theme.radius = v.radius
         Theme.textScale = Appearance.textScale(v.textScale)
         Theme.font = SystemLists.usable("fonts", v.fontUi) ? v.fontUi : SettingsStore.defaults.fontUi
@@ -108,6 +110,50 @@ Singleton {
         }
         hyprWanted = text
         hyprTimer.restart()
+    }
+
+    // The bar's edge (Configurações → Barra → Posição): at the first read it
+    // just takes it; a change slides the bar out through its edge, flips the
+    // edge while it is out of sight, and slides it in through the other one
+    // (reduce motion: a fade, Bar.qml)
+    property bool barEdgeKnown: false
+    property bool barWanted: false
+    function moveBar(bottom) {
+        barWanted = bottom
+        if (!barEdgeKnown) {
+            barEdgeKnown = true
+            Theme.barAtBottom = bottom
+            return
+        }
+        if (bottom !== Theme.barAtBottom && !barMove.running)
+            barMove.restart()
+    }
+    SequentialAnimation {
+        id: barMove
+        NumberAnimation {
+            target: Theme
+            property: "barOut"
+            to: 1
+            duration: Theme.dur(Theme.animNormal)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.curveAccel
+        }
+        ScriptAction { script: Theme.barAtBottom = root.barWanted }
+        NumberAnimation {
+            target: Theme
+            property: "barOut"
+            to: 0
+            duration: Theme.dur(Theme.motionPanelOpen)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.curveDecel
+        }
+        // A change asked while it moved
+        ScriptAction {
+            script: {
+                if (root.barWanted !== Theme.barAtBottom)
+                    Qt.callLater(() => barMove.restart())
+            }
+        }
     }
 
     // ~/.config/hypr/dotfiles_settings.lua (read by hyprland.lua before local.lua):
