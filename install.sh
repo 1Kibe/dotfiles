@@ -6,7 +6,7 @@
 # with GNU Stow. Each top-level folder below is a Stow package that mirrors
 # $HOME (common/.config/nvim -> ~/.config/nvim):
 #
-#   common/     always linked (nvim, alacritty, rofi, wallpapers)
+#   common/     always linked (nvim, kitty, rofi, wallpapers)
 #   xfce/       XFCE + i3
 #   hyprland/   Hyprland + Quickshell (skipped while it has no configs)
 #
@@ -113,6 +113,10 @@ SELECTED_ENVS=()
 
 # Set by -y / --yes: every question takes its default
 ASSUME_YES=""
+
+# Configs this repo no longer has: their ~/.config/<name> links (stow's or
+# the old install.sh's) now point at nothing (remove_dropped_links)
+DROPPED_CONFIGS=(alacritty)
 
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
@@ -635,6 +639,22 @@ report_bak_files() {
   info "Check them and delete what you no longer need."
 }
 
+# Removes the ~/.config/<name> links of DROPPED_CONFIGS that are broken and
+# pointed into this repo. A real folder, a link that still works or one that
+# points elsewhere stays.
+remove_dropped_links() {
+  local name dst target
+  for name in "${DROPPED_CONFIGS[@]}"; do
+    dst="${CONFIG_DST}/${name}"
+    if [[ ! -L "$dst" || -e "$dst" ]]; then continue; fi
+    target="$(readlink -m "$dst")"
+    if [[ "$target" == "${DOTFILES_DIR}/"* ]]; then
+      rm "$dst"
+      info "Removed old link ~/.config/${name}"
+    fi
+  done
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -657,6 +677,7 @@ link_configs() {
     clear_stow_targets "${DOTFILES_DIR}/${pkg}"
   done
   stow --dir="${DOTFILES_DIR}" --target="${HOME}" --restow --verbose=1 "${pkgs[@]}"
+  remove_dropped_links
   log "Linked: ${pkgs[*]}"
   report_bak_files
 }

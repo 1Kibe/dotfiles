@@ -25,7 +25,7 @@ stow
 rofi
 
 # ── Terminal ──
-alacritty
+kitty                        # the terminal (Hyprland and XFCE)
 
 # ── Editor ──
 neovim
