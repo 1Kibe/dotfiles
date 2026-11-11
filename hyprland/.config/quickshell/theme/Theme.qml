@@ -206,6 +206,10 @@ Singleton {
     readonly property int motionPanelOpen: 300
     // A new track: cover, blurred cover and title crossfade over this
     readonly property int coverFade: 300
+    // A new wallpaper (wallpaper/WallpaperSwap): it fades in over the old
+    // one with a slight zoom out (wallpaperZoom → 1)
+    readonly property int wallpaperFade: 600
+    readonly property real wallpaperZoom: 1.03
     readonly property int motionPanelClose: 200
     // easing.bezierCurve, the standard decelerate/accelerate pair: opening
     // settles without a jump or a long tail, closing leaves without standing

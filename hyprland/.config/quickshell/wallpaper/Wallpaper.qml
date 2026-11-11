@@ -5,19 +5,19 @@ import qs.theme
 import qs.state
 import "../settings/validate.js" as Validate
 
-// Desktop wallpaper of the Hyprland session: one layer per monitor, below
-// every window. The picture, the screen it goes on and how it fills come
-// from Configurações → Papel de parede (SettingsStore: wallpaper,
-// wallpaperMonitor, wallpaperFill). A picture is shown only after the same
-// check as the lock's picker (BackgroundStore.check: a regular file, no
-// link, up to 30 MB, of real type PNG, JPEG or WebP); one that does not pass
-// leaves the repo's default. Between the check and Qt reading it the file
-// could be swapped only in a folder another user can write to; the
-// wallpaper folders are this user's own. Nothing on it is clickable and it
-// never takes the keyboard. Until the picture loads, or on a screen left
-// out, the plain bgDeep shows (the same color as misc.background_color in
-// look.lua, which Hyprland paints under everything). Session only: the
-// login screen has its own background.
+// Desktop wallpaper of the Hyprland session: one layer per monitor, below every
+// window. The picture, the screen it goes on and how it fills come from
+// Configurações → Papel de parede (SettingsStore: wallpaper, wallpaperMonitor,
+// wallpaperFill). A picture is shown only after the same check as the lock's
+// picker (BackgroundStore.check: a regular file, no link, up to 30 MB, of real
+// type PNG, JPEG or WebP); one that does not pass leaves the repo's default. A
+// change fades in over the old picture (WallpaperSwap). Between the check and
+// Qt reading it the file could be swapped only in a folder another user can
+// write to; the wallpaper folders are this user's own. Nothing on it is
+// clickable and it never takes the keyboard. Until the picture loads, or on a
+// screen left out, the plain bgDeep shows (the same color as
+// misc.background_color in look.lua, which Hyprland paints under everything).
+// Session only: the login screen has its own background.
 Variants {
     model: Quickshell.screens
 
@@ -74,20 +74,12 @@ Variants {
             return "file://" + path.split("/").map(encodeURIComponent).join("/")
         }
 
-        Image {
+        // The picture, changing with a crossfade (a new picture, fill or
+        // screen); a screen left out fades to the plain color
+        WallpaperSwap {
             anchors.fill: parent
-            visible: root.here && root.shown !== "" && status === Image.Ready
             source: root.here && root.shown !== "" ? root.fileUrl(root.shown) : ""
-            fillMode: root.fill === "fit" ? Image.PreserveAspectFit
-                    : root.fill === "center" ? Image.Pad
-                    : root.fill === "tile" ? Image.Tile
-                    : Image.PreserveAspectCrop
-            horizontalAlignment: Image.AlignHCenter
-            verticalAlignment: Image.AlignVCenter
-            asynchronous: true
-            // Fill and fit: decoded at the monitor's size, not the file's
-            // 3840 px; centered and tiled keep the picture's own size
-            sourceSize: root.fill === "fill" || root.fill === "fit" ? Qt.size(root.width, root.height) : undefined
+            fill: root.fill
         }
     }
 }
