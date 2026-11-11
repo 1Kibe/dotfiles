@@ -3,8 +3,9 @@ import Quickshell.Widgets
 import qs.theme
 import "text.js" as Clean
 
-// The user's picture (AccountsService icon) or, without one, the initial in
-// an accentLight circle, and the name under it. Shared with the login screen.
+// The user's photo (~/.face, Configurações → Bloqueio e login) or, without one,
+// the initial in an accentLight circle, and the name under it. Shared with the
+// login screen.
 Column {
     id: root
 

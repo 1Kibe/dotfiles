@@ -24,7 +24,8 @@ Flickable {
     }
     // The special cards built so far (settings/cards/); the others come with
     // the task of their page and stay out until then
-    readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems"]
+    readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
+                                       "LockSecurity"]
     readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
                                                                                     : keysOf(c.id).length > 0)
 

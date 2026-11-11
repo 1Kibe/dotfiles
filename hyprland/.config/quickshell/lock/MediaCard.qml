@@ -19,7 +19,9 @@ Rectangle {
     readonly property string cover: hasPlayer && player.trackArtUrl && player.trackArtUrl.startsWith("file://")
                                     ? player.trackArtUrl : ""
 
-    visible: hasPlayer
+    // false hides it even with music (Configurações → Mostrar a música)
+    property bool allowed: true
+    visible: hasPlayer && allowed
     implicitWidth: Theme.lockMediaWidth
     implicitHeight: 72
     radius: Theme.pillRadius

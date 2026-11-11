@@ -43,11 +43,51 @@ Singleton {
     property real dimDeadline: 0
     property int dimSeconds: 0
 
+    // ── The screen off after locking (Configurações → Bloqueio e login) ──
+    // N seconds after the lock is confirmed (never while only asked, never
+    // while unlocking); a key or the mouse turns it back on and waits again.
+    // 0 = never. Fixed commands, no value of the user in them
+    readonly property int blankAfter: SettingsStore.ready ? SettingsStore.get("lockBlankAfter") : 10
+    property bool screenOff: false
+    readonly property bool blankArmed: locked && !unlocking && blankAfter > 0
+    onBlankArmedChanged: {
+        if (blankArmed) {
+            blankTimer.restart()
+        } else {
+            blankTimer.stop()
+            wake()
+        }
+    }
+    Timer {
+        id: blankTimer
+        interval: root.blankAfter * 1000
+        onTriggered: {
+            if (!root.blankArmed)
+                return
+            root.screenOff = true
+            Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.dpms({ action = "disable" })'])
+        }
+    }
+    function wake() {
+        if (!screenOff)
+            return
+        screenOff = false
+        Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.dpms({ action = "enable" })'])
+    }
+    // A key or the mouse on the lock screen
+    function activity() {
+        wake()
+        if (blankArmed)
+            blankTimer.restart()
+    }
+
     readonly property string pamService: "quickshell-lock"
     readonly property string pamFile: `/etc/pam.d/${pamService}`
     readonly property string user: Quickshell.env("USER") || ""
-    // AccountsService picture; the user card falls back to the initial
-    readonly property string photo: user !== "" ? `/var/lib/AccountsService/icons/${user}` : ""
+    // The user's photo (~/.face, checked by PhotoStore); its version in the
+    // URL's fragment, so a new photo is not taken from the image cache. The
+    // user card falls back to the initial
+    readonly property string photo: PhotoStore.photo !== "" ? `${PhotoStore.photo}#${PhotoStore.version}` : ""
 
     // A wrong password: the fields clear and shake
     signal rejected()

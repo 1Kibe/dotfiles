@@ -66,10 +66,17 @@ Scope {
                     source: BackgroundStore.picture
                 }
 
-                // A click anywhere gives the keys back to the field
+                // A click anywhere gives the keys back to the field; moving
+                // the mouse turns the screen back on (screen off after locking)
                 MouseArea {
                     anchors.fill: parent
+                    hoverEnabled: true
                     onClicked: field.focusField()
+                    onPositionChanged: LockState.activity()
+                    onPressed: mouse => {
+                        LockState.activity()
+                        mouse.accepted = false
+                    }
                 }
 
                 StatusIcons {
@@ -103,6 +110,7 @@ Scope {
                         PasswordField {
                             id: field
                             anchors.horizontalCenter: parent.horizontalCenter
+                            onActivity: LockState.activity()
                             checking: LockState.checking
                             error: LockState.error
                             retryMinutes: LockState.retryMinutes
@@ -123,7 +131,9 @@ Scope {
                     }
                 }
 
+                // Configurações → Bloqueio e login → Mostrar a música
                 MediaCard {
+                    allowed: !SettingsStore.ready || SettingsStore.get("lockShowMusic") === true
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 40

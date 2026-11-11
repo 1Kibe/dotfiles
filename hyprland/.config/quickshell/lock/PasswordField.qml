@@ -22,6 +22,7 @@ Column {
 
     // Enter with text. The field is emptied right after: the caller keeps
     // the password only until it hands it to PAM.
+    signal activity()
     signal submitted(string password)
     // The field went from empty to typed or back (for othersTyping)
     signal typingChanged(bool typing)
@@ -103,6 +104,13 @@ Column {
 
             onTextChanged: root.typingChanged(text.length > 0)
 
+            // Any key, for the owner (the lock turns the screen back on); the
+            // key goes on to its own handler. This file is shared with the
+            // login screen: no state of the shell here
+            Keys.onPressed: event => {
+                root.activity()
+                event.accepted = false
+            }
             Keys.onReturnPressed: root.send()
             Keys.onEnterPressed: root.send()
             Keys.onEscapePressed: {
