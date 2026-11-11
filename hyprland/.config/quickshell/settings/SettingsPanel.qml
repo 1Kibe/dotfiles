@@ -84,6 +84,8 @@ Item {
                 pageView.hideAll()
             }
             visible = true
+            // A font or cursor installed since the last time shows up
+            SystemLists.refresh()
             ShellState.settingsOn = monitorName
             frame.showPanel(root)
             timeline.open()

@@ -4,7 +4,9 @@ import qs.theme
 
 // A choice among many ({ value, label } each), opened in place under the
 // button. With `multiple`, the value is a list and each option is checked
-// on or off (the bar's items before the reorderable list of T5)
+// on or off (the bar's items before the reorderable list of T5). A long list
+// (the fonts) scrolls inside, at most `rows` lines tall, opening on the
+// chosen one
 ColumnLayout {
     id: root
 
@@ -12,6 +14,7 @@ ColumnLayout {
     property var value
     property bool multiple: false
     property bool expanded: false
+    property int rows: 8
     signal picked(var value)
 
     spacing: 4
@@ -59,13 +62,27 @@ ColumnLayout {
         }
     }
 
-    Repeater {
+    ListView {
+        id: list
+        Layout.preferredWidth: 220
+        Layout.preferredHeight: Math.min(count, root.rows) * 28 - (count > 0 ? 2 : 0)
+        visible: count > 0
+        clip: true
+        spacing: 2
+        boundsBehavior: Flickable.StopAtBounds
         model: root.expanded ? root.options : []
+        onCountChanged: {
+            if (count > 0) {
+                const i = root.options.findIndex(o => root.has(o.value))
+                if (i >= 0)
+                    positionViewAtIndex(i, ListView.Center)
+            }
+        }
 
-        Rectangle {
+        delegate: Rectangle {
             required property var modelData
-            Layout.preferredWidth: 220
-            implicitHeight: 26
+            width: list.width
+            height: 26
             radius: Theme.radius
             color: itemMouse.containsMouse ? Theme.veil : Theme.clear
 
@@ -84,9 +101,12 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
+                    // Closing empties the list, and this item goes with it:
+                    // pick first, close last
                     if (!root.multiple) {
-                        root.expanded = false
-                        root.picked(modelData.value)
+                        const dropdown = root
+                        dropdown.picked(modelData.value)
+                        dropdown.expanded = false
                         return
                     }
                     const list = Array.isArray(root.value) ? root.value.slice() : []

@@ -12,6 +12,10 @@
 // - string: pattern (a RegExp the whole text must match)
 // - list: options [{ value, label }] (ids it may hold, each at most once)
 // - path: absolute after "~" is expanded, no ".." part, no control character
+// - source (string keys): the choices come from this machine
+//   (state/SystemLists: "fonts", "monoFonts", "cursorThemes"); the page shows
+//   only those, and SettingsApply uses a value only if it is one of them;
+//   "monitors" (this machine's screens); emptyLabel: "" as a choice of its own
 
 // ── Pages, in the order of the sidebar ──
 var PAGES = [
@@ -34,7 +38,8 @@ var CARDS = {
     tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview" }, { id: "cores", title: "Cores" },
            { id: "superficies", title: "Superfícies" }, { id: "cursor", title: "Cursor" }],
     papel: [{ id: "imagem", title: "Imagem", component: "WallpaperGallery" }, { id: "ajuste", title: "Ajuste" }],
-    fontes: [{ id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" }],
+    fontes: [{ id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" },
+             { id: "previa", title: "Prévia da animação", component: "AnimationPreview" }],
     barra: [{ id: "itens", title: "Itens", component: "BarItems" }, { id: "posicao", title: "Posição" },
             { id: "relogio", title: "Relógio" }],
     bloqueio: [{ id: "tela", title: "Tela" }, { id: "seguranca", title: "Segurança", component: "LockSecurity" }],
@@ -90,16 +95,16 @@ var KEYS = {
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               syn: ["cor", "acento", "destaque"] },
+    // One for the bar and its panels: they are one shape (Ryan, 2026-11-11)
     barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, page: "tema", card: "superficies",
-                  label: "Transparência da barra", desc: "1 é sólida", syn: ["opacidade", "transparente"] },
-    panelOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, page: "tema", card: "superficies",
-                    label: "Transparência dos painéis", syn: ["opacidade", "transparente"] },
+                  label: "Transparência da barra e dos painéis", desc: "1 é sólida",
+                  syn: ["opacidade", "transparente", "painel"] },
     blur: { def: true, type: "bool", page: "tema", card: "superficies", label: "Desfoque atrás dos painéis",
             syn: ["blur", "vidro"] },
     radius: { def: 8, type: "int", min: 0, max: 16, step: 1, page: "tema", card: "superficies",
-              label: "Raio dos cantos", syn: ["arredondado", "cantos"] },
+              label: "Raio dos cantos", desc: "Janelas, barra e painéis", syn: ["arredondado", "cantos"] },
     cursorTheme: { def: "Bibata-Modern-Classic-Right", type: "string", pattern: THEME_NAME, page: "tema",
-                   card: "cursor", label: "Tema do cursor", syn: ["mouse", "ponteiro"] },
+                   card: "cursor", label: "Tema do cursor", source: "cursorThemes", syn: ["mouse", "ponteiro"] },
     cursorSize: { def: 24, type: "enum", page: "tema", card: "cursor", label: "Tamanho do cursor",
                   options: opts([[20, "20"], [24, "24"], [32, "32"], [48, "48"]]), syn: ["mouse", "ponteiro"] },
 
@@ -107,16 +112,17 @@ var KEYS = {
     wallpaper: { def: "~/.config/wallpapers/wallpaper-padrao.png", type: "path", page: "papel", card: "imagem",
                  label: "Imagem", syn: ["fundo", "wallpaper"] },
     wallpaperMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "papel",
-                        card: "ajuste", label: "Tela", desc: "Vazio é todas", syn: ["monitor"] },
+                        card: "ajuste", label: "Tela", source: "monitors", emptyLabel: "Todas as telas",
+                        syn: ["monitor"] },
     wallpaperFill: { def: "fill", type: "enum", page: "papel", card: "ajuste", label: "Preenchimento",
                      options: opts([["fill", "Preencher"], ["fit", "Ajustar"], ["center", "Centralizar"],
                                     ["tile", "Lado a lado"]]), syn: ["ajuste", "esticar"] },
 
     // ── Fontes e animações ──
     fontUi: { def: "Agave Nerd Font Propo", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
-              label: "Fonte da interface", syn: ["letra", "texto"] },
+              label: "Fonte da interface", source: "fonts", syn: ["letra", "texto"] },
     fontMono: { def: "Agave Nerd Font Mono", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
-                label: "Fonte monoespaçada", syn: ["letra", "código"] },
+                label: "Fonte monoespaçada", source: "monoFonts", syn: ["letra", "código"] },
     textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, page: "fontes", card: "fontes",
                  label: "Tamanho do texto", desc: "Em %", syn: ["escala", "zoom"] },
     animSpeed: { def: 1, type: "enum", page: "fontes", card: "animacoes", label: "Velocidade das animações",

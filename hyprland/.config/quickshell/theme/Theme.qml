@@ -4,8 +4,11 @@ import QtQuick
 import Quickshell
 
 // Colors, sizes and font of the shell. Widgets never hold a color of their
-// own: everything comes from here, so a theme switcher can replace this
-// file later.
+// own: everything comes from here. The choices of Configurações → Aparência
+// (accent, transparency, corners, fonts, text size) are written into the
+// writable properties below by state/SettingsApply; their defaults are the
+// values of today. This file imports nothing of the shell: the login screen
+// (greeter) uses it alone and keeps the defaults.
 Singleton {
     id: root
 
@@ -27,14 +30,18 @@ Singleton {
     readonly property color aqua: "#8ec07c"
     readonly property color blue: "#83a598"
     readonly property color purple: "#d3869b"
-    // Windows accent color and a lighter tone of it (active window border)
-    readonly property color accent: "#7e735f"
-    readonly property color accentLight: "#bfb8a3"
+    // Windows accent color and a lighter tone of it (active window border);
+    // Configurações → Tema e cores (settings/appearance.js accentPair)
+    property color accent: "#7e735f"
+    property color accentLight: "#bfb8a3"
 
     // Bar: one strip glued to the top edge, bottom corners rounded.
     // Translucent: Hyprland blurs what is behind it (layer rule
     // "quickshell-bar" in rules.lua). No gradients, no borders.
-    readonly property color barFill: root.alpha(bgHard, 0.85)
+    // One transparency for the bar and its panels: they are one shape
+    // (Configurações → Tema e cores)
+    property real barOpacity: 0.85
+    readonly property color barFill: root.alpha(bgHard, barOpacity)
     readonly property color veil: root.alpha(fg, 0.08)   // hover
     readonly property color islandFill: root.alpha(bg, 0.9)   // center island while music plays
     readonly property color coverShade: root.alpha(bgHard, 0.55)  // over the blurred cover (island)
@@ -49,13 +56,18 @@ Singleton {
     readonly property int dotSize: 8
     readonly property int dotActiveWidth: 24
 
-    readonly property string font: "Agave Nerd Font Propo"
-    readonly property int fontSize: 11
+    // Configurações → Fontes e animações: the families, and the text size as
+    // a factor (90–130 %) of the base size
+    property string font: "Agave Nerd Font Propo"
+    property real textScale: 1
+    readonly property int fontSize: Math.round(11 * textScale)
 
     readonly property int barHeight: 30
-    readonly property int barRadius: 12    // bottom corners of the bar
+    // The general radius (Configurações → Tema e cores) and the bar's bottom
+    // corners, which follow it in the same proportion (8 → 12)
+    readonly property int barRadius: Math.round(radius * 1.5)
     readonly property int itemHeight: 22
-    readonly property int radius: 8        // tooltips, hover (= decoration.rounding)
+    property int radius: 8                 // tooltips, hover, panels' corners (= decoration.rounding)
     // Corners drawn by a Shape (panels hanging from the bar, the bar's own
     // bottom corners) are "continuous": the curve eases in over (1 + this) ×
     // the radius instead of starting the arc at once (theme/corners.js)
@@ -87,7 +99,7 @@ Singleton {
     readonly property int stripHeight: 330
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
-    readonly property string monoFont: "Agave Nerd Font Mono"
+    property string monoFont: "Agave Nerd Font Mono"
 
     // Quick notes (post-its above the strip): the 5 colors a note cycles through
     readonly property var noteColors: [yellow, green, blue, orange, purple]
@@ -170,9 +182,6 @@ Singleton {
     readonly property int pickerHeight: 600
     readonly property int pickerThumb: 150
 
-    // Desktop wallpaper of the Hyprland session (wallpaper/Wallpaper.qml), a
-    // file in ~/.config/wallpapers; the theme switcher will change it
-    readonly property string wallpaper: "wallpaper-padrao.png"
 
     // Normal, yellow or red by load
     function loadColor(value, warn, crit) {

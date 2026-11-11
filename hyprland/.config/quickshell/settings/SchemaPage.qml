@@ -9,9 +9,10 @@ import "cascade.js" as Cascade
 // One page of the settings, drawn from settings/schema.js: its cards, and in
 // each a row per key with the control of its type (bool → switch; a few
 // options → segmented, more → list; number → slider; text and path → field;
-// list → checked list). Every change goes to SettingsStore; a value it
-// refuses snaps back by binding. Special cards (a `component`) come with the
-// task of their page; a page with nothing else says so.
+// list → checked list; a list of this machine (`source`: fonts, cursor
+// themes) → a list of those). Every change goes to SettingsStore; a value it
+// refuses snaps back by binding. A special card (`component`) is drawn by
+// its file in settings/cards/; a page with nothing says so.
 Flickable {
     id: root
 
@@ -21,7 +22,11 @@ Flickable {
     function keysOf(cardId) {
         return Object.keys(Schema.KEYS).filter(k => Schema.KEYS[k].page === page && Schema.KEYS[k].card === cardId)
     }
-    readonly property var cards: (Schema.CARDS[page] || []).filter(c => !c.component && keysOf(c.id).length > 0)
+    // The special cards built so far (settings/cards/); the others come with
+    // the task of their page and stay out until then
+    readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview"]
+    readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
+                                                                                    : keysOf(c.id).length > 0)
 
     contentWidth: width
     contentHeight: column.implicitHeight + 32
@@ -96,8 +101,15 @@ Flickable {
                 Layout.fillWidth: true
                 title: modelData.title
 
+                // A special card: its own file (the name comes from the schema)
+                Loader {
+                    active: card.modelData.component !== undefined
+                    visible: active
+                    Layout.fillWidth: true
+                    source: active ? Qt.resolvedUrl(`cards/${card.modelData.component}.qml`) : ""
+                }
                 Repeater {
-                    model: root.keysOf(card.cardId)
+                    model: card.modelData.component ? [] : root.keysOf(card.cardId)
                     KeyRow {
                         required property string modelData
                         key: modelData
@@ -132,8 +144,24 @@ Flickable {
         label: spec.label
         desc: spec.desc || ""
 
+        // A list of this machine: its names, the stored one first if it is
+        // not there (the list not read yet, or a font that is gone)
+        readonly property var choices: {
+            if (!spec.source)
+                return spec.options
+            const names = SystemLists.list(spec.source)
+            const out = names.map(n => ({ value: n, label: n }))
+            if (typeof value === "string" && !names.includes(value) && !(value === "" && spec.emptyLabel))
+                out.unshift({ value: value, label: value })
+            // "" as a choice of its own (the wallpaper on every screen)
+            if (spec.emptyLabel)
+                out.unshift({ value: "", label: spec.emptyLabel })
+            return out
+        }
+
         Loader {
-            sourceComponent: row.spec.type === "bool" ? toggleC
+            sourceComponent: row.spec.source ? dropdownC
+                             : row.spec.type === "bool" ? toggleC
                              : row.spec.type === "enum" ? (row.spec.options.length <= 4 ? segmentedC : dropdownC)
                              : row.spec.type === "int" || row.spec.type === "real" ? sliderC
                              : row.spec.type === "list" ? listC
@@ -158,7 +186,7 @@ Flickable {
         Component {
             id: dropdownC
             Dropdown {
-                options: row.spec.options
+                options: row.choices
                 value: row.value
                 onPicked: v => SettingsStore.set(row.key, v)
             }
