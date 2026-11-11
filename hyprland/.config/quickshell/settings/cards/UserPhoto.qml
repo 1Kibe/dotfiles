@@ -73,30 +73,15 @@ ColumnLayout {
             width: grid.cellWidth
             height: grid.cellHeight
 
-            Rectangle {
+            PictureFrame {
                 anchors.fill: parent
                 anchors.margins: 4
                 radius: width / 2
-                color: Theme.bg1
-                border.width: 2
-                border.color: mouse.containsMouse ? Theme.accentLight : Theme.alpha(Theme.accentLight, 0)
-                clip: true
-                scale: mouse.containsMouse && !Theme.reduceMotion ? 1.03 : 1
-                Behavior on border.color {
-                    ColorAnimation { duration: Theme.dur(Theme.animFast) }
-                }
-                Behavior on scale {
-                    NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.OutCubic }
-                }
+                borderColor: mouse.containsMouse ? Theme.accentLight : Theme.alpha(Theme.accentLight, 0)
+                hovered: mouse.containsMouse
+                source: "file://" + modelData.split("/").map(encodeURIComponent).join("/")
+                sourceSize: Qt.size(176, 176)
 
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: 2
-                    source: "file://" + modelData.split("/").map(encodeURIComponent).join("/")
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    sourceSize: Qt.size(176, 176)
-                }
                 MouseArea {
                     id: mouse
                     anchors.fill: parent
