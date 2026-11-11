@@ -24,8 +24,8 @@ return {
   lock          = "hypr-travar",
 
   -- Apps and tools (until a Quickshell module replaces them)
-  cheatsheet    = "alacritty --class hypr-atalhos -e hypr-atalhos",
-  terminal      = "alacritty",
+  cheatsheet    = "kitty --class hypr-atalhos hypr-atalhos",
+  terminal      = "kitty",
   files         = "thunar",
   calculator    = "hypr-calculadora",   -- Qalculate with the look of the dotfiles
   print_tela    = "hypr-print tela",

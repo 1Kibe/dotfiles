@@ -1,4 +1,4 @@
--- Gruvbox dark palette (Alacritty uses the hard background, bg_hard).
+-- Gruvbox dark palette (Kitty uses the hard background, bg_hard).
 return {
   bg      = "#282828",
   bg1     = "#3c3836",

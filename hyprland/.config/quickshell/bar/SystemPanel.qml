@@ -370,7 +370,7 @@ AttachedPanel {
         onClicked: {
             ShellState.close()
             // Same command as the old Ctrl+Shift+Esc; floats by rules.lua
-            Quickshell.execDetached(["alacritty", "--class", "btop", "-e", "btop"])
+            Quickshell.execDetached(["kitty", "--class", "btop", "btop"])
         }
     }
 }

@@ -1,6 +1,6 @@
 # dotfiles
 
-Configurações pessoais de desktop Linux: **Arch Linux + XFCE + i3** e **Hyprland** (em construção), com Neovim, Alacritty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
+Configurações pessoais de desktop Linux: **Arch Linux + XFCE + i3** e **Hyprland** (em construção), com Neovim, Kitty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
 
 ![Prévia do desktop: Neovim com dashboard alpha, terminal Alacritty Gruvbox e painéis XFCE](assets/preview.png)
 
@@ -52,7 +52,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `alacritty`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
+| `common/` | `~/.config/nvim`, `kitty`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio) e `/etc/profile.d/tmout.sh` (console de texto) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM no `hyprland`; o `tmout.sh` sempre |
@@ -169,7 +169,7 @@ O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todo
 | Atalho | Ação |
 |---|---|
 | `Super+D` | Rofi (abrir aplicativo) |
-| `Super+Espaço` / `Ctrl+Alt+T` | Alacritty |
+| `Super+Espaço` / `Ctrl+Alt+T` | Kitty |
 | `Super+E` / `Ctrl+Alt+F` | Thunar |
 | `Super+R` / `Alt+F2` | Busca de aplicativos (`Alt+F3`: versão completa) |
 | `Alt+F1` | Menu de aplicativos |
@@ -221,7 +221,7 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 
 | Programa | Configuração |
 |---|---|
-| **Alacritty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal) |
+| **Kitty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal), cursor em barra que pisca suave e deixa rastro, margem de 12 px. Ajustes só da máquina em `~/.config/kitty/local.conf` (fora do git) |
 | **Rofi** | Tema gruvbox-dark |
 | **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
 | **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |
@@ -259,7 +259,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 ```
 dotfiles/
 ├── common/.config/
-│   ├── alacritty/alacritty.toml
+│   ├── kitty/kitty.conf
 │   ├── mpv/                              [mpv.conf, input.conf, script-opts/uosc.conf]
 │   ├── nvim/
 │   │   ├── init.lua

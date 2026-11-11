@@ -182,7 +182,7 @@ AttachedPanel {
         // window class matches a float rule in hypr/modules/rules.lua.
         onClicked: {
             ShellState.close()
-            Quickshell.execDetached(["alacritty", "--class", "bluetui", "-e", "bluetui"])
+            Quickshell.execDetached(["kitty", "--class", "bluetui", "bluetui"])
         }
     }
 }
