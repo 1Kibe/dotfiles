@@ -53,14 +53,14 @@ Item {
             return
         }
         back.fill = fill
-        back.source = source
+        back.src = source
     }
 
     // A picture that failed to load: logged, its layer emptied (it is never
     // the one in front), the old picture left as it is
     function dropFailed(pane) {
-        console.warn(`WallpaperSwap: não deu para carregar ${pane.source}`)
-        pane.source = ""
+        console.warn(`WallpaperSwap: não deu para carregar ${pane.src}`)
+        pane.src = ""
     }
 
     // Layer n is ready: it comes in on top
@@ -121,7 +121,11 @@ Item {
 
     component Layer: Image {
         property string fill: "fill"
-        readonly property string key: String(source) === "" ? "" : `${source}|${fill}`
+        // The URL as asked, compared as it is (Image.source comes back
+        // normalized: "%20" as a space, so a name with spaces never matched)
+        property string src: ""
+        source: src
+        readonly property string key: src === "" ? "" : `${src}|${fill}`
         anchors.fill: parent
         opacity: 0
         asynchronous: true
