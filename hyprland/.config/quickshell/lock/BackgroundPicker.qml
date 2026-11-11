@@ -72,6 +72,10 @@ PanelWindow {
                 root.fail("Esta imagem não pode ser usada")
                 return
             }
+            if (BackgroundStore.tooBig(w, h)) {
+                root.fail("Imagem grande demais")
+                return
+            }
             BackgroundStore.renderFinal(path, mime, w, h, rendered => {
                 if (!rendered) {
                     root.fail("Não deu para gerar o fundo")

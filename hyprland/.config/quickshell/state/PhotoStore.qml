@@ -53,9 +53,12 @@ Singleton {
             return
         busy = true
         message = ""
-        run(["timeout", "30", "sh", "-c", Photo.setScript, "sh", path, faceFile, String(BackgroundStore.maxBytes)], (code, out) => {
+        run(["timeout", "30", "sh", "-c", Photo.setScript, "sh", path, faceFile, String(BackgroundStore.maxBytes),
+             String(BackgroundStore.maxSide), String(BackgroundStore.maxPixels)], (code, out) => {
             root.busy = false
-            if (code !== 0 || out.trim() !== "ok")
+            if (out.trim() === "big")
+                root.message = "Imagem grande demais"
+            else if (code !== 0 || out.trim() !== "ok")
                 root.message = "Não deu para usar essa imagem"
             root.refresh()
         })

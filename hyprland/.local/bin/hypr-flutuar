@@ -9,6 +9,8 @@
 # A fullscreen window, or anything this script does not understand, gets
 # Hyprland's own toggle.
 set -u
+# Byte ranges in the checks below, whatever the locale
+export LC_ALL=C
 
 toggle() {
   hyprctl dispatch 'hl.dsp.window.float({ action = "toggle" })' >/dev/null

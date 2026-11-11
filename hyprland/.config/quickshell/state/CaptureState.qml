@@ -358,6 +358,19 @@ Singleton {
         })
     }
 
+    // sh function: reserve(dir, name, ext) sets $dest to the first free
+    // "<name>.<ext>", "<name>-2.<ext>"... (up to 999), created empty in one
+    // step (noclobber: O_EXCL), so a name without seconds never replaces an
+    // earlier file and a link there is never followed
+    readonly property string reserveFn:
+        'reserve() {\n'
+        + '  n=1; dest="$1/$2.$3"\n'
+        + '  while ! (set -C; : > "$dest") 2>/dev/null; do\n'
+        + '    n=$((n + 1)); [ "$n" -le 999 ] || return 1\n'
+        + '    dest="$1/$2-$n.$3"\n'
+        + '  done\n'
+        + '}\n'
+
     // A finished photo, written to the tmpfs: saved in Capturas and, when
     // asked, copied as an image. The clipboard keeps it even if saving fails.
     function finishPhoto(tmpFile, copy) {
@@ -365,14 +378,16 @@ Singleton {
             finishEdit(tmpFile, copy)
             return
         }
-        const name = fileName()
-        const dest = `${picturesDir}/${name}.png`
-        const script = 'src=$1 dir=$2 dest=$3 copy=$4\n'
+        const script = reserveFn
+                     + 'src=$1 dir=$2 name=$3 copy=$4\n'
                      + 'if [ "$copy" = 1 ]; then wl-copy --type image/png < "$src" || copy=0; fi\n'
-                     + 'if mkdir -p "$dir" && cp "$src" "$dest"; then saved=1; else saved=0; fi\n'
+                     + 'saved=0\n'
+                     + 'if mkdir -p -- "$dir" && reserve "$dir" "$name" png; then\n'
+                     + '  if cat -- "$src" > "$dest"; then saved=1; else rm -f -- "$dest"; fi\n'
+                     + 'fi\n'
                      + 'rm -f -- "$src"\n'
                      + 'echo "$saved$copy"'
-        run(["sh", "-c", script, "sh", tmpFile, picturesDir, dest, copy ? "1" : "0"], (code, out) => {
+        run(["sh", "-c", script, "sh", tmpFile, picturesDir, fileName(), copy ? "1" : "0"], (code, out) => {
             const r = out.trim()
             if (r[0] === "1")
                 toast("󰄬", r[1] === "1" ? "Copiado · salvo" : "Salvo", picturesDir)
@@ -442,9 +457,9 @@ Singleton {
     function startRecord(geometry, screen) {
         if (recording || recorder.running)
             return
-        const name = fileName()
-        recordFile = `${videosDir}/${name}.mp4`
-        const args = ["gpu-screen-recorder", "-f", "30", "-k", "h264", "-c", "mp4", "-o", recordFile]
+        // The file's name comes back from the wrapper below (first line)
+        recordFile = ""
+        const args = ["gpu-screen-recorder", "-f", "30", "-k", "h264", "-c", "mp4"]
         if (geometry)
             args.push("-w", "region", "-region", `${Math.round(geometry.w)}x${Math.round(geometry.h)}+${Math.round(geometry.x)}+${Math.round(geometry.y)}`)
         else
@@ -460,8 +475,14 @@ Singleton {
             args.push("-encoder", "cpu")
         micOn = audioMic
         stopping = false
-        // exec: the recorder itself gets the SIGINT that stops it
-        recorder.command = ["sh", "-c", 'mkdir -p "$1" && shift && exec "$@"', "sh", videosDir].concat(args)
+        // A free name is reserved and printed, then exec: the recorder
+        // itself gets the SIGINT that stops it
+        recorder.command = ["sh", "-c", reserveFn
+                            + 'dir=$1 name=$2; shift 2\n'
+                            + 'mkdir -p -- "$dir" && reserve "$dir" "$name" mp4 || exit 1\n'
+                            + 'printf "%s\\n" "$dest"\n'
+                            + 'exec "$@" -o "$dest"',
+                            "sh", videosDir, fileName()].concat(args)
         recordStart = Date.now()
         elapsed = 0
         recording = true
@@ -672,6 +693,13 @@ Singleton {
         stderr: StdioCollector {
             id: recorderErr
         }
+        // The reserved file, as the wrapper printed it
+        stdout: SplitParser {
+            onRead: data => {
+                if (root.recordFile === "" && data.startsWith(root.videosDir + "/") && !data.includes("/../"))
+                    root.recordFile = data
+            }
+        }
         onExited: code => {
             const quick = Date.now() - root.recordStart < 1000
             root.recording = false
@@ -683,6 +711,9 @@ Singleton {
                 const why = recorderErr.text.trim().split("\n").slice(-3).join(" | ").replace(/\/\S+/g, "<caminho>")
                 console.warn(`capture: o gravador saiu (código ${code}): ${why}`)
                 root.toast("󰀦", "Não deu para gravar", "")
+                // The reserved name, still empty, goes
+                if (root.recordFile !== "")
+                    Quickshell.execDetached(["find", root.recordFile, "-maxdepth", "0", "-type", "f", "-empty", "-delete"])
             }
         }
     }

@@ -38,6 +38,11 @@ hl.config({
     -- (c.bg_hard) so windows stand out
     background_color = rgb(c.bg_deep),
     font_family = "Agave Nerd Font Propo",
+    -- A key or the mouse turns the screen back on. The lock screen turns it
+    -- off after a while and back on at the next key; if the shell stops in
+    -- between, this is what still wakes it. hypridle's own off/on agrees.
+    key_press_enables_dpms = true,
+    mouse_move_enables_dpms = true,
     -- Off: with it on, a new lock replaces even a live one (Hyprland 0.57,
     -- SessionLockManager onNewSessionLock), so any program could take the
     -- lock over and unlock without the password. Off, a second lock is

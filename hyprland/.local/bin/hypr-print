@@ -42,6 +42,11 @@ esac
 # The shell's answer is used only when it is a plain absolute folder (no
 # "..", no line break) and a name of letters, digits and "-_." (the settings
 # allow only date fields there)
+# Byte ranges: in a UTF-8 locale [A-Za-z] also takes letters like "ç"
+plain_name() {
+  local LC_ALL=C
+  [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
+}
 dir=""
 name=""
 copy=1
@@ -49,21 +54,40 @@ if info="$(timeout 2 qs ipc call capture target 2>/dev/null)" && [[ -n "$info" ]
   d="$(jq -r 'if (.dir | type) == "string" then .dir else "" end' <<< "$info" 2>/dev/null || true)"
   n="$(jq -r 'if (.name | type) == "string" then .name else "" end' <<< "$info" 2>/dev/null || true)"
   c="$(jq -r 'if .copy == false then 0 else 1 end' <<< "$info" 2>/dev/null || echo 1)"
-  if [[ "$d" == /* && "$d" != *$'\n'* && "/$d/" != */../* && "$n" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; then
+  if [[ "$d" == /* && "$d" != *$'\n'* && "/$d/" != */../* && "/$d/" != */./* ]] && plain_name "$n"; then
     dir="$d"
     name="$n"
     copy="$c"
+  else
+    echo "hypr-print: pasta ou nome do shell recusado; salvando em Imagens/Capturas" >&2
   fi
 fi
 # xdg-user-dir gives the localized Pictures folder; without it, ~/Pictures.
-# One file per second: the name is the date and time.
+# The name is the date and time, to the second.
 if [[ -z "$dir" ]]; then
   pictures="$(xdg-user-dir PICTURES 2>/dev/null || true)"
   dir="${pictures:-$HOME/Pictures}/Capturas"
   name="$(date +%Y-%m-%d_%H-%M-%S)"
 fi
-file="${dir}/${name}.png"
 mkdir -p -- "$dir"
+# The first free name: "<name>.png", then "<name>-2.png"... (a name without
+# seconds never replaces an earlier print). Created empty in one step
+# (noclobber: O_EXCL, a link there is never followed); left empty by a
+# failure, it goes.
+file=""
+for ((n = 1; n <= 999; n++)); do
+  try="${dir}/${name}.png"
+  (( n == 1 )) || try="${dir}/${name}-${n}.png"
+  if (set -C; : > "$try") 2>/dev/null; then
+    file="$try"
+    break
+  fi
+done
+if [[ -z "$file" ]]; then
+  echo "hypr-print: não deu para criar o arquivo em $dir" >&2
+  exit 1
+fi
+trap '[[ -s "$file" ]] || rm -f -- "$file"' EXIT
 
 if [[ -n "$geometry" ]]; then
   grim -g "$geometry" "$file"

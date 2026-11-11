@@ -9,9 +9,9 @@
 // was killed (.import-*, over 5 minutes old) go first. The picture is read
 // once, never through a link (dd iflag=nofollow; nonblock: a FIFO does not
 // hang it), at most the limit plus a little, into a temporary name inside
-// the folder; the COPY's size and real type are checked, and it is named
-// after the first 32 hex digits of its SHA-256 plus the extension of its
-// type. The same picture again keeps the file already there. Prints the
+// the folder (removed on the way out, also when killed); the COPY's size
+// and real type are checked, and it is named after the first 32 hex digits
+// of its SHA-256 plus the extension of its type. The same picture again keeps the file already there. Prints the
 // final path. Every path goes after "--" or as an operand of dd.
 var importScript =
     'src=$1; dir=$2; max=$3\n'
@@ -24,6 +24,7 @@ var importScript =
     + '[ -f "$src" ] && [ ! -L "$src" ] || exit 1\n'
     + 'tmp=$(mktemp -p "$dir" .import-XXXXXX) || exit 1\n'
     + 'trap \'rm -f -- "$tmp"\' EXIT\n'
+    + 'trap \'exit 1\' HUP INT TERM\n'
     + 'dd if="$src" of="$tmp" iflag=nofollow,nonblock bs=65536 count=$((max / 65536 + 2)) status=none || exit 1\n'
     + 's=$(stat -c %s -- "$tmp") || exit 1\n'
     + '[ "$s" -gt 0 ] && [ "$s" -le "$max" ] || exit 1\n'

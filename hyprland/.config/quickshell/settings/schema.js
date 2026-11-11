@@ -71,7 +71,11 @@ var OPT_MONITOR = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
 var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var OPT_DESKTOP_ID = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var TIME_HM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
-var FILE_NAME_FORMAT = /^[yMdHhmsz][yMdHhmsz_.-]{0,39}$/
+// A capture's name: date fields that Qt writes as digits only (yy or yyyy,
+// M, d, H, h, m, s up to two, z up to three; never MMM/ddd, which become
+// words), each one whole (no letter right after the same letter), joined
+// by "_", "." or "-"; 40 characters at most
+var FILE_NAME_FORMAT = /^(?=.{1,40}$)(?:yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))(?:[_.-]|yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))*$/
 
 // Idle times: 0 is "Nunca"
 var IDLE = { min: 0, max: 14400, step: 10 }

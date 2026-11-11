@@ -25,6 +25,17 @@ Singleton {
     readonly property string picture: `${sharedDir}/fundo.png`
     readonly property string settingsFile: `${sharedDir}/fundo.json`
     readonly property int maxBytes: 30 * 1024 * 1024
+    // What ffmpeg may decode (the file limit does not bound it: a small
+    // compressed picture may declare a huge size). Qt has its own limit for
+    // the thumbnails and the wallpaper (256 MB per picture: it refuses, the
+    // picture just does not show).
+    readonly property int maxSide: 16384
+    readonly property int maxPixels: 100000000
+    // ffmpeg's own limit, a backstop: its decoders count each side padded
+    readonly property int ffmpegMaxPixels: maxPixels + 512 * maxSide
+    function tooBig(width, height) {
+        return width <= 0 || height <= 0 || width > maxSide || height > maxSide || width * height > maxPixels
+    }
 
     // ── Controls, remembered in fundo.json ──
     property real blur: Theme.lockBlurDefault      // 0..1 (shown as 0..100%)
@@ -140,7 +151,7 @@ Singleton {
     // failure. done(ok).
     function renderFinal(path, mime, sourceWidth, sourceHeight, done) {
         const decoder = decoders[mime]
-        if (!decoder || sourceWidth <= 0 || sourceHeight <= 0) {
+        if (!decoder || tooBig(sourceWidth, sourceHeight)) {
             done(false)
             return
         }
@@ -152,7 +163,8 @@ Singleton {
             filters.push(`gblur=sigma=${(sigmaFraction(blur) * width).toFixed(2)}`)
         filters.push(`colorchannelmixer=rr=${keep}:gg=${keep}:bb=${keep}`, "format=rgb24")
         run(["timeout", "15", "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
-             "-protocol_whitelist", "file", "-c:v", decoder, "-f", "image2", "-i", `file:${path}`,
+             "-protocol_whitelist", "file", "-threads", "1", "-max_pixels", String(ffmpegMaxPixels),
+             "-c:v", decoder, "-f", "image2", "-i", `file:${path}`,
              "-vf", filters.join(","), "-map_metadata", "-1", "-frames:v", "1",
              "-f", "image2", "-c:v", "png", `file:${tmpFile}`], (code, out) => {
             if (code !== 0) {
