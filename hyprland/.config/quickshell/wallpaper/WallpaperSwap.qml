@@ -3,15 +3,15 @@ import qs.theme
 
 // A full picture that changes smoothly: the desktop wallpaper, and later a
 // theme profile's. The new picture (`source`, a file URL, with its `fill`)
-// loads in the background and comes in only once it is ready, fading in
-// over the old one with a slight zoom out (Theme.wallpaperFade, the standard
-// curve); the old one stays whole underneath until the end, so there is
-// never a frame with no picture, however slow the new one is to load. A new
-// fill alone changes the same way. An empty source fades the picture out
-// (the plain color behind shows). A change asked during a swap waits for its
-// end, so the picture underneath is never replaced while it shows. Reduce
-// motion: the fade only. Speed 0: at once. One swap at a time, never a
-// running animation.
+// loads in the background and comes in only once it is ready, fading in over
+// the old one with a slight zoom out (Theme.wallpaperFade, the standard curve);
+// the old one stays whole underneath until the end, so there is never a frame
+// with no picture, however slow the new one is to load. A new fill alone
+// changes the same way. An empty source fades the picture out (the plain color
+// behind shows). A change asked during a swap waits for its end, so the picture
+// underneath is never replaced while it shows. A new picture that cannot be
+// loaded is logged and dropped: the old one stays. Reduce motion: the fade
+// only. Speed 0: at once. One swap at a time, never a running animation.
 Item {
     id: root
 
@@ -54,6 +54,13 @@ Item {
         }
         back.fill = fill
         back.source = source
+    }
+
+    // A picture that failed to load: logged, its layer emptied (it is never
+    // the one in front), the old picture left as it is
+    function dropFailed(pane) {
+        console.warn(`WallpaperSwap: não deu para carregar ${pane.source}`)
+        pane.source = ""
     }
 
     // Layer n is ready: it comes in on top
@@ -134,6 +141,8 @@ Item {
         onStatusChanged: {
             if (status === Image.Ready && key === root.key && !(root.hasPicture && root.front === 0))
                 root.swapTo(0)
+            else if (status === Image.Error)
+                root.dropFailed(a)
         }
     }
     Layer {
@@ -141,6 +150,8 @@ Item {
         onStatusChanged: {
             if (status === Image.Ready && key === root.key && !(root.hasPicture && root.front === 1))
                 root.swapTo(1)
+            else if (status === Image.Error)
+                root.dropFailed(b)
         }
     }
 }
