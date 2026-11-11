@@ -221,7 +221,7 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 
 | Programa | Configuração |
 |---|---|
-| **Kitty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal), cursor em barra que pisca suave e deixa rastro, margem de 12 px. Ajustes só da máquina em `~/.config/kitty/local.conf` (fora do git) |
+| **Kitty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal), cursor em barra que pisca suave e deixa rastro, margem de 12 px. As cores vêm do tema do shell (`~/.config/kitty/cores.conf`, gerado, e o Kitty aberto troca sozinho); ajustes só da máquina em `~/.config/kitty/local.conf`. Os dois ficam fora do git |
 | **Rofi** | Tema gruvbox-dark |
 | **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
 | **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |

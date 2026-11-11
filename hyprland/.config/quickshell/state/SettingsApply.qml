@@ -7,6 +7,7 @@ import qs.theme
 import "../settings/appearance.js" as Appearance
 import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
+import "../settings/kitty.js" as Kitty
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -87,6 +88,7 @@ Singleton {
     function applyAppearance() {
         if (!SettingsStore.ready)
             return
+        applyKitty()
         const v = SettingsStore.values
         const pair = Appearance.accentPair(v.accent, palette())
         Theme.accent = pair.accent
@@ -191,6 +193,76 @@ Singleton {
         }
         onSaved: Quickshell.execDetached(["hyprctl", "reload"])
         onSaveFailed: root.failed("accent", "Não deu para salvar a configuração do Hyprland")
+    }
+
+    // ── Kitty's colors (settings/kitty.js) ──
+    // ~/.config/kitty/cores.conf, included at the end of kitty.conf: written
+    // only when its text changes, in one step (atomic write). Kitty reads
+    // it again by itself: its auto_reload_config also follows the included
+    // files, renamed over or created after it started, so no signal is
+    // sent.
+    readonly property string kittyDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/kitty`
+    readonly property string kittyFile: `${kittyDir}/cores.conf`
+    property string kittyWanted: ""
+    property bool kittyLoaded: false
+    function applyKitty() {
+        kittyWanted = Kitty.colorsConf({
+            bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
+            green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua
+        })
+        writeKitty()
+    }
+    function writeKitty() {
+        if (!kittyLoaded || kittyWanted === "" || kittyView.text() === kittyWanted)
+            return
+        if (kittyCheck.running) {
+            kittyAgain = true
+            return
+        }
+        kittyCheck.running = true
+    }
+    // The FileView would make a missing folder: it is written only when
+    // the Kitty folder is already there, as the user's own folder or as
+    // stow's link to this repo's common/.config/kitty (the shell's folder
+    // is the repo's hyprland/.config/quickshell). Without Kitty, or with a
+    // link to anywhere else, nothing is written.
+    property bool kittyAgain: false
+    readonly property string kittyDirScript:
+        'd=$1; q=$2\n'
+        + '[ -d "$d" ] || exit 1\n'
+        + 'if [ -L "$d" ]; then\n'
+        + '  r=$(readlink -f -- "$q/../../..") && t=$(readlink -f -- "$d") || exit 1\n'
+        + '  [ "$t" = "$r/common/.config/kitty" ] || exit 1\n'
+        + 'fi\n'
+        + 'echo ok'
+    Process {
+        id: kittyCheck
+        command: ["sh", "-c", root.kittyDirScript, "sh", root.kittyDir, Quickshell.shellPath(".")]
+        stdout: StdioCollector {
+            id: kittyCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && kittyCheckOut.text.trim() === "ok" && kittyView.text() !== root.kittyWanted)
+                kittyView.setText(root.kittyWanted)
+            if (root.kittyAgain) {
+                root.kittyAgain = false
+                root.writeKitty()
+            }
+        }
+    }
+    FileView {
+        id: kittyView
+        path: root.kittyFile
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.kittyLoaded = true
+            root.writeKitty()
+        }
+        onLoadFailed: {
+            root.kittyLoaded = true
+            root.writeKitty()
+        }
     }
 
     // ── The clipboard history's size (Configurações → Captura e clipboard) ──
