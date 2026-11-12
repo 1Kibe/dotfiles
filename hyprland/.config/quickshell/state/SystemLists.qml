@@ -4,21 +4,25 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../settings/schema.js" as Schema
+import "../settings/monitors.js" as Monitors
 
 // What this machine has, for the settings' lists (schema `source`): the font
 // families (fc-list), the monospaced ones, and the cursor themes (an icon
 // theme folder with a "cursors" folder in it). Read at start and again by
 // refresh() (the settings panel opening). Only names that pass the schema's
 // own pattern for that key are kept, so a value picked here always passes
-// the store's check; everything runs as argument lists.
+// the store's check; everything runs as argument lists. The screens come
+// from Hyprland, the turned-off ones too (hyprctl -j monitors all; the
+// Quickshell screens leave them out), read again when the screens change;
+// only port names of the right shape (settings/monitors.js).
 Singleton {
     id: root
 
     property var fonts: []
     property var monoFonts: []
     property var cursorThemes: []
-    // This machine's screens (for the wallpaper's "Tela")
-    readonly property var monitors: Quickshell.screens.map(s => s.name)
+    // This machine's screens, on and off (the wallpaper's "Tela", the bar's)
+    property var monitors: []
     // Each list has been read at least once (until then a stored value is
     // trusted as it is: the store already checked its pattern)
     property bool fontsRead: false
@@ -52,11 +56,33 @@ Singleton {
     }
 
     function refresh() {
+        monitorsJob.running = true
         fontsJob.running = true
         monoJob.running = true
         cursorsJob.running = true
     }
     Component.onCompleted: refresh()
+
+    Process {
+        id: monitorsJob
+        command: ["hyprctl", "-j", "monitors", "all"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let list = []
+                try {
+                    list = JSON.parse(text)
+                } catch (e) {
+                    list = []
+                }
+                const names = Array.isArray(list) ? list.map(m => m && m.name).filter(n => Monitors.validName(n)) : []
+                root.monitors = names.filter((n, i) => names.indexOf(n) === i).sort()
+            }
+        }
+    }
+    Connections {
+        target: Quickshell
+        function onScreensChanged() { monitorsJob.running = true }
+    }
 
     // The first family name of each font
     Process {

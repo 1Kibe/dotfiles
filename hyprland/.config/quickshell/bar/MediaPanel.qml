@@ -5,6 +5,7 @@ import Quickshell.Widgets
 import qs.theme
 import qs.state
 import "mediaflight.js" as Flight
+import "../settings/hyprland.js" as Hypr
 
 // Music panel: cover, title, artist, album and player; progress with time
 // (click to seek); previous, play/pause, next. With more than one player,
@@ -352,12 +353,12 @@ AttachedPanel {
         icon: "󰁔"
         text: `Ir para o ${root.hasPlayer ? root.player.identity : "player"}`
         onClicked: {
-            // The address can come without the 0x prefix; the dispatcher's
-            // "address:" selector needs it
-            const address = root.playerWindow.address
-            const hex = address.startsWith("0x") ? address : `0x${address}`
+            // Checked first (settings/hyprland.js): it goes into Lua that
+            // Hyprland runs; one that is not hex does nothing
+            const hex = Hypr.windowAddress(root.playerWindow.address)
             ShellState.close()
-            Hyprland.dispatch(`hl.dsp.focus({ window = "address:${hex}" })`)
+            if (hex !== "")
+                Hyprland.dispatch(`hl.dsp.focus({ window = "address:${hex}" })`)
         }
     }
 }

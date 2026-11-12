@@ -80,10 +80,11 @@ function shellQuote(s) {
     return "'" + s.replace(/'/g, "'\\''") + "'"
 }
 
-// Names that go into the generated files: they start with a letter or a
-// digit (never an option, "." or "..")
+// A screen's port name (the shape of settings/monitors.js NAME: never a
+// number or a selector word)
 function monitorName(name) {
-    if (typeof name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(name))
+    if (typeof name !== "string" || name.length > 32 || !/^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}$/.test(name)
+            || ["current", "next", "prev", "l", "r", "u", "d", "left", "right", "up", "down", "desc"].includes(name.toLowerCase()))
         throw new Error("serialize: nome de monitor inválido")
     return name
 }

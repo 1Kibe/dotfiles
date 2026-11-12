@@ -83,8 +83,11 @@ var CARDS = {
 // absolute paths)
 var FONT_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/
 var THEME_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-var MONITOR_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
-var OPT_MONITOR = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/
+// A screen's port name (eDP-1, HDMI-A-1, Virtual-1), the same shape as
+// settings/monitors.js NAME: never a number or a word Hyprland reads as a
+// selector (next, l, current)
+var MONITOR_NAME = /^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}$/
+var OPT_MONITOR = /^$|^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}$/
 var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var OPT_DESKTOP_ID = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var TIME_HM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
