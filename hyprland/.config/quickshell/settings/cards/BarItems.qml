@@ -1,16 +1,20 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.theme
 import qs.state
 import "../ui"
 import "../schema.js" as Schema
 import "../../bar/baritems.js" as BarItems
 
-// The bar's items (Configurações → Barra): the three areas, each with its
-// items in order. Dragging an item drops it before another one, or at the
-// end of an area; the eye hides it from the bar without taking it out.
-// "Restaurar padrão" puts back the default arrangement. Every change goes to
-// the store at once (barLeft, barCenter, barRight, barHidden).
+// The bar's items (Configurações → Barra): the three areas, each a row of
+// chips in order, a grab handle on each. Dragging a chip drops it before
+// another one, or at the end of an area; the eye hides it from the bar
+// without taking it out. An item in no area (a hand-edited file) shows a
+// dashed "Adicionar" chip at the end of each area; it lists those items
+// and puts the one picked at that area's end. The group's "Restaurar
+// padrão" puts back the default arrangement. Every change goes to the
+// store at once (barLeft, barCenter, barRight, barHidden).
 Item {
     id: root
 
@@ -28,6 +32,19 @@ Item {
         return SettingsStore.ready ? SettingsStore.get(key) : Schema.KEYS[key].def
     }
     readonly property var hidden: SettingsStore.ready ? SettingsStore.get("barHidden") : []
+    // Items in no area
+    readonly property var missing: {
+        const placed = list("barLeft").concat(list("barCenter"), list("barRight"))
+        return BarItems.IDS.filter(id => !placed.includes(id))
+    }
+    // The area whose "Adicionar" list is open ("" none)
+    property string adding: ""
+    function add(area, id) {
+        adding = ""
+        const lists = { barLeft: list("barLeft"), barCenter: list("barCenter"), barRight: list("barRight") }
+        const next = BarItems.moveItem(lists, id, area, lists[area].length)
+        SettingsStore.set(area, next[area])
+    }
 
     // ── Drag ──
     property string dragging: ""
@@ -53,22 +70,25 @@ Item {
     ColumnLayout {
         id: column
         width: parent.width
-        spacing: 10
+        spacing: 8
 
         Repeater {
             model: root.areaKeys
 
-            ColumnLayout {
+            RowLayout {
                 id: area
                 required property var modelData
                 readonly property var ids: root.list(modelData.key)
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 12
 
                 Text {
+                    Layout.preferredWidth: 64
+                    Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: 10
                     text: area.modelData.label
                     color: Theme.fg4
-                    font.family: Theme.font
+                    font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1
                 }
 
@@ -77,7 +97,7 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: Math.max(36, flow.implicitHeight + 8)
                     radius: Theme.radius
-                    color: areaDrop.containsDrag ? Theme.veil : Theme.bg1
+                    color: areaDrop.containsDrag ? Theme.veil : Theme.alpha(Theme.veil, 0)
                     Behavior on color {
                         ColorAnimation { duration: Theme.dur(Theme.animFast) }
                     }
@@ -110,10 +130,10 @@ Item {
                                 width: chipRow.implicitWidth + 16
                                 height: 28
                                 radius: Theme.radius
-                                color: root.dragging === modelData ? Theme.bg2 : mouse.containsMouse ? Theme.bg2 : Theme.bg
+                                color: root.dragging === modelData || mouse.containsMouse ? Theme.bg2 : Theme.bg1
                                 opacity: root.dragging === modelData ? 0.4 : hiddenHere ? 0.6 : 1
-                                border.width: marked ? 2 : 0
-                                border.color: Theme.accentLight
+                                border.width: marked ? 2 : 1
+                                border.color: marked ? Theme.accentLight : Theme.bg2
                                 Behavior on color {
                                     ColorAnimation { duration: Theme.dur(Theme.animFast) }
                                 }
@@ -125,10 +145,11 @@ Item {
                                     id: chipRow
                                     anchors.centerIn: parent
                                     spacing: 8
+                                    // The grab handle
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: "󰇛"
-                                        color: Theme.gray
+                                        text: "󰇙"
+                                        color: Theme.fg4
                                         font.family: Theme.font
                                         font.pointSize: Theme.fontSize - 1
                                     }
@@ -136,7 +157,7 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: root.labels[chip.modelData] || chip.modelData
                                         color: Theme.text
-                                        font.family: Theme.font
+                                        font.family: Theme.fontPanels
                                         font.pointSize: Theme.fontSize - 1
                                         font.strikeout: chip.hiddenHere
                                     }
@@ -196,17 +217,85 @@ Item {
                                 }
                             }
                         }
+
+                        // "Adicionar": only while an item is in no area
+                        Item {
+                            id: addChip
+                            visible: root.missing.length > 0
+                            width: addText.implicitWidth + 20
+                            height: 28
+                            Shape {
+                                anchors.fill: parent
+                                preferredRendererType: Shape.CurveRenderer
+                                ShapePath {
+                                    strokeColor: addMouse.containsMouse ? Theme.accentLight : Theme.gray
+                                    strokeWidth: 1
+                                    strokeStyle: ShapePath.DashLine
+                                    dashPattern: [3, 3]
+                                    fillColor: "transparent"
+                                    PathRectangle {
+                                        x: 0.5
+                                        y: 0.5
+                                        width: addChip.width - 1
+                                        height: addChip.height - 1
+                                        radius: Theme.radius
+                                    }
+                                }
+                            }
+                            Text {
+                                id: addText
+                                anchors.centerIn: parent
+                                text: "+  Adicionar"
+                                color: addMouse.containsMouse ? Theme.text : Theme.gray
+                                font.family: Theme.fontPanels
+                                font.pointSize: Theme.fontSize - 1
+                            }
+                            MouseArea {
+                                id: addMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.adding = root.adding === area.modelData.key ? "" : area.modelData.key
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Button {
-            text: "Restaurar padrão"
-            icon: "󰑓"
-            onClicked: {
-                for (const key of ["barLeft", "barCenter", "barRight", "barHidden"])
-                    SettingsStore.reset(key)
+        // The items in no area, for the area whose "Adicionar" was clicked
+        Flow {
+            Layout.fillWidth: true
+            Layout.leftMargin: 76
+            visible: root.adding !== "" && root.missing.length > 0
+            spacing: 4
+            Repeater {
+                model: root.missing
+                Rectangle {
+                    required property string modelData
+                    width: missingText.implicitWidth + 20
+                    height: 28
+                    radius: Theme.radius
+                    color: missingMouse.containsMouse ? Theme.bg2 : Theme.bg1
+                    Behavior on color {
+                        ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                    }
+                    Text {
+                        id: missingText
+                        anchors.centerIn: parent
+                        text: root.labels[parent.modelData] || parent.modelData
+                        color: Theme.text
+                        font.family: Theme.fontPanels
+                        font.pointSize: Theme.fontSize - 1
+                    }
+                    MouseArea {
+                        id: missingMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.add(root.adding, parent.modelData)
+                    }
+                }
             }
         }
     }
@@ -229,7 +318,7 @@ Item {
             id: ghostText
             anchors.centerIn: parent
             color: Theme.text
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 1
         }
     }

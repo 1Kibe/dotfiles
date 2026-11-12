@@ -71,14 +71,14 @@ ColumnLayout {
         visible: grid.count === 0
         text: "Nenhuma imagem aqui"
         color: Theme.gray
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
     }
     Text {
         visible: WallpaperStore.busy || WallpaperStore.message !== ""
         text: WallpaperStore.busy ? "Importando…" : WallpaperStore.message
         color: WallpaperStore.busy ? Theme.fg4 : Theme.red
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
     }
     Text {
@@ -87,7 +87,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         text: "Ao escolher, a imagem é copiada para as Importadas (fora do repo)."
         color: Theme.gray
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 2
     }
 }

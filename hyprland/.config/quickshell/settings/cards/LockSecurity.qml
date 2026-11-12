@@ -67,7 +67,7 @@ ColumnLayout {
                 text: parent.parent.title
                 color: Theme.text
                 wrapMode: Text.WordWrap
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
             }
             Text {
@@ -75,7 +75,7 @@ ColumnLayout {
                 text: parent.parent.detail
                 color: Theme.gray
                 wrapMode: Text.WordWrap
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 2
             }
         }

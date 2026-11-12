@@ -45,6 +45,7 @@ wireplumber
 # ── Fonts ──
 ttf-firacode-nerd
 ttf-agave-nerd   # desktop and monospace font (xsettings.xml, login screen)
+inter-font       # the panels' sans-serif font (Configurações)
 noto-fonts-cjk   # Japanese, Chinese and Korean text (song lyrics, file names)
 noto-fonts-emoji # color emoji (clipboard emoji tab, apps)
 unicode-emoji    # emoji list with names, read by the clipboard emoji tab

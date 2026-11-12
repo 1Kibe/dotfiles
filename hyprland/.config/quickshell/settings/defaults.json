@@ -9,6 +9,7 @@
   "wallpaperFill": "fill",
   "fontUi": "Agave Nerd Font Propo",
   "fontMono": "Agave Nerd Font Mono",
+  "fontPanels": "Inter",
   "textScale": 100,
   "animSpeed": 1,
   "reduceMotion": false,

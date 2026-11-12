@@ -18,8 +18,19 @@
 //   "monitors" (this machine's screens); emptyLabel: "" as a choice of its own
 // - preview "fileName" (string keys): the description shows the name it
 //   gives now, as an example
+// - unit (int / real): written after the value ("8 px"; "s": a time, read in
+//   s, min or h); format "percent": a 0-1 value read as a percent;
+//   zeroLabel: what 0 reads as (settings/format.js)
+// - pair: the key that shares this one's row on the page (the same option on
+//   power and on battery); both keys name each other, same type and card
+// - control "swatches" (enum keys of colors): dots in the color each option
+//   gives, in place of the list
+//
+// A card: id, title; component (a special card, settings/cards/); strip (a
+// preview at the top of the page, no title or block); columns (the titles
+// of a paired row's two controls, [{ icon, label }])
 
-// ── Pages, in the order of the sidebar ──
+// ── Pages, in the order of the rail ──
 var PAGES = [
     { id: "tema", group: "Aparência", icon: "󰏘", name: "Tema e cores", sub: "Destaque, transparência, cantos e cursor" },
     { id: "papel", group: "Aparência", icon: "󰸉", name: "Papel de parede", sub: "Imagem e preenchimento" },
@@ -37,11 +48,11 @@ var PAGES = [
 
 // ── Cards of each page; `component` names a special card (settings/cards/) ──
 var CARDS = {
-    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview" }, { id: "cores", title: "Cores" },
+    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview", strip: true }, { id: "cores", title: "Cores" },
            { id: "superficies", title: "Superfícies" }, { id: "cursor", title: "Cursor" }],
     papel: [{ id: "imagem", title: "Imagem", component: "WallpaperGallery" }, { id: "ajuste", title: "Ajuste" }],
-    fontes: [{ id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" },
-             { id: "previa", title: "Prévia da animação", component: "AnimationPreview" }],
+    fontes: [{ id: "previa", title: "Prévia da animação", component: "AnimationPreview", strip: true },
+             { id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" }],
     barra: [{ id: "itens", title: "Itens", component: "BarItems" }, { id: "posicao", title: "Posição" },
             { id: "relogio", title: "Relógio" }],
     bloqueio: [{ id: "foto", title: "Foto", component: "UserPhoto" }, { id: "tela", title: "Tela" },
@@ -115,14 +126,14 @@ var KEYS = {
     accent: { def: "padrao", type: "enum", page: "tema", card: "cores", label: "Cor de destaque",
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
-              syn: ["cor", "acento", "destaque"] },
+              control: "swatches", syn: ["cor", "acento", "destaque"] },
     // One for the bar and its panels: they are one shape
-    barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, page: "tema", card: "superficies",
-                  label: "Transparência da barra e dos painéis", desc: "1 é sólida",
+    barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
+                  card: "superficies", label: "Transparência da barra e dos painéis", desc: "100% é sólida",
                   syn: ["opacidade", "transparente", "painel"] },
     blur: { def: true, type: "bool", page: "tema", card: "superficies", label: "Desfoque atrás dos painéis",
             syn: ["blur", "vidro"] },
-    radius: { def: 8, type: "int", min: 0, max: 16, step: 1, page: "tema", card: "superficies",
+    radius: { def: 8, type: "int", min: 0, max: 16, step: 1, unit: "px", page: "tema", card: "superficies",
               label: "Raio dos cantos", desc: "Janelas, barra e painéis", syn: ["arredondado", "cantos"] },
     cursorTheme: { def: "Bibata-Modern-Classic-Right", type: "string", pattern: THEME_NAME, page: "tema",
                    card: "cursor", label: "Tema do cursor", source: "cursorThemes", syn: ["mouse", "ponteiro"] },
@@ -144,8 +155,11 @@ var KEYS = {
               label: "Fonte da interface", source: "fonts", syn: ["letra", "texto"] },
     fontMono: { def: "Agave Nerd Font Mono", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
                 label: "Fonte monoespaçada", source: "monoFonts", syn: ["letra", "código"] },
-    textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, page: "fontes", card: "fontes",
-                 label: "Tamanho do texto", desc: "Em %", syn: ["escala", "zoom"] },
+    fontPanels: { def: "Inter", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
+                  label: "Fonte dos painéis", desc: "O painel das Configurações", source: "fonts",
+                  syn: ["letra", "texto", "painel"] },
+    textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, unit: "%", page: "fontes", card: "fontes",
+                 label: "Tamanho do texto", syn: ["escala", "zoom"] },
     animSpeed: { def: 1, type: "enum", page: "fontes", card: "animacoes", label: "Velocidade das animações",
                  options: opts([[0, "Sem animação"], [0.7, "Rápida"], [1, "Normal"], [1.4, "Calma"]]),
                  syn: ["movimento", "transição"] },
@@ -163,7 +177,8 @@ var KEYS = {
                  syn: ["esconder", "olho"] },
     barPosition: { def: "top", type: "enum", page: "barra", card: "posicao", label: "Posição",
                    options: opts([["top", "Em cima"], ["bottom", "Embaixo"]]) },
-    barHeight: { def: 30, type: "int", min: 26, max: 40, step: 2, page: "barra", card: "posicao", label: "Altura" },
+    barHeight: { def: 30, type: "int", min: 26, max: 40, step: 2, unit: "px", page: "barra", card: "posicao",
+                 label: "Altura" },
     barHideFullscreen: { def: true, type: "bool", page: "barra", card: "posicao", label: "Esconder em tela cheia" },
     clock24h: { def: true, type: "bool", page: "barra", card: "relogio", label: "Relógio de 24 horas",
                 syn: ["hora"] },
@@ -197,7 +212,7 @@ var KEYS = {
     recordSystemAudio: { def: true, type: "bool", page: "captura", card: "gravacao", label: "Som do sistema",
                          syn: ["áudio"] },
     recordMic: { def: false, type: "bool", page: "captura", card: "gravacao", label: "Microfone", syn: ["áudio"] },
-    clipHistory: { def: 100, type: "int", min: 20, max: 500, step: 10, page: "captura", card: "clipboard",
+    clipHistory: { def: 100, type: "int", min: 20, max: 500, step: 10, unit: "itens", page: "captura", card: "clipboard",
                    label: "Tamanho do histórico", syn: ["copiar", "colar"] },
     clipImages: { def: true, type: "bool", page: "captura", card: "clipboard", label: "Guardar imagens",
                   syn: ["copiar", "colar"] },
@@ -228,8 +243,8 @@ var KEYS = {
                   card: "barra", label: "Tela da barra", desc: "Vazio é todas" },
     nightLight: { def: false, type: "bool", machine: true, page: "monitores", card: "luz", label: "Luz noturna",
                   syn: ["hyprsunset", "filtro azul"] },
-    nightTemp: { def: 4000, type: "int", min: 2500, max: 6500, step: 100, machine: true, page: "monitores", card: "luz",
-                 label: "Temperatura", desc: "Em kelvin" },
+    nightTemp: { def: 4000, type: "int", min: 2500, max: 6500, step: 100, unit: "K", machine: true, page: "monitores",
+                 card: "luz", label: "Temperatura" },
     nightStart: { def: "20:00", type: "string", pattern: TIME_HM, machine: true, page: "monitores", card: "luz",
                   label: "Começa às" },
     nightEnd: { def: "06:00", type: "string", pattern: TIME_HM, machine: true, page: "monitores", card: "luz",
@@ -240,10 +255,10 @@ var KEYS = {
                 label: "Layout do sistema", syn: ["abnt", "idioma"] },
     kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, page: "teclado",
                card: "teclado", label: "Modelo do teclado" },
-    repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, page: "teclado", card: "teclado",
-                   label: "Atraso da repetição", desc: "Em ms" },
-    repeatRate: { def: 25, type: "int", min: 10, max: 60, step: 1, page: "teclado", card: "teclado",
-                  label: "Velocidade da repetição", desc: "Por segundo" },
+    repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, unit: "ms", page: "teclado", card: "teclado",
+                   label: "Atraso da repetição" },
+    repeatRate: { def: 25, type: "int", min: 10, max: 60, step: 1, unit: "por s", page: "teclado", card: "teclado",
+                  label: "Velocidade da repetição" },
     numlockOnStart: { def: false, type: "bool", page: "teclado", card: "teclado", label: "Num Lock ao iniciar" },
     mouseSensitivity: { def: 0, type: "real", min: -1, max: 1, step: 0.1, page: "teclado", card: "mouse",
                         label: "Velocidade do mouse" },
@@ -280,3 +295,22 @@ function appKey(label, syn) {
 }
 
 var PAGE_IDS = PAGES.map(p => p.id)
+
+// Keys that share a row (pair): each one names the other, both exist, with
+// the same type, page and card. Returns the problems found ([] when fine);
+// read by the tests and by the page, which shows a broken pair as two rows.
+function pairProblems(keys) {
+    const out = []
+    for (const [k, spec] of Object.entries(keys)) {
+        if (spec.pair === undefined)
+            continue
+        const other = keys[spec.pair]
+        if (!other)
+            out.push(`${k}: par ${spec.pair} não existe`)
+        else if (other.pair !== k)
+            out.push(`${k}: ${spec.pair} não aponta de volta`)
+        else if (other.type !== spec.type || other.page !== spec.page || other.card !== spec.card)
+            out.push(`${k}: ${spec.pair} com outro tipo, página ou grupo`)
+    }
+    return out
+}

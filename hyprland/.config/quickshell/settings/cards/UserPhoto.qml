@@ -33,13 +33,13 @@ ColumnLayout {
             Text {
                 text: PhotoStore.photo !== "" ? "Aparece no bloqueio." : "Sem foto: o bloqueio mostra a inicial."
                 color: Theme.text
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
             }
             Text {
                 text: "O login mostra só a inicial."
                 color: Theme.gray
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 2
             }
             Button {
@@ -98,14 +98,14 @@ ColumnLayout {
         visible: grid.count === 0
         text: "Nenhuma imagem aqui"
         color: Theme.gray
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
     }
     Text {
         visible: PhotoStore.busy || PhotoStore.message !== ""
         text: PhotoStore.busy ? "Preparando a foto…" : PhotoStore.message
         color: PhotoStore.busy ? Theme.fg4 : Theme.red
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
     }
 }

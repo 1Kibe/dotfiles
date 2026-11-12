@@ -105,6 +105,10 @@ Singleton {
         Theme.textScale = Appearance.textScale(v.textScale)
         Theme.font = SystemLists.usable("fonts", v.fontUi) ? v.fontUi : SettingsStore.defaults.fontUi
         Theme.monoFont = SystemLists.usable("monoFonts", v.fontMono) ? v.fontMono : SettingsStore.defaults.fontMono
+        // The panels' font: the choice, else the default, else the interface's
+        Theme.fontPanels = SystemLists.usable("fonts", v.fontPanels) ? v.fontPanels
+                         : SystemLists.usable("fonts", SettingsStore.defaults.fontPanels) ? SettingsStore.defaults.fontPanels
+                         : Theme.font
         // The Hyprland file only once the cursor themes are known: before,
         // it would come out without the cursor lines and be written twice
         // (two reloads) at every start

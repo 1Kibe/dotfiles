@@ -6,13 +6,18 @@ import "ui"
 import "schema.js" as Schema
 import "cascade.js" as Cascade
 
-// One page of the settings, drawn from settings/schema.js: its cards, and in
-// each a row per key with the control of its type (bool → switch; a few
-// options → segmented, more → list; number → slider; text and path → field;
-// list → checked list; a list of this machine (`source`: fonts, cursor
-// themes) → a list of those). Every change goes to SettingsStore; a value it
-// refuses snaps back by binding. A special card (`component`) is drawn by
-// its file in settings/cards/; a page with nothing says so.
+// One page of the settings, drawn from settings/schema.js: each card is a
+// group (ui/Group: its title above, the rows in one block), each key a row
+// (KeyRow) with the control of its type (KeyControl: bool → switch; a few options
+// → segmented, more → list; `control: "swatches"` → color dots; number →
+// slider with its unit; text and path → field, monospaced for paths and
+// name patterns; list → checked list; a list of this machine (`source`:
+// fonts, cursor themes) → a list of those). Two keys that name each other
+// (`pair`) share one row, a control each, under the card's `columns`. A
+// special card (`component`) is drawn by its file in settings/cards/ inside
+// its group; `strip`: the card is a preview strip at the top of the page,
+// with no title or block. Every change goes to SettingsStore; a value it
+// refuses snaps back by binding. A page with nothing says so.
 Flickable {
     id: root
 
@@ -21,6 +26,26 @@ Flickable {
 
     function keysOf(cardId) {
         return Object.keys(Schema.KEYS).filter(k => Schema.KEYS[k].page === page && Schema.KEYS[k].card === cardId)
+    }
+    // The rows of a card: one per key, a pair in the row of its first key
+    // (a broken pair, schema.pairProblems, stays as two rows)
+    readonly property var brokenPairs: Schema.pairProblems(Schema.KEYS).map(p => p.split(":")[0])
+    function rowsOf(cardId) {
+        const keys = keysOf(cardId)
+        const out = []
+        const taken = {}
+        for (const k of keys) {
+            if (taken[k])
+                continue
+            const p = Schema.KEYS[k].pair
+            if (p !== undefined && keys.includes(p) && !brokenPairs.includes(k) && !brokenPairs.includes(p)) {
+                taken[p] = true
+                out.push([k, p])
+            } else {
+                out.push([k])
+            }
+        }
+        return out
     }
     // The special cards built so far (settings/cards/); the others come with
     // the task of their page and stay out until then
@@ -97,152 +122,52 @@ Flickable {
     ColumnLayout {
         id: column
         x: 20
-        y: 20
+        y: 4
         width: root.width - 40
-        spacing: 12
-
-        Text {
-            text: root.info.name
-            color: Theme.text
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize + 5
-            font.bold: true
-        }
-        Text {
-            Layout.bottomMargin: 4
-            text: root.info.sub
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 1
-        }
+        spacing: 16
 
         Repeater {
             id: repeater
             model: root.cards
 
-            Card {
-                id: card
+            Group {
+                id: group
                 required property var modelData
                 readonly property string cardId: modelData.id
                 Layout.fillWidth: true
                 title: modelData.title
+                plain: modelData.strip === true
+                keys: root.keysOf(cardId)
+                columns: modelData.columns || []
 
                 // A special card: its own file (the name comes from the schema)
                 Loader {
-                    active: card.modelData.component !== undefined
+                    active: group.modelData.component !== undefined
                     visible: active
                     Layout.fillWidth: true
-                    source: active ? Qt.resolvedUrl(`cards/${card.modelData.component}.qml`) : ""
+                    Layout.margins: group.plain ? 0 : 12
+                    source: active ? Qt.resolvedUrl(`cards/${group.modelData.component}.qml`) : ""
                 }
                 Repeater {
-                    model: card.modelData.component ? [] : root.keysOf(card.cardId)
+                    model: group.modelData.component ? [] : root.rowsOf(group.cardId)
                     KeyRow {
-                        required property string modelData
-                        key: modelData
+                        required property var modelData
+                        required property int index
+                        keys: modelData
+                        divider: index > 0
                     }
                 }
             }
         }
 
         // Atalhos and Sobre: their cards come with the next tasks
-        Card {
+        Group {
             id: empty
             visible: root.cards.length === 0
             Layout.fillWidth: true
             title: root.info.name
-            Text {
-                text: "Chega na próxima etapa"
-                color: Theme.gray
-                font.family: Theme.font
-                font.pointSize: Theme.fontSize
-            }
-        }
-    }
-
-    component KeyRow: OptionRow {
-        id: row
-
-        required property string key
-        readonly property var spec: Schema.KEYS[key]
-        // The default until the store has read the files
-        readonly property var value: SettingsStore.ready ? SettingsStore.values[key] : spec.def
-
-        label: spec.label
-        // A file name pattern shows the name it gives now
-        desc: spec.preview === "fileName" && typeof value === "string" && value !== ""
-              ? `Ex.: ${Qt.formatDateTime(new Date(), value)}.png` : (spec.desc || "")
-
-        // A list of this machine: its names, the stored one first if it is
-        // not there (the list not read yet, or a font that is gone)
-        readonly property var choices: {
-            if (!spec.source)
-                return spec.options
-            const names = SystemLists.list(spec.source)
-            const out = names.map(n => ({ value: n, label: n }))
-            if (typeof value === "string" && !names.includes(value) && !(value === "" && spec.emptyLabel))
-                out.unshift({ value: value, label: value })
-            // "" as a choice of its own (the wallpaper on every screen)
-            if (spec.emptyLabel)
-                out.unshift({ value: "", label: spec.emptyLabel })
-            return out
-        }
-
-        Loader {
-            sourceComponent: row.spec.source ? dropdownC
-                             : row.spec.type === "bool" ? toggleC
-                             : row.spec.type === "enum" ? (row.spec.options.length <= 4 ? segmentedC : dropdownC)
-                             : row.spec.type === "int" || row.spec.type === "real" ? sliderC
-                             : row.spec.type === "list" ? listC
-                             : fieldC
-        }
-
-        Component {
-            id: toggleC
-            Toggle {
-                checked: row.value === true
-                onToggled: v => SettingsStore.set(row.key, v)
-            }
-        }
-        Component {
-            id: segmentedC
-            Segmented {
-                options: row.spec.options
-                value: row.value
-                onPicked: v => SettingsStore.set(row.key, v)
-            }
-        }
-        Component {
-            id: dropdownC
-            Dropdown {
-                options: row.choices
-                value: row.value
-                onPicked: v => SettingsStore.set(row.key, v)
-            }
-        }
-        Component {
-            id: listC
-            Dropdown {
-                multiple: true
-                options: row.spec.options
-                value: row.value
-                onPicked: v => SettingsStore.set(row.key, v)
-            }
-        }
-        Component {
-            id: sliderC
-            Slider {
-                from: row.spec.min
-                to: row.spec.max
-                step: row.spec.step || 1
-                value: row.value
-                onMoved: v => SettingsStore.set(row.key, v)
-            }
-        }
-        Component {
-            id: fieldC
-            Field {
-                value: String(row.value)
-                onAccepted: text => invalid = !SettingsStore.set(row.key, text)
+            OptionRow {
+                label: "Chega na próxima etapa"
             }
         }
     }

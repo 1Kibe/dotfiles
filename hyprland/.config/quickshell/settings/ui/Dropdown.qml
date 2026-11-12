@@ -6,7 +6,8 @@ import qs.theme
 // button. With `multiple`, the value is a list and each option is checked
 // on or off (the bar's items before the reorderable list of T5). A long list
 // (the fonts) scrolls inside, at most `rows` lines tall, opening on the
-// chosen one.
+// chosen one. A list of choices too long for the button reads as a count
+// ("3 de 5", "Todos"), never cut with "…".
 //
 // Motion (Theme tokens, times the speed): the list unrolls and fades in
 // (animNormal) and rolls back faster (animFast), its options kept until it
@@ -27,9 +28,17 @@ ColumnLayout {
     function has(v) {
         return multiple ? (Array.isArray(value) && value.includes(v)) : value === v
     }
+    readonly property var chosenLabels: options.filter(o => has(o.value)).map(o => o.label)
+    readonly property string joined: chosenLabels.length === 0 ? (multiple ? "Nenhum" : "—") : chosenLabels.join(", ")
     readonly property string summary: {
-        const chosen = options.filter(o => has(o.value)).map(o => o.label)
-        return chosen.length === 0 ? (multiple ? "Nenhum" : "—") : chosen.join(", ")
+        if (!multiple || chosenLabels.length < 2 || joinedMetrics.advanceWidth <= summaryText.width)
+            return joined
+        return chosenLabels.length === options.length ? "Todos" : `${chosenLabels.length} de ${options.length}`
+    }
+    TextMetrics {
+        id: joinedMetrics
+        text: root.joined
+        font: summaryText.font
     }
 
     // 0 = closed, 1 = open; the options stay while it is above 0
@@ -51,14 +60,16 @@ ColumnLayout {
         }
 
         Text {
+            id: summaryText
             anchors.left: parent.left
             anchors.right: arrow.left
             anchors.leftMargin: 10
+            anchors.rightMargin: 6
             anchors.verticalCenter: parent.verticalCenter
             text: root.summary
             elide: Text.ElideRight
             color: Theme.text
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 1
         }
         Text {
@@ -69,7 +80,7 @@ ColumnLayout {
             text: "󰅀"
             rotation: root.expanded ? 180 : 0
             color: Theme.fg4
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             Behavior on rotation {
                 enabled: !Theme.reduceMotion
                 NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic }
@@ -122,7 +133,7 @@ ColumnLayout {
                 anchors.verticalCenter: parent.verticalCenter
                 text: `${item.chosen ? "󰄬" : "  "}  ${item.modelData.label}`
                 color: Theme.text
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
             }
             MouseArea {
