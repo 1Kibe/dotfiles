@@ -77,8 +77,6 @@ var TIME_HM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
 // by "_", "." or "-"; 40 characters at most
 var FILE_NAME_FORMAT = /^(?=.{1,40}$)(?:yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))(?:[_.-]|yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))*$/
 
-// Idle times: 0 is "Nunca"
-var IDLE = { min: 0, max: 14400, step: 10 }
 
 function opts(pairs) {
     return pairs.map(p => ({ value: p[0], label: p[1] }))
@@ -91,10 +89,23 @@ var BAR_ITEMS = opts([["workspaces", "Áreas de trabalho"], ["system", "CPU, mem
 var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"],
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
 
-function idleKey(page, card, def, label, syn) {
-    return { def: def, type: "int", min: IDLE.min, max: IDLE.max, step: IDLE.step, page: page, card: card,
-             label: label, desc: "Em segundos; 0 é nunca", syn: syn }
+// Idle times (settings/idle.js keeps the same lists): "Nunca" takes the step
+// out. A list of choices, never a free number.
+var IDLE_TIMES = opts([[0, "Nunca"], [60, "1 min"], [120, "2 min"], [180, "3 min"], [300, "5 min"],
+                       [600, "10 min"], [900, "15 min"], [1200, "20 min"], [1800, "30 min"],
+                       [2700, "45 min"], [3600, "1 h"], [7200, "2 h"], [10800, "3 h"], [14400, "4 h"]])
+var IDLE_WARNINGS = opts([[0, "Sem aviso"], [10, "10 s"], [30, "30 s"], [60, "1 min"]])
+
+function idleKey(card, def, label, desc, syn) {
+    return { def: def, type: "enum", options: IDLE_TIMES, page: "energia", card: card, label: label,
+             desc: desc, syn: syn }
 }
+function warnKey(card) {
+    return { def: 30, type: "enum", options: IDLE_WARNINGS, page: "energia", card: card,
+             label: "Aviso antes de travar", desc: "A tela escurece e conta até travar", syn: ["escurecer", "tela"] }
+}
+var LOCK_DESC = "Nunca: só trava pelo Super+L, pelo menu e ao fechar a tampa"
+var OFF_DESC = "Com a trava ligada, apaga no mínimo 10 s depois de travar"
 
 var KEYS = {
     // ── Tema e cores ──
@@ -188,15 +199,16 @@ var KEYS = {
     clipImages: { def: true, type: "bool", page: "captura", card: "clipboard", label: "Guardar imagens",
                   syn: ["copiar", "colar"] },
 
-    // ── Energia (0 = nunca) ──
-    idleDimAc: idleKey("energia", "tomada", 270, "Escurecer", ["tela"]),
-    idleLockAc: idleKey("energia", "tomada", 300, "Travar", ["bloquear"]),
-    idleScreenOffAc: idleKey("energia", "tomada", 310, "Apagar a tela", ["monitor"]),
-    idleSuspendAc: idleKey("energia", "tomada", 3600, "Suspender", ["dormir"]),
-    idleDimBat: idleKey("energia", "bateria", 270, "Escurecer", ["tela"]),
-    idleLockBat: idleKey("energia", "bateria", 300, "Travar", ["bloquear"]),
-    idleScreenOffBat: idleKey("energia", "bateria", 310, "Apagar a tela", ["monitor"]),
-    idleSuspendBat: idleKey("energia", "bateria", 3600, "Suspender", ["dormir"]),
+    // ── Energia ──
+    // On power suspending is "Nunca" by default (it used to do nothing there)
+    idleWarnAc: warnKey("tomada"),
+    idleLockAc: idleKey("tomada", 300, "Travar", LOCK_DESC, ["bloquear"]),
+    idleScreenOffAc: idleKey("tomada", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
+    idleSuspendAc: idleKey("tomada", 0, "Suspender", "", ["dormir"]),
+    idleWarnBat: warnKey("bateria"),
+    idleLockBat: idleKey("bateria", 300, "Travar", LOCK_DESC, ["bloquear"]),
+    idleScreenOffBat: idleKey("bateria", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
+    idleSuspendBat: idleKey("bateria", 3600, "Suspender", "", ["dormir"]),
     lidAction: { def: "lock-suspend", type: "enum", page: "energia", card: "tampa", label: "Ao fechar a tampa",
                  options: opts([["lock-suspend", "Travar e suspender"], ["lock", "Só travar"], ["nothing", "Nada"]]),
                  desc: "Com monitor externo, só trava", syn: ["notebook"] },

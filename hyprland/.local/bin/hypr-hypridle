@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# hypridle with the idle times chosen in Configurações → Energia (the
+# hypridle service's ExecStart, hypridle.service.d/gerado.conf).
+#
+# The general block (lock and sleep commands) always comes from the repo's
+# hypridle.conf, the part before its "# ── Listeners ──" line. The listeners
+# come from the shell's hypridle.gerado.conf only when that file is a
+# regular file of this user (never a link), small, and every line passes a
+# closed grammar: listener blocks with one timeout of 30 to 86400 s and
+# on-timeout / on-resume taken from a fixed list of commands, and the idle
+# lock among them unless the file's first line says the lock is off.
+# Anything else (missing, a link, an unknown line or command) gives the
+# repo's own listeners, today's times. The result goes to a 700 folder in
+# XDG_RUNTIME_DIR, read by hypridle -c.
+set -u
+
+conf_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+repo="$conf_dir/hypridle.conf"
+gen="$conf_dir/hypridle.gerado.conf"
+HYPRIDLE="${HYPRIDLE:-hypridle}"   # the tests replace it
+
+: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}"
+run="$XDG_RUNTIME_DIR/hypridle"
+
+# The generated listeners, when they pass; prints them, or fails
+generated() {
+  [[ -f "$gen" && ! -L "$gen" && -O "$gen" ]] || return 1
+  [[ "$(stat -c %s -- "$gen")" -le 4096 ]] || return 1
+  LC_ALL=C awk '
+    function fail() { bad = 1; exit 1 }
+    NR == 1 {
+      if ($0 == "# dotfiles-hypridle lock=on") lock = 1
+      else if ($0 == "# dotfiles-hypridle lock=off") lock = 0
+      else fail()
+      print; next
+    }
+    /^[[:space:]]*$/ || /^#/ { print; next }
+    /^listener \{$/ { if (inl) fail(); inl = 1; t = 0; ot = 0; n++; print; next }
+    /^\}$/ { if (!inl || t != 1 || ot != 1) fail(); inl = 0; print; next }
+    !inl { fail() }
+    /^    timeout = [1-9][0-9]*$/ {
+      v = $3 + 0
+      if (length($3) > 5 || v < 30 || v > 86400) fail()
+      t++; print; next
+    }
+    /^    on-timeout = / {
+      c = substr($0, 18)
+      if (!(c in ON) && c !~ /^timeout 2 qs ipc call lock dim [1-9][0-9]?$/) fail()
+      if (c == "loginctl lock-session") locked = 1
+      ot++; print; next
+    }
+    /^    on-resume = / {
+      c = substr($0, 17)
+      if (!(c in RESUME)) fail()
+      print; next
+    }
+    { fail() }
+    BEGIN {
+      ON["loginctl lock-session"]
+      ON["hyprctl dispatch '\''hl.dsp.dpms({ action = \"disable\" })'\''"]
+      ON["hypr-energia-ociosa suspender"]
+      ON["hypr-energia-ociosa suspender-sempre"]
+      RESUME["timeout 2 qs ipc call lock undim"]
+      RESUME["hyprctl dispatch '\''hl.dsp.dpms({ action = \"enable\" })'\''"]
+    }
+    END {
+      if (bad || inl || NR == 0) exit 1
+      # The lock is on: the idle lock must be there
+      if (lock && !locked) exit 1
+    }' "$gen"
+}
+
+# The repo's general block (everything before the Listeners line)
+general() {
+  awk '/^# ── Listeners ──$/ { found = 1; exit } { print } END { exit !found }' "$repo"
+}
+
+if [[ -L "$run" ]] || ! mkdir -p -m 700 -- "$run" || [[ ! -O "$run" ]]; then
+  echo "hypr-hypridle: pasta $run inválida" >&2
+  exit 1
+fi
+chmod 700 -- "$run"
+tmp="$(mktemp -p "$run" .hypridle-XXXXXX)" || exit 1
+trap 'rm -f -- "$tmp"' EXIT
+
+if head="$(general)" && listeners="$(generated)"; then
+  printf '%s\n\n%s\n' "$head" "$listeners" > "$tmp"
+else
+  cat -- "$repo" > "$tmp"
+fi
+mv -f -- "$tmp" "$run/hypridle.conf"
+trap - EXIT
+exec "$HYPRIDLE" -c "$run/hypridle.conf"

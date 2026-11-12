@@ -8,7 +8,7 @@ captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do vi
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
 | `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
-| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
+| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-hypridle` (sobe o hypridle com os tempos das Configurações), `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
 
@@ -27,7 +27,7 @@ Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pa
 | `modules/autostart.lua` | Polkit, histórico do clipboard, tema GTK e o Quickshell |
 | `dotfiles_settings.lua` | Gerado pelas Configurações (Aparência): borda da janela ativa, cantos, desfoque e cursor. Fora do git |
 | `local.lua.example` | Modelo dos ajustes da máquina (VM e notebook) |
-| `hypridle.conf` | Tempos de inatividade: escurecer, travar, apagar a tela e suspender (veja [Bloqueio e login](#bloqueio-e-login)) |
+| `hypridle.conf` | Travar antes de suspender e os tempos de inatividade padrão; os escolhidos em Configurações → Energia entram pelo `hypr-hypridle` (veja [Tempos de inatividade](#tempos-de-inatividade)) |
 | `hyprlock.conf` | O bloqueio reserva, usado só quando o Quickshell não responde |
 
 E o Quickshell, em `.config/quickshell/`:
@@ -367,18 +367,23 @@ sem a senha. O serviço do bloqueio vem do `install.sh`; o do greetd vem com o p
 
 ### Tempos de inatividade
 
-Ficam no `hypridle.conf` (os mesmos do plano "Equilibrado" do Windows, na tomada e na bateria):
+Escolhidos em Configurações → Energia, um conjunto na tomada e outro na bateria (o shell usa o da fonte de agora e troca
+sozinho ao ligar ou tirar o carregador). Os padrões são os do plano "Equilibrado" do Windows:
 
 | Parado há | Acontece |
 |---|---|
-| 4 min 30 s | A tela escurece, com uma contagem de 30 s até travar |
+| 4 min 30 s | A tela escurece, com uma contagem de 30 s até travar (o "aviso antes de travar") |
 | 5 min | Trava |
-| 5 min 10 s | Apaga a tela |
-| 60 min | Suspende, só na bateria |
+| 5 min 10 s | Apaga a tela (com a trava ligada, sempre no mínimo 10 s depois de travar) |
+| 60 min | Suspende, só na bateria (na tomada o padrão é "Nunca"); trava antes |
 
-Qualquer tecla ou movimento do mouse desfaz o escurecer. Um vídeo tocando segura tudo; música não. Para mudar, edite o
-`timeout` de cada `listener`; o `30` do `dim 30` é a contagem, e tem que ser a diferença entre travar e escurecer
-(300 − 270). Depois, `systemctl --user restart hypridle`.
+Qualquer tecla ou movimento do mouse desfaz o escurecer. Um vídeo tocando segura tudo; música não.
+
+O shell grava os tempos em `~/.config/hypr/hypridle.gerado.conf` (fora do git) e reinicia o `hypridle` se ele estiver rodando.
+O `hypridle` sobe pelo `hypr-hypridle` (drop-in `gerado.conf` do serviço), que junta o bloco `general` do `hypridle.conf` do
+repo com os tempos do shell. Ele só aceita o arquivo do shell se cada linha passar numa lista fechada (tempos de 30 s a 24 h e
+os comandos de sempre); qualquer coisa fora disso, ou o arquivo faltando, volta aos tempos do `hypridle.conf`. O travar antes
+de suspender e o travar ao fechar a tampa ficam sempre no `hypridle.conf` do repo.
 
 ### Fundo
 

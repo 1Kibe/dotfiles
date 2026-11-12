@@ -73,6 +73,8 @@ Singleton {
     Component.onCompleted: {
         applyMotion()
         applyAppearance()
+        // Configurações → Energia lives in its own singleton: load it
+        EnergyApply.applyIdle()
     }
 
     // ── Aparência (T4) ──

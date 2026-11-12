@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Suspends after a long idle time, on battery only (hypridle, 60 min): on
-# power, or on a machine with no battery, it does nothing. Locks first and
-# suspends only when hypr-travar confirms the lock, so the machine never
-# sleeps unlocked through this path.
+# Suspends after a long idle time (hypridle). Locks first and suspends only
+# when hypr-travar confirms the lock, so the machine never sleeps unlocked
+# through this path.
 #
-# Usage: hypr-energia-ociosa suspender
+#   suspender         on battery only: on power, or on a machine with no
+#                     battery, it does nothing (the battery's idle times)
+#   suspender-sempre  always (the idle times on power)
+#
+# Usage: hypr-energia-ociosa suspender|suspender-sempre
 set -uo pipefail
 
 # The power supplies the kernel reports. POWER_SUPPLY_DIR exists only for the
@@ -12,27 +15,32 @@ set -uo pipefail
 # the user can already do.
 supplies="${POWER_SUPPLY_DIR:-/sys/class/power_supply}"
 
-[[ "${1:-}" == suspender ]] || { echo "uso: hypr-energia-ociosa suspender" >&2; exit 2; }
+case "${1:-}" in
+  suspender|suspender-sempre) ;;
+  *) echo "uso: hypr-energia-ociosa suspender|suspender-sempre" >&2; exit 2 ;;
+esac
 
-battery=""
-plugged=""
-for s in "$supplies"/*; do
-  [[ -r "$s/type" ]] || continue
-  case "$(< "$s/type")" in
-    Battery)
-      # A peripheral's battery (mouse, headset) has scope Device: not ours
-      [[ -r "$s/scope" && "$(< "$s/scope")" == Device ]] && continue
-      battery=1
-      ;;
-    Mains|USB|USB_C|USB_PD)
-      [[ -r "$s/online" && "$(< "$s/online")" == 1 ]] && plugged=1
-      ;;
-  esac
-done
+if [[ "$1" == suspender ]]; then
+  battery=""
+  plugged=""
+  for s in "$supplies"/*; do
+    [[ -r "$s/type" ]] || continue
+    case "$(< "$s/type")" in
+      Battery)
+        # A peripheral's battery (mouse, headset) has scope Device: not ours
+        [[ -r "$s/scope" && "$(< "$s/scope")" == Device ]] && continue
+        battery=1
+        ;;
+      Mains|USB|USB_C|USB_PD)
+        [[ -r "$s/online" && "$(< "$s/online")" == 1 ]] && plugged=1
+        ;;
+    esac
+  done
 
-# No battery (desktop, VM) or on power: nothing to do
-if [[ -z "$battery" || -n "$plugged" ]]; then
-  exit 0
+  # No battery (desktop, VM) or on power: nothing to do
+  if [[ -z "$battery" || -n "$plugged" ]]; then
+    exit 0
+  fi
 fi
 
 hypr-travar || exit 1
