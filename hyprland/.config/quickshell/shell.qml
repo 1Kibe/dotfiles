@@ -8,6 +8,7 @@ import qs.clipboard
 import qs.lock
 import qs.wallpaper
 import qs.state
+import qs.settings
 import "settings/schema.js" as Schema
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
@@ -49,6 +50,11 @@ ShellRoot {
     Countdown {}
     CaptureToast {}
     CaptureCard {}
+
+    // Configurações → Monitores: "Manter estas telas?" while an arrangement
+    // is tried, and the screens' numbers on Identificar
+    MonitorKeep {}
+    MonitorIdentify {}
 
     IpcHandler {
         target: "capture"

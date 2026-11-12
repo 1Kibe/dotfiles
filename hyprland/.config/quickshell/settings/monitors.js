@@ -97,6 +97,9 @@ function generate(screens, modes, lua) {
         byName[s.name] = s
     }
     const boxes = []
+    // The mode written is the screen's own (from its list), never the
+    // number asked for
+    const chosen = {}
     for (const s of screens) {
         if (!s.enabled)
             continue
@@ -112,9 +115,11 @@ function generate(screens, modes, lua) {
             continue
         }
         const list = (modes && Array.isArray(modes[s.name]) ? modes[s.name] : []).map(parseMode).filter(m => m)
-        if (!s.mode || !isInt(s.mode.w) || !isInt(s.mode.h) || typeof s.mode.r !== "number"
-                || !list.some(m => sameMode(m, s.mode)))
+        const listed = s.mode && isInt(s.mode.w) && isInt(s.mode.h) && typeof s.mode.r === "number"
+                       ? list.find(m => sameMode(m, s.mode)) : undefined
+        if (!listed)
             return fail(`Tela ${s.name}: resolução que ela não oferece`)
+        chosen[s.name] = listed
         if (!isInt(s.x) || !isInt(s.y) || Math.abs(s.x) > MAX_POSITION || Math.abs(s.y) > MAX_POSITION)
             return fail(`Tela ${s.name}: posição fora do limite`)
         if (!isInt(s.transform) || s.transform < 0 || s.transform > 7)
@@ -153,9 +158,71 @@ function generate(screens, modes, lua) {
             fields = `output = ${lua(s.name)}, disabled = false, mode = "preferred", position = "auto", scale = "auto", `
                      + `mirror = ${lua(s.mirror)}`
         else
-            fields = `output = ${lua(s.name)}, disabled = false, mode = ${lua(`${s.mode.w}x${s.mode.h}@${s.mode.r}`)}, `
+            fields = `output = ${lua(s.name)}, disabled = false, `
+                     + `mode = ${lua(`${chosen[s.name].w}x${chosen[s.name].h}@${chosen[s.name].r}`)}, `
                      + `position = ${lua(`${s.x}x${s.y}`)}, scale = ${lua(s.scale)}, transform = ${lua(s.transform)}`
         text += `hl.monitor({ ${fields} })\n`
     }
     return { ok: true, text: text }
+}
+
+// The screens as Hyprland has them (hyprctl -j monitors all, the turned-off
+// ones too), at most 9, only port names (never its FALLBACK), the
+// description cleaned for showing: [{ name, description, enabled, mode
+// (from the screen's list, or null), x, y, scale, transform, mirror, modes
+// (its list, as text) }]
+function fromHyprctl(list) {
+    const out = []
+    if (!Array.isArray(list))
+        return out
+    for (const m of list) {
+        if (out.length >= 9)
+            break
+        if (!m || !validName(m.name) || out.some(s => s.name === m.name))
+            continue
+        const modes = Array.isArray(m.availableModes) ? m.availableModes.filter(t => parseMode(t) !== null) : []
+        const now = { w: m.width, h: m.height, r: typeof m.refreshRate === "number" ? m.refreshRate : 0 }
+        const listed = modes.map(parseMode).find(x => sameMode(x, now))
+        const mirror = typeof m.mirrorOf === "string" && validName(m.mirrorOf) ? m.mirrorOf : ""
+        out.push({
+            name: m.name,
+            description: cleanDescription(m.description),
+            enabled: m.disabled !== true,
+            mode: listed || null,
+            x: isInt(m.x) ? m.x : 0,
+            y: isInt(m.y) ? m.y : 0,
+            scale: typeof m.scale === "number" && isFinite(m.scale) ? m.scale : 1,
+            transform: isInt(m.transform) ? m.transform : 0,
+            mirror: mirror,
+            modes: modes
+        })
+    }
+    return out
+}
+
+// { name: [modes] } for generate()
+function modesOf(screens) {
+    const out = {}
+    for (const s of Array.isArray(screens) ? screens : [])
+        out[s.name] = s.modes
+    return out
+}
+
+// The scales generate() takes for this mode (0,5 to 4, every 0,05, whole
+// logical pixels, at least 640×360)
+function scalesFor(mode) {
+    const out = []
+    if (!mode || !isInt(mode.w) || !isInt(mode.h))
+        return out
+    for (let i = MIN_SCALE * 20; i <= MAX_SCALE * 20; i++) {
+        const scale = i / 20
+        const w = mode.w / scale
+        const h = mode.h / scale
+        if (Math.abs(w - Math.round(w)) > 0.01 || Math.abs(h - Math.round(h)) > 0.01)
+            continue
+        if (Math.max(w, h) < MIN_LOGICAL[0] || Math.min(w, h) < MIN_LOGICAL[1])
+            continue
+        out.push(scale)
+    }
+    return out
 }
