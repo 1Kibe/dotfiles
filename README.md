@@ -1,6 +1,6 @@
 # dotfiles
 
-Configurações pessoais de desktop Linux: **Arch Linux + XFCE + i3** e **Hyprland** (em construção), com Neovim, Kitty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
+Configurações pessoais de desktop Linux: **Arch Linux** com **Hyprland** (em construção) e o **XFCE** como sessão de reserva, com Neovim, Kitty e Rofi. Cada ambiente fica numa pasta própria e é linkado no `$HOME` com **GNU Stow**.
 
 ![Prévia do desktop: Neovim com dashboard alpha, terminal Alacritty Gruvbox e painéis XFCE](assets/preview.png)
 
@@ -53,7 +53,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 | Pasta | Vira | Quando entra |
 |---|---|---|
 | `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
-| `xfce/` | `~/.config/xfce4`, `i3`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
+| `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio) e `/etc/profile.d/tmout.sh` (console de texto) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM no `hyprland`; o `tmout.sh` sempre |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
@@ -194,15 +194,11 @@ O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todo
 
 </details>
 
-### i3
-
-Window manager em mosaico, com `Super` como tecla principal. `Super+Enter` abre o terminal, `Super+D` abre o Rofi (igual ao XFCE), `Super+Shift+Q` fecha a janela, `Super+1` a `Super+0` trocam de área de trabalho e `Super+Shift+R` reinicia o i3. Junto com ele sobem o `nm-applet`, o `xss-lock` com `i3lock` (trava a tela ao suspender) e os programas de autostart, pelo `dex`.
-
 ### Login e bloqueio
 
 A tela de login é do **greetd**, com uma tela própria em **Quickshell** dentro do compositor **cage**
 (`system/greetd`, copiada para `/etc/greetd`). O `start-greeter` sobe a tela com o teclado do sistema e, na VM, desenha
-pela CPU. Ela lista as sessões (Hyprland, Xfce, i3), lembra o último usuário e usa o mesmo fundo do bloqueio, guardado em
+pela CPU. Ela lista as sessões (Hyprland e Xfce), lembra o último usuário e usa o mesmo fundo do bloqueio, guardado em
 `/usr/local/share/dotfiles/login` (o login copia para `/var/cache/qs-greeter` e confere antes de mostrar).
 
 No Hyprland, a tela trava com o bloqueio do Quickshell (`Super+L`, menu de energia, tampa, ou sozinha pelo **hypridle**
@@ -247,7 +243,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 - **Wallpaper por monitor.** O XFCE também grava no `xfce4-desktop.xml` o nome de cada monitor e o caminho do wallpaper com a sua pasta pessoal (`/home/<usuário>`). O filtro `tools/xfce-desktop-clean.awk` tira esse bloco antes de cada commit.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
-- **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com a tela de login em Quickshell (`system/greetd/quickshell`), que lista Hyprland, Xfce e i3. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
+- **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com a tela de login em Quickshell (`system/greetd/quickshell`), que lista Hyprland e Xfce. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
 - **Se a tela de login não abrir.** Aperte `Ctrl+Alt+F2` (na VM VMware: `Ctrl+Alt+Espaço` e depois `F2` segurando `Ctrl+Alt`), entre pelo terminal e troque o login pelo `agreety`, o de texto que vem com o greetd: `sudo cp /etc/greetd/config.toml.bak /etc/greetd/config.toml && sudo systemctl restart greetd`. A volta está em [hyprland/README.md](hyprland/README.md#tela-de-login). Para entrar direto dali: `uwsm start hyprland.desktop` (Hyprland) ou `startx /usr/bin/startxfce4` (XFCE).
 - **Não mova a pasta depois de linkar.** Para mover: `./install.sh unlink`, mova a pasta e rode `./install.sh link` no lugar novo.
 - **Backups ficam fora do git.** A pasta `.backups/` está no `.gitignore`, porque um backup do `~/.config` pode ter tokens e cookies de outros programas.
@@ -277,7 +273,6 @@ dotfiles/
 ├── xfce/.local/bin/xfce-wallpaper        [aplica o wallpaper no login]
 ├── xfce/.config/
 │   ├── autostart/xfce-wallpaper.desktop
-│   ├── i3/config
 │   ├── gtk-3.0/bookmarks
 │   ├── Thunar/
 │   │   ├── accels.scm

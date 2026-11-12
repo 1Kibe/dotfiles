@@ -4,7 +4,7 @@
 #   - one package per line; '#' starts a comment
 #   - [section] is the environment the packages belong to:
 #       common    always installed
-#       xfce      XFCE + i3
+#       xfce      XFCE (the fallback X11 session)
 #       hyprland  Hyprland + Quickshell
 #   - "aur:" prefix installs through the AUR helper (paru/yay) instead of pacman
 
@@ -93,12 +93,6 @@ breeze-icons           # breeze-dark icon theme
 xorg-server
 xorg-xinit
 
-# ── Window manager & essentials ──
-i3-wm
-i3status
-i3lock
-xss-lock   # screen locker integration
-
 # ── XFCE desktop ──
 xfce4                  # group: panel, xfwm4, xfdesktop, session, settings, power manager...
 xfce4-notifyd          # notifications (xfce4-notifyd.xml)
@@ -113,7 +107,6 @@ noto-fonts             # fallback for accents, symbols and other scripts
 
 # ── Audio ──
 pavucontrol
-libpulse               # pactl in the i3 config (volume keys)
 
 # ── Network applet ──
 network-manager-applet
@@ -123,9 +116,6 @@ blueman
 
 # ── Input / automation (X11) ──
 xdotool
-
-# ── Autostart ──
-dex
 
 # ── Clipboard (X11, also used by Neovim) ──
 xclip

@@ -7,7 +7,7 @@
 # $HOME (common/.config/nvim -> ~/.config/nvim):
 #
 #   common/     always linked (nvim, kitty, starship, bash, rofi, wallpapers)
-#   xfce/       XFCE + i3
+#   xfce/       XFCE (the fallback X11 session)
 #   hyprland/   Hyprland + Quickshell (skipped while it has no configs)
 #
 # system/ holds files that go outside $HOME (copied with sudo, not linked).
@@ -116,7 +116,7 @@ ASSUME_YES=""
 
 # Configs this repo no longer has: their ~/.config/<name> links (stow's or
 # the old install.sh's) now point at nothing (remove_dropped_links)
-DROPPED_CONFIGS=(alacritty)
+DROPPED_CONFIGS=(alacritty i3)
 
 # Folders shared by several packages. Stow must link what is inside them,
 # never the folder itself: a linked ~/.config would put every app's config
@@ -208,7 +208,7 @@ usage() {
 # ── Environments ─────────────────────────────────────────────────────────────
 env_label() {
   case "$1" in
-    xfce)     echo "XFCE + i3" ;;
+    xfce)     echo "XFCE" ;;
     hyprland) echo "Hyprland + Quickshell" ;;
     *)        echo "$1" ;;
   esac
@@ -443,7 +443,7 @@ install_optional_deps() {
 }
 
 # ── Services ─────────────────────────────────────────────────────────────────
-# greetd shows the login screen for every environment (Hyprland, Xfce, i3).
+# greetd shows the login screen for every environment (Hyprland, Xfce).
 # Only enabled, not started: starting it now would switch to the login screen
 # in the middle of the run. A LightDM set up by an older install.sh is
 # replaced; any other display manager (gdm, sddm...) is kept.
@@ -976,7 +976,7 @@ print_summary() {
   echo ""
   echo "  📋 Next steps:"
   if has_env xfce || has_env hyprland; then
-    echo "  • Reboot and pick the session (Hyprland, Xfce or i3) on the login screen"
+    echo "  • Reboot and pick the session (Hyprland or Xfce) on the login screen"
   fi
   echo "  • Open Neovim and let lazy.nvim bootstrap the plugins"
   echo "    (just run 'nvim' and wait – it's automatic)"
