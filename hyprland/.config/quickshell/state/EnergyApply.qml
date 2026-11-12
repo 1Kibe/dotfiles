@@ -16,6 +16,14 @@ import "../settings/idle.js" as Idle
 // running: a machine where it is stopped on purpose is never started by
 // this. 1.5 s later the service must be active; if not, the last good file
 // comes back (none: the repo's times) and it is restarted again.
+//
+// The lid (lidAction): "lock-suspend" is logind's own handling (it locks
+// first, hypridle's before_sleep_cmd). "lock" keeps logind from sleeping on
+// the lid with an inhibitor, fixed arguments, no password (the active
+// session may hold the lid). It never outlives the shell: each one lasts
+// 120 s (timeout) and a new one comes every 60 s, before the old one ends;
+// if the shell stops, the last one runs out and the lid sleeps again, the
+// safe side. The lid bind in keybinds.lua locks either way.
 Singleton {
     id: root
 
@@ -164,18 +172,110 @@ Singleton {
         })
     }
 
+    // ── The lid ──
+    readonly property var inhibitCommand: [
+        "timeout", "120", "systemd-inhibit", "--what=handle-lid-switch", "--mode=block", "--who=Quickshell",
+        "--why=Só travar ao fechar a tampa", "--", "sleep", "infinity"
+    ]
+    // The inhibitor is confirmed up (the page shows the choice only then)
+    property bool lidHeld: false
+    // The choice before "lock", given back when the lid cannot be held at
+    // all; a renewal that fails later (the session not the active one for a
+    // moment) only tries again at the next one
+    property string lidBefore: "lock-suspend"
+    property bool firstHold: false
+    property var holders: []
+    function applyLid() {
+        if (!SettingsStore.ready)
+            return
+        if (SettingsStore.get("lidAction") === "lock") {
+            if (!renewTimer.running) {
+                firstHold = true
+                holdLid()
+                renewTimer.start()
+            }
+        } else {
+            renewTimer.stop()
+            releaseLid()
+            lidBefore = SettingsStore.get("lidAction")
+        }
+    }
+    Timer {
+        id: renewTimer
+        interval: 60000
+        repeat: true
+        onTriggered: root.holdLid()
+    }
+    function holdLid() {
+        const p = holderComponent.createObject(root, { command: inhibitCommand })
+        holders = holders.concat([p])
+        p.running = true
+        confirmTimer.restart()
+    }
+    function releaseLid() {
+        for (const p of holders)
+            p.running = false
+        holders = []
+        lidHeld = false
+    }
+    Component {
+        id: holderComponent
+        Process {
+            id: holder
+            onRunningChanged: {
+                if (!running) {
+                    root.holders = root.holders.filter(p => p !== holder)
+                    holder.destroy()
+                }
+            }
+        }
+    }
+    Timer {
+        id: confirmTimer
+        interval: 1500
+        onTriggered: root.confirmLid()
+    }
+    function confirmLid() {
+        run(["systemd-inhibit", "--list", "--no-pager", "--no-legend", "--mode=block"], (code, out) => {
+            if (SettingsStore.get("lidAction") !== "lock")
+                return
+            const held = out.split("\n").some(l => l.startsWith("Quickshell ") && l.includes(" handle-lid-switch "))
+            if (held) {
+                root.lidHeld = true
+                root.firstHold = false
+                return
+            }
+            root.lidHeld = false
+            if (!root.firstHold)
+                return
+            // Never held: back to the choice before, with the failure
+            renewTimer.stop()
+            root.releaseLid()
+            SettingsApply.failed("lidAction", "Não deu para segurar a tampa")
+            SettingsStore.set("lidAction", root.lidBefore)
+        })
+    }
+
     Connections {
         target: SettingsStore
-        function onReadyChanged() { root.applyIdle() }
+        function onReadyChanged() {
+            root.applyIdle()
+            root.applyLid()
+        }
         function onChanged(key) {
             if (key.startsWith("idle")) {
                 root.failKey = key
                 root.rollingBack = false
                 root.applyIdle()
+            } else if (key === "lidAction") {
+                root.applyLid()
             }
         }
     }
-    Component.onCompleted: applyIdle()
+    Component.onCompleted: {
+        applyIdle()
+        applyLid()
+    }
 
     // ── Commands (argument lists only) ──
     component Job: Process {

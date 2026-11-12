@@ -209,9 +209,11 @@ var KEYS = {
     idleLockBat: idleKey("bateria", 300, "Travar", LOCK_DESC, ["bloquear"]),
     idleScreenOffBat: idleKey("bateria", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
     idleSuspendBat: idleKey("bateria", 3600, "Suspender", "", ["dormir"]),
+    // The lid always locks (keybinds.lua); "lock" only keeps it from sleeping
     lidAction: { def: "lock-suspend", type: "enum", page: "energia", card: "tampa", label: "Ao fechar a tampa",
-                 options: opts([["lock-suspend", "Travar e suspender"], ["lock", "Só travar"], ["nothing", "Nada"]]),
-                 desc: "Com monitor externo, só trava", syn: ["notebook"] },
+                 options: opts([["lock-suspend", "Travar e suspender"], ["lock", "Só travar, sem suspender"]]),
+                 desc: "Só travar: fechado na bolsa, o notebook fica ligado, esquenta e gasta bateria. Com monitor externo, só trava",
+                 syn: ["notebook"] },
     batteryConservation: { def: false, type: "bool", machine: true, page: "energia", card: "bateria",
                            label: "Conservação da bateria", desc: "Carrega até cerca de 60%", syn: ["lenovo"] },
     powerMenuItems: { def: ["lock", "logout", "suspend", "reboot", "poweroff"], type: "list", options: POWER_ITEMS,
