@@ -20,8 +20,10 @@ var ROLES = [
     ["color13", "purple"],
     ["color14", "aqua"],
     ["color15", "fg"],
-    // The prompt's orange (starship.toml uses 208: the 16 colors have none)
-    ["color208", "orange"]
+    // The prompt (starship.toml): 208 its orange, 250 the arrow in the
+    // accent's light tone (Configurações → Destaque); the 16 colors have none
+    ["color208", "orange"],
+    ["color250", "accentLight"]
 ]
 
 // Only a plain "#rrggbb" (what a QML color with full alpha prints) goes into

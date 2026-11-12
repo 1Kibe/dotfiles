@@ -88,11 +88,12 @@ Singleton {
     function applyAppearance() {
         if (!SettingsStore.ready)
             return
-        applyKitty()
         const v = SettingsStore.values
         const pair = Appearance.accentPair(v.accent, palette())
         Theme.accent = pair.accent
         Theme.accentLight = pair.light
+        // Kitty's colors, the prompt's arrow in the accent among them
+        applyKitty()
         Theme.barOpacity = v.barOpacity
         Theme.barHeight = v.barHeight
         moveBar(v.barPosition === "bottom")
@@ -209,7 +210,7 @@ Singleton {
         kittyWanted = Kitty.colorsConf({
             bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
             green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua,
-            orange: Theme.orange
+            orange: Theme.orange, accentLight: Theme.accentLight
         })
         writeKitty()
     }
