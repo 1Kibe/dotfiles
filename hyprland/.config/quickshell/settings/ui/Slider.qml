@@ -14,6 +14,9 @@ Item {
     property real step: 1
     property real value: 0
     property string suffix: ""
+    // The value as it reads, with its unit (settings/format.js); "" keeps
+    // the plain number and suffix
+    property string valueText: ""
     signal moved(real value)
 
     readonly property real fraction: to > from ? Math.max(0, Math.min(1, (value - from) / (to - from))) : 0
@@ -91,11 +94,12 @@ Item {
         id: number
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        width: 48
+        width: 64
         horizontalAlignment: Text.AlignRight
-        text: `${root.value.toFixed(root.decimals).replace(".", ",")}${root.suffix}`
+        text: root.valueText !== "" ? root.valueText : `${root.value.toFixed(root.decimals).replace(".", ",")}${root.suffix}`
         color: Theme.fg4
-        font.family: Theme.monoFont
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
+        font.features: { "tnum": 1 }
     }
 }

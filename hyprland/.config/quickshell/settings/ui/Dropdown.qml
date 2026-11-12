@@ -58,7 +58,7 @@ ColumnLayout {
             text: root.summary
             elide: Text.ElideRight
             color: Theme.text
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 1
         }
         Text {
@@ -69,7 +69,7 @@ ColumnLayout {
             text: "󰅀"
             rotation: root.expanded ? 180 : 0
             color: Theme.fg4
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             Behavior on rotation {
                 enabled: !Theme.reduceMotion
                 NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic }
@@ -122,7 +122,7 @@ ColumnLayout {
                 anchors.verticalCenter: parent.verticalCenter
                 text: `${item.chosen ? "󰄬" : "  "}  ${item.modelData.label}`
                 color: Theme.text
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
             }
             MouseArea {

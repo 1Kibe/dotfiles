@@ -47,7 +47,7 @@ Rectangle {
         Text {
             text: root.title
             color: Theme.fg4
-            font.family: Theme.font
+            font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 1
             font.bold: true
         }

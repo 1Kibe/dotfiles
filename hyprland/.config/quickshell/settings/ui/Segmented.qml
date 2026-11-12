@@ -74,7 +74,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: option.modelData.label
                     color: Theme.text
-                    font.family: Theme.font
+                    font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1
                 }
                 MouseArea {

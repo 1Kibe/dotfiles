@@ -11,6 +11,8 @@ Rectangle {
     property string value
     property string placeholder
     property bool invalid: false
+    // Paths and name patterns: monospaced, only inside the field
+    property bool mono: false
     property alias input: edit
     signal accepted(string text)
 
@@ -40,7 +42,7 @@ Rectangle {
         clip: true
         color: Theme.text
         selectionColor: Theme.accent
-        font.family: Theme.font
+        font.family: root.mono ? Theme.monoFont : Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
         onAccepted: root.accepted(text)
         onActiveFocusChanged: {

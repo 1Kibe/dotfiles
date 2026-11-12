@@ -40,6 +40,8 @@ Singleton {
     property string loadError: ""
 
     signal changed(string key)
+    // The file was written (the page's "Salvo"): only after a real write
+    signal saved()
 
     // The repo's defaults (checked) and the machine's choices (checked, only
     // keys that differ)
@@ -95,6 +97,21 @@ Singleton {
         const next = Object.assign({}, user)
         delete next[key]
         apply(next, [key])
+        return true
+    }
+
+    // A group's "Restaurar padrão": these keys back to the defaults in one
+    // change (one write); unknown keys are left out
+    function resetMany(keys) {
+        if (!ready || !Array.isArray(keys))
+            return false
+        const gone = keys.filter(k => spec(k) && (own(user, k) || own(extra, k)))
+        if (gone.length === 0)
+            return false
+        const next = Object.assign({}, user)
+        for (const k of gone)
+            delete next[k]
+        apply(next, gone)
         return true
     }
 
@@ -462,6 +479,8 @@ Singleton {
         writing = false
         if (dirty)
             saveTimer.restart()
+        else if (ok)
+            saved()
     }
 
     // ── Commands (argument lists only) ──
