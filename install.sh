@@ -916,8 +916,10 @@ install_battery_rule() {
   if command -v udevadm &>/dev/null; then
     sudo udevadm verify "${UDEV_RULES_DIR}/90-dotfiles-bateria.rules" >/dev/null 2>&1 \
       || warn "udevadm verify did not accept the battery limit rule"
-    sudo udevadm control --reload
-    sudo udevadm trigger --action=add --subsystem-match=platform --sysname-match=VPC2004:00
+    sudo udevadm control --reload \
+      || warn "udevadm did not reload the rules (the battery limit works from the next boot)"
+    sudo udevadm trigger --action=add --subsystem-match=platform --sysname-match=VPC2004:00 \
+      || warn "udevadm did not apply the battery limit rule now (it works from the next boot)"
   fi
   log "Battery limit rule installed (${UDEV_RULES_DIR}/90-dotfiles-bateria.rules)."
 }

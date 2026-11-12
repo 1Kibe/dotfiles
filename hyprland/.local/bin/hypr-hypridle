@@ -6,12 +6,17 @@
 # hypridle.conf, the part before its "# ── Listeners ──" line. The listeners
 # come from the shell's hypridle.gerado.conf only when that file is a
 # regular file of this user (never a link), small, and every line passes a
-# closed grammar: listener blocks with one timeout of 30 to 86400 s and
-# on-timeout / on-resume taken from a fixed list of commands, and the idle
-# lock among them unless the file's first line says the lock is off.
-# Anything else (missing, a link, an unknown line or command) gives the
-# repo's own listeners, today's times. The result goes to a 700 folder in
-# XDG_RUNTIME_DIR, read by hypridle -c.
+# closed grammar: the generator's header first and no other comment
+# (hyprlang reads some comments as directives), listener blocks with one
+# timeout of 30 to 86400 s and on-timeout / on-resume taken from a fixed
+# list of commands; with the lock on, the idle lock among them, at most
+# 4 h, the dim before it and the screen off at least 10 s after it.
+# Anything else (missing, a link, an unknown line or command, the order
+# turned around) gives the repo's own listeners, today's times. The result
+# goes to a 700 folder in XDG_RUNTIME_DIR, read by hypridle -c, with a note
+# of which ones it used ("origem": gerado or padrao, for the page). If that
+# folder cannot be used, hypridle reads the repo's hypridle.conf as it is:
+# never no lock at all.
 set -u
 
 conf_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
@@ -19,7 +24,14 @@ repo="$conf_dir/hypridle.conf"
 gen="$conf_dir/hypridle.gerado.conf"
 HYPRIDLE="${HYPRIDLE:-hypridle}"   # the tests replace it
 
-: "${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}"
+# The repo's own config, as it is
+repo_only() {
+  echo "hypr-hypridle: $1; usando o hypridle.conf do repo" >&2
+  [[ -z "${tmp:-}" ]] || rm -f -- "$tmp"   # exec skips the EXIT trap
+  exec "$HYPRIDLE" -c "$repo"
+}
+
+[[ -n "${XDG_RUNTIME_DIR:-}" ]] || repo_only "XDG_RUNTIME_DIR ausente"
 run="$XDG_RUNTIME_DIR/hypridle"
 
 # The generated listeners, when they pass; prints them, or fails
@@ -34,19 +46,26 @@ generated() {
       else fail()
       print; next
     }
-    /^[[:space:]]*$/ || /^#/ { print; next }
-    /^listener \{$/ { if (inl) fail(); inl = 1; t = 0; ot = 0; n++; print; next }
-    /^\}$/ { if (!inl || t != 1 || ot != 1) fail(); inl = 0; print; next }
+    /^$/ { next }
+    /^listener \{$/ { if (inl) fail(); inl = 1; t = 0; ot = 0; tv = 0; cmd = ""; print; next }
+    /^\}$/ {
+      if (!inl || t != 1 || ot != 1) fail()
+      inl = 0
+      if (cmd == LOCK) { if (lockt) fail(); lockt = tv }
+      else if (cmd == OFF) { if (offt) fail(); offt = tv }
+      else if (cmd ~ /^timeout 2 qs ipc call lock dim /) { if (dimt) fail(); dimt = tv }
+      print; next
+    }
     !inl { fail() }
     /^    timeout = [1-9][0-9]*$/ {
       v = $3 + 0
       if (length($3) > 5 || v < 30 || v > 86400) fail()
-      t++; print; next
+      t++; tv = v; print; next
     }
     /^    on-timeout = / {
       c = substr($0, 18)
       if (!(c in ON) && c !~ /^timeout 2 qs ipc call lock dim [1-9][0-9]?$/) fail()
-      if (c == "loginctl lock-session") locked = 1
+      cmd = c
       ot++; print; next
     }
     /^    on-resume = / {
@@ -56,8 +75,10 @@ generated() {
     }
     { fail() }
     BEGIN {
-      ON["loginctl lock-session"]
-      ON["hyprctl dispatch '\''hl.dsp.dpms({ action = \"disable\" })'\''"]
+      LOCK = "loginctl lock-session"
+      OFF = "hyprctl dispatch '\''hl.dsp.dpms({ action = \"disable\" })'\''"
+      ON[LOCK]
+      ON[OFF]
       ON["hypr-energia-ociosa suspender"]
       ON["hypr-energia-ociosa suspender-sempre"]
       RESUME["timeout 2 qs ipc call lock undim"]
@@ -65,8 +86,15 @@ generated() {
     }
     END {
       if (bad || inl || NR == 0) exit 1
-      # The lock is on: the idle lock must be there
-      if (lock && !locked) exit 1
+      if (lock) {
+        # The idle lock, at most 4 h; the dim leads to it; the screen goes
+        # dark only after it (a key on a dark screen shows the lock)
+        if (!lockt || lockt > 14400) exit 1
+        if (dimt && dimt >= lockt) exit 1
+        if (offt && offt < lockt + 10) exit 1
+      } else if (lockt || dimt) {
+        exit 1
+      }
     }' "$gen"
 }
 
@@ -75,19 +103,21 @@ general() {
   awk '/^# ── Listeners ──$/ { found = 1; exit } { print } END { exit !found }' "$repo"
 }
 
-if [[ -L "$run" ]] || ! mkdir -p -m 700 -- "$run" || [[ ! -O "$run" ]]; then
-  echo "hypr-hypridle: pasta $run inválida" >&2
-  exit 1
+if [[ -L "$run" ]] || ! mkdir -p -m 700 -- "$run" 2>/dev/null || [[ ! -O "$run" ]]; then
+  repo_only "pasta $run inválida"
 fi
-chmod 700 -- "$run"
-tmp="$(mktemp -p "$run" .hypridle-XXXXXX)" || exit 1
+chmod 700 -- "$run" || repo_only "pasta $run inválida"
+tmp="$(mktemp -p "$run" .hypridle-XXXXXX)" || repo_only "não deu para escrever em $run"
 trap 'rm -f -- "$tmp"' EXIT
 
 if head="$(general)" && listeners="$(generated)"; then
-  printf '%s\n\n%s\n' "$head" "$listeners" > "$tmp"
+  printf '%s\n\n%s\n' "$head" "$listeners" > "$tmp" || repo_only "não deu para escrever em $run"
+  origin=gerado
 else
-  cat -- "$repo" > "$tmp"
+  cat -- "$repo" > "$tmp" || repo_only "não deu para escrever em $run"
+  origin=padrao
 fi
-mv -f -- "$tmp" "$run/hypridle.conf"
+mv -f -- "$tmp" "$run/hypridle.conf" || repo_only "não deu para escrever em $run"
 trap - EXIT
+printf '%s\n' "$origin" > "$run/origem" 2>/dev/null || true
 exec "$HYPRIDLE" -c "$run/hypridle.conf"
