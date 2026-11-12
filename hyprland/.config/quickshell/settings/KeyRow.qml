@@ -39,6 +39,7 @@ OptionRow {
                 KeyControl {
                     id: control
                     key: parent.modelData
+                    narrow: row.keys.length > 1
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.horizontalCenter: row.keys.length > 1 ? parent.horizontalCenter : undefined
                     width: Math.min(implicitWidth, parent.width)

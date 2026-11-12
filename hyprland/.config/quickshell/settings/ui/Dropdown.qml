@@ -7,7 +7,8 @@ import qs.theme
 // on or off (the bar's items before the reorderable list of T5). A long list
 // (the fonts) scrolls inside, at most `rows` lines tall, opening on the
 // chosen one. A list of choices too long for the button reads as a count
-// ("3 de 5", "Todos"), never cut with "…".
+// ("3 de 5", "Todos"), never cut with "…". 220 px wide, or the width it
+// is given (a paired row's column).
 //
 // Motion (Theme tokens, times the speed): the list unrolls and fades in
 // (animNormal) and rolls back faster (animFast), its options kept until it
@@ -52,6 +53,7 @@ ColumnLayout {
 
     Rectangle {
         Layout.preferredWidth: 220
+        Layout.fillWidth: true
         implicitHeight: 28
         radius: Theme.radius
         color: mouse.containsMouse ? Theme.bg2 : Theme.bg1
@@ -99,6 +101,7 @@ ColumnLayout {
         id: list
         readonly property real fullHeight: Math.min(count, root.rows) * 28 - (count > 0 ? 2 : 0)
         Layout.preferredWidth: 220
+        Layout.fillWidth: true
         // Unrolls with `reveal`; reduce motion: full height, fading only
         Layout.preferredHeight: Theme.reduceMotion ? fullHeight : fullHeight * root.reveal
         visible: count > 0 && root.reveal > 0

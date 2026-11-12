@@ -28,7 +28,9 @@
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
-// of a paired row's two controls, [{ icon, label }])
+// of a paired row's two controls, [{ icon, label }]); flush (the component
+// draws its own rows: no inner margin). A component may say `empty: true`
+// (nothing to show here): its group hides
 
 // ── Pages, in the order of the rail ──
 var PAGES = [
@@ -59,7 +61,11 @@ var CARDS = {
                { id: "seguranca", title: "Segurança", component: "LockSecurity" }],
     captura: [{ id: "capturas", title: "Capturas" }, { id: "gravacao", title: "Gravação" },
               { id: "clipboard", title: "Clipboard" }, { id: "limpar", title: "Histórico", component: "ClipboardClear" }],
-    energia: [{ id: "tomada", title: "Na tomada" }, { id: "bateria", title: "Na bateria" }, { id: "tampa", title: "Tampa" },
+    energia: [{ id: "avisos", title: "Avisos", component: "EnergyNotices", strip: true },
+              { id: "tempos", title: "Inatividade",
+                columns: [{ icon: "󰚥", label: "Na tomada" }, { icon: "󰁹", label: "Na bateria" }] },
+              { id: "tampa", title: "Tampa" },
+              { id: "bateria", title: "Bateria", component: "BatteryLimit", flush: true },
               { id: "menu", title: "Menu de energia" }],
     monitores: [{ id: "arranjo", title: "Arranjo", component: "MonitorLayout" }, { id: "barra", title: "Barra" },
                 { id: "luz", title: "Luz noturna" }],
@@ -110,16 +116,17 @@ var IDLE_TIMES = opts([[0, "Nunca"], [60, "1 min"], [120, "2 min"], [180, "3 min
                        [2700, "45 min"], [3600, "1 h"], [7200, "2 h"], [10800, "3 h"], [14400, "4 h"]])
 var IDLE_WARNINGS = opts([[0, "Sem aviso"], [10, "10 s"], [30, "30 s"], [60, "1 min"]])
 
-function idleKey(card, def, label, desc, syn) {
-    return { def: def, type: "enum", options: IDLE_TIMES, page: "energia", card: card, label: label,
-             desc: desc, syn: syn }
+// One row per step, the power and the battery choice side by side (pair)
+function idleKey(pair, def, label, desc, syn) {
+    return { def: def, type: "enum", options: IDLE_TIMES, page: "energia", card: "tempos", pair: pair,
+             label: label, desc: desc, syn: syn }
 }
-function warnKey(card) {
-    return { def: 30, type: "enum", options: IDLE_WARNINGS, page: "energia", card: card,
+function warnKey(pair) {
+    return { def: 30, type: "enum", options: IDLE_WARNINGS, page: "energia", card: "tempos", pair: pair,
              label: "Aviso antes de travar", desc: "A tela escurece e conta até travar", syn: ["escurecer", "tela"] }
 }
 var LOCK_DESC = "Nunca: só trava pelo Super+L, pelo menu e ao fechar a tampa"
-var OFF_DESC = "Com a trava ligada, apaga no mínimo 10 s depois de travar"
+var OFF_DESC = "Com a trava ligada, sempre 10 s ou mais depois de travar"
 
 var KEYS = {
     // ── Tema e cores ──
@@ -219,14 +226,14 @@ var KEYS = {
 
     // ── Energia ──
     // On power suspending is "Nunca" by default (it used to do nothing there)
-    idleWarnAc: warnKey("tomada"),
-    idleLockAc: idleKey("tomada", 300, "Travar", LOCK_DESC, ["bloquear"]),
-    idleScreenOffAc: idleKey("tomada", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
-    idleSuspendAc: idleKey("tomada", 0, "Suspender", "", ["dormir"]),
-    idleWarnBat: warnKey("bateria"),
-    idleLockBat: idleKey("bateria", 300, "Travar", LOCK_DESC, ["bloquear"]),
-    idleScreenOffBat: idleKey("bateria", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
-    idleSuspendBat: idleKey("bateria", 3600, "Suspender", "", ["dormir"]),
+    idleWarnAc: warnKey("idleWarnBat"),
+    idleLockAc: idleKey("idleLockBat", 300, "Travar", LOCK_DESC, ["bloquear"]),
+    idleScreenOffAc: idleKey("idleScreenOffBat", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
+    idleSuspendAc: idleKey("idleSuspendBat", 0, "Suspender", "", ["dormir"]),
+    idleWarnBat: warnKey("idleWarnAc"),
+    idleLockBat: idleKey("idleLockAc", 300, "Travar", LOCK_DESC, ["bloquear"]),
+    idleScreenOffBat: idleKey("idleScreenOffAc", 300, "Apagar a tela", OFF_DESC, ["monitor"]),
+    idleSuspendBat: idleKey("idleSuspendAc", 3600, "Suspender", "", ["dormir"]),
     // The lid always locks (keybinds.lua); "lock" only keeps it from sleeping
     lidAction: { def: "lock-suspend", type: "enum", page: "energia", card: "tampa", label: "Ao fechar a tampa",
                  options: opts([["lock-suspend", "Travar e suspender"], ["lock", "Só travar, sem suspender"]]),

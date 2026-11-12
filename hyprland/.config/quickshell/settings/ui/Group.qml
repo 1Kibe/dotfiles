@@ -48,7 +48,8 @@ ColumnLayout {
         visible: !root.plain
         Layout.fillWidth: true
         Layout.leftMargin: 4
-        Layout.rightMargin: 4
+        // With columns, the same right edge as the rows' controls
+        Layout.rightMargin: root.columns.length > 0 ? 12 : 4
         spacing: 12
 
         Text {
@@ -60,19 +61,7 @@ ColumnLayout {
             font.pointSize: Theme.fontSize - 2
             font.bold: true
         }
-        // The two columns of paired rows
-        Repeater {
-            model: root.columns
-            Text {
-                required property var modelData
-                Layout.preferredWidth: 150
-                horizontalAlignment: Text.AlignHCenter
-                text: modelData.icon ? `${modelData.icon}  ${modelData.label}` : modelData.label
-                color: Theme.gray
-                font.family: Theme.fontPanels
-                font.pointSize: Theme.fontSize - 2
-            }
-        }
+        // Before the columns, so they stay over their controls
         Text {
             id: restore
             text: "Restaurar padrão"
@@ -95,6 +84,19 @@ ColumnLayout {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: SettingsStore.resetMany(root.changedKeys)
+            }
+        }
+        // The two columns of paired rows
+        Repeater {
+            model: root.columns
+            Text {
+                required property var modelData
+                Layout.preferredWidth: 150
+                horizontalAlignment: Text.AlignHCenter
+                text: modelData.icon ? `${modelData.icon}  ${modelData.label}` : modelData.label
+                color: Theme.gray
+                font.family: Theme.fontPanels
+                font.pointSize: Theme.fontSize - 2
             }
         }
     }

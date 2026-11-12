@@ -11,6 +11,8 @@ Loader {
     id: ctl
 
     property string key
+    // In a paired row's column: a list, never side-by-side buttons
+    property bool narrow: false
     readonly property var spec: Schema.KEYS[key]
     readonly property var value: SettingsStore.ready ? SettingsStore.values[key] : spec.def
 
@@ -33,7 +35,7 @@ Loader {
     sourceComponent: spec.source ? dropdownC
                      : spec.control === "swatches" ? swatchesC
                      : spec.type === "bool" ? toggleC
-                     : spec.type === "enum" ? (spec.options.length <= 4 ? segmentedC : dropdownC)
+                     : spec.type === "enum" ? (spec.options.length <= 4 && !narrow ? segmentedC : dropdownC)
                      : spec.type === "int" || spec.type === "real" ? sliderC
                      : spec.type === "list" ? listC
                      : fieldC

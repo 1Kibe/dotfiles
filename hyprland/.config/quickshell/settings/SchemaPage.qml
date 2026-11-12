@@ -15,8 +15,9 @@ import "cascade.js" as Cascade
 // fonts, cursor themes) → a list of those). Two keys that name each other
 // (`pair`) share one row, a control each, under the card's `columns`. A
 // special card (`component`) is drawn by its file in settings/cards/ inside
-// its group; `strip`: the card is a preview strip at the top of the page,
-// with no title or block. Every change goes to SettingsStore; a value it
+// its group (`flush`: no inner margin; a card saying `empty` hides its
+// group); `strip`: the card is a strip at the top of the page, with no
+// title or block. Every change goes to SettingsStore; a value it
 // refuses snaps back by binding. A page with nothing says so.
 Flickable {
     id: root
@@ -50,7 +51,7 @@ Flickable {
     // The special cards built so far (settings/cards/); the others come with
     // the task of their page and stay out until then
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
-                                       "LockSecurity", "ClipboardClear"]
+                                       "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit"]
     readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
                                                                                     : keysOf(c.id).length > 0)
 
@@ -137,15 +138,18 @@ Flickable {
                 Layout.fillWidth: true
                 title: modelData.title
                 plain: modelData.strip === true
+                // A special card with nothing to show here hides its group
+                visible: !(special.item && special.item.empty === true)
                 keys: root.keysOf(cardId)
                 columns: modelData.columns || []
 
                 // A special card: its own file (the name comes from the schema)
                 Loader {
+                    id: special
                     active: group.modelData.component !== undefined
                     visible: active
                     Layout.fillWidth: true
-                    Layout.margins: group.plain ? 0 : 12
+                    Layout.margins: group.plain || group.modelData.flush === true ? 0 : 12
                     source: active ? Qt.resolvedUrl(`cards/${group.modelData.component}.qml`) : ""
                 }
                 Repeater {
