@@ -18,8 +18,9 @@
 //   "monitors" (this machine's screens); emptyLabel: "" as a choice of its own
 // - preview "fileName" (string keys): the description shows the name it
 //   gives now, as an example
-// - unit (int / real): written after the value ("8 px"); format "percent": a
-//   0-1 value read as a percent (settings/format.js)
+// - unit (int / real): written after the value ("8 px"; "s": a time, read in
+//   s, min or h); format "percent": a 0-1 value read as a percent;
+//   zeroLabel: what 0 reads as (settings/format.js)
 // - pair: the key that shares this one's row on the page (the same option on
 //   power and on battery); both keys name each other, same type and card
 // - control "swatches" (enum keys of colors): dots in the color each option
@@ -102,8 +103,8 @@ var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "S
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
 
 function idleKey(page, card, def, label, syn) {
-    return { def: def, type: "int", min: IDLE.min, max: IDLE.max, step: IDLE.step, unit: "s", page: page, card: card,
-             label: label, desc: "0 é nunca", syn: syn }
+    return { def: def, type: "int", min: IDLE.min, max: IDLE.max, step: IDLE.step, unit: "s", zeroLabel: "Nunca",
+             page: page, card: card, label: label, syn: syn }
 }
 
 var KEYS = {

@@ -35,7 +35,7 @@ Item {
         return Number(v.toFixed(decimals))
     }
 
-    implicitWidth: 190
+    implicitWidth: 206
     implicitHeight: 24
 
     Item {
@@ -94,7 +94,7 @@ Item {
         id: number
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        width: 64
+        width: 80
         horizontalAlignment: Text.AlignRight
         text: root.valueText !== "" ? root.valueText : `${root.value.toFixed(root.decimals).replace(".", ",")}${root.suffix}`
         color: Theme.fg4

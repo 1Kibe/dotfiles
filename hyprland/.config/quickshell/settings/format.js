@@ -8,6 +8,9 @@
 // spec.unit: written after the number ("8 px", "100 itens"; "%" and "°"
 // stick to it). Real numbers use a decimal comma. Enums show their option's
 // label, lists their labels, booleans "Ligado"/"Desligado".
+// unit "s": a time in the unit it reads best ("30 s", "5 min", "5 min 10 s",
+// "1 h 30 min"; from an hour on, the seconds are left out).
+// spec.zeroLabel: what 0 reads as ("Nunca").
 
 function number(v, step) {
     // As many decimals as the step has (0.05 → 2), never more than 2
@@ -20,6 +23,18 @@ function withUnit(text, unit) {
     if (!unit)
         return text
     return unit === "%" || unit === "°" ? text + unit : text + " " + unit
+}
+
+function duration(total) {
+    const v = Math.max(0, Math.round(total))
+    if (v < 60)
+        return `${v} s`
+    if (v < 3600) {
+        const s = v % 60
+        return s > 0 ? `${Math.floor(v / 60)} min ${s} s` : `${Math.floor(v / 60)} min`
+    }
+    const m = Math.floor((v % 3600) / 60)
+    return m > 0 ? `${Math.floor(v / 3600)} h ${m} min` : `${Math.floor(v / 3600)} h`
 }
 
 function label(spec, v) {
@@ -41,8 +56,12 @@ function value(spec, v) {
     case "real":
         if (typeof v !== "number" || !isFinite(v))
             return String(v)
+        if (v === 0 && spec.zeroLabel)
+            return spec.zeroLabel
         if (spec.format === "percent")
             return Math.round(v * 100) + "%"
+        if (spec.unit === "s")
+            return duration(v)
         return withUnit(number(v, spec.type === "int" ? 1 : spec.step), spec.unit)
     default:
         if (v === "" && spec.emptyLabel)
