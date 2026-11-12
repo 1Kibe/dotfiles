@@ -24,6 +24,12 @@ import "../settings/idle.js" as Idle
 // 120 s (timeout) and a new one comes every 60 s, before the old one ends;
 // if the shell stops, the last one runs out and the lid sleeps again, the
 // safe side. The lid bind in keybinds.lua locks either way.
+//
+// Battery conservation (Lenovo IdeaPad and Yoga): the kernel's own file,
+// opened to the "bateria" group by install.sh's udev rule. The page writes
+// "1" or "0" made from a boolean, never text from the settings, then reads
+// the file again and shows what the kernel says. No sudo or pkexec. A
+// missing file, or one that does not say 0 or 1, hides the card.
 Singleton {
     id: root
 
@@ -254,6 +260,49 @@ Singleton {
             SettingsApply.failed("lidAction", "Não deu para segurar a tampa")
             SettingsStore.set("lidAction", root.lidBefore)
         })
+    }
+
+    // ── Battery conservation ──
+    readonly property string conservationFile: "/sys/bus/platform/devices/VPC2004:00/conservation_mode"
+    property bool conservationAvailable: false
+    property bool conservation: false
+    property bool conservationBusy: false
+    property bool conservationWanted: false
+    function setConservation(on) {
+        if (typeof on !== "boolean" || !conservationAvailable || conservationBusy)
+            return
+        conservationWanted = on
+        conservationBusy = true
+        consView.setText(on ? "1" : "0")
+    }
+    function readConservation(text) {
+        const v = String(text).trim()
+        conservationAvailable = v === "0" || v === "1"
+        conservation = v === "1"
+        if (conservationBusy) {
+            conservationBusy = false
+            if (!conservationAvailable || conservation !== conservationWanted)
+                SettingsApply.failed("conservacao", "Não deu para mudar o limite de carga")
+        }
+    }
+    FileView {
+        id: consView
+        path: root.conservationFile
+        printErrors: false
+        atomicWrites: false
+        onLoaded: root.readConservation(text())
+        onLoadFailed: root.readConservation("")
+        // The FileView keeps what it wrote: the kernel's answer comes from
+        // reading the file again
+        onSaved: root.rereadConservation()
+        onSaveFailed: {
+            root.conservationBusy = false
+            SettingsApply.failed("conservacao", "Não deu para mudar o limite de carga")
+            root.rereadConservation()
+        }
+    }
+    function rereadConservation() {
+        run(["cat", "--", conservationFile], (code, out) => root.readConservation(code === 0 ? out : ""))
     }
 
     Connections {

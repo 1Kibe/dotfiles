@@ -72,6 +72,8 @@ PACKAGES_DIR="${DOTFILES_DIR}/packages"
 DM_UNIT_LINK="/etc/systemd/system/display-manager.service"
 GREETD_DIR="/etc/greetd"
 PAM_DIR="/etc/pam.d"
+SYSUSERS_DIR="/etc/sysusers.d"
+UDEV_RULES_DIR="/etc/udev/rules.d"
 
 # System language and keyboard: the console, X11/Wayland (XFCE, cage and the
 # login screen read it from localectl) and Hyprland (hypr/modules/input.lua)
@@ -875,6 +877,51 @@ install_lock_pam() {
   log "Lock screen PAM service installed (${PAM_DIR}/quickshell-lock)."
 }
 
+# Battery conservation (Configurações → Energia; Lenovo IdeaPad and Yoga):
+# the "bateria" group (sysusers) may turn the charge limit on and off, by a
+# udev rule that opens only that sysfs file to it, so the page needs no
+# password. The user who installs joins the group (from the next login).
+# A destination folder that is a link is refused (install would write
+# through it); install -T replaces a file or link at the name itself. On a
+# machine without the device the rule never matches.
+BATTERY_GROUP="bateria"
+install_battery_rule() {
+  local user="${SUDO_USER:-$(id -un)}" dir
+  local sysusers="${DOTFILES_DIR}/system/sysusers.d/dotfiles-bateria.conf"
+  local rule="${DOTFILES_DIR}/system/udev/90-dotfiles-bateria.rules"
+  for dir in "$SYSUSERS_DIR" "$UDEV_RULES_DIR"; do
+    if [[ -L "$dir" ]]; then
+      warn "${dir} is a link: skipping the battery limit rule"
+      return 0
+    fi
+  done
+  if ! sudo install -d -m755 -o root -g root "$SYSUSERS_DIR" "$UDEV_RULES_DIR"; then
+    warn "Could not prepare ${SYSUSERS_DIR} and ${UDEV_RULES_DIR}: skipping the battery limit rule"
+    return 0
+  fi
+  sudo install -T -m644 -o root -g root "$sysusers" "${SYSUSERS_DIR}/dotfiles-bateria.conf" \
+    && sudo systemd-sysusers "${SYSUSERS_DIR}/dotfiles-bateria.conf" \
+    || { warn "Could not create the ${BATTERY_GROUP} group"; return 0; }
+  if ! id -nG "$user" | tr ' ' '\n' | grep -qx "$BATTERY_GROUP"; then
+    if sudo usermod -aG "$BATTERY_GROUP" "$user"; then
+      info "${user} joined the ${BATTERY_GROUP} group (the battery limit works from the next login)"
+    else
+      warn "Could not add ${user} to the ${BATTERY_GROUP} group"
+    fi
+  fi
+  if ! sudo install -T -m644 -o root -g root "$rule" "${UDEV_RULES_DIR}/90-dotfiles-bateria.rules"; then
+    warn "Could not install the battery limit rule"
+    return 0
+  fi
+  if command -v udevadm &>/dev/null; then
+    sudo udevadm verify "${UDEV_RULES_DIR}/90-dotfiles-bateria.rules" >/dev/null 2>&1 \
+      || warn "udevadm verify did not accept the battery limit rule"
+    sudo udevadm control --reload
+    sudo udevadm trigger --action=add --subsystem-match=platform --sysname-match=VPC2004:00
+  fi
+  log "Battery limit rule installed (${UDEV_RULES_DIR}/90-dotfiles-bateria.rules)."
+}
+
 # Background shared by the lock and login screens: lock/BackgroundPicker
 # writes it, the greeter user only reads it. The parent folders stay root's;
 # only the last one belongs to the user who installs (the real one, also
@@ -1111,6 +1158,7 @@ main() {
   fi
   if has_env hyprland; then
     install_lock_pam
+    install_battery_rule
   fi
   install_console_timeout
 

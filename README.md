@@ -40,7 +40,7 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 7. Configura os filtros git que mantêm nomes de redes Wi-Fi, nomes de monitor e tamanhos de janela fora dos commits
 8. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
 9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
-10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio))
+10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio)). No `hyprland`, também a regra do limite de carga da bateria (notebooks Lenovo): o grupo `bateria` pode ligar e desligar só esse limite, sem senha, e o usuário entra no grupo (vale no próximo login)
 11. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
 12. Deixa o swayimg como padrão para imagens e o mpv para vídeos (`xdg-mime`), se estiverem instalados
 
@@ -55,7 +55,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 | `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
-| `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio) e `/etc/profile.d/tmout.sh` (console de texto) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM no `hyprland`; o `tmout.sh` sempre |
+| `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio), `/etc/profile.d/tmout.sh` (console de texto), `/etc/udev/rules.d/90-dotfiles-bateria.rules` e `/etc/sysusers.d/dotfiles-bateria.conf` (limite de carga da bateria) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM e o limite de carga no `hyprland`; o `tmout.sh` sempre |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
@@ -314,7 +314,9 @@ dotfiles/
 │   │   ├── start-greeter                  [teclado do sistema; software em VM; abre o cage]
 │   │   └── quickshell/                    [a tela de login (Quickshell)]
 │   ├── pam.d/quickshell-lock              [senha do bloqueio, em /etc/pam.d]
-│   └── profile.d/tmout.sh                 [console de texto sai em 10 min, em /etc/profile.d]
+│   ├── profile.d/tmout.sh                 [console de texto sai em 10 min, em /etc/profile.d]
+│   ├── sysusers.d/dotfiles-bateria.conf   [grupo bateria, em /etc/sysusers.d]
+│   └── udev/90-dotfiles-bateria.rules     [limite de carga da bateria (Lenovo), em /etc/udev/rules.d]
 ├── assets/preview.png
 ├── tools/
 │   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]

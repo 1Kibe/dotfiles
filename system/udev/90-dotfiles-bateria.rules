@@ -1,0 +1,6 @@
+# Battery conservation (Configurações → Energia; Lenovo IdeaPad and Yoga,
+# driver ideapad_acpi): the "bateria" group may turn the charge limit on and
+# off. Only that one file of the device, absolute paths, no glob. Installed
+# by install.sh as root, 644. On a machine without the device it never
+# matches.
+ACTION=="add|bind", SUBSYSTEM=="platform", DRIVER=="ideapad_acpi", KERNEL=="VPC2004:00", RUN+="/usr/bin/chgrp bateria %S%p/conservation_mode", RUN+="/usr/bin/chmod 0664 %S%p/conservation_mode"
