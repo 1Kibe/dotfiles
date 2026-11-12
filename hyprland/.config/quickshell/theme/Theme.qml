@@ -59,6 +59,9 @@ Singleton {
     // Configurações → Fontes e animações: the families, and the text size as
     // a factor (90–130 %) of the base size
     property string font: "Agave Nerd Font Propo"
+    // The panels' font (the Configurações panel), a sans-serif interface
+    // font; the bar keeps `font`. Not installed: Qt falls back to another.
+    property string fontPanels: "Inter"
     property real textScale: 1
     readonly property int fontSize: Math.round(11 * textScale)
 

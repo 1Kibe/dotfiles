@@ -18,6 +18,10 @@
 //   "monitors" (this machine's screens); emptyLabel: "" as a choice of its own
 // - preview "fileName" (string keys): the description shows the name it
 //   gives now, as an example
+// - unit (int / real): written after the value ("8 px"); format "percent": a
+//   0-1 value read as a percent (settings/format.js)
+// - pair: the key that shares this one's row on the page (the same option on
+//   power and on battery); both keys name each other, same type and card
 
 // ── Pages, in the order of the sidebar ──
 var PAGES = [
@@ -92,8 +96,8 @@ var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "S
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
 
 function idleKey(page, card, def, label, syn) {
-    return { def: def, type: "int", min: IDLE.min, max: IDLE.max, step: IDLE.step, page: page, card: card,
-             label: label, desc: "Em segundos; 0 é nunca", syn: syn }
+    return { def: def, type: "int", min: IDLE.min, max: IDLE.max, step: IDLE.step, unit: "s", page: page, card: card,
+             label: label, desc: "0 é nunca", syn: syn }
 }
 
 var KEYS = {
@@ -103,12 +107,12 @@ var KEYS = {
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               syn: ["cor", "acento", "destaque"] },
     // One for the bar and its panels: they are one shape
-    barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, page: "tema", card: "superficies",
-                  label: "Transparência da barra e dos painéis", desc: "1 é sólida",
+    barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
+                  card: "superficies", label: "Transparência da barra e dos painéis", desc: "100% é sólida",
                   syn: ["opacidade", "transparente", "painel"] },
     blur: { def: true, type: "bool", page: "tema", card: "superficies", label: "Desfoque atrás dos painéis",
             syn: ["blur", "vidro"] },
-    radius: { def: 8, type: "int", min: 0, max: 16, step: 1, page: "tema", card: "superficies",
+    radius: { def: 8, type: "int", min: 0, max: 16, step: 1, unit: "px", page: "tema", card: "superficies",
               label: "Raio dos cantos", desc: "Janelas, barra e painéis", syn: ["arredondado", "cantos"] },
     cursorTheme: { def: "Bibata-Modern-Classic-Right", type: "string", pattern: THEME_NAME, page: "tema",
                    card: "cursor", label: "Tema do cursor", source: "cursorThemes", syn: ["mouse", "ponteiro"] },
@@ -130,8 +134,11 @@ var KEYS = {
               label: "Fonte da interface", source: "fonts", syn: ["letra", "texto"] },
     fontMono: { def: "Agave Nerd Font Mono", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
                 label: "Fonte monoespaçada", source: "monoFonts", syn: ["letra", "código"] },
-    textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, page: "fontes", card: "fontes",
-                 label: "Tamanho do texto", desc: "Em %", syn: ["escala", "zoom"] },
+    fontPanels: { def: "Inter", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
+                  label: "Fonte dos painéis", desc: "O painel das Configurações", source: "fonts",
+                  syn: ["letra", "texto", "painel"] },
+    textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, unit: "%", page: "fontes", card: "fontes",
+                 label: "Tamanho do texto", syn: ["escala", "zoom"] },
     animSpeed: { def: 1, type: "enum", page: "fontes", card: "animacoes", label: "Velocidade das animações",
                  options: opts([[0, "Sem animação"], [0.7, "Rápida"], [1, "Normal"], [1.4, "Calma"]]),
                  syn: ["movimento", "transição"] },
@@ -149,7 +156,8 @@ var KEYS = {
                  syn: ["esconder", "olho"] },
     barPosition: { def: "top", type: "enum", page: "barra", card: "posicao", label: "Posição",
                    options: opts([["top", "Em cima"], ["bottom", "Embaixo"]]) },
-    barHeight: { def: 30, type: "int", min: 26, max: 40, step: 2, page: "barra", card: "posicao", label: "Altura" },
+    barHeight: { def: 30, type: "int", min: 26, max: 40, step: 2, unit: "px", page: "barra", card: "posicao",
+                 label: "Altura" },
     barHideFullscreen: { def: true, type: "bool", page: "barra", card: "posicao", label: "Esconder em tela cheia" },
     clock24h: { def: true, type: "bool", page: "barra", card: "relogio", label: "Relógio de 24 horas",
                 syn: ["hora"] },
@@ -183,7 +191,7 @@ var KEYS = {
     recordSystemAudio: { def: true, type: "bool", page: "captura", card: "gravacao", label: "Som do sistema",
                          syn: ["áudio"] },
     recordMic: { def: false, type: "bool", page: "captura", card: "gravacao", label: "Microfone", syn: ["áudio"] },
-    clipHistory: { def: 100, type: "int", min: 20, max: 500, step: 10, page: "captura", card: "clipboard",
+    clipHistory: { def: 100, type: "int", min: 20, max: 500, step: 10, unit: "itens", page: "captura", card: "clipboard",
                    label: "Tamanho do histórico", syn: ["copiar", "colar"] },
     clipImages: { def: true, type: "bool", page: "captura", card: "clipboard", label: "Guardar imagens",
                   syn: ["copiar", "colar"] },
@@ -212,8 +220,8 @@ var KEYS = {
                   card: "barra", label: "Tela da barra", desc: "Vazio é todas" },
     nightLight: { def: false, type: "bool", machine: true, page: "monitores", card: "luz", label: "Luz noturna",
                   syn: ["hyprsunset", "filtro azul"] },
-    nightTemp: { def: 4000, type: "int", min: 2500, max: 6500, step: 100, machine: true, page: "monitores", card: "luz",
-                 label: "Temperatura", desc: "Em kelvin" },
+    nightTemp: { def: 4000, type: "int", min: 2500, max: 6500, step: 100, unit: "K", machine: true, page: "monitores",
+                 card: "luz", label: "Temperatura" },
     nightStart: { def: "20:00", type: "string", pattern: TIME_HM, machine: true, page: "monitores", card: "luz",
                   label: "Começa às" },
     nightEnd: { def: "06:00", type: "string", pattern: TIME_HM, machine: true, page: "monitores", card: "luz",
@@ -224,10 +232,10 @@ var KEYS = {
                 label: "Layout do sistema", syn: ["abnt", "idioma"] },
     kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, page: "teclado",
                card: "teclado", label: "Modelo do teclado" },
-    repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, page: "teclado", card: "teclado",
-                   label: "Atraso da repetição", desc: "Em ms" },
-    repeatRate: { def: 25, type: "int", min: 10, max: 60, step: 1, page: "teclado", card: "teclado",
-                  label: "Velocidade da repetição", desc: "Por segundo" },
+    repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, unit: "ms", page: "teclado", card: "teclado",
+                   label: "Atraso da repetição" },
+    repeatRate: { def: 25, type: "int", min: 10, max: 60, step: 1, unit: "por s", page: "teclado", card: "teclado",
+                  label: "Velocidade da repetição" },
     numlockOnStart: { def: false, type: "bool", page: "teclado", card: "teclado", label: "Num Lock ao iniciar" },
     mouseSensitivity: { def: 0, type: "real", min: -1, max: 1, step: 0.1, page: "teclado", card: "mouse",
                         label: "Velocidade do mouse" },
@@ -264,3 +272,22 @@ function appKey(label, syn) {
 }
 
 var PAGE_IDS = PAGES.map(p => p.id)
+
+// Keys that share a row (pair): each one names the other, both exist, with
+// the same type, page and card. Returns the problems found ([] when fine);
+// read by the tests and by the page, which shows a broken pair as two rows.
+function pairProblems(keys) {
+    const out = []
+    for (const [k, spec] of Object.entries(keys)) {
+        if (spec.pair === undefined)
+            continue
+        const other = keys[spec.pair]
+        if (!other)
+            out.push(`${k}: par ${spec.pair} não existe`)
+        else if (other.pair !== k)
+            out.push(`${k}: ${spec.pair} não aponta de volta`)
+        else if (other.type !== spec.type || other.page !== spec.page || other.card !== spec.card)
+            out.push(`${k}: ${spec.pair} com outro tipo, página ou grupo`)
+    }
+    return out
+}
