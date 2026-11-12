@@ -5,11 +5,10 @@ import qs.state
 import "ui"
 import "schema.js" as Schema
 import "cascade.js" as Cascade
-import "format.js" as Format
 
 // One page of the settings, drawn from settings/schema.js: each card is a
 // group (ui/Group: its title above, the rows in one block), each key a row
-// (ui/OptionRow) with the control of its type (bool → switch; a few options
+// (KeyRow) with the control of its type (KeyControl: bool → switch; a few options
 // → segmented, more → list; `control: "swatches"` → color dots; number →
 // slider with its unit; text and path → field, monospaced for paths and
 // name patterns; list → checked list; a list of this machine (`source`:
@@ -169,139 +168,6 @@ Flickable {
             title: root.info.name
             OptionRow {
                 label: "Chega na próxima etapa"
-            }
-        }
-    }
-
-    // One row: one key, or a pair (a control each, under the group's columns)
-    component KeyRow: OptionRow {
-        id: row
-
-        property var keys: []
-        readonly property var spec: Schema.KEYS[keys[0]]
-        function valueOf(k) {
-            return SettingsStore.ready ? SettingsStore.values[k] : Schema.KEYS[k].def
-        }
-        readonly property var value: valueOf(keys[0])
-        readonly property var changedKeys: keys.filter(k => JSON.stringify(valueOf(k)) !== JSON.stringify(Schema.KEYS[k].def))
-
-        label: spec.label
-        changed: changedKeys.length > 0
-        defaultText: keys.map(k => Format.value(Schema.KEYS[k], Schema.KEYS[k].def)).join(" / ")
-        // A file name pattern shows the name it gives now
-        desc: spec.preview === "fileName" && typeof value === "string" && value !== ""
-              ? `Fica assim: ${Qt.formatDateTime(new Date(), value)}.png` : (spec.desc || "")
-
-        RowLayout {
-            spacing: 12
-            Repeater {
-                model: row.keys
-                // A pair: each control centered in its column's width
-                Item {
-                    required property string modelData
-                    Layout.preferredWidth: row.keys.length > 1 ? 150 : control.implicitWidth
-                    implicitHeight: control.implicitHeight
-                    KeyControl {
-                        id: control
-                        key: parent.modelData
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.horizontalCenter: row.keys.length > 1 ? parent.horizontalCenter : undefined
-                        width: Math.min(implicitWidth, parent.width)
-                    }
-                }
-            }
-        }
-    }
-
-    // The control of one key
-    component KeyControl: Loader {
-        id: ctl
-
-        property string key
-        readonly property var spec: Schema.KEYS[key]
-        readonly property var value: SettingsStore.ready ? SettingsStore.values[key] : spec.def
-
-        // A list of this machine: its names, the stored one first if it is
-        // not there (the list not read yet, or a font that is gone)
-        readonly property var choices: {
-            if (!spec.source)
-                return spec.options
-            // A name never empty ("" is the emptyLabel's choice)
-            const names = SystemLists.list(spec.source).filter(n => n !== "")
-            const out = names.map(n => ({ value: n, label: n }))
-            if (typeof value === "string" && !names.includes(value) && !(value === "" && spec.emptyLabel))
-                out.unshift({ value: value, label: value })
-            // "" as a choice of its own (the wallpaper on every screen)
-            if (spec.emptyLabel)
-                out.unshift({ value: "", label: spec.emptyLabel })
-            return out
-        }
-
-        sourceComponent: spec.source ? dropdownC
-                         : spec.control === "swatches" ? swatchesC
-                         : spec.type === "bool" ? toggleC
-                         : spec.type === "enum" ? (spec.options.length <= 4 ? segmentedC : dropdownC)
-                         : spec.type === "int" || spec.type === "real" ? sliderC
-                         : spec.type === "list" ? listC
-                         : fieldC
-
-        Component {
-            id: toggleC
-            Toggle {
-                checked: ctl.value === true
-                onToggled: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: swatchesC
-            ColorSwatches {
-                options: ctl.spec.options
-                value: ctl.value
-                onPicked: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: segmentedC
-            Segmented {
-                options: ctl.spec.options
-                value: ctl.value
-                onPicked: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: dropdownC
-            Dropdown {
-                options: ctl.choices
-                value: ctl.value
-                onPicked: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: listC
-            Dropdown {
-                multiple: true
-                options: ctl.spec.options
-                value: ctl.value
-                onPicked: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: sliderC
-            Slider {
-                from: ctl.spec.min
-                to: ctl.spec.max
-                step: ctl.spec.step || 1
-                value: ctl.value
-                valueText: Format.value(ctl.spec, ctl.value)
-                onMoved: v => SettingsStore.set(ctl.key, v)
-            }
-        }
-        Component {
-            id: fieldC
-            Field {
-                value: String(ctl.value)
-                mono: ctl.spec.type === "path" || ctl.spec.preview === "fileName"
-                onAccepted: text => invalid = !SettingsStore.set(ctl.key, text)
             }
         }
     }
