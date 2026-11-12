@@ -62,10 +62,7 @@
     "reboot",
     "poweroff"
   ],
-  "powerConfirm": [
-    "reboot",
-    "poweroff"
-  ],
+  "powerConfirm": [],
   "repeatDelay": 600,
   "repeatRate": 25,
   "numlockOnStart": false,

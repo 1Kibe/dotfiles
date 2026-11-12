@@ -88,6 +88,9 @@ var BAR_ITEMS = opts([["workspaces", "Áreas de trabalho"], ["system", "CPU, mem
                       ["power", "Energia"]])
 var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"],
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
+// Reboot and power off always ask for the second click (settings/powermenu.js):
+// only these may be added to it
+var POWER_CONFIRM_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"]])
 
 // Idle times (settings/idle.js keeps the same lists): "Nunca" takes the step
 // out. A list of choices, never a free number.
@@ -216,8 +219,9 @@ var KEYS = {
                  syn: ["notebook"] },
     powerMenuItems: { def: ["lock", "logout", "suspend", "reboot", "poweroff"], type: "list", options: POWER_ITEMS,
                       page: "energia", card: "menu", label: "Itens do menu de energia" },
-    powerConfirm: { def: ["reboot", "poweroff"], type: "list", options: POWER_ITEMS, page: "energia", card: "menu",
-                    label: "Pedem um segundo clique", syn: ["confirmar"] },
+    powerConfirm: { def: [], type: "list", options: POWER_CONFIRM_ITEMS, page: "energia", card: "menu",
+                    label: "Também pedem um segundo clique", desc: "Reiniciar e desligar sempre pedem",
+                    syn: ["confirmar"] },
 
     // ── Monitores (this machine only) ──
     barMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "monitores",
