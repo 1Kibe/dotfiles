@@ -208,7 +208,8 @@ Singleton {
     function applyKitty() {
         kittyWanted = Kitty.colorsConf({
             bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
-            green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua
+            green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua,
+            orange: Theme.orange
         })
         writeKitty()
     }

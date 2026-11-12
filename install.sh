@@ -6,7 +6,7 @@
 # with GNU Stow. Each top-level folder below is a Stow package that mirrors
 # $HOME (common/.config/nvim -> ~/.config/nvim):
 #
-#   common/     always linked (nvim, kitty, rofi, wallpapers)
+#   common/     always linked (nvim, kitty, starship, bash, rofi, wallpapers)
 #   xfce/       XFCE + i3
 #   hyprland/   Hyprland + Quickshell (skipped while it has no configs)
 #
@@ -655,6 +655,26 @@ remove_dropped_links() {
   done
 }
 
+# ~/.bashrc loads the repo's bash settings (the Starship prompt): two lines,
+# a marker comment and the source, added once at the end. The rest of the
+# file is never touched; a missing ~/.bashrc is made with just those. A
+# ~/.bashrc that is a link (someone else's dotfiles) is left alone.
+BASHRC_MARK="# dotfiles: shell settings and prompt (~/.config/bash/dotfiles.bash)"
+setup_bashrc() {
+  local rc="${HOME}/.bashrc"
+  if [[ -L "$rc" ]]; then
+    warn "~/.bashrc is a link: not adding the dotfiles' bash settings"
+    return 0
+  fi
+  if [[ -f "$rc" ]] && grep -qxF "$BASHRC_MARK" "$rc"; then return 0; fi
+  {
+    if [[ -s "$rc" ]]; then printf '\n'; fi
+    printf '%s\n' "$BASHRC_MARK"
+    printf '%s\n' 'if [[ -f ~/.config/bash/dotfiles.bash ]]; then . ~/.config/bash/dotfiles.bash; fi'
+  } >> "$rc"
+  log "~/.bashrc loads ~/.config/bash/dotfiles.bash"
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -680,6 +700,7 @@ link_configs() {
   remove_dropped_links
   log "Linked: ${pkgs[*]}"
   report_bak_files
+  setup_bashrc
 }
 
 # Without arguments removes the links of every package

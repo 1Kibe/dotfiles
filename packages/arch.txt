@@ -26,6 +26,7 @@ rofi
 
 # ── Terminal ──
 kitty                        # the terminal (Hyprland and XFCE)
+starship                     # the bash prompt (starship.toml)
 
 # ── Editor ──
 neovim

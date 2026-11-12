@@ -1,0 +1,55 @@
+# Bash prompt (Starship). Line 1: four colored blocks side by side (user,
+# folder, git, time), rounded only at both ends; line 2: the arrow, red
+# after a command that failed. Colors by ANSI name only (and 208, the
+# 256-color orange), never hex: the prompt follows Kitty's palette, which
+# comes from the shell's theme (cores.conf).
+"$schema" = "https://starship.rs/config-schema.json"
+add_newline = true
+
+format = """
+[](fg:208)$username$directory$git_branch$git_status$time[](fg:blue)
+$character"""
+
+[username]
+show_always = true
+style_user = "bg:208 fg:black bold"
+style_root = "bg:red fg:black bold"
+format = "[ $user ]($style)"
+
+[directory]
+style = "bg:yellow fg:black"
+read_only_style = "bg:yellow fg:black"
+read_only = " 󰌾"
+truncation_length = 3
+truncation_symbol = "…/"
+format = "[ $path]($style)[$read_only]($read_only_style)[ ]($style)"
+
+[git_branch]
+symbol = " "
+style = "bg:cyan fg:black"
+format = "[ $symbol$branch ]($style)"
+
+# e.g. "main !2": the count after each sign
+[git_status]
+style = "bg:cyan fg:black"
+format = "([$all_status$ahead_behind ]($style))"
+modified = "!${count}"
+untracked = "?${count}"
+staged = "+${count}"
+deleted = "✘${count}"
+renamed = "»${count}"
+conflicted = "=${count}"
+stashed = "\\$${count}"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+
+[time]
+disabled = false
+time_format = "%H:%M"
+style = "bg:blue fg:bright-white"
+format = "[ $time ]($style)"
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"

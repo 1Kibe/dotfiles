@@ -19,7 +19,9 @@ var ROLES = [
     ["color12", "blue"],
     ["color13", "purple"],
     ["color14", "aqua"],
-    ["color15", "fg"]
+    ["color15", "fg"],
+    // The prompt's orange (starship.toml uses 208: the 16 colors have none)
+    ["color208", "orange"]
 ]
 
 // Only a plain "#rrggbb" (what a QML color with full alpha prints) goes into
