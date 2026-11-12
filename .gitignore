@@ -49,3 +49,7 @@ hyprland/.config/hypr/dotfiles_settings.lua*
 # settings, with the temporary files of their atomic writes ──
 common/.config/kitty/cores.conf*
 common/.config/kitty/local*.conf*
+
+# ── btop: its themes folder (the theme written by the shell from its
+# colors, and the temporary file of its atomic write) ──
+common/.config/btop/themes/

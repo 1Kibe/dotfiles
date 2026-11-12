@@ -8,6 +8,7 @@ import "../settings/appearance.js" as Appearance
 import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
+import "../settings/btop.js" as Btop
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -92,8 +93,9 @@ Singleton {
         const pair = Appearance.accentPair(v.accent, palette())
         Theme.accent = pair.accent
         Theme.accentLight = pair.light
-        // Kitty's colors, the prompt's arrow in the accent among them
+        // Kitty's and btop's colors, the accent among them
         applyKitty()
+        applyBtop()
         Theme.barOpacity = v.barOpacity
         Theme.barHeight = v.barHeight
         moveBar(v.barPosition === "bottom")
@@ -223,23 +225,27 @@ Singleton {
         }
         kittyCheck.running = true
     }
-    // The FileView would make a missing folder: it is written only when
-    // the Kitty folder is already there, as the user's own folder or as
-    // stow's link to this repo's common/.config/kitty (the shell's folder
-    // is the repo's hyprland/.config/quickshell). Without Kitty, or with a
-    // link to anywhere else, nothing is written.
+    // The FileView would make a missing folder: a theme file is written
+    // only when the app's folder is already there, as the user's own folder
+    // or as stow's link to this repo's common/.config/<app> (the shell's
+    // folder is the repo's hyprland/.config/quickshell). Without the app,
+    // or with a link to anywhere else, nothing is written. $4: a subfolder
+    // that, when there, must be a real folder (never a link).
     property bool kittyAgain: false
-    readonly property string kittyDirScript:
-        'd=$1; q=$2\n'
+    readonly property string configDirScript:
+        'd=$1; q=$2; rel=$3; sub=$4\n'
         + '[ -d "$d" ] || exit 1\n'
         + 'if [ -L "$d" ]; then\n'
         + '  r=$(readlink -f -- "$q/../../..") && t=$(readlink -f -- "$d") || exit 1\n'
-        + '  [ "$t" = "$r/common/.config/kitty" ] || exit 1\n'
+        + '  [ "$t" = "$r/$rel" ] || exit 1\n'
+        + 'fi\n'
+        + 'if [ -n "$sub" ] && { [ -e "$d/$sub" ] || [ -L "$d/$sub" ]; }; then\n'
+        + '  [ -d "$d/$sub" ] && [ ! -L "$d/$sub" ] || exit 1\n'
         + 'fi\n'
         + 'echo ok'
     Process {
         id: kittyCheck
-        command: ["sh", "-c", root.kittyDirScript, "sh", root.kittyDir, Quickshell.shellPath(".")]
+        command: ["sh", "-c", root.configDirScript, "sh", root.kittyDir, Quickshell.shellPath("."), "common/.config/kitty", ""]
         stdout: StdioCollector {
             id: kittyCheckOut
         }
@@ -264,6 +270,63 @@ Singleton {
         onLoadFailed: {
             root.kittyLoaded = true
             root.writeKitty()
+        }
+    }
+
+    // ── btop's colors (settings/btop.js) ──
+    // ~/.config/btop/themes/dotfiles.theme, the color_theme of btop.conf:
+    // written like Kitty's cores.conf (only when its text changes, atomic,
+    // after the same folder check; the themes subfolder is made by the
+    // FileView inside a checked btop folder). btop reads it when it opens.
+    readonly property string btopDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/btop`
+    readonly property string btopFile: `${btopDir}/themes/dotfiles.theme`
+    property string btopWanted: ""
+    property bool btopLoaded: false
+    property bool btopAgain: false
+    function applyBtop() {
+        btopWanted = Btop.themeText({
+            bgHard: Theme.bgHard, bg1: Theme.bg1, bg2: Theme.bg2, fg: Theme.fg, fg4: Theme.fg4, gray: Theme.gray,
+            red: Theme.red, green: Theme.green, yellow: Theme.yellow, orange: Theme.orange, blue: Theme.blue,
+            purple: Theme.purple, aqua: Theme.aqua, accentLight: Theme.accentLight
+        })
+        writeBtop()
+    }
+    function writeBtop() {
+        if (!btopLoaded || btopWanted === "" || btopView.text() === btopWanted)
+            return
+        if (btopCheck.running) {
+            btopAgain = true
+            return
+        }
+        btopCheck.running = true
+    }
+    Process {
+        id: btopCheck
+        command: ["sh", "-c", root.configDirScript, "sh", root.btopDir, Quickshell.shellPath("."), "common/.config/btop", "themes"]
+        stdout: StdioCollector {
+            id: btopCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && btopCheckOut.text.trim() === "ok" && btopView.text() !== root.btopWanted)
+                btopView.setText(root.btopWanted)
+            if (root.btopAgain) {
+                root.btopAgain = false
+                root.writeBtop()
+            }
+        }
+    }
+    FileView {
+        id: btopView
+        path: root.btopFile
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.btopLoaded = true
+            root.writeBtop()
+        }
+        onLoadFailed: {
+            root.btopLoaded = true
+            root.writeBtop()
         }
     }
 

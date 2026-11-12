@@ -52,7 +52,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
+| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio) e `/etc/profile.d/tmout.sh` (console de texto) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM no `hyprland`; o `tmout.sh` sempre |
@@ -219,6 +219,7 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 |---|---|
 | **Kitty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal), cursor em barra que pisca suave e deixa rastro, margem de 12 px. As cores vêm do tema do shell (`~/.config/kitty/cores.conf`, gerado, e o Kitty aberto troca sozinho); ajustes só da máquina em `~/.config/kitty/local.conf`. Os dois ficam fora do git |
 | **Starship** | Prompt do bash numa linha: usuário · pasta · git (só dentro de um repo) e a seta, na cor de destaque do tema e vermelha quando o último comando falha. Usa as cores do terminal, então segue o tema. Carregado pelo `~/.bashrc` (o install acrescenta uma linha); no console de texto fica o prompt padrão |
+| **btop** | Monitor do sistema (painel do sistema na barra): só CPU, memória e processos, cantos arredondados e gráficos em blocos. As cores vêm do tema do shell (`~/.config/btop/themes/dotfiles.theme`, gerado e fora do git; o btop lê ao abrir): gráficos de verde a vermelho, títulos na cor de destaque, bordas discretas e o fundo do terminal |
 | **Rofi** | Tema gruvbox-dark |
 | **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
 | **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |
@@ -257,6 +258,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 dotfiles/
 ├── common/.config/
 │   ├── bash/dotfiles.bash
+│   ├── btop/btop.conf
 │   ├── kitty/kitty.conf
 │   ├── mpv/                              [mpv.conf, input.conf, script-opts/uosc.conf]
 │   ├── nvim/
