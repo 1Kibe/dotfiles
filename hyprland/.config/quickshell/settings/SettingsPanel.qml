@@ -82,7 +82,7 @@ Item {
             if (!visible) {
                 timeline.reset()
                 page = ShellState.settingsPage !== "" ? ShellState.settingsPage : "tema"
-                sidebar.hideAll()
+                rail.hideAll()
                 pageView.hideAll()
             }
             visible = true
@@ -91,12 +91,12 @@ Item {
             ShellState.settingsOn = monitorName
             frame.showPanel(root)
             timeline.open()
-            sidebar.playIn()
+            rail.playIn()
             pageView.playIn(Theme.cascadeStart)
             content.forceActiveFocus()
         } else {
             if (visible) {
-                sidebar.playOut()
+                rail.playOut()
                 pageView.playOut()
                 timeline.close()
             }
@@ -159,7 +159,8 @@ Item {
             height: implicitHeight
         }
 
-        // The content: the list on the left, the page on the right
+        // The content: the rail on the left; the page's header and the
+        // page on the right
         Item {
             id: content
             width: Theme.settingsWidth
@@ -167,72 +168,49 @@ Item {
             focus: true
             Keys.onEscapePressed: ShellState.close()
 
-            Sidebar {
-                id: sidebar
-                width: 250
+            function show(p, card) {
+                if (p === root.page) {
+                    if (card)
+                        pageView.showCard(card)
+                    return
+                }
+                pageView.leave(() => {
+                    root.page = p
+                    pageView.playIn(0)
+                    if (card)
+                        Qt.callLater(() => pageView.showCard(card))
+                })
+            }
+
+            Rail {
+                id: rail
+                z: 2
+                width: implicitWidth
                 height: parent.height
                 page: root.page
-                onPicked: p => {
-                    if (p === root.page)
-                        return
-                    pageView.leave(() => {
-                        root.page = p
-                        pageView.playIn(0)
-                    })
-                }
-                onSearched: (p, card) => {
-                    if (p === root.page) {
-                        pageView.showCard(card)
-                        return
-                    }
-                    pageView.leave(() => {
-                        root.page = p
-                        pageView.playIn(0)
-                        Qt.callLater(() => pageView.showCard(card))
-                    })
-                }
+                onPicked: p => content.show(p, "")
             }
             Rectangle {
-                x: sidebar.width
+                x: rail.width
                 y: 12
                 width: 1
                 height: parent.height - 24
                 color: Theme.bg1
             }
+            PageHeader {
+                id: header
+                x: rail.width + 1
+                width: parent.width - x
+                page: root.page
+                onSearched: (p, card) => content.show(p, card)
+            }
             SchemaPage {
                 id: pageView
-                x: sidebar.width + 1
+                x: rail.width + 1
+                y: header.height
                 width: parent.width - x
-                height: parent.height
+                height: parent.height - y
                 page: root.page
-            }
-
-            // Close
-            Rectangle {
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.margins: 12
-                width: 28
-                height: 28
-                radius: Theme.radius
-                color: closeMouse.containsMouse ? Theme.veil : Theme.alpha(Theme.fg, 0)
-                Behavior on color {
-                    ColorAnimation { duration: Theme.dur(Theme.animFast) }
-                }
-                Text {
-                    anchors.centerIn: parent
-                    text: "󰅖"
-                    color: Theme.text
-                    font.family: Theme.font
-                    font.pointSize: Theme.fontSize + 1
-                }
-                MouseArea {
-                    id: closeMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: ShellState.close()
-                }
             }
         }
     }

@@ -5,12 +5,13 @@ import "ui"
 import "schema.js" as Schema
 import "searchindex.js" as SearchIndex
 
-// The search at the top of the list: label, description and synonyms of
-// every option (searchindex.js); a result opens its page on its card.
-// Results come in with a fade and a short slide, leave with a fade, the
-// others move to their places and the list grows and shrinks smoothly
-// (Theme tokens; reduce motion: fades only)
-ColumnLayout {
+// The search in the page's header ("Buscar em tudo"): label, description
+// and synonyms of every option (searchindex.js); a result opens its page on
+// its card. The results open under the field, over the page. They come in
+// with a fade and a short slide, leave with a fade, the others move to their
+// places and the list grows and shrinks smoothly (Theme tokens; reduce
+// motion: fades only)
+Item {
     id: root
 
     signal chosen(string page, string card)
@@ -19,12 +20,13 @@ ColumnLayout {
     readonly property var results: SearchIndex.query(entries, text, 8)
     property alias field: field
 
-    spacing: 4
+    implicitWidth: 220
+    implicitHeight: field.implicitHeight
 
     Field {
         id: field
-        Layout.fillWidth: true
-        placeholder: "󰍉  Buscar"
+        width: parent.width
+        placeholder: "󰍉  Buscar em tudo"
         // Results as you type; Enter opens the first
         input.onTextChanged: root.text = input.text
         onAccepted: {
@@ -67,13 +69,29 @@ ColumnLayout {
         }
     }
 
-    ListView {
-        id: list
-        Layout.fillWidth: true
-        Layout.preferredHeight: contentHeight
-        Behavior on Layout.preferredHeight {
+    // The results, over the page under the field
+    Rectangle {
+        id: popup
+        y: field.height + 4
+        width: Math.max(parent.width, 280)
+        x: parent.width - width
+        height: list.height + (list.count > 0 ? 8 : 0)
+        visible: height > 1
+        clip: true
+        radius: Theme.radius
+        color: Theme.bg
+        border.width: 1
+        border.color: Theme.bg1
+        Behavior on height {
             NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.OutCubic }
         }
+
+    ListView {
+        id: list
+        x: 4
+        y: 4
+        width: parent.width - 8
+        height: contentHeight
         interactive: false
         model: shown
 
@@ -118,7 +136,7 @@ ColumnLayout {
                     text: result.label
                     elide: Text.ElideRight
                     color: Theme.text
-                    font.family: Theme.font
+                    font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1
                 }
                 Text {
@@ -126,7 +144,7 @@ ColumnLayout {
                     text: (Schema.PAGES.find(p => p.id === result.page) || {}).name || ""
                     elide: Text.ElideRight
                     color: Theme.gray
-                    font.family: Theme.font
+                    font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 3
                 }
             }
@@ -138,5 +156,6 @@ ColumnLayout {
                 onClicked: root.pick({ page: result.page, card: result.card })
             }
         }
+    }
     }
 }

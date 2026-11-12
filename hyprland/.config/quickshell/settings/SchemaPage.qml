@@ -97,24 +97,9 @@ Flickable {
     ColumnLayout {
         id: column
         x: 20
-        y: 20
+        y: 4
         width: root.width - 40
         spacing: 12
-
-        Text {
-            text: root.info.name
-            color: Theme.text
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize + 5
-            font.bold: true
-        }
-        Text {
-            Layout.bottomMargin: 4
-            text: root.info.sub
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 1
-        }
 
         Repeater {
             id: repeater
