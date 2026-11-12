@@ -7,15 +7,17 @@ import qs.state
 // (the rows draw the thin lines between them). "Restaurar padrão", at the
 // right of the title, shows only while a key of `keys` differs from the
 // default, and puts them all back in one change. `columns` titles the two
-// controls of paired rows ({ icon, label } each). `flash()` lights the block
-// for a moment (a search result); `motion` plays its part of the page's
-// cascade.
+// controls of paired rows ({ icon, label } each). `plain`: no title and no
+// block, the content alone (a preview strip at the top of a page).
+// `flash()` lights the block for a moment (a search result); `motion` plays
+// its part of the page's cascade.
 ColumnLayout {
     id: root
 
     property string title
     property var keys: []
     property var columns: []
+    property bool plain: false
     default property alias rows: block.data
 
     spacing: 6
@@ -43,6 +45,7 @@ ColumnLayout {
     }
 
     RowLayout {
+        visible: !root.plain
         Layout.fillWidth: true
         Layout.leftMargin: 4
         Layout.rightMargin: 4
@@ -98,9 +101,9 @@ ColumnLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: block.implicitHeight + 4
+        implicitHeight: block.implicitHeight + (root.plain ? 0 : 4)
         radius: Theme.radius
-        color: Theme.veil
+        color: root.plain ? Theme.alpha(Theme.veil, 0) : Theme.veil
         border.width: 1
         border.color: Theme.alpha(Theme.accentLight, root.glow)
 
@@ -109,7 +112,7 @@ ColumnLayout {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.topMargin: 2
+            anchors.topMargin: root.plain ? 0 : 2
             spacing: 0
         }
     }

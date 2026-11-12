@@ -104,7 +104,7 @@ Item {
             Text {
                 text: "Painel"
                 color: Theme.text
-                font.family: Theme.font
+                font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize
             }
             Row {
@@ -117,7 +117,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "Destaque"
                     color: Theme.fg4
-                    font.family: Theme.font
+                    font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1
                 }
             }

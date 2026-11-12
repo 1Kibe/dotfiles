@@ -24,34 +24,39 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         text: "Apaga o histórico do clipboard. Os itens fixados ficam."
         color: Theme.gray
-        font.family: Theme.font
+        font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1
     }
-    Button {
-        text: root.armed ? "Confirmar?" : "Limpar histórico"
-        icon: "󰆴"
-        danger: root.armed
-        onClicked: {
-            if (!root.armed) {
-                root.armed = true
-                disarm.restart()
-                return
+    RowLayout {
+        spacing: 12
+        Button {
+            text: root.armed ? "Confirmar?" : "Limpar histórico"
+            icon: "󰆴"
+            danger: root.armed
+            destructive: true
+            onClicked: {
+                if (!root.armed) {
+                    root.armed = true
+                    disarm.restart()
+                    return
+                }
+                disarm.stop()
+                root.armed = false
+                ClipboardStore.wipe()
+                done.restart()
             }
-            disarm.stop()
-            root.armed = false
-            ClipboardStore.wipe()
-            done.restart()
         }
-    }
-    Text {
-        id: doneText
-        text: "Histórico limpo"
-        color: Theme.fg4
-        font.family: Theme.font
-        font.pointSize: Theme.fontSize - 1
-        opacity: done.running ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation { duration: Theme.dur(Theme.animFast) }
+        // Beside the button, so the group keeps its height
+        Text {
+            id: doneText
+            text: "Histórico limpo"
+            color: Theme.fg4
+            font.family: Theme.fontPanels
+            font.pointSize: Theme.fontSize - 1
+            opacity: done.running ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.dur(Theme.animFast) }
+            }
         }
     }
     Timer {

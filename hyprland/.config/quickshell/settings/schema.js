@@ -22,8 +22,14 @@
 //   0-1 value read as a percent (settings/format.js)
 // - pair: the key that shares this one's row on the page (the same option on
 //   power and on battery); both keys name each other, same type and card
+// - control "swatches" (enum keys of colors): dots in the color each option
+//   gives, in place of the list
+//
+// A card: id, title; component (a special card, settings/cards/); strip (a
+// preview at the top of the page, no title or block); columns (the titles
+// of a paired row's two controls, [{ icon, label }])
 
-// ── Pages, in the order of the sidebar ──
+// ── Pages, in the order of the rail ──
 var PAGES = [
     { id: "tema", group: "Aparência", icon: "󰏘", name: "Tema e cores", sub: "Destaque, transparência, cantos e cursor" },
     { id: "papel", group: "Aparência", icon: "󰸉", name: "Papel de parede", sub: "Imagem e preenchimento" },
@@ -41,11 +47,11 @@ var PAGES = [
 
 // ── Cards of each page; `component` names a special card (settings/cards/) ──
 var CARDS = {
-    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview" }, { id: "cores", title: "Cores" },
+    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview", strip: true }, { id: "cores", title: "Cores" },
            { id: "superficies", title: "Superfícies" }, { id: "cursor", title: "Cursor" }],
     papel: [{ id: "imagem", title: "Imagem", component: "WallpaperGallery" }, { id: "ajuste", title: "Ajuste" }],
-    fontes: [{ id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" },
-             { id: "previa", title: "Prévia da animação", component: "AnimationPreview" }],
+    fontes: [{ id: "previa", title: "Prévia da animação", component: "AnimationPreview", strip: true },
+             { id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" }],
     barra: [{ id: "itens", title: "Itens", component: "BarItems" }, { id: "posicao", title: "Posição" },
             { id: "relogio", title: "Relógio" }],
     bloqueio: [{ id: "foto", title: "Foto", component: "UserPhoto" }, { id: "tela", title: "Tela" },
@@ -105,7 +111,7 @@ var KEYS = {
     accent: { def: "padrao", type: "enum", page: "tema", card: "cores", label: "Cor de destaque",
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
-              syn: ["cor", "acento", "destaque"] },
+              control: "swatches", syn: ["cor", "acento", "destaque"] },
     // One for the bar and its panels: they are one shape
     barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
                   card: "superficies", label: "Transparência da barra e dos painéis", desc: "100% é sólida",
