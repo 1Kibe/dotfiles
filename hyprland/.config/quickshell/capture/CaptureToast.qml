@@ -73,12 +73,14 @@ PanelWindow {
             spacing: 8
 
             Text {
+                textFormat: Text.PlainText
                 text: CaptureState.toastIcon
                 color: Theme.text
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize + 1
             }
             Text {
+                textFormat: Text.PlainText
                 text: CaptureState.toastText
                 color: Theme.text
                 font.family: Theme.font
