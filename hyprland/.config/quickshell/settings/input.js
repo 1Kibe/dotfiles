@@ -8,7 +8,9 @@
 // or false, an option of the list) and written through the serializer
 // passed in (settings/serialize.js luaValue). A value that does not pass
 // throws: the generated file is then not written and stays as it was.
-// The layout is not here (it has its own card, with a preview to keep).
+// The layout comes in only when the caller hands one that is in the
+// system's own list (state/SystemLists); its variant is always the plain
+// one. Without it, no layout line (input.lua's or local.lua's stays).
 
 // [settings key, Hyprland option, kind]; touchpad options go in
 // input.touchpad, the others in input
@@ -71,13 +73,24 @@ function lines(list, v, keys, lua, indent) {
     })
 }
 
+// A layout code as the system lists them (localectl): checked again here
+var LAYOUT = /^[a-z]{2,8}$/
+
 // The Lua block for the generated file. `v`: the settings' values; `keys`:
-// settings/schema.js KEYS; `lua`: serialize.js luaValue
-function inputLua(v, keys, lua) {
+// settings/schema.js KEYS; `lua`: serialize.js luaValue; `layout`: a code
+// from the system's list, or "" for none
+function inputLua(v, keys, lua, layout) {
+    const kb = []
+    if (layout !== undefined && layout !== "") {
+        if (typeof layout !== "string" || !LAYOUT.test(layout))
+            throw new Error("input: layout inválido")
+        kb.push(`    kb_layout = ${lua(layout)},`, `    kb_variant = ${lua("")},`)
+    }
     return [
         "-- Teclado, mouse e touchpad (Configurações → Teclado e mouse)",
         "hl.config({",
         "  input = {",
+        ...kb,
         ...lines(KEYS, v, keys, lua, "    "),
         "    touchpad = {",
         ...lines(TOUCHPAD_KEYS, v, keys, lua, "      "),

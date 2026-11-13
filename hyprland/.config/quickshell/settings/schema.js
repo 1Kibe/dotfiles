@@ -74,7 +74,8 @@ var CARDS = {
                 { id: "areas", title: "Áreas de trabalho" }, { id: "barra", title: "Barra" },
                 { id: "luz", title: "Luz noturna" }],
     // Touchpad: only on a machine that has one (state/SystemLists hasTouchpad)
-    teclado: [{ id: "teclado", title: "Teclado" }, { id: "mouse", title: "Mouse" },
+    teclado: [{ id: "layout", title: "Layout", component: "KeyboardLayout" }, { id: "teclado", title: "Teclado" },
+              { id: "mouse", title: "Mouse" },
               { id: "touchpad", title: "Touchpad", needs: "touchpad" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
     apps: [{ id: "apps", title: "Apps padrão" }],

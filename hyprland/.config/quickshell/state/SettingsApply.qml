@@ -69,6 +69,7 @@ Singleton {
         function onFontsReadChanged() { root.applyAppearance() }
         function onMonoReadChanged() { root.applyAppearance() }
         function onCursorsReadChanged() { root.applyAppearance() }
+        function onLayoutsReadChanged() { root.applyAppearance() }
     }
     Component.onCompleted: {
         applyMotion()
@@ -109,10 +110,10 @@ Singleton {
         Theme.fontPanels = SystemLists.usable("fonts", v.fontPanels) ? v.fontPanels
                          : SystemLists.usable("fonts", SettingsStore.defaults.fontPanels) ? SettingsStore.defaults.fontPanels
                          : Theme.font
-        // The Hyprland file only once the cursor themes are known: before,
-        // it would come out without the cursor lines and be written twice
-        // (two reloads) at every start
-        if (!SystemLists.cursorsRead)
+        // The Hyprland file only once the cursor themes and the keyboard
+        // layouts are known: before, it would come out without those lines
+        // and be written twice (two reloads) at every start
+        if (!SystemLists.cursorsRead || !SystemLists.layoutsRead)
             return
         let text = ""
         try {
@@ -123,9 +124,12 @@ Singleton {
             return
         }
         // Teclado e mouse (settings/input.js): a value that does not pass
-        // leaves the whole file as it was
+        // leaves the whole file as it was. The layout only when it is in
+        // the system's list (Hyprland takes any name and silently keeps the
+        // old keymap); out of it, it is never applied
         try {
-            text += Input.inputLua(v, Schema.KEYS, Serialize.luaValue)
+            const layout = SystemLists.has("layouts", v.kbLayout) ? v.kbLayout : ""
+            text += Input.inputLua(v, Schema.KEYS, Serialize.luaValue, layout)
         } catch (e) {
             failed("repeatRate", "Não deu para aplicar o teclado e o mouse no Hyprland")
             return
