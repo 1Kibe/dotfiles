@@ -226,6 +226,8 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
 | **GTK 3** | Bookmarks do gerenciador de arquivos |
+| **ArtCraft Launcher** | Instala e atualiza os apps da suíte Craft. Sobe escondido com a sessão do Hyprland, sem janela (a barra não tem bandeja), e abre pelo menu de apps |
+| **PdfCraft, WordCraft, GridCraft** | PDF, documentos e planilhas, pelo AUR (`-bin`: o pacote da release oficial) |
 | **Spotify** | Spicetify + Marketplace, aplicados pelo `spotify-abrir` (também depois de cada atualização). Extensões, tema e snippets: no Spotify, carrinho → engrenagem → Back up/Restore → Import from file → `spicetify/marketplace-backup.json`. Eles ficam em `~/.cache/spotify`: limpar esse cache pede importar de novo |
 
 ## Distros
