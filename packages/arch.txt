@@ -11,6 +11,8 @@
 [common]
 # ── Core tools ──
 git
+lazygit                      # git in the terminal (common/.config/lazygit)
+git-delta                    # lazygit's side-by-side diff (delta), in the theme's colors
 nano
 wget
 curl
@@ -81,6 +83,8 @@ aur:artcraft-launcher-bin  # ArtCraft Launcher: installs and updates the Craft a
 aur:pdfcraft-bin           # PdfCraft (PDF)
 aur:wordcraft-bin          # WordCraft (documents)
 aur:gridcraft-bin          # GridCraft (spreadsheets)
+firefox            # default web browser (install.sh: set_default_apps)
+firefox-i18n-pt-br # Firefox in Brazilian Portuguese
 
 # ── File manager ──
 thunar

@@ -121,6 +121,7 @@ AttachedPanel {
             Text {
                 anchors.centerIn: parent
                 visible: !cover.ready
+                textFormat: Text.PlainText
                 text: "󰝚"
                 color: Theme.gray
                 font.family: Theme.font
@@ -221,6 +222,8 @@ AttachedPanel {
             Text {
                 Layout.fillWidth: true
                 visible: text !== ""
+                textFormat: Text.PlainText
+                maximumLineCount: 1
                 text: root.hasPlayer ? root.player.trackArtist : ""
                 elide: Text.ElideRight
                 color: Theme.text
@@ -230,6 +233,8 @@ AttachedPanel {
             Text {
                 Layout.fillWidth: true
                 visible: text !== ""
+                textFormat: Text.PlainText
+                maximumLineCount: 1
                 text: root.hasPlayer ? root.player.trackAlbum : ""
                 elide: Text.ElideRight
                 color: root.softText
@@ -238,6 +243,8 @@ AttachedPanel {
             }
             Text {
                 Layout.fillWidth: true
+                textFormat: Text.PlainText
+                maximumLineCount: 1
                 text: root.hasPlayer ? root.player.identity : ""
                 elide: Text.ElideRight
                 color: root.softText
@@ -298,12 +305,14 @@ AttachedPanel {
 
             Text {
                 Layout.fillWidth: true
+                textFormat: Text.PlainText
                 text: root.hasPlayer ? root.time(root.player.position) : ""
                 color: root.softText
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
             Text {
+                textFormat: Text.PlainText
                 text: root.hasPlayer ? root.time(root.player.length) : ""
                 color: root.softText
                 font.family: Theme.font

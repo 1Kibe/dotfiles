@@ -780,8 +780,34 @@ set_default_app() {
   fi
 }
 
-# Images open in swayimg and videos in mpv. swayimg needs Wayland: in the
-# XFCE session (X11) images don't open (README).
+# Makes an app the default for exactly the types given, of those its
+# .desktop file declares (a type it does not declare is left alone).
+# Skipped when the app is not installed.
+set_default_types() {
+  local desktop="$1" file t
+  local -a declared types=()
+  shift
+
+  file="$(find_desktop_file "$desktop")" || return 0
+  mapfile -t declared < <(grep -m1 '^MimeType=' "$file" | cut -d= -f2- | tr ';' '\n')
+  for t in "$@"; do
+    if printf '%s\n' "${declared[@]}" | grep -qxF -- "$t"; then
+      types+=("$t")
+    fi
+  done
+  if ((${#types[@]} == 0)); then
+    return 0
+  fi
+  if xdg-mime default "$desktop" "${types[@]}"; then
+    log "Default for ${types[*]}: ${desktop%.desktop}"
+  else
+    warn "Could not set ${desktop%.desktop} as the default for ${types[*]}"
+  fi
+}
+
+# Images open in swayimg, videos in mpv and links in Firefox. swayimg needs
+# Wayland: in the XFCE session (X11) images don't open (README). This is
+# only the starting point: Configurações → Apps padrão changes them later.
 set_default_apps() {
   if ! command -v xdg-mime &>/dev/null; then
     warn "xdg-mime not found (xdg-utils), skipping the default apps."
@@ -789,6 +815,12 @@ set_default_apps() {
   fi
   set_default_app swayimg.desktop image/
   set_default_app mpv.desktop video/
+  set_default_types firefox.desktop x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml
+  # The browser some apps ask xdg-settings for; never fails the install
+  if find_desktop_file firefox.desktop >/dev/null && command -v xdg-settings &>/dev/null; then
+    xdg-settings set default-web-browser firefox.desktop 2>/dev/null \
+      || warn "Could not set Firefox as the default web browser (xdg-settings)"
+  fi
 }
 
 # ── XFCE ─────────────────────────────────────────────────────────────────────

@@ -42,7 +42,7 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
 10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio)). No `hyprland`, também a regra do limite de carga da bateria (notebooks Lenovo): o grupo `bateria` pode ligar e desligar só esse limite, sem senha, e o usuário entra no grupo (vale no próximo login)
 11. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
-12. Deixa o swayimg como padrão para imagens e o mpv para vídeos (`xdg-mime`), se estiverem instalados
+12. Deixa o swayimg como padrão para imagens, o mpv para vídeos e o Firefox para links e páginas (`xdg-mime`), se estiverem instalados
 
 </details>
 
@@ -52,7 +52,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
+| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `lazygit`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio), `/etc/profile.d/tmout.sh` (console de texto), `/etc/udev/rules.d/90-dotfiles-bateria.rules` e `/etc/sysusers.d/dotfiles-bateria.conf` (limite de carga da bateria) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM e o limite de carga no `hyprland`; o `tmout.sh` sempre |
@@ -220,7 +220,9 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 | **Kitty** | Agave Nerd Font Mono 11, tema Gruvbox Dark Hard (igual ao Windows Terminal), cursor em barra que pisca suave e deixa rastro, margem de 12 px. As cores vêm do tema do shell (`~/.config/kitty/cores.conf`, gerado, e o Kitty aberto troca sozinho); ajustes só da máquina em `~/.config/kitty/local.conf`. Os dois ficam fora do git |
 | **Starship** | Prompt do bash numa linha: usuário · pasta · git (só dentro de um repo) e a seta, na cor de destaque do tema e vermelha quando o último comando falha. Usa as cores do terminal, então segue o tema. Carregado pelo `~/.bashrc` (o install acrescenta uma linha); no console de texto fica o prompt padrão |
 | **btop** | Monitor do sistema (painel do sistema na barra): só CPU, memória e processos, cantos arredondados e gráficos em blocos. As cores vêm do tema do shell (`~/.config/btop/themes/dotfiles.theme`, gerado e fora do git; o btop lê ao abrir): gráficos de verde a vermelho, títulos na cor de destaque, bordas discretas e o fundo do terminal |
+| **lazygit** | Git no terminal: bordas arredondadas, ícones da Nerd Font, gráfico das branches no histórico, o nome de cada autor (com uma cor por autor), o painel de comandos aberto e sem dicas aleatórias. A diferença aparece pelo delta, lado a lado quando cabe e com cor de sintaxe (`\|` troca para o diff normal do git). As cores vêm do tema do shell (`~/.config/lazygit/tema.yml` e `delta.gitconfig`, gerados e fora do git); o `lazygit` do bash lê os dois junto da configuração do repo |
 | **Rofi** | Tema gruvbox-dark |
+| **Firefox** | Navegador padrão, em português do Brasil (`firefox-i18n-pt-br`): abre os links e as páginas (`http`, `https`, `text/html`). O install só põe o padrão inicial |
 | **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
 | **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |

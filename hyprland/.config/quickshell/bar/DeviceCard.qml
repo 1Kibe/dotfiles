@@ -171,6 +171,7 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
+                textFormat: Text.PlainText
                 text: root.typeIcon
                 color: Theme.text
                 font.family: Theme.font
@@ -185,6 +186,8 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 // Some devices only announce their address
+                textFormat: Text.PlainText
+                maximumLineCount: 1
                 text: root.device.name || root.device.address
                 elide: Text.ElideRight
                 color: Theme.text
@@ -193,6 +196,8 @@ Rectangle {
             }
             Text {
                 Layout.fillWidth: true
+                textFormat: Text.PlainText
+                maximumLineCount: 1
                 text: root.status
                 elide: Text.ElideRight
                 color: root.error !== "" ? Theme.red : Theme.gray

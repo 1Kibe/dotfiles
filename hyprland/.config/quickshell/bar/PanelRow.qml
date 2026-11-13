@@ -48,6 +48,7 @@ Rectangle {
 
         Text {
             visible: root.icon !== ""
+            textFormat: Text.PlainText
             text: root.icon
             color: root.danger ? Theme.red : Theme.text
             font.family: Theme.font
@@ -56,6 +57,8 @@ Rectangle {
         // Takes the free space and elides, so the detail and buttons stay whole
         Text {
             Layout.fillWidth: true
+            textFormat: Text.PlainText
+            maximumLineCount: 1
             text: root.text
             elide: Text.ElideRight
             color: root.danger ? Theme.red : Theme.text
@@ -64,6 +67,8 @@ Rectangle {
         }
         Text {
             visible: root.detail !== ""
+            textFormat: Text.PlainText
+            maximumLineCount: 1
             text: root.detail
             color: Theme.gray
             font.family: Theme.font

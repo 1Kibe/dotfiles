@@ -27,6 +27,7 @@ Item {
     }
 
     component Line: Text {
+        textFormat: Text.PlainText
         property bool active: false
         width: root.width
         color: root.color
