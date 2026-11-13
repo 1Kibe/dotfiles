@@ -77,6 +77,10 @@ aur:spicetify-cli              # Spotify customization; applied by ~/.local/bin/
 aur:spicetify-marketplace-bin  # Spicetify store (extensions, themes), same as on Windows
 mpv                # default video player (install.sh: set_default_apps); config in common/.config/mpv
 aur:mpv-uosc       # mpv interface (controls, menus), in the shell's colors
+aur:artcraft-launcher-bin  # ArtCraft Launcher: installs and updates the Craft apps; starts hidden (autostart.lua)
+aur:pdfcraft-bin           # PdfCraft (PDF)
+aur:wordcraft-bin          # WordCraft (documents)
+aur:gridcraft-bin          # GridCraft (spreadsheets)
 
 # ── File manager ──
 thunar

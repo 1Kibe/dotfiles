@@ -38,4 +38,10 @@ hl.on("hyprland.start", function()
 
   -- "test", not "[ ]": Hyprland reads a leading "[...]" as window rules
   hl.exec_cmd('test -f "$HOME/.config/quickshell/shell.qml" && qs')
+
+  -- ArtCraft Launcher (it installs and updates the Craft apps): with the
+  -- session, hidden, no window (the bar has no tray); it opens from the
+  -- app menu. A fixed command, nothing from the settings; "command -v" only
+  -- checks it is installed. Until the settings bring "Iniciar com o sistema"
+  hl.exec_cmd("command -v artcraft-launcher >/dev/null && artcraft-launcher --hidden")
 end)
