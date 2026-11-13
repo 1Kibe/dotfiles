@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../settings/schema.js" as Schema
 import "../settings/monitors.js" as Monitors
+import "../settings/input.js" as Input
 
 // What this machine has, for the settings' lists (schema `source`): the font
 // families (fc-list), the monospaced ones, and the cursor themes (an icon
@@ -14,7 +15,9 @@ import "../settings/monitors.js" as Monitors
 // the store's check; everything runs as argument lists. The screens come
 // from Hyprland, the turned-off ones too (hyprctl -j monitors all; the
 // Quickshell screens leave them out), read again when the screens change;
-// only port names of the right shape (settings/monitors.js).
+// only port names of the right shape (settings/monitors.js). Whether there is
+// a touchpad comes from Hyprland's devices: only that answer is kept, never
+// a device's name (settings/input.js).
 Singleton {
     id: root
 
@@ -23,6 +26,8 @@ Singleton {
     property var cursorThemes: []
     // This machine's screens, on and off (the wallpaper's "Tela", the bar's)
     property var monitors: []
+    // A touchpad among the pointing devices (Configurações → Touchpad)
+    property bool hasTouchpad: false
     // Each list has been read at least once (until then a stored value is
     // trusted as it is: the store already checked its pattern)
     property bool fontsRead: false
@@ -57,6 +62,7 @@ Singleton {
 
     function refresh() {
         monitorsJob.running = true
+        devicesJob.running = true
         fontsJob.running = true
         monoJob.running = true
         cursorsJob.running = true
@@ -82,6 +88,14 @@ Singleton {
     Connections {
         target: Quickshell
         function onScreensChanged() { monitorsJob.running = true }
+    }
+
+    Process {
+        id: devicesJob
+        command: ["hyprctl", "-j", "devices"]
+        stdout: StdioCollector {
+            onStreamFinished: root.hasTouchpad = Input.hasTouchpad(text)
+        }
     }
 
     // The first family name of each font

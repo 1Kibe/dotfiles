@@ -55,8 +55,14 @@ Flickable {
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
                                        "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit",
                                        "MonitorNotice", "MonitorLayout"]
-    readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
-                                                                                    : keysOf(c.id).length > 0)
+    // A card that needs something this machine does not have stays out
+    // (the touchpad's: SystemLists.hasTouchpad)
+    function present(c) {
+        return c.needs === undefined || (c.needs === "touchpad" && SystemLists.hasTouchpad)
+    }
+    readonly property var cards: (Schema.CARDS[page] || []).filter(c => present(c)
+                                                                    && (c.component ? builtCards.includes(c.component)
+                                                                                    : keysOf(c.id).length > 0))
 
     contentWidth: width
     contentHeight: column.implicitHeight + 32

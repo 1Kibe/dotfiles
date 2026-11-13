@@ -73,10 +73,7 @@
   "mouseLeftHanded": false,
   "focusFollowsMouse": true,
   "tapToClick": true,
-  "twoFingerScroll": true,
   "tapAndDrag": true,
   "touchpadNatural": true,
-  "disableWhileTyping": true,
-  "disableWithMouse": false,
-  "touchpadSensitivity": 0
+  "disableWhileTyping": true
 }

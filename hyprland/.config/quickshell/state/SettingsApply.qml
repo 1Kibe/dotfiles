@@ -9,6 +9,7 @@ import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
+import "../settings/input.js" as Input
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -121,6 +122,18 @@ Singleton {
             failed("accent", "Não deu para aplicar no Hyprland")
             return
         }
+        // Teclado e mouse (settings/input.js): a value that does not pass
+        // leaves the whole file as it was
+        try {
+            text += Input.inputLua(v, Schema.KEYS, Serialize.luaValue)
+        } catch (e) {
+            failed("repeatRate", "Não deu para aplicar o teclado e o mouse no Hyprland")
+            return
+        }
+        // A change elsewhere (or the store reading back its own write) that
+        // leaves the text as it is does not push the write further away
+        if (text === hyprWanted)
+            return
         hyprWanted = text
         hyprTimer.restart()
     }
@@ -180,18 +193,22 @@ Singleton {
     }
 
     // ~/.config/hypr/dotfiles_settings.lua (read by hyprland.lua before local.lua):
-    // written only when its text changes, a moment after the last change,
-    // then Hyprland reads its configuration again. The folder is the repo's
-    // (stow); the file is in its .gitignore.
+    // written only when its text changes, half a second after the last
+    // change (a slider being dragged is one write, one reload), then
+    // Hyprland reads its configuration again. With the session locked
+    // nothing is written or reloaded: the unlock writes what is waiting.
+    // The folder is the repo's (stow); the file is in its .gitignore.
     property string hyprWanted: ""
     property bool hyprLoaded: false
+    readonly property bool locked: LockState.locked || LockState.wanted
+    onLockedChanged: if (!locked) hyprTimer.restart()
     Timer {
         id: hyprTimer
-        interval: 300
+        interval: 500
         onTriggered: root.writeHypr()
     }
     function writeHypr() {
-        if (!hyprLoaded || hyprWanted === "")
+        if (!hyprLoaded || hyprWanted === "" || locked)
             return
         if (hyprView.text() === hyprWanted)
             return
