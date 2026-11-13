@@ -349,6 +349,12 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 - Na VM no Windows, o `Super+L` é do Windows: ele tranca a sessão do Windows antes de chegar ao Hyprland. Na VM, trave pelo
   menu de energia (Bloquear) ou por `hyprctl dispatch 'hl.dsp.exec_cmd("hypr-travar")'`. No notebook o `Super+L` vai direto.
 
+### Luz noturna
+
+Em Configurações → Monitores: liga sozinha no horário escolhido (pode passar da meia-noite) e deixa a tela mais quente
+(6500 K é a cor normal; quanto menor, mais quente). É o `hyprsunset`, aberto e fechado pelo próprio shell; sem horário
+automático por nascer e pôr do sol.
+
 ## Bloqueio e login
 
 A tela de bloqueio e a tela de login são do Quickshell, com o mesmo tema, relógio, cartão do usuário e campo de senha. A

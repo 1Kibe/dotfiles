@@ -18,6 +18,8 @@ ShellRoot {
     // shell touches both at start; the store reads the choices, the other
     // takes them out of the shell
     readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
+    // The night light keeps its hours with the panel closed too
+    readonly property bool nightLightOn: NightLight.wanted
 
     // Desktop wallpaper, below every window
     Wallpaper {}
