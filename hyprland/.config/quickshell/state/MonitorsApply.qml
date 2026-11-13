@@ -207,7 +207,15 @@ Singleton {
         return true
     }
     function apply(text) {
-        run(["hyprctl", "eval", text], code => {
+        // Without the header comment: hyprctl reads an argument that starts
+        // with "--" as its own option (and the code never runs)
+        const code = text.replace(/^--[^\n]*\n/, "")
+        if (!code.startsWith("hl.monitor(")) {
+            fail("O arranjo gerado não começa como devia")
+            revert()
+            return
+        }
+        run(["hyprctl", "eval", code], code => {
             if (code !== 0) {
                 root.fail("O Hyprland não aceitou o arranjo")
                 root.revert()
