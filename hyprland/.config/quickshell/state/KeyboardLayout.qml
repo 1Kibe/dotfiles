@@ -66,13 +66,17 @@ Singleton {
     }
 
     // ── The system's keyboard ──
+    // done(ok): ok only with a real reading (exit 0 and the "X11 Layout"
+    // line); otherwise `system` stays as it was
     function readSystem(done) {
         run(["env", "LC_ALL=C", "localectl", "--no-pager", "status"], (code, out) => {
-            if (code === 0)
-                root.system = Keyboard.parseStatus(out)
+            const read = code === 0 ? Keyboard.parseStatus(out) : null
+            const ok = read !== null && read.known
+            if (ok)
+                root.system = read
             root.systemRead = true
             if (done)
-                done(code === 0)
+                done(ok)
         })
     }
     Component.onCompleted: readSystem()
@@ -85,13 +89,22 @@ Singleton {
         }
         if (busy || settingLogin)
             return false
+        if (MonitorsApply.pending) {
+            fail("Espere a prévia das telas acabar")
+            return false
+        }
         if (!usable(layout)) {
             fail("Esse layout não está na lista do sistema")
             return false
         }
         message = ""
         if (pending) {
-            // Over the running preview: same timer, no more time
+            // Over the running preview: same timer, no more time; not in its
+            // last half second (the way back is about to fire)
+            if (Date.now() >= deadline - 500) {
+                fail("A prévia está acabando: espere ela voltar")
+                return false
+            }
             tried = layout
             apply(layout)
             return true
@@ -103,6 +116,7 @@ Singleton {
         }
         busy = true
         // A way back left from before: refuse, remove nothing
+        let armedAt = 0
         run(["systemctl", "--user", "show", "-p", "LoadState", "--value", `${unit}.timer`, `${unit}.service`],
             (code, out) => {
             if (code !== 0 || out.split("\n").filter(l => l.trim() !== "").some(l => l.trim() !== "not-found")) {
@@ -111,7 +125,9 @@ Singleton {
                 return
             }
             // AccuracySec: a transient timer may otherwise fire up to a
-            // minute late (systemd's default accuracy)
+            // minute late (systemd's default accuracy). The deadline counts
+            // from before the call (the timer may already be running)
+            armedAt = Date.now()
             run(["systemd-run", "--user", "--collect", `--unit=${root.unit}`, `--on-active=${root.seconds}s`,
                  "--timer-property=AccuracySec=100ms", `--setenv=HYPRLAND_INSTANCE_SIGNATURE=${sig}`,
                  "hyprctl", "reload"], code2 => {
@@ -121,8 +137,8 @@ Singleton {
                     return
                 }
                 root.pending = true
-                root.deadline = Date.now() + root.seconds * 1000
-                expiry.interval = root.seconds * 1000 + 1500
+                root.deadline = armedAt + root.seconds * 1000
+                expiry.interval = Math.max(0, root.deadline - Date.now()) + 1500
                 expiry.restart()
                 root.tried = layout
                 root.apply(layout)
@@ -160,6 +176,15 @@ Singleton {
                 root.fail("A prévia acabou antes de manter: nada foi gravado")
                 return
             }
+            // Locked meanwhile: nothing is saved, the saved layout comes back
+            // (the timer is already stopped)
+            if (root.locked()) {
+                root.busy = false
+                root.endPreview("")
+                root.reload()
+                root.fail("Com a sessão travada, nada foi gravado: voltou ao layout salvo")
+                return
+            }
             root.endPreview("")
             SettingsStore.set("kbLayout", layout)
             root.busy = false
@@ -194,24 +219,36 @@ Singleton {
         }
         settingLogin = true
         readSystem(ok => {
+            // No real reading: never call localectl (it would ask the password
+            // for nothing, or wipe the system's model and options)
+            if (!ok) {
+                root.settingLogin = false
+                root.fail("Não deu para trocar o layout")
+                return
+            }
             if (root.system.layout === layout) {
                 root.settingLogin = false
                 return
             }
-            const args = Keyboard.setArgs(layout, ok ? root.system : null, SystemLists.layouts)
+            const args = Keyboard.setArgs(layout, root.system, SystemLists.layouts)
             if (args === null || root.locked()) {
                 root.settingLogin = false
                 root.fail("Não deu para trocar o layout")
                 return
             }
             root.run(args, code => {
-                root.readSystem(() => {
+                root.readSystem(ok2 => {
                     root.settingLogin = false
-                    if (code === 0 && root.system.layout === layout)
+                    if (code === 0 && ok2 && root.system.layout === layout)
                         return
+                    if (code === 0 && !ok2) {
+                        root.fail("Não deu para conferir o teclado do login")
+                        return
+                    }
                     // Cancelled or failed: the page goes back to the system's
-                    // layout (when it is a known one), never tried again
-                    if (root.usable(root.system.layout))
+                    // layout (when it is a known one), never tried again; with
+                    // the session locked nothing is saved
+                    if (ok2 && root.usable(root.system.layout) && !root.locked())
                         SettingsStore.set("kbLayout", root.system.layout)
                     root.fail("Não deu para trocar o layout")
                 })
@@ -224,10 +261,24 @@ Singleton {
         if (!pending)
             return
         endPreview("Voltou ao layout salvo")
-        run(["systemctl", "--user", "stop", `${unit}.timer`], () => {
-            root.ownReload = true
-            root.run(["hyprctl", "reload"])
+        run(["systemctl", "--user", "stop", `${unit}.timer`], () => root.reload())
+    }
+    // Hyprland's files again (the saved layout); a reload that fails says so
+    function reload() {
+        ownReload = true
+        ownReloadTimer.restart()
+        run(["hyprctl", "reload"], code => {
+            if (code !== 0) {
+                root.ownReload = false
+                root.fail("Não deu para voltar o layout: recarregue o Hyprland")
+            }
         })
+    }
+    // Our reload's event, if it never comes, must not swallow a later one
+    Timer {
+        id: ownReloadTimer
+        interval: 2000
+        onTriggered: root.ownReload = false
     }
     function endPreview(text) {
         pending = false
@@ -255,8 +306,11 @@ Singleton {
     Timer {
         id: expiry
         onTriggered: {
-            if (root.pending)
+            if (root.pending) {
                 root.endPreview("A prévia acabou: voltou ao layout salvo")
+                // The timer outside should have done it: once more, here
+                root.reload()
+            }
         }
     }
     readonly property int left: pending ? Math.max(0, Math.ceil((deadline - clock.now) / 1000)) : 0
@@ -284,11 +338,26 @@ Singleton {
     }
 
     // ── Commands (argument lists only) ──
+    // A command's end: its exit and all of its output (the output may land
+    // after the exit). A command that cannot start ends with -1; an output
+    // that never closes is given up a second after the exit
     component Job: Process {
+        id: job
         property var done: null
         property bool finished: false
+        property bool gotExit: false
+        property bool gotOutput: false
+        property int exitCode: -1
         stdout: StdioCollector {
             id: out
+            onStreamFinished: {
+                job.gotOutput = true
+                job.settle()
+            }
+        }
+        function settle() {
+            if (gotExit && gotOutput)
+                finish(exitCode, out.text)
         }
         function finish(code, text) {
             if (finished)
@@ -298,10 +367,23 @@ Singleton {
                 done(code, text)
             destroy()
         }
-        onExited: code => finish(code, out.text)
+        onExited: code => {
+            exitCode = code
+            gotExit = true
+            settle()
+            if (!finished)
+                outputWait.start()
+        }
         onRunningChanged: {
             if (!running && !finished)
-                Qt.callLater(() => finish(-1, ""))
+                Qt.callLater(() => {
+                    if (!job.gotExit)
+                        job.finish(-1, "")
+                })
+        }
+        property Timer outputWait: Timer {
+            interval: 1000
+            onTriggered: job.finish(job.exitCode, out.text)
         }
     }
     Component {

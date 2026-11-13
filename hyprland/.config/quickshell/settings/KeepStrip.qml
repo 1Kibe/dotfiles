@@ -16,7 +16,7 @@ import "ui"
 // button starts focused. On the focused screen, Enter keeps and Esc goes
 // back; both buttons work with the mouse alone.
 Variants {
-    id: strip
+    id: keepRoot
 
     property bool shown: false
     property string question: ""
@@ -30,7 +30,7 @@ Variants {
         id: root
 
         required property var modelData
-        readonly property bool shown: strip.shown
+        readonly property bool shown: keepRoot.shown
         readonly property bool focusedHere: Hyprland.focusedMonitor !== null
                                             && Hyprland.focusedMonitor.name === modelData.name
         // Clicks and keys count only after a short wait
@@ -45,21 +45,31 @@ Variants {
             interval: 400
             onTriggered: root.armed = true
         }
+        // A key on the strip: Enter keeps, Esc goes back; a held key and the
+        // first moment never count
+        function handleKey(key, autoRepeat) {
+            if (autoRepeat || !armed)
+                return
+            if (key === Qt.Key_Return || key === Qt.Key_Enter)
+                keepRoot.keep()
+            else if (key === Qt.Key_Escape)
+                keepRoot.back()
+        }
 
         screen: modelData
         visible: shown
         anchors.top: true
         margins.top: 48
-        implicitWidth: strip.implicitWidth
-        implicitHeight: strip.implicitHeight
+        implicitWidth: box.implicitWidth
+        implicitHeight: box.implicitHeight
         exclusionMode: ExclusionMode.Ignore
         color: Theme.clear
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: strip.namespace
+        WlrLayershell.namespace: keepRoot.namespace
         WlrLayershell.keyboardFocus: shown && focusedHere ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         Rectangle {
-            id: strip
+            id: box
             implicitWidth: row.implicitWidth + 32
             implicitHeight: row.implicitHeight + 20
             radius: Theme.radius
@@ -70,12 +80,7 @@ Variants {
 
             Keys.onPressed: event => {
                 event.accepted = true
-                if (event.isAutoRepeat || !root.armed)
-                    return
-                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
-                    strip.keep()
-                else if (event.key === Qt.Key_Escape)
-                    strip.back()
+                root.handleKey(event.key, event.isAutoRepeat)
             }
 
             RowLayout {
@@ -84,7 +89,7 @@ Variants {
                 spacing: 14
 
                 Text {
-                    text: strip.question
+                    text: keepRoot.question
                     textFormat: Text.PlainText
                     color: Theme.text
                     font.family: Theme.fontPanels
@@ -94,13 +99,13 @@ Variants {
                     text: "Manter"
                     icon: "󰄬"
                     activeFocusOnTab: false
-                    onClicked: if (root.armed) strip.keep()
+                    onClicked: if (root.armed) keepRoot.keep()
                 }
                 Button {
                     text: "Voltar"
                     icon: "󰕌"
                     activeFocusOnTab: false
-                    onClicked: if (root.armed) strip.back()
+                    onClicked: if (root.armed) keepRoot.back()
                 }
             }
         }

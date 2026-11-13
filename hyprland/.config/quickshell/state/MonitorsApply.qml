@@ -162,6 +162,11 @@ Singleton {
         }
         if (busy)
             return false
+        // One preview at a time: not over the keyboard's
+        if (!pending && KeyboardLayout.pending) {
+            fail("Espere a prévia do teclado acabar")
+            return false
+        }
         const result = Monitors.generate(list, Monitors.modesOf(screens), Serialize.luaValue)
         if (!result.ok) {
             fail(result.error)

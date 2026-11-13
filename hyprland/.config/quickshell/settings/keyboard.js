@@ -10,26 +10,33 @@
 var LAYOUT = /^[a-z]{2,8}$/
 var MODEL = /^[a-z0-9][a-z0-9_]{0,23}$/
 var VARIANT = /^[a-z0-9][a-z0-9_-]{0,31}$/
-var OPTIONS = /^[A-Za-z0-9_:,()-]{1,200}$/
+// Never starting with "-" (it would read as an option of localectl)
+var OPTIONS = /^[A-Za-z0-9_][A-Za-z0-9_:,()-]{0,199}$/
 
-// One "Name: value" line of the status ("" when missing)
-function field(text, name) {
-    for (const line of String(text).split("\n")) {
-        const m = /^\s*([A-Za-z0-9 ]+):\s*(.*)$/.exec(line)
+// One "Name: value" line of the status (null when missing)
+function line(text, name) {
+    for (const l of String(text).split("\n")) {
+        const m = /^\s*([A-Za-z0-9 ]+):\s*(.*)$/.exec(l)
         if (m && m[1] === name)
             return m[2].trim()
     }
-    return ""
+    return null
+}
+function field(text, name) {
+    const v = line(text, name)
+    return v === null ? "" : v
 }
 
-// { layout, model, variant, options }: each one checked, "" when it does not
-// pass (two layouts "br,us" read as unknown)
+// { known, layout, model, variant, options }: each one checked, "" when it
+// does not pass (two layouts "br,us" read as unknown). known: the status
+// had its "X11 Layout" line at all (an empty or cut output is no reading)
 function parseStatus(text) {
     const pick = (name, pattern) => {
         const v = field(text, name)
         return pattern.test(v) ? v : ""
     }
     return {
+        known: line(text, "X11 Layout") !== null,
         layout: pick("X11 Layout", LAYOUT),
         model: pick("X11 Model", MODEL),
         variant: pick("X11 Variant", VARIANT),
