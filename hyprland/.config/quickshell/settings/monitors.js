@@ -226,3 +226,97 @@ function scalesFor(mode) {
     }
     return out
 }
+
+// ── For the page (settings/cards/MonitorLayout, MonitorDetails) ──
+
+// A screen's place in the arrangement (scaled, turned): { x, y, w, h }
+function box(screen) {
+    const size = logicalSize(screen)
+    return { x: screen.x, y: screen.y, w: Math.round(size.w), h: Math.round(size.h) }
+}
+
+// The screen's resolutions, biggest first: [{ value: "1920x1080", label }]
+function resolutions(modes) {
+    const seen = {}
+    const out = []
+    for (const m of (Array.isArray(modes) ? modes : []).map(parseMode).filter(x => x)) {
+        const key = `${m.w}x${m.h}`
+        if (seen[key])
+            continue
+        seen[key] = true
+        out.push({ value: key, label: `${m.w} × ${m.h}`, area: m.w * m.h })
+    }
+    out.sort((a, b) => b.area - a.area)
+    return out.map(o => ({ value: o.value, label: o.label }))
+}
+
+// The rates of one resolution, fastest first: [{ value: r, label: "60 Hz" }]
+function rates(modes, w, h) {
+    const out = []
+    for (const m of (Array.isArray(modes) ? modes : []).map(parseMode).filter(x => x))
+        if (m.w === w && m.h === h && !out.some(o => Math.abs(o.value - m.r) < 0.01))
+            out.push({ value: m.r, label: `${String(Math.round(m.r * 100) / 100).replace(".", ",")} Hz` })
+    out.sort((a, b) => b.value - a.value)
+    return out
+}
+
+// Where a screen being dragged lands: touching another one along an edge
+// (a stretch longer than a point), never on top of any; lined up with its
+// edges or center when close (`near`, in arrangement pixels); the spot
+// nearest to where it was dropped. `boxes`: every screen on (not mirrors);
+// `i`: the one moving. → { x, y } (whole numbers)
+function snap(boxes, i, x, y, near) {
+    const me = boxes[i]
+    const others = boxes.filter((b, k) => k !== i)
+    if (others.length === 0)
+        return { x: 0, y: 0 }
+    const pull = typeof near === "number" ? near : 40
+    const free = (cx, cy) => !others.some(o => overlap({ x: cx, y: cy, w: me.w, h: me.h }, o))
+    // Along an edge of o: the lined-up spots, else the dropped one kept on it
+    const along = (start, length, pos, mySize) => {
+        const lined = [start, start + length - mySize, start + (length - mySize) / 2]
+        const best = lined.reduce((a, b) => Math.abs(b - pos) < Math.abs(a - pos) ? b : a)
+        if (Math.abs(best - pos) <= pull)
+            return Math.round(best)
+        return Math.round(Math.max(start - mySize + 1, Math.min(start + length - 1, pos)))
+    }
+    const spots = []
+    for (const o of others) {
+        const cy = along(o.y, o.h, y, me.h)
+        const cx = along(o.x, o.w, x, me.w)
+        spots.push({ x: o.x - me.w, y: cy }, { x: o.x + o.w, y: cy }, { x: cx, y: o.y - me.h }, { x: cx, y: o.y + o.h })
+    }
+    const good = spots.filter(s => free(s.x, s.y))
+    if (good.length === 0)
+        return { x: me.x, y: me.y }
+    good.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))
+    return { x: good[0].x, y: good[0].y }
+}
+
+// A screen just turned on goes to the right of the others, at the top
+function placeRight(boxes) {
+    let x = 0
+    for (const b of boxes)
+        x = Math.max(x, b.x + b.w)
+    return { x: x, y: 0 }
+}
+
+// The arrangement moved so that its top-left corner is 0,0
+function normalize(screens) {
+    const on = screens.filter(s => s.enabled && !s.mirror && s.mode)
+    if (on.length === 0)
+        return screens
+    const minX = Math.min(...on.map(s => s.x))
+    const minY = Math.min(...on.map(s => s.y))
+    return screens.map(s => s.enabled && !s.mirror ? Object.assign({}, s, { x: s.x - minX, y: s.y - minY }) : s)
+}
+
+// The page's scale list: the usual ones first (when they fit), then the
+// rest from 1 up (below 1 everything gets tiny; the generator still takes it)
+var USUAL_SCALES = [1, 1.25, 1.5, 1.6, 2]
+function scaleChoices(mode) {
+    const all = scalesFor(mode).filter(s => s >= 1)
+    const first = USUAL_SCALES.filter(s => all.includes(s))
+    return first.concat(all.filter(s => !first.includes(s)))
+        .map(s => ({ value: s, label: String(s).replace(".", ",") }))
+}

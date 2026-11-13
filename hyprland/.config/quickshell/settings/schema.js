@@ -41,7 +41,7 @@ var PAGES = [
     { id: "bloqueio", group: "Shell", icon: "󰌾", name: "Bloqueio e login", sub: "Tela apagada e música" },
     { id: "captura", group: "Shell", icon: "󰄀", name: "Captura e clipboard", sub: "Pastas, OCR, gravação e histórico" },
     { id: "energia", group: "Sistema", icon: "󰂄", name: "Energia", sub: "Tempos, tampa e menu de energia" },
-    { id: "monitores", group: "Sistema", icon: "󰍹", name: "Monitores", sub: "Barra e luz noturna" },
+    { id: "monitores", group: "Sistema", icon: "󰍹", name: "Monitores", sub: "Arranjo, barra e luz noturna" },
     { id: "teclado", group: "Sistema", icon: "󰌌", name: "Teclado e mouse", sub: "Layout, repetição, mouse e touchpad" },
     { id: "atalhos", group: "Sistema", icon: "󰘳", name: "Atalhos", sub: "Lista dos atalhos" },
     { id: "apps", group: "Sistema", icon: "󰀻", name: "Apps padrão", sub: "Navegador, arquivos, terminal e outros" },
@@ -67,7 +67,8 @@ var CARDS = {
               { id: "tampa", title: "Tampa" },
               { id: "bateria", title: "Bateria", component: "BatteryLimit", flush: true },
               { id: "menu", title: "Menu de energia" }],
-    monitores: [{ id: "arranjo", title: "Arranjo", component: "MonitorLayout" }, { id: "barra", title: "Barra" },
+    monitores: [{ id: "aviso", title: "Aviso", component: "MonitorNotice", strip: true },
+                { id: "arranjo", title: "Arranjo", component: "MonitorLayout", flush: true }, { id: "barra", title: "Barra" },
                 { id: "luz", title: "Luz noturna" }],
     teclado: [{ id: "teclado", title: "Teclado" }, { id: "mouse", title: "Mouse" }, { id: "touchpad", title: "Touchpad" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
@@ -250,7 +251,7 @@ var KEYS = {
 
     // ── Monitores (this machine only) ──
     barMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "monitores",
-                  card: "barra", label: "Tela da barra", desc: "Vazio é todas" },
+                  card: "barra", label: "Mostrar a barra em", source: "monitors", emptyLabel: "Todas as telas" },
     nightLight: { def: false, type: "bool", machine: true, page: "monitores", card: "luz", label: "Luz noturna",
                   syn: ["hyprsunset", "filtro azul"] },
     nightTemp: { def: 4000, type: "int", min: 2500, max: 6500, step: 100, unit: "K", machine: true, page: "monitores",

@@ -51,7 +51,8 @@ Flickable {
     // The special cards built so far (settings/cards/); the others come with
     // the task of their page and stay out until then
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
-                                       "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit"]
+                                       "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit",
+                                       "MonitorNotice", "MonitorLayout"]
     readonly property var cards: (Schema.CARDS[page] || []).filter(c => c.component ? builtCards.includes(c.component)
                                                                                     : keysOf(c.id).length > 0)
 
@@ -138,8 +139,10 @@ Flickable {
                 Layout.fillWidth: true
                 title: modelData.title
                 plain: modelData.strip === true
-                // A special card with nothing to show here hides its group
+                // A special card with nothing to show here hides its group;
+                // one with headerActions puts them at the right of the title
                 visible: !(special.item && special.item.empty === true)
+                titleActions: special.item && special.item.headerActions ? special.item.headerActions : null
                 keys: root.keysOf(cardId)
                 columns: modelData.columns || []
 

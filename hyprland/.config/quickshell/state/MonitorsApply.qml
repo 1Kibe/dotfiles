@@ -26,6 +26,10 @@ import "../settings/serialize.js" as Serialize
 // asked: a screen that differs is local.lua's doing (it loads last); no
 // screen on brings .prev back.
 //
+// The page edits a draft (a copy of the screens): nothing reaches Hyprland
+// until applyDraft(). With no change in it, the draft follows the screens.
+// local.lua is read (text only) to tell the page when it has monitor lines.
+//
 // Nothing here runs while the session is locked. Every command is an
 // argument list; names and numbers come only from settings/monitors.js.
 Singleton {
@@ -340,6 +344,7 @@ Singleton {
                    || s.transform !== a.transform || !s.mode || s.mode.w !== a.mode.w || s.mode.h !== a.mode.h
         }).map(a => a.name)
         warning = differ.length > 0 ? `O local.lua está mandando nesta tela: ${differ.join(", ")}` : ""
+        resetDraft()
     }
     // ── Back ──
     function revert() {
@@ -350,6 +355,97 @@ Singleton {
             root.ownReload = true
             root.run(["hyprctl", "reload"], () => readSoon.restart())
         })
+    }
+
+    // ── The page's draft ──
+    property var draft: []
+    property string selected: ""
+    property bool dirty: false
+    // What the generator says of the draft ({ ok, error })
+    readonly property var draftCheck: Monitors.generate(Monitors.normalize(draft), Monitors.modesOf(screens),
+                                                        Serialize.luaValue)
+    onScreensChanged: if (!dirty) resetDraft()
+    function copy(list) {
+        return list.map(s => Object.assign({}, s, { mode: s.mode ? Object.assign({}, s.mode) : null }))
+    }
+    function resetDraft() {
+        draft = copy(screens)
+        dirty = false
+        if (!draft.some(s => s.name === selected)) {
+            const first = draft.find(s => s.enabled) || draft[0]
+            selected = first ? first.name : ""
+        }
+    }
+    function select(name) {
+        if (draft.some(s => s.name === name))
+            selected = name
+    }
+    // The screens on (not mirrors) as boxes, and where each one is
+    function boxes(list) {
+        return list.filter(s => s.enabled && !s.mirror && s.mode).map(s => Object.assign(Monitors.box(s), { name: s.name }))
+    }
+    // A change to one screen of the draft; false (and why) when refused
+    function edit(name, change) {
+        const next = copy(draft)
+        const s = next.find(x => x.name === name)
+        if (!s)
+            return false
+        if (change.enabled === false && s.enabled
+                && next.filter(x => x.enabled && !x.mirror && x.name !== name).length === 0) {
+            fail("Pelo menos uma tela precisa ficar ligada")
+            return false
+        }
+        // Turned on, or no longer a mirror: it needs a mode and a place
+        const placing = (change.enabled === true && !s.enabled) || (change.mirror === "" && s.mirror !== "")
+        Object.assign(s, change)
+        if (placing && s.enabled) {
+            if (!s.mode) {
+                const first = s.modes.map(Monitors.parseMode).find(m => m)
+                s.mode = first || null
+            }
+            s.scale = 1
+            s.transform = 0
+            s.mirror = ""
+            const spot = Monitors.placeRight(boxes(next.filter(x => x.name !== name)))
+            s.x = spot.x
+            s.y = spot.y
+        }
+        // A new mode keeps the scale only if it still fits
+        if (change.mode && !Monitors.scalesFor(s.mode).includes(s.scale))
+            s.scale = 1
+        if (!s.enabled)
+            next.forEach(x => { if (x.mirror === name) x.mirror = "" })
+        draft = next
+        dirty = true
+        message = ""
+        return true
+    }
+    // A dragged screen dropped at x, y (arrangement pixels): its snapped spot
+    function snapped(name, x, y) {
+        const list = boxes(draft)
+        const i = list.findIndex(b => b.name === name)
+        return i < 0 ? { x: x, y: y } : Monitors.snap(list, i, x, y, 40)
+    }
+    function moveTo(name, x, y) {
+        const spot = snapped(name, x, y)
+        return edit(name, { x: spot.x, y: spot.y })
+    }
+    function applyDraft() {
+        if (!dirty || !draftCheck.ok)
+            return false
+        return preview(Monitors.normalize(draft))
+    }
+
+    // local.lua with monitor lines (outside comments): it loads last and
+    // wins over the page
+    property bool localLuaHasMonitors: false
+    FileView {
+        path: `${root.hyprDir}/local.lua`
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: root.localLuaHasMonitors = text().split("\n").some(l => !/^\s*--/.test(l) && /\bhl\.monitor\s*\(/.test(l))
+        onLoadFailed: root.localLuaHasMonitors = false
     }
 
     // ── Commands (argument lists only) ──

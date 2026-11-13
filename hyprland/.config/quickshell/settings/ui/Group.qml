@@ -18,6 +18,9 @@ ColumnLayout {
     property var keys: []
     property var columns: []
     property bool plain: false
+    // Buttons at the right of the title (a special card's headerActions);
+    // none: nothing there
+    property Component titleActions: null
     default property alias rows: block.data
 
     spacing: 6
@@ -60,6 +63,11 @@ ColumnLayout {
             font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 2
             font.bold: true
+        }
+        Loader {
+            active: root.titleActions !== null
+            visible: active
+            sourceComponent: root.titleActions
         }
         // Before the columns, so they stay over their controls
         Text {
