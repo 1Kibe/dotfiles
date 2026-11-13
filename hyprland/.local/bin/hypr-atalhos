@@ -5,6 +5,9 @@
 # Hyprland doesn't list them, so keep it in sync with keybinds.lua.
 #
 #   hypr-atalhos                  list in a pager (q closes)
+#   hypr-atalhos --json           the list for Configurações → Atalhos: one
+#                                 array of { g: group, t: text, k: [keys] },
+#                                 the sections in order, then the gestures
 #   hypr-atalhos --markdown       tables in Markdown
 #   hypr-atalhos --readme FILE    replaces the tables between the markers
 #                                 <!-- atalhos:inicio --> and <!-- atalhos:fim -->
@@ -24,9 +27,10 @@ GESTURES=(
   "4 dedos (pinça)|Tocar / pausar música"
 )
 
-# One line per action: "group<TAB>keys<TAB>text". Binds with the same group
-# and text are merged ("Super / Super+D"); runs like Super+1..9 are shortened.
-binds_tsv() {
+# One item per action, as JSON: { g, t, k: [keys] }. Binds with the same
+# group and text are merged (k gets both); runs like Super+1..9 become one
+# "Super+1..9". Every other output is made from this one.
+binds_json() {
   local json
   if ! json="$(hyprctl -j binds)"; then
     echo "hypr-atalhos: hyprctl falhou (rodando fora do Hyprland?)" >&2
@@ -57,8 +61,8 @@ binds_tsv() {
       if length > 2
          and all(.[]; test("[0-9]$"))
          and ((map(sub("[0-9]$"; "")) | unique | length) == 1)
-      then .[0] + ".." + (.[-1] | .[-1:])
-      else join(" / ") end;
+      then [.[0] + ".." + (.[-1] | .[-1:])]
+      else . end;
     [ .[]
       | select((.description // "") | test("^[^:]+: "))
       | (.description | capture("^(?<g>[^:]+): (?<t>.*)$")) as $d
@@ -69,7 +73,27 @@ binds_tsv() {
         if any(.[]; .g == $r.g and .t == $r.t)
         then map(if .g == $r.g and .t == $r.t then .k += [$r.k] else . end)
         else . + [{ g: $r.g, t: $r.t, k: [$r.k] }] end)
-    | .[] | [.g, (.k | compact), .t] | @tsv' <<< "$json"
+    | map({ g, t, k: (.k | compact) })' <<< "$json"
+}
+
+# One line per action: "group<TAB>keys<TAB>text" (keys joined by " / ")
+binds_tsv() {
+  local list
+  list="$(binds_json)"
+  jq -r '.[] | [.g, (.k | join(" / ")), .t] | @tsv' <<< "$list"
+}
+
+# Configurações → Atalhos: the sections in their order (a group missing from
+# SECTIONS is left out, as in the tables), then the gestures. Any failure:
+# nothing printed and a non-zero exit (set -e)
+json_list() {
+  local list sections gestures
+  list="$(binds_json)"
+  sections="$(printf '%s\n' "${SECTIONS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+  gestures="$(printf '%s\n' "${GESTURES[@]}" | jq -R -s -c \
+    'split("\n") | map(select(length > 0) | split("|") | { g: "Gestos do touchpad", t: .[1], k: [.[0]] })')"
+  jq -c -n --argjson list "$list" --argjson sections "$sections" --argjson gestures "$gestures" \
+    '[$sections[] as $s | $list[] | select(.g == $s)] + $gestures'
 }
 
 markdown() {
@@ -125,10 +149,11 @@ update_readme() {
 
 case "${1:-}" in
   "") pager ;;
+  --json) json_list ;;
   --markdown) markdown ;;
   --readme) update_readme "${2:?usage: hypr-atalhos --readme FILE}" ;;
   *)
-    echo "usage: hypr-atalhos [--markdown | --readme FILE]" >&2
+    echo "usage: hypr-atalhos [--json | --markdown | --readme FILE]" >&2
     exit 2
     ;;
 esac

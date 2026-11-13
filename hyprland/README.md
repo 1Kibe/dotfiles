@@ -80,6 +80,7 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 
 `Super+F1` mostra esta lista ao vivo, lida do Hyprland em execução. As tabelas abaixo são geradas com
 `hypr-atalhos --readme ~/dotfiles/hyprland/README.md` (rode de novo sempre que mudar o `keybinds.lua`).
+O `hypr-atalhos --json` dá a mesma lista para a página Configurações → Atalhos.
 
 <!-- atalhos:inicio -->
 
