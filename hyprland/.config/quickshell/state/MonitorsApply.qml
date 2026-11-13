@@ -191,8 +191,12 @@ Singleton {
                 root.fail("Uma volta de antes ainda está armada: espere ela acabar")
                 return
             }
+            // AccuracySec: a transient timer may otherwise fire up to a
+            // minute late (systemd's default accuracy), long after the strip
+            // is gone
             run(["systemd-run", "--user", "--collect", `--unit=${root.unit}`, `--on-active=${root.seconds}s`,
-                 `--setenv=HYPRLAND_INSTANCE_SIGNATURE=${sig}`, "hyprctl", "reload"], code2 => {
+                 "--timer-property=AccuracySec=100ms", `--setenv=HYPRLAND_INSTANCE_SIGNATURE=${sig}`,
+                 "hyprctl", "reload"], code2 => {
                 root.busy = false
                 if (code2 !== 0) {
                     root.fail("Não deu para armar a volta: nada foi aplicado")
