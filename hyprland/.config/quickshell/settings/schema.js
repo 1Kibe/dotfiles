@@ -78,7 +78,8 @@ var CARDS = {
               { id: "mouse", title: "Mouse" },
               { id: "touchpad", title: "Touchpad", needs: "touchpad" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
-    apps: [{ id: "apps", title: "Apps padrão" }],
+    apps: [{ id: "apps", title: "Apps padrão", component: "DefaultApps" },
+           { id: "inicio", title: "Iniciar com o sistema", component: "Autostart" }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
@@ -312,7 +313,20 @@ var KEYS = {
     appVideos: appKey("Vídeos", ["filmes"]),
     appMusic: appKey("Músicas", ["áudio"]),
     appText: appKey("Texto", ["editor"]),
-    appPdf: appKey("PDF", ["documentos"])
+    appPdf: appKey("PDF", ["documentos"]),
+    appDocs: appKey("Documentos", ["word", "docx", "texto formatado"]),
+    appSheets: appKey("Planilhas", ["excel", "xlsx", "csv"]),
+    appSlides: appKey("Apresentações", ["powerpoint", "pptx", "slides"]),
+    appVector: appKey("Imagens vetoriais", ["svg"]),
+    appRaw: appKey("Fotos RAW", ["câmera", "raw"]),
+    appCad: appKey("Desenhos técnicos", ["dxf", "cad"]),
+
+    // ── Iniciar com o sistema (this machine only; read at login by
+    // hypr/modules/autostart.lua, never by a reload) ──
+    autostartArtcraft: { def: true, type: "bool", machine: true, hidden: true, page: "apps", card: "inicio",
+                         label: "ArtCraft Launcher (escondido)", syn: ["iniciar", "login", "entrar"] },
+    autostartApps: { def: [], type: "idlist", pattern: DESKTOP_ID, max: 16, machine: true, hidden: true, page: "apps",
+                     card: "inicio", label: "Apps ao entrar", syn: ["iniciar", "login", "entrar"] }
 }
 
 function appKey(label, syn) {

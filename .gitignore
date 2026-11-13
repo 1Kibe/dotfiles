@@ -51,6 +51,12 @@ hyprland/.config/hypr/dotfiles_monitors.lua*
 # hypr-hypridle), and the temporary file of its atomic write
 hyprland/.config/hypr/hypridle.gerado.conf*
 
+# Configurações → Apps padrão: the terminal and file manager of the keybinds
+# and the apps started at login (ids only, written by the shell), with the
+# temporary files and the .prev of their writes
+hyprland/.config/hypr/dotfiles_apps.lua*
+hyprland/.config/hypr/dotfiles_autostart.lua*
+
 # ── Kitty: the theme's colors (written by the shell) and machine-only
 # settings, with the temporary files of their atomic writes ──
 common/.config/kitty/cores.conf*

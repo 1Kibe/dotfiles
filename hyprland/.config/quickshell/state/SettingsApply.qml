@@ -77,6 +77,9 @@ Singleton {
         applyAppearance()
         // Configurações → Energia lives in its own singleton: load it
         EnergyApply.applyIdle()
+        // So do Apps padrão and Iniciar com o sistema (their data files follow
+        // the settings even with the page closed)
+        void AppsState.scanned
     }
 
     // ── Aparência (T4) ──

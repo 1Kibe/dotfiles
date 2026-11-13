@@ -364,6 +364,17 @@ Em Configurações → Monitores: liga sozinha no horário escolhido (pode passa
 (6500 K é a cor normal; quanto menor, mais quente). É o `hyprsunset`, aberto e fechado pelo próprio shell; sem horário
 automático por nascer e pôr do sol.
 
+### Apps padrão e iniciar com o sistema
+
+Em Configurações → Apps padrão, cada linha (Navegador, Arquivos, Terminal, Imagens, Vídeos, Músicas, Texto, PDF e, quando
+algum app instalado abre o tipo, Documentos, Planilhas, Apresentações, Imagens vetoriais, Fotos RAW e Desenhos técnicos)
+lista só os apps que abrem aquele tipo e mostra o que o sistema usa agora (`xdg-mime`). Trocar ali muda o padrão do
+sistema na hora. Terminal e Arquivos valem para os atalhos Super+Enter e Super+E; a lista de atalhos, as regras de janela e
+o btop continuam no Kitty. Em "Iniciar com o sistema" ficam o ArtCraft Launcher (escondido, ligado por padrão) e até 16
+apps que abrem quando você entra na sessão, nunca numa recarga. O que você escolhe fica em
+`~/.config/hypr/dotfiles_apps.lua` e `dotfiles_autostart.lua`, só com os nomes dos apps, fora do git; os apps abrem pelo
+uwsm (ou pelo `gtk-launch`, fora dele).
+
 ## Bloqueio e login
 
 A tela de bloqueio e a tela de login são do Quickshell, com o mesmo tema, relógio, cartão do usuário e campo de senha. A

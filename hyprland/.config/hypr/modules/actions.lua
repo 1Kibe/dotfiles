@@ -6,7 +6,50 @@ local function qs(target, fn)
   return "qs ipc call " .. target .. " " .. (fn or "toggle")
 end
 
+-- An app chosen in Configurações (Apps padrão, Iniciar com o sistema) is only
+-- an id of a .desktop file: checked here again (the shell's pattern), it must
+-- be a file directly in one of the applications folders, and it is opened by
+-- a fixed launcher (uwsm when the session runs under it, else gtk-launch),
+-- never by the file's Exec. Anything else: nil, and the caller keeps its own.
+local function app_folders()
+  local home = os.getenv("HOME") or ""
+  local data_home = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")
+  local out = { data_home .. "/applications" }
+  for dir in string.gmatch(os.getenv("XDG_DATA_DIRS") or "/usr/local/share:/usr/share", "[^:]+") do
+    if dir:sub(1, 1) == "/" and not dir:find("..", 1, true) then
+      table.insert(out, dir .. "/applications")
+    end
+  end
+  table.insert(out, data_home .. "/flatpak/exports/share/applications")
+  table.insert(out, "/var/lib/flatpak/exports/share/applications")
+  return out
+end
+local function app_command(id)
+  if type(id) ~= "string" or #id > 104 or not id:match("^[A-Za-z0-9][A-Za-z0-9._-]*%.desktop$") then
+    return nil
+  end
+  for _, dir in ipairs(app_folders()) do
+    local f = io.open(dir .. "/" .. id, "r")
+    if f then
+      f:close()
+      return "uwsm check is-active && exec uwsm app -- '" .. id .. "' || exec gtk-launch '" .. id .. "'"
+    end
+  end
+  return nil
+end
+
+-- The terminal and the file manager of Super+Enter and Super+E: the shell's
+-- choice (dotfiles_apps.lua, ids only, out of git), else Kitty and Thunar
+local chosen = {}
+local ok, data = pcall(require, "dotfiles_apps")
+if ok and type(data) == "table" then
+  chosen = data
+end
+
 return {
+  -- For autostart.lua: the same check and launcher
+  app_command   = app_command,
+
   -- Shell (Quickshell modules)
   -- Temporary, until each Quickshell module exists: rofi
   launcher      = "rofi -show drun",
@@ -25,8 +68,8 @@ return {
 
   -- Apps and tools (until a Quickshell module replaces them)
   cheatsheet    = "kitty --class hypr-atalhos hypr-atalhos",
-  terminal      = "kitty",
-  files         = "thunar",
+  terminal      = app_command(chosen.terminal) or "kitty",
+  files         = app_command(chosen.files) or "thunar",
   calculator    = "hypr-calculadora",   -- Qalculate with the look of the dotfiles
   print_tela    = "hypr-print tela",
   print_area    = "hypr-print area",

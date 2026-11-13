@@ -39,9 +39,28 @@ hl.on("hyprland.start", function()
   -- "test", not "[ ]": Hyprland reads a leading "[...]" as window rules
   hl.exec_cmd('test -f "$HOME/.config/quickshell/shell.qml" && qs')
 
-  -- ArtCraft Launcher (it installs and updates the Craft apps): with the
-  -- session, hidden, no window (the bar has no tray); it opens from the
-  -- app menu. A fixed command, nothing from the settings; "command -v" only
-  -- checks it is installed. Until the settings bring "Iniciar com o sistema"
-  hl.exec_cmd("command -v artcraft-launcher >/dev/null && artcraft-launcher --hidden")
+  -- Iniciar com o sistema (Configurações → Apps padrão), only at login,
+  -- never on a reload. dotfiles_autostart.lua (ids only, out of git) says
+  -- whether the ArtCraft Launcher starts (hidden, no window: the bar has no
+  -- tray; a fixed command, "command -v" only checks it is installed) and
+  -- which apps open, each one checked and opened by actions.lua's launcher,
+  -- 16 at most. Without the file: the ArtCraft Launcher only
+  local start = { artcraft = true, apps = {} }
+  local sok, sdata = pcall(require, "dotfiles_autostart")
+  if sok and type(sdata) == "table" then
+    start = sdata
+  end
+  if start.artcraft ~= false then
+    hl.exec_cmd("command -v artcraft-launcher >/dev/null && artcraft-launcher --hidden")
+  end
+  local actions = require("modules.actions")
+  for i, id in ipairs(type(start.apps) == "table" and start.apps or {}) do
+    if i > 16 then
+      break
+    end
+    local cmd = actions.app_command(id)
+    if cmd then
+      hl.exec_cmd(cmd)
+    end
+  end
 end)

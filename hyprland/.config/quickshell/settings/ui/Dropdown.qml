@@ -69,6 +69,7 @@ ColumnLayout {
             anchors.rightMargin: 6
             anchors.verticalCenter: parent.verticalCenter
             text: root.summary
+            textFormat: Text.PlainText
             elide: Text.ElideRight
             color: Theme.text
             font.family: Theme.fontPanels
@@ -135,6 +136,7 @@ ColumnLayout {
                 anchors.leftMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 text: `${item.chosen ? "󰄬" : "  "}  ${item.modelData.label}`
+                textFormat: Text.PlainText
                 color: Theme.text
                 font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
