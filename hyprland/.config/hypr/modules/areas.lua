@@ -9,7 +9,8 @@
 -- A screen's position comes from the shell (dotfiles_settings.lua sets the
 -- global dotfiles_areas = { together, positions = { [port] = k } }); a
 -- screen it does not know yet takes the smallest position from 1 to 9 that
--- no screen has, saved or present (the same rule the shell uses when it
+-- no screen has, saved or present, and with all nine saved, the smallest
+-- one of a screen that is not on now (the same rule the shell uses when it
 -- saves it, state/AreasState). Only whole numbers and the shell's checked
 -- port names reach Hyprland.
 local M = {}
@@ -45,14 +46,31 @@ function M.positions()
       out[m.name] = k
     end
   end
+  local on = {}
+  for _, m in ipairs(screens) do
+    on[m.name] = true
+  end
   for _, m in ipairs(screens) do
     if not out[m.name] then
+      local free
       for k = 1, 9 do
         if not taken[k] then
-          taken[k] = m.name
-          out[m.name] = k
+          free = k
           break
         end
+      end
+      -- All nine saved: the place of a screen that is not on now
+      if not free then
+        for k = 1, 9 do
+          if not on[taken[k]] then
+            free = k
+            break
+          end
+        end
+      end
+      if free then
+        taken[free] = m.name
+        out[m.name] = free
       end
     end
   end
@@ -96,8 +114,9 @@ function M.rules()
   end
 end
 
--- Every screen to area n; the focus stays on the screen it was on
-function M.go(n)
+-- Every screen to area n; the focus stays on the screen it was on (with
+-- keep_focus false, as after a reload, nothing is focused at all)
+function M.go(n, keep_focus)
   if not whole(n, 1, M.MAX_AREAS) then
     return
   end
@@ -115,7 +134,7 @@ function M.go(n)
     end
   end
   local now = hl.get_active_monitor()
-  if focused and now and now.name ~= focused.name then
+  if keep_focus ~= false and focused and now and now.name ~= focused.name then
     hl.dispatch(hl.dsp.focus({ monitor = focused.name }))
   end
 end
@@ -185,14 +204,15 @@ function M.gestures()
   end
 end
 
--- Windows on a plain workspace N (from before the areas, or from
--- "Separadas por tela") go to area N on their own screen, without the focus
+-- Windows on a plain workspace N from 1 to 9 (from before the areas, or
+-- from "Separadas por tela") go to area N on their own screen, without the
+-- focus. 10 and up are left alone: 11 to 19 are area 1 already
 function M.adopt()
   local pos = M.positions()
   for _, ws in ipairs(hl.get_workspaces() or {}) do
     local id = ws.id
     local k = ws.monitor and pos[ws.monitor.name]
-    if whole(id, 1, M.MAX_AREAS) and k and (ws.windows or 0) > 0 then
+    if whole(id, 1, 9) and k and (ws.windows or 0) > 0 then
       for _, w in ipairs(ws:get_windows() or {}) do
         local a = type(w.address) == "string" and w.address:lower() or ""
         if not a:find("^0x") then
@@ -215,7 +235,8 @@ local function settle()
   if together then
     local n = M.current()
     M.adopt()
-    M.go(n)
+    -- No focus here: a reload may come with the session locked
+    M.go(n, false)
   end
 end
 hl.on("config.reloaded", settle)

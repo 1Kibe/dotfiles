@@ -13,10 +13,12 @@ import "../settings/hyprland.js" as Hypr
 // (monitorPositions, "port:k" pairs), and the windows of a screen that goes.
 //
 // A screen it has not seen takes the smallest position no screen has, saved
-// or present (the same rule modules/areas.lua uses until this saves it), so
+// or present, and with all nine saved, the smallest one of a screen that is
+// not on now (the same rule modules/areas.lua uses until this saves it), so
 // the same screen comes back to the same part of every area. Saving waits a
-// second for the screens to settle, writes only a change and at most a few
-// times a minute.
+// second for the screens to settle, writes only a change, at most a few
+// times a minute, and never with the session locked (it waits for the
+// unlock: a save rewrites Hyprland's file and reloads it).
 //
 // A screen that goes: its windows move to the first screen, in the same
 // area, and are remembered (in memory only: port and description, the
@@ -61,17 +63,24 @@ Singleton {
         const out = Object.assign({}, saved)
         const taken = {}
         for (const n of Object.keys(out))
-            taken[out[n]] = true
+            taken[out[n]] = n
         for (const n of names) {
             if (out[n] !== undefined || !Monitors.validName(n))
                 continue
-            for (let k = 1; k <= 9; k++) {
-                if (!taken[k]) {
-                    out[n] = k
-                    taken[k] = true
-                    break
-                }
-            }
+            let free = 0
+            for (let k = 1; k <= 9 && free === 0; k++)
+                if (taken[k] === undefined)
+                    free = k
+            // All nine saved: the place of a screen that is not on now
+            for (let k = 1; k <= 9 && free === 0; k++)
+                if (!names.includes(taken[k]))
+                    free = k
+            if (free === 0)
+                continue
+            if (taken[free] !== undefined)
+                delete out[taken[free]]
+            out[n] = free
+            taken[free] = n
         }
         return out
     }
@@ -93,13 +102,17 @@ Singleton {
     readonly property int maxSavesPerMinute: 6
     property bool held: false
 
+    // Locked: windows may still move, but nothing is saved (a save reloads
+    // Hyprland); the unlock settles again
+    readonly property bool locked: LockState.locked || LockState.wanted
+    onLockedChanged: if (!locked) settleTimer.restart()
     function settle() {
         if (!ready)
             return
         const names = screensOn.map(s => s.name)
         const next = place(saved, names)
         const text = format(next)
-        if (text !== String(SettingsStore.get("monitorPositions")) && text.length <= 400)
+        if (!locked && text !== String(SettingsStore.get("monitorPositions")) && text.length <= 400)
             save(text)
         follow(names)
     }
