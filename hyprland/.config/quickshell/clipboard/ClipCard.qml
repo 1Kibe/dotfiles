@@ -57,6 +57,7 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
+            textFormat: Text.PlainText
             text: root.entry.kind === "image" ? `${root.labels.image} · ${root.entry.width}×${root.entry.height}` : root.labels[root.entry.kind]
             color: Theme.gray
             font.family: Theme.font
@@ -96,6 +97,7 @@ Rectangle {
                 border.color: Theme.bg2
             }
             Text {
+                textFormat: Text.PlainText
                 text: root.entry.text.trim()
                 color: Theme.text
                 font.family: Theme.monoFont
@@ -124,6 +126,7 @@ Rectangle {
             Text {
                 anchors.centerIn: parent
                 visible: image.status !== Image.Ready
+                textFormat: Text.PlainText
                 text: "󰋩"
                 color: Theme.gray
                 font.family: Theme.font
@@ -149,6 +152,7 @@ Rectangle {
 
         Text {
             anchors.centerIn: parent
+            textFormat: Text.PlainText
             text: button.icon
             color: button.iconColor
             font.family: Theme.font
