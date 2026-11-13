@@ -18,7 +18,10 @@ ColumnLayout {
 
     readonly property var screen: MonitorsApply.draft.find(s => s.name === MonitorsApply.selected) || null
     readonly property var on: MonitorsApply.draft.filter(s => s.enabled)
-    readonly property int number: screen && screen.enabled ? on.findIndex(s => s.name === screen.name) + 1 : 0
+    // Its position in the areas (state/AreasState): Tela 1 is where area 1
+    // starts
+    readonly property var positions: AreasState.place(AreasState.saved, on.map(s => s.name))
+    readonly property int number: screen && screen.enabled && positions[screen.name] !== undefined ? positions[screen.name] : 0
     readonly property bool usable: screen !== null && screen.enabled && !screen.mirror && screen.mode !== null
 
     function edit(change) {
@@ -73,6 +76,29 @@ ColumnLayout {
                     color: Theme.gray
                     font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 2
+                }
+                // The other screens can become the first one (the areas'
+                // numbers change; the screens stay where they are)
+                Text {
+                    readonly property bool can: AreasState.firstBlocked === ""
+                    visible: root.number > 1 && root.on.length > 1
+                    text: can ? "Tornar principal" : `Tornar principal · ${AreasState.firstBlocked}`
+                    textFormat: Text.PlainText
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    opacity: can ? 1 : 0.6
+                    color: can && principalMouse.containsMouse ? Theme.accentLight : Theme.gray
+                    font.family: Theme.fontPanels
+                    font.pointSize: Theme.fontSize - 2
+                    font.underline: principalMouse.containsMouse
+                    MouseArea {
+                        id: principalMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: parent.can ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: if (parent.can && root.screen) AreasState.makeFirst(root.screen.name)
+                    }
                 }
             }
             Text {

@@ -26,7 +26,9 @@ Flickable {
     readonly property var info: Schema.PAGES.find(p => p.id === page) || Schema.PAGES[0]
 
     function keysOf(cardId) {
-        return Object.keys(Schema.KEYS).filter(k => Schema.KEYS[k].page === page && Schema.KEYS[k].card === cardId)
+        // `hidden` keys are kept by the shell itself: never a row
+        return Object.keys(Schema.KEYS).filter(k => Schema.KEYS[k].page === page && Schema.KEYS[k].card === cardId
+                                                    && Schema.KEYS[k].hidden !== true)
     }
     // The rows of a card: one per key, a pair in the row of its first key
     // (a broken pair, schema.pairProblems, stays as two rows)

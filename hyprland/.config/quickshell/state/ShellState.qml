@@ -26,6 +26,15 @@ Singleton {
     // The monitor whose settings panel shows (opening, open or closing), for
     // bar/SettingsZone
     property string settingsOn: ""
+    // The screens that have a bar ("Mostrar a barra em"; set by shell.qml).
+    // The panels live in the bar: on a screen without one, a keybind opens
+    // them on the first screen that has it
+    property var barScreens: []
+    function panelScreen(monitor) {
+        if (barScreens.length === 0 || barScreens.includes(monitor))
+            return monitor
+        return barScreens[0]
+    }
 
     // A click on a bar button (PowerButton, NetworkStatus, CenterIsland...)
     function toggle(panel, monitor) {
@@ -39,9 +48,10 @@ Singleton {
 
     // The IPC handlers in shell.qml (keybinds and scripts). The same as a
     // click now: the panels live in the bar's own window (Bar.qml), whose
-    // focus grab and keyboard work the same either way
+    // focus grab and keyboard work the same either way. Asked from a screen
+    // with no bar, it opens on the bar's screen
     function toggleByKey(panel, monitor) {
-        toggle(panel, monitor)
+        toggle(panel, panelScreen(monitor))
     }
 
     // Esc, a click outside, a panel action that is done, or another popup

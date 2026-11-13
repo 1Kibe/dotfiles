@@ -116,12 +116,23 @@ Singleton {
         let text = ""
         try {
             text = Appearance.hyprLua(v, pair, SystemLists.has("cursorThemes", v.cursorTheme), Serialize.luaValue)
+                   + areasLua(v)
         } catch (e) {
             failed("accent", "Não deu para aplicar no Hyprland")
             return
         }
         hyprWanted = text
         hyprTimer.restart()
+    }
+
+    // Áreas de trabalho (modules/areas.lua reads the global): the mode and
+    // each screen's place, the pairs checked again (AreasState.parse) and
+    // written through the serializer
+    function areasLua(v) {
+        const pos = AreasState.parse(String(v.monitorPositions))
+        const pairs = Object.keys(pos).map(n => `[${Serialize.luaValue(n)}] = ${Serialize.luaValue(pos[n])}`)
+        return "-- Áreas de trabalho (Configurações → Monitores): read by modules/areas.lua\n"
+               + `dotfiles_areas = { together = ${Serialize.luaValue(v.areasTogether !== false)}, positions = { ${pairs.join(", ")} } }\n`
     }
 
     // The bar's edge (Configurações → Barra → Posição): at the first read it

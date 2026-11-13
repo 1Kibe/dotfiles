@@ -3,6 +3,7 @@
 -- hypr-atalhos (Super+F1) and hyprland/README.md show. Commands live in
 -- actions.lua; here only keys -> actions.
 local a = require("modules.actions")
+local areas = require("modules.areas")
 
 -- Runs an action from actions.lua
 local function run(keys, action, description, flags)
@@ -90,16 +91,17 @@ bind("SUPER + SHIFT + right", hl.dsp.window.move({ monitor = "r" }), "Janelas: M
 bind("SUPER + mouse:272", hl.dsp.window.drag(), "Janelas: Mover com o mouse", { mouse = true })
 bind("SUPER + mouse:273", hl.dsp.window.resize(), "Janelas: Redimensionar com o mouse", { mouse = true })
 
--- ── Áreas de trabalho ───────────────────────────────────────────────────────
+-- ── Áreas de trabalho (modules/areas.lua: every screen at once, or each
+-- screen on its own, as chosen in Configurações → Monitores) ───────────────
 for i = 1, 9 do
-  bind("SUPER + " .. i, hl.dsp.focus({ workspace = i }), "Áreas: Ir para a área (1 a 9)")
-  bind("SUPER + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }), "Áreas: Mandar a janela para a área (1 a 9)")
+  bind("SUPER + " .. i, function() areas.go(i) end, "Áreas: Ir para a área (1 a 9)")
+  bind("SUPER + SHIFT + " .. i, function() areas.move(i) end, "Áreas: Mandar a janela para a área (1 a 9)")
 end
-bind("CTRL + SUPER + left", hl.dsp.focus({ workspace = "e-1" }), "Áreas: Área anterior")
-bind("CTRL + SUPER + right", hl.dsp.focus({ workspace = "e+1" }), "Áreas: Próxima área")
-bind("CTRL + SUPER + D", hl.dsp.focus({ workspace = "empty" }), "Áreas: Nova área vazia")
-bind("SUPER + mouse_down", hl.dsp.focus({ workspace = "e+1" }), "Áreas: Próxima área")
-bind("SUPER + mouse_up", hl.dsp.focus({ workspace = "e-1" }), "Áreas: Área anterior")
+bind("CTRL + SUPER + left", function() areas.step(-1) end, "Áreas: Área anterior")
+bind("CTRL + SUPER + right", function() areas.step(1) end, "Áreas: Próxima área")
+bind("CTRL + SUPER + D", function() areas.empty() end, "Áreas: Nova área vazia")
+bind("SUPER + mouse_down", function() areas.step(1) end, "Áreas: Próxima área")
+bind("SUPER + mouse_up", function() areas.step(-1) end, "Áreas: Área anterior")
 
 -- ── Mídia (also work on the lock screen) ────────────────────────────────────
 run("XF86AudioRaiseVolume", "volume_up", "Mídia: Aumentar o volume", { locked = true, repeating = true })
@@ -118,10 +120,9 @@ run("XF86AudioPrev", "media_prev", "Mídia: Música anterior", { locked = true }
 hl.gesture({ fingers = 3, direction = "left", action = cycle(true) })
 hl.gesture({ fingers = 3, direction = "right", action = cycle(false) })
 hl.gesture({ fingers = 3, direction = "up", action = launch("overview") })
-hl.gesture({ fingers = 3, direction = "down", action = function()
-  hl.dispatch(hl.dsp.focus({ workspace = "empty" }))
-end })
-hl.gesture({ fingers = 4, direction = "horizontal", action = "workspace" })
+hl.gesture({ fingers = 3, direction = "down", action = function() areas.empty() end })
+-- 4 fingers sideways: set by hyprland.lua once the settings are loaded
+-- (areas.gestures: the mode decides)
 hl.gesture({ fingers = 4, direction = "up", action = launch("media_next") })
 hl.gesture({ fingers = 4, direction = "down", action = launch("media_prev") })
 -- Windows uses a 4-finger tap; libinput has no such tap, so a 4-finger pinch

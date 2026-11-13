@@ -37,8 +37,11 @@ ColumnLayout {
     // A drag: the screen moving and the spot it would land on
     property string dragName: ""
     property var dragSpot: null
+    // Tela N: its position in the areas (state/AreasState), as on the
+    // chosen screen's row and on Identificar
+    readonly property var positions: AreasState.place(AreasState.saved, on.map(s => s.name))
     function number(name) {
-        return on.findIndex(s => s.name === name) + 1
+        return positions[name] !== undefined ? positions[name] : 0
     }
     function touches(a, b) {
         const side = (a.x + a.w === b.x || b.x + b.w === a.x) && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 0

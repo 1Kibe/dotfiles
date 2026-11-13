@@ -35,6 +35,12 @@ ShellRoot {
         const names = BarScreens.pick(Quickshell.screens.map(s => s.name), barMonitor)
         return Quickshell.screens.filter(s => names.includes(s.name))
     }
+    // Keybinds from a screen with no bar open its panels on the bar's screen
+    Binding {
+        target: ShellState
+        property: "barScreens"
+        value: barScreens.map(s => s.name)
+    }
     Variants {
         model: barScreens
         delegate: Component {
@@ -228,7 +234,7 @@ ShellRoot {
                 return "página desconhecida"
             ShellState.settingsPage = ""
             ShellState.settingsPage = page
-            if (!ShellState.isOpen("settings", monitor.name))
+            if (!ShellState.isOpen("settings", ShellState.panelScreen(monitor.name)))
                 ShellState.toggleByKey("settings", monitor.name)
             return "ok"
         }

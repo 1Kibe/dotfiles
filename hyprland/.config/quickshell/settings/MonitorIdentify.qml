@@ -14,11 +14,11 @@ Variants {
         id: root
 
         required property var modelData
-        // Its place among the screens that are on (1, 2, 3…)
+        // Its position in the areas (state/AreasState), as on the page
         readonly property int number: {
-            const on = MonitorsApply.screens.filter(s => s.enabled)
-            const i = on.findIndex(s => s.name === modelData.name)
-            return i + 1
+            const on = MonitorsApply.screens.filter(s => s.enabled).map(s => s.name)
+            const k = AreasState.place(AreasState.saved, on)[modelData.name]
+            return on.includes(modelData.name) && k !== undefined ? k : 0
         }
 
         screen: modelData

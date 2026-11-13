@@ -25,6 +25,8 @@
 //   power and on battery); both keys name each other, same type and card
 // - control "swatches" (enum keys of colors): dots in the color each option
 //   gives, in place of the list
+// - hidden: kept by the shell itself, never a row on the page nor a search
+//   result
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
@@ -68,7 +70,8 @@ var CARDS = {
               { id: "bateria", title: "Bateria", component: "BatteryLimit", flush: true },
               { id: "menu", title: "Menu de energia" }],
     monitores: [{ id: "aviso", title: "Aviso", component: "MonitorNotice", strip: true },
-                { id: "arranjo", title: "Arranjo", component: "MonitorLayout", flush: true }, { id: "barra", title: "Barra" },
+                { id: "arranjo", title: "Arranjo", component: "MonitorLayout", flush: true },
+                { id: "areas", title: "Áreas de trabalho" }, { id: "barra", title: "Barra" },
                 { id: "luz", title: "Luz noturna" }],
     teclado: [{ id: "teclado", title: "Teclado" }, { id: "mouse", title: "Mouse" }, { id: "touchpad", title: "Touchpad" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
@@ -92,6 +95,10 @@ var OPT_MONITOR = /^$|^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}$/
 var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var OPT_DESKTOP_ID = /^$|^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var TIME_HM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
+// Each screen's place in the areas (modules/areas.lua): "port:k" pairs, k
+// from 1 to 9, at most 9 screens; state/AreasState checks them again (no
+// repeated port or position)
+var POSITIONS = /^$|^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}:[1-9](,[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}:[1-9]){0,8}$/
 // A capture's name: date fields that Qt writes as digits only (yy or yyyy,
 // M, d, H, h, m, s up to two, z up to three; never MMM/ddd, which become
 // words), each one whole (no letter right after the same letter), joined
@@ -250,6 +257,13 @@ var KEYS = {
                     syn: ["confirmar"] },
 
     // ── Monitores (this machine only) ──
+    areasTogether: { def: true, type: "bool", machine: true, page: "monitores", card: "areas",
+                     label: "Juntas em todas as telas",
+                     desc: "Como no Windows: Super+N troca todas as telas juntas. Desligado: cada tela tem as suas",
+                     syn: ["areas de trabalho", "workspaces", "telas"] },
+    // Kept by the shell (state/AreasState), never a row on the page
+    monitorPositions: { def: "", type: "string", pattern: POSITIONS, machine: true, hidden: true, page: "monitores",
+                        card: "areas", label: "Posições das telas" },
     barMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "monitores",
                   card: "barra", label: "Mostrar a barra em", source: "monitors", emptyLabel: "Todas as telas" },
     nightLight: { def: false, type: "bool", machine: true, page: "monitores", card: "luz", label: "Luz noturna",

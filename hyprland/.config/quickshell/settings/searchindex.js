@@ -18,6 +18,8 @@ function build(schema) {
     const entries = []
     for (const key of Object.keys(schema.KEYS)) {
         const k = schema.KEYS[key]
+        if (k.hidden === true)
+            continue
         const page = pages[k.page]
         const card = (schema.CARDS[k.page] || []).find(c => c.id === k.card)
         const words = [k.label, k.desc || "", (k.syn || []).join(" "), page ? page.name : "", card ? card.title : ""]

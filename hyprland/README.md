@@ -145,6 +145,14 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 | `Super+Ctrl+→ / Super+roda ↓` | Próxima área |
 | `Super+Ctrl+D` | Nova área vazia |
 
+Com várias telas, as áreas são **juntas em todas as telas** (como no Windows; Configurações → Monitores → Áreas de
+trabalho): cada área tem uma parte em cada tela, `Super+N` troca todas as telas de uma vez e o foco fica onde estava,
+`Super+Shift+N` manda a janela para a área N na mesma tela, e a barra mostra as mesmas áreas em todas as telas. A tela
+principal (Tela 1, onde a área 1 começa) se escolhe na tela escolhida da página. Tela nova ganha o próximo lugar livre e
+volta sempre com a mesma parte; tela tirada manda as janelas dela para a principal, na mesma área, e elas voltam se a
+mesma tela voltar. Com uma tela só fica igual a antes. "Separadas por tela" deixa cada tela com as suas, como o Hyprland
+faz sozinho.
+
 ### Mídia
 
 | Atalho | Ação |

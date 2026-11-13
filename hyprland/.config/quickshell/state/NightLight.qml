@@ -120,6 +120,8 @@ Singleton {
         startNow()
     }
     function startNow() {
+        // One way in only: a pending second try never starts another
+        retry.stop()
         if (!wanted || temperature < 2500 || temperature > 6500)
             return
         runningAt = temperature
