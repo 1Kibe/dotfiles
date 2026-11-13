@@ -16,12 +16,13 @@ import Quickshell.Io
 // reloads, the process goes with the old shell and the new one starts its
 // own. No config file is written.
 //
+// Stopping by itself, it is started once more; stopping again within a
+// minute gives up and says so (stops a minute apart are not a pair).
+//
 // The hours come from a Quickshell Timer set to the next change; a second
 // Timer notices a jump of the clock (a suspend, the time changed) and works
-// it out again. An end before the start crosses midnight. If hyprsunset
-// stops by itself it is started once more; a second stop gives up and says
-// so (SettingsApply.failed). It is only color: it goes on with the session
-// locked like any other time.
+// it out again. An end before the start crosses midnight. It is only color:
+// it goes on with the session locked like any other time.
 Singleton {
     id: root
 
@@ -100,6 +101,7 @@ Singleton {
 
     function apply() {
         if (!wanted) {
+            retry.stop()
             if (sunset.running) {
                 stopping = true
                 sunset.running = false
@@ -123,10 +125,20 @@ Singleton {
         runningAt = temperature
         sunset.command = ["hyprsunset", "-t", String(temperature)]
         sunset.running = true
+        steady.restart()
+    }
+    // A minute up: a later stop is a new one, not the second of a pair
+    // (shorter in the tests)
+    property int steadyMs: 60000
+    Timer {
+        id: steady
+        interval: root.steadyMs
+        onTriggered: root.stops = 0
     }
     Process {
         id: sunset
         onExited: {
+            steady.stop()
             if (root.stopping) {
                 root.stopping = false
                 if (root.restartAfterStop) {

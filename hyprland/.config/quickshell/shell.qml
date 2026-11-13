@@ -10,6 +10,7 @@ import qs.wallpaper
 import qs.state
 import qs.settings
 import "settings/schema.js" as Schema
+import "bar/barscreens.js" as BarScreens
 
 // The shell: one bar per monitor. Later modules (launcher, notifications...)
 // get their own folder and a line here.
@@ -26,15 +27,22 @@ ShellRoot {
 
     // Each Bar (the frame: bar and its panels) gets its screen as modelData;
     // bars are added and removed as monitors are plugged in and out. BarZone
-    // reserves the bar's space, since the frame grows over the windows.
+    // reserves the bar's space, since the frame grows over the windows. Only
+    // on the screen chosen in "Mostrar a barra em" when it is there; on
+    // every screen otherwise (bar/barscreens.js)
+    readonly property string barMonitor: SettingsStore.ready ? String(SettingsStore.get("barMonitor")) : ""
+    readonly property var barScreens: {
+        const names = BarScreens.pick(Quickshell.screens.map(s => s.name), barMonitor)
+        return Quickshell.screens.filter(s => names.includes(s.name))
+    }
     Variants {
-        model: Quickshell.screens
+        model: barScreens
         delegate: Component {
             Bar {}
         }
     }
     Variants {
-        model: Quickshell.screens
+        model: barScreens
         delegate: Component {
             BarZone {}
         }
