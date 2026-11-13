@@ -9,6 +9,7 @@ import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
+import "../settings/lazygit.js" as Lazygit
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -94,9 +95,10 @@ Singleton {
         const pair = Appearance.accentPair(v.accent, palette())
         Theme.accent = pair.accent
         Theme.accentLight = pair.light
-        // Kitty's and btop's colors, the accent among them
+        // Kitty's, btop's and lazygit's colors, the accent among them
         applyKitty()
         applyBtop()
+        applyLazygit()
         Theme.barOpacity = v.barOpacity
         Theme.barHeight = v.barHeight
         moveBar(v.barPosition === "bottom")
@@ -343,6 +345,92 @@ Singleton {
         onLoadFailed: {
             root.btopLoaded = true
             root.writeBtop()
+        }
+    }
+
+    // ── lazygit's and delta's colors (settings/lazygit.js) ──
+    // ~/.config/lazygit/tema.yml (read after the repo's config.yml) and
+    // delta.gitconfig (lazygit's diff renderer points delta at it), written
+    // like Kitty's cores.conf: only when the text changes, atomic, and only
+    // into lazygit's own folder after the same check (stow's link to the
+    // repo's common/.config/lazygit, or the user's folder). lazygit reads
+    // them when it opens.
+    readonly property string lazygitDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/lazygit`
+    property string lazygitTheme: ""
+    property string lazygitDelta: ""
+    property bool lazygitThemeLoaded: false
+    property bool lazygitDeltaLoaded: false
+    property bool lazygitAgain: false
+    function applyLazygit() {
+        const colors = {
+            bgHard: String(Theme.bgHard), bg1: String(Theme.bg1), bg2: String(Theme.bg2), fg: String(Theme.fg),
+            gray: String(Theme.gray), red: String(Theme.red), green: String(Theme.green), yellow: String(Theme.yellow),
+            blue: String(Theme.blue), aqua: String(Theme.aqua), accentLight: String(Theme.accentLight)
+        }
+        try {
+            lazygitTheme = Lazygit.themeYaml(colors)
+            lazygitDelta = Lazygit.deltaConf(colors)
+        } catch (e) {
+            return
+        }
+        writeLazygit()
+    }
+    function writeLazygit() {
+        if (!lazygitThemeLoaded || !lazygitDeltaLoaded || lazygitTheme === "" || lazygitDelta === "")
+            return
+        if (lazygitThemeView.text() === lazygitTheme && lazygitDeltaView.text() === lazygitDelta)
+            return
+        if (lazygitCheck.running) {
+            lazygitAgain = true
+            return
+        }
+        lazygitCheck.running = true
+    }
+    Process {
+        id: lazygitCheck
+        command: ["sh", "-c", root.configDirScript, "sh", root.lazygitDir, Quickshell.shellPath("."), "common/.config/lazygit", ""]
+        stdout: StdioCollector {
+            id: lazygitCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && lazygitCheckOut.text.trim() === "ok") {
+                if (lazygitThemeView.text() !== root.lazygitTheme)
+                    lazygitThemeView.setText(root.lazygitTheme)
+                if (lazygitDeltaView.text() !== root.lazygitDelta)
+                    lazygitDeltaView.setText(root.lazygitDelta)
+            }
+            if (root.lazygitAgain) {
+                root.lazygitAgain = false
+                root.writeLazygit()
+            }
+        }
+    }
+    FileView {
+        id: lazygitThemeView
+        path: `${root.lazygitDir}/tema.yml`
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.lazygitThemeLoaded = true
+            root.writeLazygit()
+        }
+        onLoadFailed: {
+            root.lazygitThemeLoaded = true
+            root.writeLazygit()
+        }
+    }
+    FileView {
+        id: lazygitDeltaView
+        path: `${root.lazygitDir}/delta.gitconfig`
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.lazygitDeltaLoaded = true
+            root.writeLazygit()
+        }
+        onLoadFailed: {
+            root.lazygitDeltaLoaded = true
+            root.writeLazygit()
         }
     }
 

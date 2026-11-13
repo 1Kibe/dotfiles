@@ -1,0 +1,23 @@
+# lazygit (git in the terminal). No colors here: they come from the shell's
+# theme in tema.yml and delta.gitconfig, both generated next to this file and
+# out of git. lazygit reads tema.yml after this one (the `lazygit` function
+# in ~/.config/bash/dotfiles.bash lists both in LG_CONFIG_FILE).
+gui:
+  border: rounded
+  nerdFontsVersion: "3"
+  # The author's name, not only the initials (each author keeps a color)
+  commitAuthorShortLength: 12
+  commitAuthorLongLength: 24
+  showCommandLog: true
+  showRandomTip: false
+  timeFormat: "02/01/2006"
+  shortTimeFormat: "15:04"
+git:
+  log:
+    showGraph: always
+  # `|` switches between them: delta (side by side when there is room, in
+  # the theme's colors), then git's own diff
+  diffRenderers:
+    - command: delta --config ~/.config/lazygit/delta.gitconfig --paging=never {{if gt .width 160}}--side-by-side{{end}}
+    - type: rawGit
+      name: git

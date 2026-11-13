@@ -11,6 +11,8 @@
 [common]
 # ── Core tools ──
 git
+lazygit                      # git in the terminal (common/.config/lazygit)
+git-delta                    # lazygit's side-by-side diff (delta), in the theme's colors
 nano
 wget
 curl
