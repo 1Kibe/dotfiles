@@ -12,11 +12,15 @@
 
 var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var MIME = /^[a-z][a-z0-9-]{0,30}\/[a-z0-9][a-z0-9.+_-]{0,100}$/
-// Control characters and the ones that turn the text's direction around
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/
+// Control characters, the ones that turn the text's direction around, line
+// and paragraph separators and the invisible ones (zero width, BOM)
+var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/
 var ICON = /^[A-Za-z0-9._-]{1,64}$/
 var MAX_APPS = 500
 var MAX_BATCH = 16
+var MAX_TYPES = 64
+// The scan's output read at most (whole lines only)
+var MAX_SCAN = 1024 * 1024
 
 // Camera RAW types (shared-mime-info names): out of "Imagens", in "Fotos RAW"
 var RAW = ["image/x-adobe-dng", "image/x-canon-cr2", "image/x-canon-cr3", "image/x-canon-crw", "image/x-fuji-raf",
@@ -32,7 +36,7 @@ var SVG = ["image/svg+xml", "image/svg+xml-compressed"]
 var KEYS = [
     { key: "appBrowser", label: "Navegador", types: ["x-scheme-handler/http", "x-scheme-handler/https", "text/html",
                                                     "application/xhtml+xml"] },
-    { key: "appFiles", label: "Arquivos", types: ["inode/directory"], files: true },
+    { key: "appFiles", label: "Arquivos", types: ["inode/directory"] },
     { key: "appTerminal", label: "Terminal", terminal: true },
     { key: "appImages", label: "Imagens", prefix: "image/", except: RAW.concat(SVG) },
     { key: "appVideos", label: "Vídeos", prefix: "video/" },
@@ -65,13 +69,30 @@ function list(v) {
     return String(v || "").split(";").map(s => s.trim()).filter(s => s.length > 0)
 }
 
-// One line of the scan: "id<TAB>Name<TAB>Type<TAB>Hidden<TAB>NoDisplay<TAB>
-// MimeType<TAB>Categories<TAB>Terminal<TAB>Icon" → an app, or null
-function app(line) {
+// Where an app comes from, by its folder: the first folder is the user's,
+// the last two are Flatpak's (state/AppsState folders)
+function origin(dir, folders) {
+    const i = folders.indexOf(dir)
+    if (i < 0)
+        return ""
+    if (i === 0)
+        return "sua pasta"
+    if (i >= folders.length - 2)
+        return "Flatpak"
+    return "sistema"
+}
+
+// One line of the scan: "folder<TAB>id<TAB>Name<TAB>Type<TAB>Hidden<TAB>
+// NoDisplay<TAB>MimeType<TAB>Categories<TAB>Terminal<TAB>Icon" → an app, or
+// null. `folders`: the scanned folders, in order
+function app(line, folders) {
     const f = String(line).split("\t")
-    if (f.length !== 9)
+    if (f.length !== 10)
         return null
-    const [id, name, type, hidden, noDisplay, mime, categories, terminal, icon] = f
+    const [dir, id, name, type, hidden, noDisplay, mime, categories, terminal, icon] = f
+    const from = origin(dir, folders || [])
+    if (from === "")
+        return null
     if (!DESKTOP_ID.test(id) || !text(name, 64) || type !== "Application")
         return null
     if (hidden === "true" || noDisplay === "true")
@@ -79,28 +100,47 @@ function app(line) {
     return {
         id: id,
         name: name,
-        types: list(mime).filter(t => MIME.test(t)),
+        origin: from,
+        shadows: false,
+        types: list(mime).filter(t => MIME.test(t)).slice(0, MAX_TYPES),
         categories: list(categories).filter(c => /^[A-Za-z0-9_-]{1,40}$/.test(c)),
         terminal: terminal === "true",
         icon: ICON.test(icon) ? icon : ""
     }
 }
 
-// The scan's output → the apps (first id wins: the user's folder comes first),
-// at most MAX_APPS, sorted by name
-function parseScan(out) {
+// The scan's output → the apps (first id wins: the user's folder comes first;
+// one that hides an app of the same id from the system or Flatpak says so),
+// at most MAX_APPS, sorted by name. Output past MAX_SCAN is not read
+function parseScan(out, folders) {
+    let text = String(out)
+    if (text.length > MAX_SCAN)
+        text = text.slice(0, text.lastIndexOf("\n", MAX_SCAN) + 1)
     const seen = {}
     const apps = []
-    for (const line of String(out).split("\n")) {
-        if (apps.length >= MAX_APPS)
-            break
-        const a = app(line)
-        if (a === null || seen[a.id])
+    for (const line of text.split("\n")) {
+        const a = app(line, folders)
+        if (a === null)
             continue
-        seen[a.id] = true
+        if (seen[a.id]) {
+            if (seen[a.id].origin === "sua pasta" && a.origin !== "sua pasta")
+                seen[a.id].shadows = true
+            continue
+        }
+        if (apps.length >= MAX_APPS)
+            continue
+        seen[a.id] = a
         apps.push(a)
     }
     return apps.sort((x, y) => x.name.localeCompare(y.name))
+}
+
+// How an app reads in a list: its name, where it comes from, and the note
+// when the user's copy hides the system's
+function describe(a) {
+    if (!a)
+        return ""
+    return a.origin + (a.shadows ? " · esconde o do sistema" : "")
 }
 
 function spec(key) {
@@ -124,8 +164,6 @@ function serves(key, a) {
         return false
     if (k.terminal)
         return a.categories.includes("TerminalEmulator") && !a.terminal
-    if (k.files && (a.categories.includes("FileManager") || a.types.includes("inode/directory")))
-        return true
     return typesFor(key, a).length > 0
 }
 function candidates(key, apps) {
@@ -138,7 +176,7 @@ function xdgArgs(key, a) {
     if (!a || !DESKTOP_ID.test(a.id))
         return []
     const k = spec(key)
-    const types = k && k.files ? ["inode/directory"].filter(() => serves(key, a)) : typesFor(key, a)
+    const types = typesFor(key, a)
     const out = []
     for (let i = 0; i < types.length; i += MAX_BATCH)
         out.push(["xdg-mime", "default", a.id].concat(types.slice(i, i + MAX_BATCH)))

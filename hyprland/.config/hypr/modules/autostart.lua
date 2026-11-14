@@ -45,15 +45,11 @@ hl.on("hyprland.start", function()
   -- tray; a fixed command, "command -v" only checks it is installed) and
   -- which apps open, each one checked and opened by actions.lua's launcher,
   -- 16 at most. Without the file: the ArtCraft Launcher only
-  local start = { artcraft = true, apps = {} }
-  local sok, sdata = pcall(require, "dotfiles_autostart")
-  if sok and type(sdata) == "table" then
-    start = sdata
-  end
+  local actions = require("modules.actions")
+  local start = actions.data_file("dotfiles_autostart") or { artcraft = true, apps = {} }
   if start.artcraft ~= false then
     hl.exec_cmd("command -v artcraft-launcher >/dev/null && artcraft-launcher --hidden")
   end
-  local actions = require("modules.actions")
   for i, id in ipairs(type(start.apps) == "table" and start.apps or {}) do
     if i > 16 then
       break

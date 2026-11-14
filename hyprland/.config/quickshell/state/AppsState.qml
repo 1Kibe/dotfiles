@@ -10,7 +10,8 @@ import "../settings/serialize.js" as Serialize
 //
 // The apps: a scan of the .desktop files directly in the applications
 // folders (the user's first, then $XDG_DATA_DIRS and Flatpak's exports):
-// regular files only (no link is followed), under 64 KB, read by a fixed awk
+// regular files only (no link is followed), under 64 KB, with a plain desktop
+// id as the file name, read by a fixed awk
 // that keeps only the [Desktop Entry] group and only Name, Type, Hidden,
 // NoDisplay, MimeType, Categories, Terminal and Icon (settings/apps.js
 // checks each one). Exec, TryExec and Path are never read.
@@ -57,14 +58,18 @@ Singleton {
                [`${dataHome}/flatpak/exports/share/applications`, "/var/lib/flatpak/exports/share/applications"])
     }
     readonly property string awk:
-        'FNR == 1 { if (id != "") emit(); id = FILENAME; sub(/^.*\\//, "", id); grp = ""; split("", v) }\n'
+        // A file name that is not a plain desktop id (a line break or a tab
+        // in it would forge a record) is skipped whole
+        'FNR == 1 { if (id != "") emit(); id = FILENAME; dir = FILENAME; sub(/^.*\\//, "", id); sub(/\\/[^\\/]*$/, "", dir)\n'
+        + '  if (id !~ /^[A-Za-z0-9][A-Za-z0-9._-]*\\.desktop$/ || dir ~ /[\\t\\n]/) id = ""\n'
+        + '  grp = ""; split("", v) }\n'
         + '/^\\[/ { grp = $0; sub(/[ \\t\\r]+$/, "", grp); next }\n'
         + 'grp == "[Desktop Entry]" && /^(Name|Type|Hidden|NoDisplay|MimeType|Categories|Terminal|Icon)=/ {\n'
         + '  k = substr($0, 1, index($0, "=") - 1)\n'
         + '  if (!(k in v)) { val = substr($0, index($0, "=") + 1); gsub(/[\\t\\r]/, " ", val); v[k] = val }\n'
         + '}\n'
         + 'END { if (id != "") emit() }\n'
-        + 'function emit() { printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n", id, v["Name"], v["Type"], v["Hidden"], '
+        + 'function emit() { printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n", dir, id, v["Name"], v["Type"], v["Hidden"], '
         + 'v["NoDisplay"], v["MimeType"], v["Categories"], v["Terminal"], v["Icon"] }\n'
     function scanCommand() {
         return ["find"].concat(folders, ["-maxdepth", "1", "-type", "f", "-name", "*.desktop", "-size", "-65k",
@@ -73,7 +78,7 @@ Singleton {
     function scan(done) {
         run(scanCommand(), (code, out) => {
             // find exits non-zero when a folder is missing; its output still counts
-            root.apps = Apps.parseScan(out)
+            root.apps = Apps.parseScan(out, root.folders)
             root.scanned = true
             if (done)
                 done()
@@ -198,12 +203,32 @@ Singleton {
             return
         if (reload && locked())
             return
-        view.wanted = text
-        view.reloadAfter = reload
-        if (view.text() !== "")
-            prev.setText(view.text())
-        else
-            view.setText(text)
+        // The write follows a link: the file and its .prev must be missing or
+        // plain files (stat does not follow links), else nothing is written
+        plainOrMissing([view.path, prev.path], ok => {
+            if (!ok) {
+                root.fail("Um dos arquivos de apps é um link: nada foi gravado")
+                return
+            }
+            view.wanted = text
+            view.reloadAfter = reload
+            if (view.text() !== "")
+                prev.setText(view.text())
+            else
+                view.setText(text)
+        })
+    }
+    function plainOrMissing(paths, done) {
+        if (paths.length === 0)
+            return done(true)
+        run(["stat", "-c", "%f", "--", paths[0]], (code, out) => {
+            if (code !== 0)
+                return root.plainOrMissing(paths.slice(1), done)
+            const m = out.trim().match(/^[0-9a-fA-F]+$/)
+            if (!m || (parseInt(out.trim(), 16) & 0o170000) !== 0o100000)
+                return done(false)
+            root.plainOrMissing(paths.slice(1), done)
+        })
     }
     component DataFile: FileView {
         property bool ready: false
@@ -288,6 +313,16 @@ Singleton {
         property Timer outputWait: Timer {
             interval: 1000
             onTriggered: job.finish(job.exitCode, out.text)
+        }
+        // Ten seconds at most: then it is stopped and counts as failed (the
+        // page is never left busy)
+        property Timer limit: Timer {
+            interval: 10000
+            running: true
+            onTriggered: {
+                job.running = false
+                job.finish(-1, "")
+            }
         }
     }
     Component {

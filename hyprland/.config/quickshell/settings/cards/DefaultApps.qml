@@ -10,7 +10,10 @@ import "../apps.js" as Apps
 // system uses now (xdg-mime), not what was saved; a choice goes to the system
 // only from here. Documentos, Planilhas and the other optional rows show only
 // when some installed app opens them. Terminal and Arquivos are the apps of
-// the Super+Enter and Super+E keybinds.
+// the Super+Enter and Super+E keybinds; if the chosen one does not open,
+// going back to the default is the way out. Each app says where it comes
+// from (the system, your folder, Flatpak), and when your copy hides the
+// system's.
 ColumnLayout {
     id: root
 
@@ -29,7 +32,8 @@ ColumnLayout {
             required property int index
             readonly property bool shortcut: modelData.key === "appTerminal" || modelData.key === "appFiles"
             readonly property var choices: {
-                const list = Apps.candidates(modelData.key, AppsState.apps).map(a => ({ value: a.id, label: a.name }))
+                const list = Apps.candidates(modelData.key, AppsState.apps)
+                                 .map(a => ({ value: a.id, label: `${a.name} · ${Apps.describe(a)}` }))
                 if (shortcut)
                     list.unshift({ value: "", label: modelData.key === "appTerminal" ? "Padrão (Kitty)" : "Padrão (Thunar)" })
                 return list
@@ -40,6 +44,7 @@ ColumnLayout {
             divider: index > 0
             label: modelData.label
             desc: shortcut ? "Vale para o atalho " + (modelData.key === "appTerminal" ? "Super+Enter" : "Super+E")
+                             + ". Se o escolhido não abrir, volte para o padrão"
                            : (value === "" ? "O sistema não tem um padrão" : "")
             Dropdown {
                 options: row.choices

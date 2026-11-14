@@ -29,26 +29,44 @@ local function app_command(id)
     return nil
   end
   for _, dir in ipairs(app_folders()) do
-    local f = io.open(dir .. "/" .. id, "r")
+    -- A file that can be read: a folder opens but gives no byte
+    local f = io.open(dir .. "/" .. id, "rb")
     if f then
+      local byte = f:read(1)
       f:close()
-      return "uwsm check is-active && exec uwsm app -- '" .. id .. "' || exec gtk-launch '" .. id .. "'"
+      if byte then
+        return "uwsm check is-active && exec uwsm app -- '" .. id .. "' || exec gtk-launch '" .. id .. "'"
+      end
     end
   end
   return nil
 end
 
--- The terminal and the file manager of Super+Enter and Super+E: the shell's
--- choice (dotfiles_apps.lua, ids only, out of git), else Kitty and Thunar
-local chosen = {}
-local ok, data = pcall(require, "dotfiles_apps")
-if ok and type(data) == "table" then
-  chosen = data
+-- A data file the shell writes next to this config (ids only, out of git):
+-- read from that exact path (never through package.path, which also looks in
+-- the current folder), as text only and with an empty environment, so it can
+-- only build a table of plain values. Anything else: nil
+local function data_file(name)
+  local dir = (os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")) .. "/hypr/"
+  local chunk = loadfile(dir .. name .. ".lua", "t", {})
+  if not chunk then
+    return nil
+  end
+  local ok, data = pcall(chunk)
+  if ok and type(data) == "table" then
+    return data
+  end
+  return nil
 end
 
+-- The terminal and the file manager of Super+Enter and Super+E: the shell's
+-- choice (dotfiles_apps.lua), else Kitty and Thunar
+local chosen = data_file("dotfiles_apps") or {}
+
 return {
-  -- For autostart.lua: the same check and launcher
+  -- For autostart.lua: the same check, launcher and data reading
   app_command   = app_command,
+  data_file     = data_file,
 
   -- Shell (Quickshell modules)
   -- Temporary, until each Quickshell module exists: rofi
