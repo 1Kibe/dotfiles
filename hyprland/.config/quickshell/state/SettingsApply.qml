@@ -221,7 +221,33 @@ Singleton {
             return
         if (hyprView.text() === hyprWanted)
             return
-        hyprView.setText(hyprWanted)
+        // The write follows a link: the file must be missing or a plain file
+        // (stat does not follow links), else nothing is written
+        if (hyprStat.running) {
+            hyprStatAgain = true
+            return
+        }
+        hyprStat.running = true
+    }
+    property bool hyprStatAgain: false
+    Process {
+        id: hyprStat
+        command: ["stat", "-c", "%f", "--", root.hyprFile]
+        stdout: StdioCollector {
+            id: hyprStatOut
+        }
+        onExited: code => {
+            const t = hyprStatOut.text.trim()
+            const plain = code !== 0 || (/^[0-9a-fA-F]+$/.test(t) && (parseInt(t, 16) & 0o170000) === 0o100000)
+            if (!plain)
+                root.failed("accent", "O arquivo de configurações do Hyprland é um link: nada foi gravado")
+            else if (hyprView.text() !== root.hyprWanted && !root.locked)
+                hyprView.setText(root.hyprWanted)
+            if (root.hyprStatAgain) {
+                root.hyprStatAgain = false
+                root.writeHypr()
+            }
+        }
     }
     FileView {
         id: hyprView

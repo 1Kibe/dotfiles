@@ -273,11 +273,32 @@ Singleton {
             busy = false
             return
         }
-        writing = text
-        if (prevText !== "")
-            prevView.setText(prevText)
-        else
-            fileView.setText(text)
+        // The write follows a link: the file and its .prev must be missing or
+        // plain files (stat does not follow links), else nothing is written
+        plainOrMissing([file, `${file}.prev`], ok => {
+            if (!ok) {
+                root.busy = false
+                root.fail("O arquivo das telas é um link: nada foi gravado")
+                return
+            }
+            root.writing = text
+            if (root.prevText !== "")
+                prevView.setText(root.prevText)
+            else
+                fileView.setText(text)
+        })
+    }
+    function plainOrMissing(paths, done) {
+        if (paths.length === 0)
+            return done(true)
+        run(["stat", "-c", "%f", "--", paths[0]], (code, out) => {
+            if (code !== 0)
+                return root.plainOrMissing(paths.slice(1), done)
+            const t = out.trim()
+            if (!/^[0-9a-fA-F]+$/.test(t) || (parseInt(t, 16) & 0o170000) !== 0o100000)
+                return done(false)
+            root.plainOrMissing(paths.slice(1), done)
+        })
     }
     FileView {
         id: prevView
@@ -336,7 +357,13 @@ Singleton {
             if (prevText !== "") {
                 restoring = true
                 writing = prevText
-                fileView.setText(prevText)
+                const back = prevText
+                plainOrMissing([file], ok => {
+                    if (ok)
+                        fileView.setText(back)
+                    else
+                        root.restoring = false
+                })
             }
             fail("Sem tela depois de gravar: voltou ao arranjo anterior")
             return
