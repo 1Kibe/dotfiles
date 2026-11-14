@@ -14,8 +14,9 @@ var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var MIME = /^[a-z][a-z0-9-]{0,30}\/[a-z0-9][a-z0-9.+_-]{0,100}$/
 // Control characters, the ones that turn the text's direction around, line
 // and paragraph separators and the invisible ones (zero width, soft hyphen,
-// fillers, variation selectors, BOM, tags)
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]|\udb40[\udc00-\udc7f]/
+// fillers, variation selectors, BOM, tags, format marks, a lone half of a
+// pair)
+var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u0600-\u0605\u061c\u06dd\u070f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffc]|\udb40[\udc00-\udc7f\udd00-\uddef]|[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/
 var ICON = /^[A-Za-z0-9._-]{1,64}$/
 var MAX_APPS = 500
 var MAX_BATCH = 16

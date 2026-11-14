@@ -15,15 +15,18 @@ import "../settings/serialize.js" as Serialize
 // folder, <repo>/hyprland/.config/quickshell). git is asked only if the repo
 // folder and its .git are the user's own, real folders (no link) that no
 // one else can write to; then only four questions, with a fixed command line
-// and environment: no system or global config, no hooks, no fsmonitor, no
-// pager, no prompt, no locks, and never a command that runs the repo's
-// filters or reaches the network. Every answer passes settings/about.js;
+// and an empty environment but for a few fixed values: no system or global
+// config, no hooks, no fsmonitor, no pager, no prompt, no locks, no
+// signature check (no gpg or ssh program), and never a command that runs the
+// repo's filters or reaches the network. Every answer passes settings/about.js;
 // anything else reads "—". The system is read as data only. Every command
 // has ten seconds.
 //
 // Exportar writes the repo's settings/defaults.json (its real path, never
-// through a link), only what settings/about.js exportPlan allows; it never
-// stages, commits or pushes.
+// through a link: the settings folder must be the user's own real folder
+// and the file a plain one), exactly the plan the page showed and the user
+// confirmed (settings/about.js exportPlan); it never stages, commits or
+// pushes.
 Singleton {
     id: root
 
@@ -100,16 +103,18 @@ Singleton {
         })
     }
     function git(args) {
-        return ["env", "-u", "GIT_DIR", "-u", "GIT_WORK_TREE", "-u", "GIT_INDEX_FILE",
+        return ["env", "-i", "PATH=/usr/bin", `HOME=${home}`, "LC_ALL=C",
                 "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0",
-                "LC_ALL=C", "/usr/bin/git", "--no-pager", "--no-optional-locks", "-C", repo,
-                "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.pager=cat"].concat(args)
+                "/usr/bin/git", "--no-pager", "--no-optional-locks", "-C", repo,
+                "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.pager=cat",
+                "-c", "log.showSignature=false", "-c", "gpg.program=/bin/false", "-c", "gpg.ssh.program=/bin/false",
+                "-c", "gpg.x509.program=/bin/false"].concat(args)
     }
     function askGit() {
         if (!repoOk)
             return
         run(git(["rev-parse", "--short=12", "HEAD"]), (code, out) => root.commit = code === 0 ? About.gitHash(out) : root.none)
-        run(git(["log", "-1", "--format=%cs"]), (code, out) => root.date = code === 0 ? About.gitDate(out) : root.none)
+        run(git(["log", "-1", "--no-show-signature", "--format=%cs"]), (code, out) => root.date = code === 0 ? About.gitDate(out) : root.none)
         run(git(["describe", "--tags", "--abbrev=0"]), (code, out) => root.tag = code === 0 ? About.gitRef(out) : root.none)
         run(git(["rev-parse", "--abbrev-ref", "HEAD"]), (code, out) => root.branch = code === 0 ? About.gitRef(out) : root.none)
     }
@@ -137,22 +142,28 @@ Singleton {
     property string exportMessage: ""
     property bool exporting: false
     signal exported(int count)
-    function exportNow() {
-        if (!SettingsStore.ready || !repoOk || exporting)
+    // `p`: the plan the page showed (plan()), written as it is
+    function exportNow(p) {
+        if (!SettingsStore.ready || !repoOk || exporting || !p || typeof p.out !== "object" || !Array.isArray(p.changed))
             return false
-        const p = plan()
         exporting = true
         exportMessage = ""
-        // The file must be a plain file (or missing): the write follows a link
-        run(Serialize.writeCheck(defaultsTarget), code => {
-            if (!Serialize.mayWrite(code)) {
-                root.exporting = false
-                root.exportMessage = "O defaults.json do repo é um link ou não pôde ser conferido: nada foi gravado"
-                return
-            }
-            exportView.count = p.changed.length
-            exportView.path = root.defaultsTarget
-            exportView.setText(JSON.stringify(p.out, null, 2) + "\n")
+        const refuse = () => {
+            root.exporting = false
+            root.exportMessage = "O defaults.json do repo é um link ou não pôde ser conferido: nada foi gravado"
+        }
+        // The folder must be the user's own real one and the file a plain file
+        // (or missing): the write follows a link
+        statOwn(`${repo}/hyprland/.config/quickshell/settings`, ok => {
+            if (!ok)
+                return refuse()
+            run(Serialize.writeCheck(root.defaultsTarget), code => {
+                if (!Serialize.mayWrite(code))
+                    return refuse()
+                exportView.count = p.changed.length
+                exportView.path = root.defaultsTarget
+                exportView.setText(JSON.stringify(p.out, null, 2) + "\n")
+            })
         })
         return true
     }

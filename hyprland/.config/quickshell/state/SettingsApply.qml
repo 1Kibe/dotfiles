@@ -233,11 +233,22 @@ Singleton {
     Process {
         id: hyprStat
         command: Serialize.writeCheck(root.hyprFile)
-        // Ten seconds at most: a check that hangs is stopped (a refusal), so
-        // the next change can still be written
-        onRunningChanged: if (running) hyprStatLimit.restart(); else hyprStatLimit.stop()
-        onExited: code => {
-            if (!Serialize.mayWrite(code))
+        // Ten seconds at most: a check that hangs is stopped and counts as a
+        // refusal whatever it answers then (a program may catch the signal
+        // and exit 0), so the next change can still be written. Only a normal
+        // exit counts (status 0, QProcess's NormalExit: the enum is not
+        // reachable from QML)
+        property bool timedOut: false
+        onRunningChanged: {
+            if (running) {
+                timedOut = false
+                hyprStatLimit.restart()
+            } else {
+                hyprStatLimit.stop()
+            }
+        }
+        onExited: (code, status) => {
+            if (timedOut || status !== 0 || !Serialize.mayWrite(code))
                 root.failed("accent", "O arquivo de configurações do Hyprland é um link ou não pôde ser conferido: nada foi gravado")
             else if (hyprView.text() !== root.hyprWanted && !root.locked)
                 hyprView.setText(root.hyprWanted)
@@ -250,7 +261,10 @@ Singleton {
     Timer {
         id: hyprStatLimit
         interval: 10000
-        onTriggered: hyprStat.running = false
+        onTriggered: {
+            hyprStat.timedOut = true
+            hyprStat.running = false
+        }
     }
     FileView {
         id: hyprView

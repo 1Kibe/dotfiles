@@ -12,7 +12,7 @@ var MAX_TEXT = 200
 var MAX_KEYS = 16
 // Control characters (line breaks included), the ones that turn the
 // direction of the text around, separators and invisible ones
-var BAD = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]|\udb40[\udc00-\udc7f]/
+var BAD = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u0600-\u0605\u061c\u06dd\u070f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffc]|\udb40[\udc00-\udc7f\udd00-\uddef]|[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/
 
 function text(v) {
     return typeof v === "string" && v.length > 0 && v.length <= MAX_TEXT && !BAD.test(v)

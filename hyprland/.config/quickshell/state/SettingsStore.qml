@@ -83,6 +83,7 @@ Singleton {
         const r = Validate.validate(s, value, home)
         if (!r.ok)
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         if (same(r.value, defaults[key]))
             delete next[key]
@@ -95,6 +96,7 @@ Singleton {
     function reset(key) {
         if (!ready || !spec(key) || (!own(user, key) && !own(extra, key)))
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         delete next[key]
         apply(next, [key])
@@ -109,6 +111,7 @@ Singleton {
         const gone = keys.filter(k => spec(k) && (own(user, k) || own(extra, k)))
         if (gone.length === 0)
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         for (const k of gone)
             delete next[k]
@@ -121,34 +124,57 @@ Singleton {
     function resetAll() {
         if (!ready)
             return false
+        dropUndo()
         apply({}, Object.keys(user))
         return true
     }
 
     // Restaurar tudo (Configurações → Sobre): a copy of settings.json first
-    // (mode 600, settings.json.bak-<date>, the last three kept); if the copy
-    // fails, nothing is restored. Then every machine choice goes (keys this
-    // version does not know stay), and for half a minute undoRestore() puts
-    // them back. Nothing here reaches the system (the keyboard of the login,
-    // the default apps): only the page's own buttons do. done(ok)
+    // (mode 600, settings.json.bak-<date>-<n>, the last three kept); if the
+    // copy fails, nothing is restored. Then every machine choice goes, but
+    // the system's own (schema `system`: the login's keyboard, which only its
+    // card changes) and the keys this version does not know stay. For half a
+    // minute undoRestore() puts back what went, unless anything changes in
+    // between (then the Desfazer is gone: it would undo that too). While a
+    // Desfazer is pending, a second Restaurar tudo is refused. Nothing here
+    // reaches the system (the keyboard of the login, the default apps): only
+    // the page's own buttons do. done(ok)
     property var undoUser: null
     property double undoUntil: 0
     readonly property int undoSeconds: 30
+    // The choices Restaurar tudo would take away
+    function restorableKeys() {
+        return Object.keys(user).filter(k => !(spec(k) && spec(k).system))
+    }
+    function dropUndo() {
+        undoUser = null
+        undoTimer.stop()
+    }
+    property bool restoring: false
     function restoreAll(done) {
-        if (!ready)
+        if (!ready || restoring || undoUser !== null)
             return false
-        const snapshot = Object.assign({}, user)
+        const gone = restorableKeys()
+        const snapshot = {}
+        for (const k of gone)
+            snapshot[k] = user[k]
+        restoring = true
         backupForRestore(ok => {
+            root.restoring = false
             if (!ok) {
                 notice("Não deu para guardar uma cópia das configurações: nada foi restaurado")
                 if (done)
                     done(false)
                 return
             }
+            const next = {}
+            for (const k of Object.keys(root.user))
+                if (!gone.includes(k))
+                    next[k] = root.user[k]
+            root.apply(next, gone)
             root.undoUser = snapshot
             root.undoUntil = Date.now() + root.undoSeconds * 1000
             undoTimer.restart()
-            root.apply({}, Object.keys(snapshot))
             if (done)
                 done(true)
         })
@@ -158,9 +184,8 @@ Singleton {
         if (!ready || undoUser === null || Date.now() > undoUntil)
             return false
         const back = undoUser
-        undoUser = null
-        undoTimer.stop()
-        apply(back, Object.keys(back))
+        dropUndo()
+        apply(Object.assign({}, user, back), Object.keys(back))
         return true
     }
     Timer {
@@ -170,22 +195,29 @@ Singleton {
     }
     // The copy: none needed when there is no file; a plain file only
     // (settings/serialize.js writeCheck: a link or an error, no restore);
-    // then only the newest three copies stay
+    // a missing folder (a new install) is made first, mode 700. The name is
+    // unique (date, milliseconds and a count); then only the newest three
+    // copies stay, never the one just made
+    property int backupCount: 0
     function backupForRestore(done) {
-        run(Serialize.writeCheck(userFile), code => {
-            if (code === Serialize.WRITE_MISSING)
-                return done(true)
-            if (code !== 0)
-                return done(false)
-            const copy = `${userFile}.bak-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")}`
-            run(["install", "-m", "600", "-T", "--", userFile, copy], code2 => {
-                if (code2 !== 0)
+        run(["mkdir", "-p", "-m", "700", "--", userDir], () => {
+            run(Serialize.writeCheck(userFile), code => {
+                if (code === Serialize.WRITE_MISSING)
+                    return done(true)
+                if (code !== 0)
                     return done(false)
-                run(["find", userDir, "-maxdepth", "1", "-type", "f", "-name", "settings.json.bak-*"], (code3, out3) => {
-                    const old = out3.split("\n").filter(l => /\/settings\.json\.bak-\d{8}-\d{6}$/.test(l)).sort()
-                    for (const f of old.slice(0, Math.max(0, old.length - 3)))
-                        root.run(["rm", "-f", "--", f])
-                    done(true)
+                root.backupCount++
+                const copy = `${userFile}.bak-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss-zzz")}-${root.backupCount}`
+                run(["install", "-m", "600", "-T", "--", userFile, copy], code2 => {
+                    if (code2 !== 0)
+                        return done(false)
+                    run(["find", userDir, "-maxdepth", "1", "-type", "f", "-name", "settings.json.bak-*"], (code3, out3) => {
+                        const old = out3.split("\n")
+                                        .filter(l => l !== copy && /\/settings\.json\.bak-\d{8}-\d{6}(-\d{3}-\d+)?$/.test(l)).sort()
+                        for (const f of old.slice(0, Math.max(0, old.length - 2)))
+                            root.run(["rm", "-f", "--", f])
+                        done(true)
+                    })
                 })
             })
         })
@@ -262,6 +294,8 @@ Singleton {
                     u[key] = r.value
             }
         }
+        if (userRead && !same(u, user))
+            dropUndo()
         user = u
         extra = x
     }

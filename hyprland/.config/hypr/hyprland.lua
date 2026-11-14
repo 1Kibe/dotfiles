@@ -6,6 +6,55 @@
 -- Real monitors and scales go in local.lua.
 hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
 
+-- This folder: where Lua says this file came from, else the first entry of
+-- package.path (Hyprland puts the config's folder there, but that depends
+-- on its order), else XDG_CONFIG_HOME/hypr or ~/.config/hypr. Only an
+-- absolute folder that holds this file and modules/env.lua counts: never
+-- "./", the current folder, nor an empty or relative variable. None: nil, and
+-- no file beside is read. modules/actions.lua uses the same one
+-- (dotfiles_config_dir)
+local function is_config_dir(dir)
+  if type(dir) ~= "string" or dir:sub(1, 1) ~= "/" then
+    return false
+  end
+  for _, name in ipairs({ "/hyprland.lua", "/modules/env.lua" }) do
+    local f = io.open(dir .. name, "rb")
+    if not f then
+      return false
+    end
+    f:close()
+  end
+  return true
+end
+local function absolute_env(name)
+  local v = os.getenv(name)
+  if type(v) == "string" and v:sub(1, 1) == "/" then
+    return v
+  end
+  return nil
+end
+local function find_config_dir()
+  if type(debug) == "table" and type(debug.getinfo) == "function" then
+    local info = debug.getinfo(1, "S")
+    local dir = info and type(info.source) == "string" and info.source:match("^@(/.*)/[^/]+$")
+    if is_config_dir(dir) then
+      return dir
+    end
+  end
+  local dir = package.path:match("^([^;]+)/%?%.lua")
+  if is_config_dir(dir) then
+    return dir
+  end
+  local home = absolute_env("HOME")
+  local base = absolute_env("XDG_CONFIG_HOME") or (home and home .. "/.config")
+  if base and is_config_dir(base .. "/hypr") then
+    return base .. "/hypr"
+  end
+  return nil
+end
+local config_dir = find_config_dir()
+dotfiles_config_dir = config_dir
+
 require("modules.env")
 require("modules.look")
 require("modules.input")
@@ -21,39 +70,10 @@ require("modules.autostart")
 -- file is normal (a new install, before the shell runs) and says nothing;
 -- any other error goes to the log and the rest of the config stays. `env`:
 -- what the file may use (nil: everything, for local.lua)
--- This folder: where Lua says this file came from, else the first entry of
--- package.path (Hyprland puts the config's folder there, but that depends
--- on its order), else the usual place. Only an absolute folder that holds
--- this file and modules/env.lua counts: never "./", the current folder
-local function is_config_dir(dir)
-  if type(dir) ~= "string" or dir:sub(1, 1) ~= "/" then
-    return false
-  end
-  for _, name in ipairs({ "/hyprland.lua", "/modules/env.lua" }) do
-    local f = io.open(dir .. name, "rb")
-    if not f then
-      return false
-    end
-    f:close()
-  end
-  return true
-end
-local function find_config_dir()
-  if type(debug) == "table" and type(debug.getinfo) == "function" then
-    local info = debug.getinfo(1, "S")
-    local dir = info and type(info.source) == "string" and info.source:match("^@(/.*)/[^/]+$")
-    if is_config_dir(dir) then
-      return dir
-    end
-  end
-  local dir = package.path:match("^([^;]+)/%?%.lua")
-  if is_config_dir(dir) then
-    return dir
-  end
-  return (os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")) .. "/hypr"
-end
-local config_dir = find_config_dir()
 local function load_beside(name, env)
+  if not config_dir then
+    return
+  end
   local path = config_dir .. "/" .. name .. ".lua"
   local f = io.open(path, "rb")
   if not f then
@@ -84,10 +104,12 @@ local function refused(what)
   print("hyprland.lua: dotfiles_settings.lua: not allowed: " .. string.format("%q", tostring(what):sub(1, 80)))
 end
 -- The options the shell writes (settings/appearance.js, settings/input.js;
--- a test checks that both sides list the same ones): a table is a group, true
--- an option. Anything else goes to the log and is left out
+-- a test checks that both sides list the same ones): a table is a group,
+-- true an option with a plain value (text, number or true/false), "gradient"
+-- the border's colors and angle. Anything else goes to the log and is left
+-- out
 local SETTINGS_OPTIONS = {
-  general = { col = { active_border = true } },
+  general = { col = { active_border = "gradient" } },
   decoration = { rounding = true },
   input = {
     kb_layout = true, kb_variant = true, repeat_rate = true, repeat_delay = true, numlock_by_default = true,
@@ -95,13 +117,30 @@ local SETTINGS_OPTIONS = {
     touchpad = { tap_to_click = true, tap_and_drag = true, natural_scroll = true, disable_while_typing = true },
   },
 }
+local PLAIN = { string = true, number = true, boolean = true }
+local function gradient(v)
+  if type(v) ~= "table" or type(v.colors) ~= "table" or #v.colors < 1 or #v.colors > 10
+      or (v.angle ~= nil and type(v.angle) ~= "number") then
+    return nil
+  end
+  local colors = {}
+  for i = 1, #v.colors do
+    if type(v.colors[i]) ~= "string" or #v.colors[i] > 32 then
+      return nil
+    end
+    colors[i] = v.colors[i]
+  end
+  return { colors = colors, angle = v.angle }
+end
 local function only_allowed(t, allowed, prefix)
   local out = {}
   for k, v in pairs(t) do
     local a = type(k) == "string" and allowed[k]
     local path = prefix .. tostring(k)
-    if a == true then
+    if a == true and PLAIN[type(v)] then
       out[k] = v
+    elseif a == "gradient" and gradient(v) then
+      out[k] = gradient(v)
     elseif type(a) == "table" and type(v) == "table" then
       out[k] = only_allowed(v, a, path .. ".")
     else

@@ -27,6 +27,8 @@
 //   gives, in place of the list
 // - hidden: kept by the shell itself, never a row on the page nor a search
 //   result
+// - system: tied to a setting of the system itself (the login's keyboard):
+//   Restaurar tudo keeps it, only its own card changes it
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
@@ -282,9 +284,9 @@ var KEYS = {
     // ── Teclado e mouse ──
     // The layout gets its own card (the system's list, a preview to keep);
     // the model is never shown
-    kbLayout: { def: "br", type: "string", pattern: /^[a-z]{2,8}$/, machine: true, hidden: true, page: "teclado",
+    kbLayout: { def: "br", type: "string", pattern: /^[a-z]{2,8}$/, machine: true, hidden: true, system: true, page: "teclado",
                 card: "teclado", label: "Layout do sistema", syn: ["abnt", "idioma"] },
-    kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, hidden: true,
+    kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, hidden: true, system: true,
                page: "teclado", card: "teclado", label: "Modelo do teclado" },
     repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, unit: "ms", page: "teclado", card: "teclado",
                    label: "Atraso da repetição" },

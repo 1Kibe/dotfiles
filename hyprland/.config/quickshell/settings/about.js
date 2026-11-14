@@ -8,16 +8,24 @@
 
 var NONE = "—"
 // Control characters, direction marks, separators and invisible ones (zero
-// width, soft hyphen, fillers, variation selectors, BOM, tags)
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]|\udb40[\udc00-\udc7f]/
+// width, soft hyphen, fillers, variation selectors, BOM, tags, format marks,
+// a lone half of a pair)
+var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u0600-\u0605\u061c\u06dd\u070f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffc]|\udb40[\udc00-\udc7f\udd00-\uddef]|[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/
 
 // A short plain text (at most 64 characters, nothing that is not shown as
-// typed), or "—"
+// typed), or "—". Cut by characters, never in the middle of a pair
 function text(v) {
     const t = String(v === undefined || v === null ? "" : v).trim()
     if (t === "" || BAD_TEXT.test(t))
         return NONE
-    return t.length > 64 ? t.slice(0, 63) + "…" : t
+    // By code point (Array.from splits a pair in the QML engine)
+    const chars = []
+    for (let i = 0; i < t.length;) {
+        const c = t.codePointAt(i)
+        chars.push(String.fromCodePoint(c))
+        i += c > 0xffff ? 2 : 1
+    }
+    return chars.length > 64 ? chars.slice(0, 63).join("") + "…" : t
 }
 function pattern(v, re) {
     const t = String(v === undefined || v === null ? "" : v).trim()

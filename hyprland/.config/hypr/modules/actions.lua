@@ -45,12 +45,16 @@ local function app_command(id)
 end
 
 -- A data file the shell writes next to this config (ids only, out of git):
--- read from that exact path (never through package.path, which also looks in
--- the current folder), as text only and with an empty environment, so it can
+-- read from that exact path, in the config's folder as hyprland.lua found it
+-- (dotfiles_config_dir; never through package.path, which also looks in the
+-- current folder), as text only and with an empty environment, so it can
 -- only build a table of plain values. Anything else: nil
 local function data_file(name)
-  local dir = (os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")) .. "/hypr/"
-  local chunk = loadfile(dir .. name .. ".lua", "t", {})
+  local dir = dotfiles_config_dir
+  if type(dir) ~= "string" or dir:sub(1, 1) ~= "/" then
+    return nil
+  end
+  local chunk = loadfile(dir .. "/" .. name .. ".lua", "t", {})
   if not chunk then
     return nil
   end

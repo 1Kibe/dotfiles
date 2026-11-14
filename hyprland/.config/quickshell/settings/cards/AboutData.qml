@@ -19,7 +19,11 @@ ColumnLayout {
     property var exportPlan: null
     property bool askRestore: false
     property bool restored: false
-    readonly property var machineKeys: Object.keys(SettingsStore.user || {})
+    // What Restaurar tudo would take away (the keyboard's layout stays)
+    readonly property var machineKeys: {
+        void SettingsStore.user
+        return SettingsStore.restorableKeys()
+    }
 
     function labels(keys) {
         const names = keys.map(k => Schema.KEYS[k] ? Schema.KEYS[k].label : k)
@@ -94,9 +98,11 @@ ColumnLayout {
                 text: "Exportar"
                 enabled: root.exportPlan !== null && root.exportPlan.changed.length > 0
                 opacity: enabled ? 1 : 0.5
+                // Exactly the list shown above is written
                 onClicked: {
+                    const p = root.exportPlan
                     root.exportPlan = null
-                    AboutState.exportNow()
+                    AboutState.exportNow(p)
                 }
             }
         }
@@ -117,6 +123,7 @@ ColumnLayout {
             icon: "󰑓"
             destructive: true
             enabled: SettingsStore.ready && !root.locked && !root.askRestore && root.machineKeys.length > 0
+                     && SettingsStore.undoUser === null && !SettingsStore.restoring
             opacity: enabled ? 1 : 0.5
             onClicked: root.askRestore = true
         }
@@ -128,7 +135,8 @@ ColumnLayout {
         Note {
             text: `Somem ${root.machineKeys.length} ${root.machineKeys.length === 1 ? "escolha" : "escolhas"}: `
                   + `${root.labels(root.machineKeys)}. Antes fica uma cópia (settings.json.bak-…), e dá para desfazer `
-                  + `por ${SettingsStore.undoSeconds} segundos. O teclado do login e os apps padrão do sistema não mudam.`
+                  + `por ${SettingsStore.undoSeconds} segundos (até você mudar outra coisa). O layout do teclado e os apps padrão `
+                  + `do sistema não mudam.`
         }
         RowLayout {
             Layout.leftMargin: 8
