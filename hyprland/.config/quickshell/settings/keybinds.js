@@ -10,9 +10,9 @@ var MAX_BYTES = 256 * 1024
 var MAX_ITEMS = 500
 var MAX_TEXT = 200
 var MAX_KEYS = 16
-// Control characters (line breaks included) and the ones that turn the
-// direction of the text around
-var BAD = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/
+// Control characters (line breaks included), the ones that turn the
+// direction of the text around, separators and invisible ones
+var BAD = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/
 
 function text(v) {
     return typeof v === "string" && v.length > 0 && v.length <= MAX_TEXT && !BAD.test(v)

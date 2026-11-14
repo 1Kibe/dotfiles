@@ -55,7 +55,7 @@ Flickable {
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
                                        "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit",
                                        "MonitorNotice", "MonitorLayout", "KeyboardLayout", "KeybindList", "DefaultApps",
-                                       "Autostart"]
+                                       "Autostart", "AboutVersion", "AboutData"]
     // A card that needs something this machine does not have stays out
     // (the touchpad's: SystemLists.hasTouchpad). Hyprland tells nothing when
     // a device is plugged in: the devices are read again when this page opens
@@ -79,8 +79,6 @@ Flickable {
         const out = []
         for (let i = 0; i < repeater.count; i++)
             out.push(repeater.itemAt(i))
-        if (empty.visible)
-            out.push(empty)
         return out
     }
     function playIn(start) {
@@ -176,17 +174,6 @@ Flickable {
                         divider: index > 0
                     }
                 }
-            }
-        }
-
-        // Atalhos and Sobre: their cards come with the next tasks
-        Group {
-            id: empty
-            visible: root.cards.length === 0
-            Layout.fillWidth: true
-            title: root.info.name
-            OptionRow {
-                label: "Chega na próxima etapa"
             }
         }
     }

@@ -124,35 +124,70 @@ Singleton {
         return true
     }
 
-    // Exportar: the current values that are not machine ones become the repo's
-    // defaults (settings/defaults.json), to be committed by hand. A path under
-    // the home goes as "~/..."; any other absolute path is not exported (the
-    // repo's value stays) and is listed in `skipped`, for the page to tell.
-    // Nothing before the first read.
-    function exportDefaults() {
+    // Restaurar tudo (Configurações → Sobre): a copy of settings.json first
+    // (mode 600, settings.json.bak-<date>, the last three kept); if the copy
+    // fails, nothing is restored. Then every machine choice goes (keys this
+    // version does not know stay), and for half a minute undoRestore() puts
+    // them back. Nothing here reaches the system (the keyboard of the login,
+    // the default apps): only the page's own buttons do. done(ok)
+    property var undoUser: null
+    property double undoUntil: 0
+    readonly property int undoSeconds: 30
+    function restoreAll(done) {
         if (!ready)
-            return { ok: false, skipped: [] }
-        const out = {}
-        const skipped = []
-        for (const key of Object.keys(Schema.KEYS)) {
-            const s = Schema.KEYS[key]
-            if (s.machine)
-                continue
-            let v = values[key]
-            if (s.type === "path") {
-                if (v === home)
-                    v = "~"
-                else if (v.startsWith(home + "/"))
-                    v = "~" + v.slice(home.length)
-                else if (v !== "~" && !v.startsWith("~/")) {
-                    skipped.push(key)
-                    v = defaults[key]
-                }
+            return false
+        const snapshot = Object.assign({}, user)
+        backupForRestore(ok => {
+            if (!ok) {
+                notice("Não deu para guardar uma cópia das configurações: nada foi restaurado")
+                if (done)
+                    done(false)
+                return
             }
-            out[key] = v
-        }
-        defaultsView.setText(JSON.stringify(out, null, 2) + "\n")
-        return { ok: true, skipped: skipped }
+            root.undoUser = snapshot
+            root.undoUntil = Date.now() + root.undoSeconds * 1000
+            undoTimer.restart()
+            root.apply({}, Object.keys(snapshot))
+            if (done)
+                done(true)
+        })
+        return true
+    }
+    function undoRestore() {
+        if (!ready || undoUser === null || Date.now() > undoUntil)
+            return false
+        const back = undoUser
+        undoUser = null
+        undoTimer.stop()
+        apply(back, Object.keys(back))
+        return true
+    }
+    Timer {
+        id: undoTimer
+        interval: root.undoSeconds * 1000
+        onTriggered: root.undoUser = null
+    }
+    // The copy: none needed when there is no file; a plain file only (stat
+    // does not follow links); then only the newest three copies stay
+    function backupForRestore(done) {
+        run(["stat", "-c", "%f", "--", userFile], (code, out) => {
+            if (code !== 0)
+                return done(true)
+            const t = out.trim()
+            if (!/^[0-9a-fA-F]+$/.test(t) || (parseInt(t, 16) & 0o170000) !== 0o100000)
+                return done(false)
+            const copy = `${userFile}.bak-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")}`
+            run(["install", "-m", "600", "-T", "--", userFile, copy], code2 => {
+                if (code2 !== 0)
+                    return done(false)
+                run(["find", userDir, "-maxdepth", "1", "-type", "f", "-name", "settings.json.bak-*"], (code3, out3) => {
+                    const old = out3.split("\n").filter(l => /\/settings\.json\.bak-\d{8}-\d{6}$/.test(l)).sort()
+                    for (const f of old.slice(0, Math.max(0, old.length - 3)))
+                        root.run(["rm", "-f", "--", f])
+                    done(true)
+                })
+            })
+        })
     }
 
     // New machine choices: values, the signal for each changed key, then the
@@ -334,9 +369,8 @@ Singleton {
         printErrors: false
         onLoaded: root.readDefaults(text())
         onLoadFailed: root.readDefaults("")
+        // Exportar (state/AboutState) writes it in the repo: read again
         onFileChanged: reload()
-        // Exportar: only after the defaults are in, never half written
-        atomicWrites: true
     }
 
     // Read on its own (and again when it changes), but only used by
