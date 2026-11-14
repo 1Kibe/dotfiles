@@ -7,8 +7,9 @@
 // the tests. Nothing here is ever run.
 
 var NONE = "—"
-// Control characters, direction marks, separators and invisible ones
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/
+// Control characters, direction marks, separators and invisible ones (zero
+// width, soft hyphen, fillers, variation selectors, BOM, tags)
+var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]|\udb40[\udc00-\udc7f]/
 
 // A short plain text (at most 64 characters, nothing that is not shown as
 // typed), or "—"

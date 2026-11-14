@@ -59,17 +59,19 @@ Singleton {
     }
     readonly property string awk:
         // A file name that is not a plain desktop id (a line break or a tab
-        // in it would forge a record) is skipped whole
+        // in it would forge a record) is skipped whole. Each value is cut to
+        // 8 KB and each awk emits at most 2000 apps, so the first folders
+        // (the user's) cannot fill the 1 MB alone
         'FNR == 1 { if (id != "") emit(); id = FILENAME; dir = FILENAME; sub(/^.*\\//, "", id); sub(/\\/[^\\/]*$/, "", dir)\n'
         + '  if (id !~ /^[A-Za-z0-9][A-Za-z0-9._-]*\\.desktop$/ || dir ~ /[\\t\\n]/) id = ""\n'
         + '  grp = ""; split("", v) }\n'
         + '/^\\[/ { grp = $0; sub(/[ \\t\\r]+$/, "", grp); next }\n'
         + 'grp == "[Desktop Entry]" && /^(Name|Type|Hidden|NoDisplay|MimeType|Categories|Terminal|Icon)=/ {\n'
         + '  k = substr($0, 1, index($0, "=") - 1)\n'
-        + '  if (!(k in v)) { val = substr($0, index($0, "=") + 1); gsub(/[\\t\\r]/, " ", val); v[k] = val }\n'
+        + '  if (!(k in v)) { val = substr(substr($0, index($0, "=") + 1), 1, 8192); gsub(/[\\t\\r]/, " ", val); v[k] = val }\n'
         + '}\n'
         + 'END { if (id != "") emit() }\n'
-        + 'function emit() { printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n", dir, id, v["Name"], v["Type"], v["Hidden"], '
+        + 'function emit() { if (++n > 2000) return; printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n", dir, id, v["Name"], v["Type"], v["Hidden"], '
         + 'v["NoDisplay"], v["MimeType"], v["Categories"], v["Terminal"], v["Icon"] }\n'
     function scanCommand() {
         return ["find"].concat(folders, ["-maxdepth", "1", "-type", "f", "-name", "*.desktop", "-size", "-65k",
@@ -204,10 +206,10 @@ Singleton {
         if (reload && locked())
             return
         // The write follows a link: the file and its .prev must be missing or
-        // plain files (stat does not follow links), else nothing is written
+        // plain files, else nothing is written
         plainOrMissing([view.path, prev.path], ok => {
             if (!ok) {
-                root.fail("Um dos arquivos de apps é um link: nada foi gravado")
+                root.fail("Um dos arquivos de apps é um link ou não pôde ser conferido: nada foi gravado")
                 return
             }
             view.wanted = text
@@ -218,14 +220,19 @@ Singleton {
                 view.setText(text)
         })
     }
+    // Every path a plain file or missing (settings/serialize.js writeCheck);
+    // a link, an error or no answer: no
     function plainOrMissing(paths, done) {
         if (paths.length === 0)
             return done(true)
-        run(["stat", "-c", "%f", "--", paths[0]], (code, out) => {
-            if (code !== 0)
-                return root.plainOrMissing(paths.slice(1), done)
-            const m = out.trim().match(/^[0-9a-fA-F]+$/)
-            if (!m || (parseInt(out.trim(), 16) & 0o170000) !== 0o100000)
+        let check = null
+        try {
+            check = Serialize.writeCheck(paths[0])
+        } catch (e) {
+            return done(false)
+        }
+        run(check, code => {
+            if (!Serialize.mayWrite(code))
                 return done(false)
             root.plainOrMissing(paths.slice(1), done)
         })

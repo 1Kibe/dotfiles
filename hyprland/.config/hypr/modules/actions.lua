@@ -10,7 +10,9 @@ end
 -- an id of a .desktop file: checked here again (the shell's pattern), it must
 -- be a file directly in one of the applications folders, and it is opened by
 -- a fixed launcher (uwsm when the session runs under it, else gtk-launch),
--- never by the file's Exec. Anything else: nil, and the caller keeps its own.
+-- never by a command line from the settings. The launcher runs the Exec of
+-- the .desktop file that GIO finds for that id. Anything else: nil, and the
+-- caller keeps its own.
 local function app_folders()
   local home = os.getenv("HOME") or ""
   local data_home = os.getenv("XDG_DATA_HOME") or (home .. "/.local/share")

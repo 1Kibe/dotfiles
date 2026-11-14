@@ -13,8 +13,9 @@
 var DESKTOP_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/
 var MIME = /^[a-z][a-z0-9-]{0,30}\/[a-z0-9][a-z0-9.+_-]{0,100}$/
 // Control characters, the ones that turn the text's direction around, line
-// and paragraph separators and the invisible ones (zero width, BOM)
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/
+// and paragraph separators and the invisible ones (zero width, soft hyphen,
+// fillers, variation selectors, BOM, tags)
+var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u3164\ufe00-\ufe0f\ufeff\uffa0]|\udb40[\udc00-\udc7f]/
 var ICON = /^[A-Za-z0-9._-]{1,64}$/
 var MAX_APPS = 500
 var MAX_BATCH = 16
@@ -69,16 +70,17 @@ function list(v) {
     return String(v || "").split(";").map(s => s.trim()).filter(s => s.length > 0)
 }
 
-// Where an app comes from, by its folder: the first folder is the user's,
-// the last two are Flatpak's (state/AppsState folders)
+// Where an app comes from, by its folder (one of state/AppsState folders):
+// Flatpak's exports by their path (they may also be in XDG_DATA_DIRS), the
+// first folder is the user's, the others the system's
 function origin(dir, folders) {
     const i = folders.indexOf(dir)
     if (i < 0)
         return ""
+    if (dir.endsWith("/flatpak/exports/share/applications"))
+        return "Flatpak"
     if (i === 0)
         return "sua pasta"
-    if (i >= folders.length - 2)
-        return "Flatpak"
     return "sistema"
 }
 

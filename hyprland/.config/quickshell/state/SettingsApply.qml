@@ -21,7 +21,7 @@ import "../settings/lazygit.js" as Lazygit
 Singleton {
     id: root
 
-    readonly property string hyprFile: `${Quickshell.env("HOME")}/.config/hypr/dotfiles_settings.lua`
+    readonly property string hyprFile: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/hypr/dotfiles_settings.lua`
 
     signal failed(string key, string message)
 
@@ -222,7 +222,7 @@ Singleton {
         if (hyprView.text() === hyprWanted)
             return
         // The write follows a link: the file must be missing or a plain file
-        // (stat does not follow links), else nothing is written
+        // (settings/serialize.js writeCheck), else nothing is written
         if (hyprStat.running) {
             hyprStatAgain = true
             return
@@ -232,15 +232,13 @@ Singleton {
     property bool hyprStatAgain: false
     Process {
         id: hyprStat
-        command: ["stat", "-c", "%f", "--", root.hyprFile]
-        stdout: StdioCollector {
-            id: hyprStatOut
-        }
+        command: Serialize.writeCheck(root.hyprFile)
+        // Ten seconds at most: a check that hangs is stopped (a refusal), so
+        // the next change can still be written
+        onRunningChanged: if (running) hyprStatLimit.restart(); else hyprStatLimit.stop()
         onExited: code => {
-            const t = hyprStatOut.text.trim()
-            const plain = code !== 0 || (/^[0-9a-fA-F]+$/.test(t) && (parseInt(t, 16) & 0o170000) === 0o100000)
-            if (!plain)
-                root.failed("accent", "O arquivo de configurações do Hyprland é um link: nada foi gravado")
+            if (!Serialize.mayWrite(code))
+                root.failed("accent", "O arquivo de configurações do Hyprland é um link ou não pôde ser conferido: nada foi gravado")
             else if (hyprView.text() !== root.hyprWanted && !root.locked)
                 hyprView.setText(root.hyprWanted)
             if (root.hyprStatAgain) {
@@ -248,6 +246,11 @@ Singleton {
                 root.writeHypr()
             }
         }
+    }
+    Timer {
+        id: hyprStatLimit
+        interval: 10000
+        onTriggered: hyprStat.running = false
     }
     FileView {
         id: hyprView

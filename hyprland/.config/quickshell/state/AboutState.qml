@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../settings/about.js" as About
 import "../settings/schema.js" as Schema
 import "../settings/validate.js" as Validate
+import "../settings/serialize.js" as Serialize
 
 // Configurações → Sobre, outside the page: the repo's version, the system,
 // and Exportar.
@@ -143,11 +144,10 @@ Singleton {
         exporting = true
         exportMessage = ""
         // The file must be a plain file (or missing): the write follows a link
-        run(["stat", "-c", "%f", "--", defaultsTarget], (code, out) => {
-            const t = out.trim()
-            if (code === 0 && (!/^[0-9a-fA-F]+$/.test(t) || (parseInt(t, 16) & 0o170000) !== 0o100000)) {
+        run(Serialize.writeCheck(defaultsTarget), code => {
+            if (!Serialize.mayWrite(code)) {
                 root.exporting = false
-                root.exportMessage = "O defaults.json do repo é um link: nada foi gravado"
+                root.exportMessage = "O defaults.json do repo é um link ou não pôde ser conferido: nada foi gravado"
                 return
             }
             exportView.count = p.changed.length

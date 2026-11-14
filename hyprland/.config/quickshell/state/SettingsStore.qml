@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../settings/schema.js" as Schema
 import "../settings/validate.js" as Validate
+import "../settings/serialize.js" as Serialize
 
 // The settings (Configurações): the defaults of the repo
 // (settings/defaults.json, over the schema's own) and this machine's choices
@@ -167,14 +168,14 @@ Singleton {
         interval: root.undoSeconds * 1000
         onTriggered: root.undoUser = null
     }
-    // The copy: none needed when there is no file; a plain file only (stat
-    // does not follow links); then only the newest three copies stay
+    // The copy: none needed when there is no file; a plain file only
+    // (settings/serialize.js writeCheck: a link or an error, no restore);
+    // then only the newest three copies stay
     function backupForRestore(done) {
-        run(["stat", "-c", "%f", "--", userFile], (code, out) => {
-            if (code !== 0)
+        run(Serialize.writeCheck(userFile), code => {
+            if (code === Serialize.WRITE_MISSING)
                 return done(true)
-            const t = out.trim()
-            if (!/^[0-9a-fA-F]+$/.test(t) || (parseInt(t, 16) & 0o170000) !== 0o100000)
+            if (code !== 0)
                 return done(false)
             const copy = `${userFile}.bak-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss")}`
             run(["install", "-m", "600", "-T", "--", userFile, copy], code2 => {

@@ -274,11 +274,11 @@ Singleton {
             return
         }
         // The write follows a link: the file and its .prev must be missing or
-        // plain files (stat does not follow links), else nothing is written
+        // plain files, else nothing is written
         plainOrMissing([file, `${file}.prev`], ok => {
             if (!ok) {
                 root.busy = false
-                root.fail("O arquivo das telas é um link: nada foi gravado")
+                root.fail("O arquivo das telas é um link ou não pôde ser conferido: nada foi gravado")
                 return
             }
             root.writing = text
@@ -288,14 +288,19 @@ Singleton {
                 fileView.setText(text)
         })
     }
+    // Every path a plain file or missing (settings/serialize.js writeCheck);
+    // a link, an error or no answer: no
     function plainOrMissing(paths, done) {
         if (paths.length === 0)
             return done(true)
-        run(["stat", "-c", "%f", "--", paths[0]], (code, out) => {
-            if (code !== 0)
-                return root.plainOrMissing(paths.slice(1), done)
-            const t = out.trim()
-            if (!/^[0-9a-fA-F]+$/.test(t) || (parseInt(t, 16) & 0o170000) !== 0o100000)
+        let check = null
+        try {
+            check = Serialize.writeCheck(paths[0])
+        } catch (e) {
+            return done(false)
+        }
+        run(check, code => {
+            if (!Serialize.mayWrite(code))
                 return done(false)
             root.plainOrMissing(paths.slice(1), done)
         })

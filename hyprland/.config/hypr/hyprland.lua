@@ -21,8 +21,38 @@ require("modules.autostart")
 -- file is normal (a new install, before the shell runs) and says nothing;
 -- any other error goes to the log and the rest of the config stays. `env`:
 -- what the file may use (nil: everything, for local.lua)
-local config_dir = package.path:match("^([^;]+)/%?%.lua")
-  or ((os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")) .. "/hypr")
+-- This folder: where Lua says this file came from, else the first entry of
+-- package.path (Hyprland puts the config's folder there, but that depends
+-- on its order), else the usual place. Only an absolute folder that holds
+-- this file and modules/env.lua counts: never "./", the current folder
+local function is_config_dir(dir)
+  if type(dir) ~= "string" or dir:sub(1, 1) ~= "/" then
+    return false
+  end
+  for _, name in ipairs({ "/hyprland.lua", "/modules/env.lua" }) do
+    local f = io.open(dir .. name, "rb")
+    if not f then
+      return false
+    end
+    f:close()
+  end
+  return true
+end
+local function find_config_dir()
+  if type(debug) == "table" and type(debug.getinfo) == "function" then
+    local info = debug.getinfo(1, "S")
+    local dir = info and type(info.source) == "string" and info.source:match("^@(/.*)/[^/]+$")
+    if is_config_dir(dir) then
+      return dir
+    end
+  end
+  local dir = package.path:match("^([^;]+)/%?%.lua")
+  if is_config_dir(dir) then
+    return dir
+  end
+  return (os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")) .. "/hypr"
+end
+local config_dir = find_config_dir()
 local function load_beside(name, env)
   local path = config_dir .. "/" .. name .. ".lua"
   local f = io.open(path, "rb")
@@ -50,7 +80,61 @@ end
 -- (state/SettingsApply) into dotfiles_settings.lua, ignored by git. It may
 -- only call the Hyprland functions it writes and set the areas' table
 -- (modules/areas.lua reads dotfiles_areas), nothing else
-local settings = { hl = { config = hl.config, env = hl.env, layer_rule = hl.layer_rule } }
+local function refused(what)
+  print("hyprland.lua: dotfiles_settings.lua: not allowed: " .. string.format("%q", tostring(what):sub(1, 80)))
+end
+-- The options the shell writes (settings/appearance.js, settings/input.js;
+-- a test checks that both sides list the same ones): a table is a group, true
+-- an option. Anything else goes to the log and is left out
+local SETTINGS_OPTIONS = {
+  general = { col = { active_border = true } },
+  decoration = { rounding = true },
+  input = {
+    kb_layout = true, kb_variant = true, repeat_rate = true, repeat_delay = true, numlock_by_default = true,
+    sensitivity = true, accel_profile = true, natural_scroll = true, left_handed = true, follow_mouse = true,
+    touchpad = { tap_to_click = true, tap_and_drag = true, natural_scroll = true, disable_while_typing = true },
+  },
+}
+local function only_allowed(t, allowed, prefix)
+  local out = {}
+  for k, v in pairs(t) do
+    local a = type(k) == "string" and allowed[k]
+    local path = prefix .. tostring(k)
+    if a == true then
+      out[k] = v
+    elseif type(a) == "table" and type(v) == "table" then
+      out[k] = only_allowed(v, a, path .. ".")
+    else
+      refused(path)
+    end
+  end
+  return out
+end
+local SETTINGS_ENV = { XCURSOR_THEME = true, XCURSOR_SIZE = true, HYPRCURSOR_SIZE = true }
+-- Nothing goes back to the file: the functions return nothing
+local settings = { hl = {
+  config = function(t)
+    if type(t) == "table" then
+      hl.config(only_allowed(t, SETTINGS_OPTIONS, ""))
+    end
+  end,
+  env = function(name, value)
+    if type(name) == "string" and SETTINGS_ENV[name] and type(value) == "string" and #value <= 64
+        and value:match("^[A-Za-z0-9._-]+$") then
+      hl.env(name, value)
+    else
+      refused("env " .. tostring(name))
+    end
+  end,
+  layer_rule = function(r)
+    if type(r) == "table" and r.name == "settings-glass" and type(r.match) == "table"
+        and r.match.namespace == "^(quickshell-bar)$" and type(r.blur) == "boolean" then
+      hl.layer_rule({ name = r.name, match = { namespace = r.match.namespace }, blur = r.blur })
+    else
+      refused("layer_rule")
+    end
+  end,
+} }
 load_beside("dotfiles_settings", settings)
 if type(settings.dotfiles_areas) == "table" then
   dotfiles_areas = settings.dotfiles_areas
