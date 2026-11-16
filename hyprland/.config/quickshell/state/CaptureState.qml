@@ -736,16 +736,18 @@ Singleton {
             const quick = Date.now() - root.recordStart < 1000
             root.recording = false
             root.elapsed = 0
-            if (!quick && (code === 0 || root.stopping)) {
+            // Kept as "-parcial" (the recorder ended in an error, even when
+            // it was asked to stop): that notice, never "Vídeo salvo" for a
+            // name that no longer exists
+            if (root.partialFile !== "") {
+                root.toast("󰀦", "A gravação parou no meio: o que deu ficou salvo como parcial", root.recordDir)
+            } else if (!quick && (code === 0 || root.stopping)) {
                 root.toast("󰕧", "Vídeo salvo", root.recordDir, root.recordFile)
             } else {
                 // Only the recorder's messages, with any path taken out
                 const why = recorderErr.text.trim().split("\n").slice(-3).join(" | ").replace(/\/\S+/g, "<caminho>")
                 console.warn(`capture: o gravador saiu (código ${code}): ${why}`)
-                if (root.partialFile !== "")
-                    root.toast("󰀦", "A gravação parou no meio: o que deu ficou salvo como parcial", root.recordDir)
-                else
-                    root.toast("󰀦", "Não deu para gravar", "")
+                root.toast("󰀦", "Não deu para gravar", "")
                 // The reserved name, still empty, goes
                 if (root.recordFile !== "")
                     Quickshell.execDetached(["find", root.recordFile, "-maxdepth", "0", "-type", "f", "-empty", "-delete"])
