@@ -350,9 +350,25 @@ Singleton {
     }
 
     // The trigger: block events, a short wait, a new list
+    // Without setpriv (util-linux) the watcher could not end with the shell:
+    // it is not started, the page says so once, and the list is read when
+    // the page asks
+    property bool noWatcher: false
+    Process {
+        id: setprivCheck
+        command: ["sh", "-c", "command -v setpriv"]
+        onExited: code => {
+            if (code === 0) {
+                watcher.running = true
+            } else {
+                root.noWatcher = true
+                root.notice("Sem o setpriv: as unidades não aparecem sozinhas ao conectar")
+            }
+        }
+    }
     Process {
         id: watcher
-        running: true
+        running: false
         // It ends with the shell, also when the shell is killed (the kernel
         // sends TERM when its parent dies; onDestruction only runs on a
         // clean exit)
@@ -363,7 +379,7 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 root.refresh()
-            } else if (!root.stopping) {
+            } else if (!root.stopping && !root.noWatcher) {
                 // Back after a wait that grows (never in a loop)
                 watcherBack.interval = Math.min(watcherBack.interval * 2, 60000)
                 watcherBack.restart()
@@ -371,7 +387,10 @@ Singleton {
         }
     }
     property bool stopping: false
-    Component.onCompleted: refresh()
+    Component.onCompleted: {
+        refresh()
+        setprivCheck.running = true
+    }
     Component.onDestruction: {
         stopping = true
         watcher.running = false

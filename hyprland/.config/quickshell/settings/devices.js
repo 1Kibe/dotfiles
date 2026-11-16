@@ -76,7 +76,19 @@ function medium(scheme) {
     return "outro"
 }
 
-// `lpstat -v` → [{ name, scheme, medium }]: the configured queues. A line
+// A queue of a printer announced on the network (DNS-SD, a ".local" host):
+// a dialog of an app may have made it from the discovery; it is shown as
+// "da rede" and not used as the default nor for a test page. Only true or
+// false comes out (the host is never kept)
+function announced(scheme, rest) {
+    if (scheme === "dnssd")
+        return true
+    const host = (/^\/\/([^/:?#]*)/.exec(rest || "") || [])[1] || ""
+    const low = host.toLowerCase()
+    return low.endsWith(".local") || low.endsWith(".local.") || low.indexOf("._ipp") >= 0 || low.indexOf("._tcp") >= 0
+}
+
+// `lpstat -v` → [{ name, scheme, medium, announced }]: the configured queues. A line
 // that does not fit, a name that does not pass or a repeated one is left out
 function parsePrintersV(out) {
     const res = []
@@ -87,7 +99,7 @@ function parsePrintersV(out) {
             continue
         seen[m[1]] = true
         const scheme = m[2].toLowerCase()
-        res.push({ name: m[1], scheme: scheme, medium: medium(scheme) })
+        res.push({ name: m[1], scheme: scheme, medium: medium(scheme), announced: announced(scheme, m[3]) })
         if (res.length >= MAX_PRINTERS)
             break
     }

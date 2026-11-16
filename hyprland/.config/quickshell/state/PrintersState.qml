@@ -21,8 +21,13 @@ import "../settings/devices.js" as Devices
 //   "--" (lpstat, lpoptions and cancel would take it as a name; only lp
 //   takes it, before the file): the default is the user's own
 //   (`lpoptions -d`, no password), a job is cancelled only when it is the
-//   user's, the test page is CUPS's own file. Adding a printer opens
-//   system-config-printer, which asks for the password itself.
+//   user's (by its job number: CUPS numbers jobs for the whole system, so
+//   the queue's name, which may start with a digit, is never read as a
+//   number), the test page is CUPS's own file. Before each action the
+//   queue is read again (`lpstat -p <name>`). A queue made from a printer
+//   announced on the network is only shown ("da rede"). Adding a printer
+//   opens system-config-printer; CUPS asks for a password unless the user
+//   is in its SystemGroup (wheel on Arch), then it lets them in without one.
 // - Network discovery: avahi, off by default. Only a click turns it on or
 //   off, starting or stopping its service and socket together (systemd asks
 //   for the password); it is never enabled, never touched at the start or by
@@ -33,7 +38,7 @@ Singleton {
     readonly property string user: Quickshell.env("USER") || ""
     // The page sets it while it shows
     property bool active: false
-    // [{ name, medium, state }] and the default's name ("" when none)
+    // [{ name, medium, state, announced }] and the default's name ("" when none)
     property var printers: []
     property string defaultPrinter: ""
     // [{ id, printer, number, mine, title }]
@@ -53,8 +58,10 @@ Singleton {
             readDiscovery()
         }
     }
+    // Every 15 s while the page shows (each lpstat wakes cupsd up through
+    // its socket), and after each action
     Timer {
-        interval: 5000
+        interval: 15000
         repeat: true
         running: root.active
         onTriggered: root.refresh()
@@ -106,47 +113,62 @@ Singleton {
         })
     }
     function endRead(r, st) {
-        printers = r.printers.map(p => ({ name: p.name, medium: p.medium, state: p.state || "unknown" }))
+        printers = r.printers.map(p => ({ name: p.name, medium: p.medium, state: p.state || "unknown",
+                                          announced: p.announced === true }))
         defaultPrinter = r.def
         jobs = r.jobs
         status = st
         reading = false
-        if (again) {
-            again = false
+        const more = again
+        again = false
+        if (more && active)
             Qt.callLater(refresh)
-        }
     }
     function known(name) {
         return typeof name === "string" && Devices.printerName(name) && printers.some(p => p.name === name)
     }
+    function usable(name) {
+        return known(name) && !printers.find(p => p.name === name).announced
+    }
+    // The queue read again right before an action: its own first line
+    function confirm(name, then) {
+        checkJob.run(["lpstat", "-p", name], 8000, (code, out) => {
+            if (code === 0 && Devices.parsePrinterState(out, name) !== "unknown")
+                then()
+            else {
+                notice("A impressora não está mais disponível")
+                refresh()
+            }
+        })
+    }
 
     // ── Actions ──
     function setDefault(name) {
-        if (!known(name))
+        if (!usable(name))
             return
-        actJob.run(["lpoptions", "-d", name], 8000, code => {
+        confirm(name, () => actJob.run(["lpoptions", "-d", name], 8000, code => {
             if (code !== 0)
                 notice("Não deu para escolher a impressora padrão")
             refresh()
-        })
+        }))
     }
     function cancel(id) {
         const job = jobs.find(j => j.id === id)
-        if (!job || !job.mine || !known(job.printer))
+        if (!job || !job.mine || !known(job.printer) || !Number.isInteger(job.number) || job.number <= 0)
             return
-        actJob.run(["cancel", job.id], 8000, code => {
+        confirm(job.printer, () => actJob.run(["cancel", String(job.number)], 8000, code => {
             if (code !== 0)
                 notice("Não deu para cancelar a impressão")
             refresh()
-        })
+        }))
     }
     function testPage(name) {
-        if (!known(name))
+        if (!usable(name))
             return
-        actJob.run(["lp", "-d", name, "-t", "Página de teste", "--", testFile], 15000, code => {
+        confirm(name, () => actJob.run(["lp", "-d", name, "-t", "Página de teste", "--", testFile], 15000, code => {
             notice(code === 0 ? "Página de teste enviada" : "Não deu para enviar a página de teste")
             refresh()
-        })
+        }))
     }
     function addPrinter() {
         Quickshell.execDetached(["system-config-printer"])
@@ -260,6 +282,7 @@ Singleton {
     }
     Job { id: readJob }
     Job { id: actJob }
+    Job { id: checkJob }
     Job { id: discoveryJob }
     Job { id: avahiStateJob }
 }
