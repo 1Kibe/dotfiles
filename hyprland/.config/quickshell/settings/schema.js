@@ -29,6 +29,9 @@
 //   result
 // - system: tied to a setting of the system itself (the login's keyboard):
 //   Restaurar tudo keeps it, only its own card changes it
+// - auto: kept by the shell itself from the machine's state (the areas'
+//   places, from the screens), not a choice: Restaurar tudo and Desfazer
+//   leave it, and the shell writes it with SettingsStore.setAuto()
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
@@ -268,7 +271,7 @@ var KEYS = {
                      desc: "Como no Windows: Super+N troca todas as telas juntas. Desligado: cada tela tem as suas",
                      syn: ["areas de trabalho", "workspaces", "telas"] },
     // Kept by the shell (state/AreasState), never a row on the page
-    monitorPositions: { def: "", type: "string", pattern: POSITIONS, machine: true, hidden: true, page: "monitores",
+    monitorPositions: { def: "", type: "string", pattern: POSITIONS, machine: true, hidden: true, auto: true, page: "monitores",
                         card: "areas", label: "Posições das telas" },
     barMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "monitores",
                   card: "barra", label: "Mostrar a barra em", source: "monitors", emptyLabel: "Todas as telas" },
