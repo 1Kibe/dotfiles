@@ -90,6 +90,8 @@ Singleton {
     property bool recording: false
     property int elapsed: 0               // seconds
     property string recordFile: ""
+    property string partialFile: ""       // a recording that ended in an error, kept as "-parcial"
+    property string recordDir: ""         // the folder of this recording (the setting may change meanwhile)
     property bool micOn: false            // the microphone is in this recording
     property bool isVm: false             // no GPU encoder: -encoder cpu
     property var pendingRecord: null      // { geometry, screen } waiting for the countdown
@@ -459,6 +461,8 @@ Singleton {
             return
         // The file's name comes back from the wrapper below (first line)
         recordFile = ""
+        partialFile = ""
+        recordDir = videosDir
         const args = ["gpu-screen-recorder", "-f", "30", "-k", "h264", "-c", "mp4"]
         if (geometry)
             args.push("-w", "region", "-region", `${Math.round(geometry.w)}x${Math.round(geometry.h)}+${Math.round(geometry.x)}+${Math.round(geometry.y)}`)
@@ -475,14 +479,37 @@ Singleton {
             args.push("-encoder", "cpu")
         micOn = audioMic
         stopping = false
-        // A free name is reserved and printed, then exec: the recorder
-        // itself gets the SIGINT that stops it
-        recorder.command = ["sh", "-c", reserveFn
+        // A free name is reserved and printed; the recorder runs as this
+        // wrapper's child, which passes it SIGINT (stopRecord) and waits
+        // until it has really ended (the MP4 is closed). Both end with
+        // their parent: setpriv makes the kernel send SIGINT when the shell
+        // dies (also killed, with no clean exit) and when the wrapper dies,
+        // so a recording never goes on without the bar. A recording that
+        // ends in an error but left something is renamed "<name>-parcial"
+        // (never over another file, never through a link) and that path
+        // printed, so a broken video is never kept under a normal name.
+        // The exit code is the recorder's
+        // env --default-signal: the wrapper and the recorder start with the
+        // usual signal handling even when the shell itself was started with
+        // SIGINT ignored (then a sh could not even trap it)
+        recorder.command = ["setpriv", "--pdeathsig", "INT", "--", "env", "--default-signal=INT,QUIT,TERM,HUP", "sh", "-c", reserveFn
                             + 'dir=$1 name=$2; shift 2\n'
                             + 'mkdir -p -- "$dir" && reserve "$dir" "$name" mp4 || exit 1\n'
                             + 'printf "%s\\n" "$dest"\n'
-                            + 'exec "$@" -o "$dest"',
-                            "sh", videosDir, fileName()].concat(args)
+                            + 'orig=$dest pid=\n'
+                            + 'trap \'[ -n "$pid" ] && kill -INT "$pid" 2>/dev/null\' INT TERM HUP\n'
+                            // A background job of a non-interactive sh starts
+                            // with SIGINT ignored: env gives it back
+                            + '( exec env --default-signal=INT,QUIT setpriv --pdeathsig INT -- "$@" -o "$orig" ) & pid=$!\n'
+                            + 'st=0\n'
+                            + 'while :; do wait "$pid"; st=$?; kill -0 "$pid" 2>/dev/null || break; done\n'
+                            + 'if [ "$st" -ne 0 ] && [ -f "$orig" ] && [ ! -L "$orig" ] && [ -s "$orig" ]; then\n'
+                            + '  if reserve "$dir" "$name-parcial" mp4; then\n'
+                            + '    if mv -fT -- "$orig" "$dest"; then printf "%s\\n" "$dest"; else rm -f -- "$dest"; fi\n'
+                            + '  fi\n'
+                            + 'fi\n'
+                            + 'exit "$st"',
+                            "sh", recordDir, fileName()].concat(args)
         recordStart = Date.now()
         elapsed = 0
         recording = true
@@ -693,11 +720,16 @@ Singleton {
         stderr: StdioCollector {
             id: recorderErr
         }
-        // The reserved file, as the wrapper printed it
+        // The reserved file, as the wrapper printed it; a second path is
+        // the "-parcial" name of a recording that ended in an error
         stdout: SplitParser {
             onRead: data => {
-                if (root.recordFile === "" && data.startsWith(root.videosDir + "/") && !data.includes("/../"))
+                if (root.recordDir === "" || !data.startsWith(root.recordDir + "/") || data.includes("/../"))
+                    return
+                if (root.recordFile === "")
                     root.recordFile = data
+                else if (data !== root.recordFile && data.endsWith(".mp4") && data.includes("-parcial"))
+                    root.partialFile = data
             }
         }
         onExited: code => {
@@ -705,12 +737,15 @@ Singleton {
             root.recording = false
             root.elapsed = 0
             if (!quick && (code === 0 || root.stopping)) {
-                root.toast("󰕧", "Vídeo salvo", root.videosDir, root.recordFile)
+                root.toast("󰕧", "Vídeo salvo", root.recordDir, root.recordFile)
             } else {
                 // Only the recorder's messages, with any path taken out
                 const why = recorderErr.text.trim().split("\n").slice(-3).join(" | ").replace(/\/\S+/g, "<caminho>")
                 console.warn(`capture: o gravador saiu (código ${code}): ${why}`)
-                root.toast("󰀦", "Não deu para gravar", "")
+                if (root.partialFile !== "")
+                    root.toast("󰀦", "A gravação parou no meio: o que deu ficou salvo como parcial", root.recordDir)
+                else
+                    root.toast("󰀦", "Não deu para gravar", "")
                 // The reserved name, still empty, goes
                 if (root.recordFile !== "")
                     Quickshell.execDetached(["find", root.recordFile, "-maxdepth", "0", "-type", "f", "-empty", "-delete"])
