@@ -52,7 +52,14 @@ local function find_config_dir()
   end
   return nil
 end
-local config_dir = find_config_dir()
+-- Never fatal: if finding it fails in any way (no io or debug library, an
+-- error), there is no folder and the modules below still load (keybinds,
+-- Kitty and Thunar as the default apps)
+local found, found_dir = pcall(find_config_dir)
+local config_dir = found and found_dir or nil
+if not found then
+  print("hyprland.lua: config folder: " .. tostring(found_dir))
+end
 dotfiles_config_dir = config_dir
 
 require("modules.env")
@@ -75,8 +82,9 @@ local function load_beside(name, env)
     return
   end
   local path = config_dir .. "/" .. name .. ".lua"
-  local f = io.open(path, "rb")
-  if not f then
+  -- No io library or an error opening it: as if it were missing
+  local opened, f = pcall(function() return io.open(path, "rb") end)
+  if not opened or not f then
     return
   end
   f:close()

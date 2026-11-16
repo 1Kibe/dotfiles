@@ -119,13 +119,20 @@ Singleton {
         return true
     }
 
-    // Restaurar: every machine choice goes (the page asks first); keys this
-    // version does not know stay
+    // Every machine choice back to the defaults at once, with no copy and no
+    // Desfazer (the page uses restoreAll): the system's own keys (schema
+    // `system`, the keyboard's layout) and the keys this version does not
+    // know stay
     function resetAll() {
         if (!ready)
             return false
         dropUndo()
-        apply({}, Object.keys(user))
+        const gone = restorableKeys()
+        const next = {}
+        for (const k of Object.keys(user))
+            if (!gone.includes(k))
+                next[k] = user[k]
+        apply(next, gone)
         return true
     }
 
@@ -163,6 +170,7 @@ Singleton {
             root.restoring = false
             if (!ok) {
                 notice("Não deu para guardar uma cópia das configurações: nada foi restaurado")
+                root.readSkipped()
                 if (done)
                     done(false)
                 return
@@ -353,9 +361,17 @@ Singleton {
         })
     }
 
+    // A change of ours on its way (waiting, being written, or Restaurar tudo
+    // making its copy): reading the file now would put its older content
+    // back over that change. The file is read again once ours is written
+    property bool readAfterWrite: false
     function tryRead() {
         if (userState === "pending" || userLoading)
             return
+        if (userRead && (saveTimer.running || writing || restoring)) {
+            readAfterWrite = true
+            return
+        }
         // An outside change after the first read: the keys that changed are
         // announced, like a change made here (the first read is not)
         const before = ready ? values : null
@@ -550,6 +566,14 @@ Singleton {
             saveTimer.restart()
         else if (ok)
             saved()
+        if (!dirty)
+            readSkipped()
+    }
+    function readSkipped() {
+        if (!readAfterWrite || saveTimer.running || writing || restoring)
+            return
+        readAfterWrite = false
+        checkUser()
     }
 
     // ── Commands (argument lists only) ──

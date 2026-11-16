@@ -11,9 +11,12 @@ import "../keyboard.js" as Keyboard
 // which asks the administrator's password in the system's own window. The
 // card says when the login still has another layout (with a button to set
 // it), when local.lua sets the layout, and when the saved one is not in the
-// list. The test field is only for typing: its text is never saved, logged
-// or sent anywhere, it is cleared when the card goes away or the session
-// locks, and it is off while locked.
+// list. While a layout is being tried and keeping it would change the
+// login's, one line says before Manter that the system will ask the
+// password. The test field is only for typing: its text is never saved,
+// logged or sent anywhere, it is cleared as soon as the settings panel
+// starts closing, when the card goes away or the session locks, and it is
+// off while locked.
 ColumnLayout {
     id: root
 
@@ -27,6 +30,10 @@ ColumnLayout {
     Component.onCompleted: KeyboardLayout.readSystem()
     onLockedChanged: if (locked) test.input.text = ""
     onVisibleChanged: if (!visible) test.input.text = ""
+    // The panel closing (Esc, X, Super+S): cleared right away, not only at
+    // the end of its animation
+    readonly property bool panelOpen: ShellState.openPanel === "settings"
+    onPanelOpenChanged: if (!panelOpen) test.input.text = ""
 
     OptionRow {
         label: "Layout"
@@ -107,6 +114,11 @@ ColumnLayout {
             enabled: !root.locked && !KeyboardLayout.busy
             onClicked: KeyboardLayout.useForLogin()
         }
+    }
+    Notice {
+        visible: KeyboardLayout.pending && KeyboardLayout.tried !== root.system.layout
+        icon: "󰌾"
+        text: "Ao manter, o sistema pede a senha de administrador para usar este layout também no login"
     }
     Notice {
         visible: KeyboardLayout.settingLogin

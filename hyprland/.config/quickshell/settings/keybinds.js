@@ -48,12 +48,14 @@ function parse(out) {
     if (!Array.isArray(data) || data.length > MAX_ITEMS)
         return none
     const groups = []
-    const at = {}
+    // A plain lookup with no prototype: a group named "__proto__" or
+    // "constructor" is just a name
+    const at = Object.create(null)
     for (const x of data) {
         const it = item(x)
         if (it === null)
             continue
-        if (!Object.prototype.hasOwnProperty.call(at, it.group)) {
+        if (at[it.group] === undefined) {
             at[it.group] = groups.length
             groups.push({ name: it.group, items: [] })
         }
