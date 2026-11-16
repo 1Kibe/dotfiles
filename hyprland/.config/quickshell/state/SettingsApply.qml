@@ -82,6 +82,8 @@ Singleton {
         // So do Apps padrão and Iniciar com o sistema (their data files follow
         // the settings even with the page closed)
         void AppsState.scanned
+        // So do the removable drives (their watcher runs from the start)
+        void DrivesState.drives
     }
 
     // ── Aparência (T4) ──

@@ -317,3 +317,58 @@ function usbList(out) {
     }
     return { devices: devices, hubs: hubs, unread: unread, truncated: truncated }
 }
+
+// ── For state/DrivesState ──
+
+// A drive's identity for the actions: the same name with another size,
+// filesystem or label is another drive (a /dev name reused by a new one)
+function driveToken(d) {
+    return d ? `${d.dev}|${d.size}|${d.fstype}|${d.label}` : ""
+}
+
+// lsblk's JSON → true when the disk `parent` and everything under it are
+// unmounted (then it may be powered off); false on anything unexpected
+function diskUnmounted(out, parent) {
+    if (typeof out !== "string" || out.length > MAX_JSON || typeof parent !== "string" || !DISK_DEV.test(parent))
+        return false
+    let data = null
+    try {
+        data = JSON.parse(out)
+    } catch (e) {
+        return false
+    }
+    const disks = own(data, "blockdevices") && Array.isArray(data.blockdevices) ? data.blockdevices : []
+    const disk = disks.find(d => d && typeof d === "object" && `/dev/${d.name}` === parent)
+    if (!disk)
+        return false
+    return descendants(disk).every(d => mountsOf(d).length === 0)
+}
+
+// `hyprctl -j monitors` → true only when every screen is free of the session
+// lock (no "LOCK" in solitaryBlockedBy, Hyprland's own word for it, the
+// same read as hypr-travar's); anything else counts as locked
+function screensUnlocked(out) {
+    if (typeof out !== "string" || out.length > MAX_JSON)
+        return false
+    let data = null
+    try {
+        data = JSON.parse(out)
+    } catch (e) {
+        return false
+    }
+    if (!Array.isArray(data) || data.length === 0)
+        return false
+    return data.every(m => m && typeof m === "object" && Array.isArray(m.solitaryBlockedBy)
+                           && !m.solitaryBlockedBy.includes("LOCK"))
+}
+
+// A label for the notification's body: filtered, cut at 64 and with the
+// markup characters escaped (notification servers may read it as markup)
+function notifyLabel(label) {
+    return text(label).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
+// udisksctl's error says the filesystem is in use
+function busy(errText) {
+    return typeof errText === "string" && /target is busy|device is busy|EBUSY/i.test(errText.slice(0, 4096))
+}
