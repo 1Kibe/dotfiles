@@ -115,15 +115,70 @@ run("XF86AudioPause", "media_play", "Mídia: Tocar / pausar", { locked = true })
 run("XF86AudioNext", "media_next", "Mídia: Próxima música", { locked = true })
 run("XF86AudioPrev", "media_prev", "Mídia: Música anterior", { locked = true })
 
--- ── Touchpad gestures (copied from the Windows setup) ───────────────────────
--- Hyprland doesn't list gestures: keep hypr-atalhos' GESTURES block in sync.
-hl.gesture({ fingers = 3, direction = "left", action = cycle(true) })
-hl.gesture({ fingers = 3, direction = "right", action = cycle(false) })
-hl.gesture({ fingers = 3, direction = "up", action = launch("overview") })
-hl.gesture({ fingers = 3, direction = "down", action = function() areas.empty() end })
--- 4 fingers sideways: set by hyprland.lua once the settings are loaded
--- (areas.gestures: the mode decides)
-hl.gesture({ fingers = 4, direction = "up", action = launch("media_next") })
-hl.gesture({ fingers = 4, direction = "down", action = launch("media_prev") })
--- Windows uses a 4-finger tap; libinput has no such tap, so a 4-finger pinch
-hl.gesture({ fingers = 4, direction = "pinch", action = launch("media_play") })
+-- ── Touchpad gestures (Configurações → Gestos) ──────────────────────────────
+-- The shell writes each position's choice as a name (dotfiles_gestures.lua,
+-- data only, read by actions.data_file); each name is checked against the
+-- tables below, which build the gesture here, so the file never holds a
+-- command. A missing position, an unknown name or a bad file: that
+-- position's default (the gestures from the Windows setup). Hyprland
+-- doesn't list gestures: keep hypr-atalhos' GESTURES block in sync.
+local gesture_actions = {
+  cycle_prev    = cycle(true),
+  cycle_next    = cycle(false),
+  overview      = launch("overview"),
+  launcher      = launch("launcher"),
+  controlcenter = launch("controlcenter"),
+  empty_area    = function() areas.empty() end,
+  media_next    = launch("media_next"),
+  media_prev    = launch("media_prev"),
+  media_play    = launch("media_play"),
+  volume_up     = launch("volume_up"),
+  volume_down   = launch("volume_down"),
+  capture       = launch("capture"),
+  lock          = launch("lock"),
+  none          = false,
+}
+-- position, fingers, direction, default. Windows uses a 4-finger tap;
+-- libinput has no such tap, so a 4-finger pinch
+local gesture_places = {
+  { "3:left", 3, "left", "cycle_prev" },
+  { "3:right", 3, "right", "cycle_next" },
+  { "3:up", 3, "up", "overview" },
+  { "3:down", 3, "down", "empty_area" },
+  { "4:up", 4, "up", "media_next" },
+  { "4:down", 4, "down", "media_prev" },
+  { "4:pinch", 4, "pinch", "media_play" },
+}
+local chosen_gestures = a.data_file("dotfiles_gestures") or {}
+
+-- The chosen name of a position if it is one of `known`, else the default
+local function gesture_choice(position, known, default)
+  local name = rawget(chosen_gestures, position)
+  if type(name) == "string" and known[name] ~= nil then
+    return name
+  end
+  return default
+end
+
+for _, place in ipairs(gesture_places) do
+  local action = gesture_actions[gesture_choice(place[1], gesture_actions, place[4])]
+  if action then
+    hl.gesture({ fingers = place[2], direction = place[3], action = action })
+  end
+end
+
+-- 4 fingers sideways: switch areas (areas.gestures: the areas' mode, known
+-- only once hyprland.lua has read the settings, so it calls this then), the
+-- previous / next window, or nothing
+local side_choices = { areas = true, cycle = true, none = true }
+local function side_gesture()
+  local name = gesture_choice("4:side", side_choices, "areas")
+  if name == "areas" then
+    areas.gestures()
+  elseif name == "cycle" then
+    hl.gesture({ fingers = 4, direction = "left", action = cycle(true) })
+    hl.gesture({ fingers = 4, direction = "right", action = cycle(false) })
+  end
+end
+
+return { side_gesture = side_gesture }

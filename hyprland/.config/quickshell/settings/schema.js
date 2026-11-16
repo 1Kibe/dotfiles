@@ -11,6 +11,9 @@
 // - enum: options [{ value, label }]
 // - string: pattern (a RegExp the whole text must match)
 // - list: options [{ value, label }] (ids it may hold, each at most once)
+// - gestures: an object position -> name; positions [{ id, label, icon }],
+//   choices { position: [names] } (a missing position takes its default),
+//   options (the labels of the names); settings/gestures.js
 // - path: absolute after "~" is expanded, no ".." part, no control character
 // - source (string keys): the choices come from this machine
 //   (state/SystemLists: "fonts", "monoFonts", "cursorThemes"); the page shows
@@ -50,6 +53,7 @@ var PAGES = [
     { id: "energia", group: "Sistema", icon: "󰂄", name: "Energia", sub: "Tempos, tampa e menu de energia" },
     { id: "monitores", group: "Sistema", icon: "󰍹", name: "Monitores", sub: "Arranjo, barra e luz noturna" },
     { id: "teclado", group: "Sistema", icon: "󰌌", name: "Teclado e mouse", sub: "Layout, repetição, mouse e touchpad" },
+    { id: "gestos", group: "Sistema", icon: "\u{f0741}", name: "Gestos", sub: "Touchpad com 3 e 4 dedos" },
     { id: "atalhos", group: "Sistema", icon: "󰘳", name: "Atalhos", sub: "Lista dos atalhos" },
     { id: "apps", group: "Sistema", icon: "󰀻", name: "Apps padrão", sub: "Navegador, arquivos, terminal e outros" },
     { id: "sobre", group: "Sistema", icon: "󰋼", name: "Sobre", sub: "Versão, sistema e suas configurações" }
@@ -82,6 +86,8 @@ var CARDS = {
     teclado: [{ id: "layout", title: "Layout", component: "KeyboardLayout" }, { id: "teclado", title: "Teclado" },
               { id: "mouse", title: "Mouse" },
               { id: "touchpad", title: "Touchpad", needs: "touchpad" }],
+    gestos: [{ id: "tres", title: "3 dedos", component: "GestureList" },
+             { id: "quatro", title: "4 dedos", component: "GestureList" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
     apps: [{ id: "apps", title: "Apps padrão", component: "DefaultApps" },
            { id: "inicio", title: "Iniciar com o sistema", component: "Autostart" }],
@@ -114,6 +120,46 @@ var POSITIONS = /^$|^[A-Za-z]+(-[A-Za-z0-9]+)*-[0-9]{1,3}:[1-9](,[A-Za-z]+(-[A-Z
 // by "_", "." or "-"; 40 characters at most
 var FILE_NAME_FORMAT = /^(?=.{1,40}$)(?:yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))(?:[_.-]|yyyy(?!y)|yy(?!y)|MM?(?!M)|dd?(?!d)|HH?(?!H)|hh?(?!h)|mm?(?!m)|ss?(?!s)|z{1,3}(?!z))*$/
 
+// Touchpad gestures (Configurações → Gestos; settings/gestures.js): the
+// names hypr/modules/keybinds.lua knows, in the order of the list. 4 fingers
+// sideways has its own: switch areas (the areas' mode decides how), the
+// previous / next window, or nothing
+var GESTURE_ACTIONS = [
+    { value: "cycle_prev", label: "Janela anterior" },
+    { value: "cycle_next", label: "Próxima janela" },
+    { value: "overview", label: "Visão geral das janelas" },
+    { value: "launcher", label: "Abrir o lançador" },
+    { value: "controlcenter", label: "Central de controle" },
+    { value: "empty_area", label: "Ir para uma área vazia" },
+    { value: "media_next", label: "Próxima música" },
+    { value: "media_prev", label: "Música anterior" },
+    { value: "media_play", label: "Tocar / pausar" },
+    { value: "volume_up", label: "Aumentar o volume" },
+    { value: "volume_down", label: "Diminuir o volume" },
+    { value: "capture", label: "Captura de tela" },
+    { value: "lock", label: "Travar a tela" },
+    { value: "none", label: "Nada" }
+]
+var GESTURE_SIDE = ["areas", "cycle", "none"]
+var GESTURE_POSITIONS = {
+    3: [{ id: "3:left", label: "Para a esquerda", icon: "\u{f004d}" },
+        { id: "3:right", label: "Para a direita", icon: "\u{f0054}" },
+        { id: "3:up", label: "Para cima", icon: "\u{f005d}" },
+        { id: "3:down", label: "Para baixo", icon: "\u{f0045}" }],
+    4: [{ id: "4:side", label: "Para os lados", icon: "\u{f0e73}" },
+        { id: "4:up", label: "Para cima", icon: "\u{f005d}" },
+        { id: "4:down", label: "Para baixo", icon: "\u{f0045}" },
+        { id: "4:pinch", label: "Pinça", icon: "\u{f0abd}" }]
+}
+
+function gestureKey(fingers, def, card, label) {
+    const choices = {}
+    for (const p of GESTURE_POSITIONS[fingers])
+        choices[p.id] = p.id === "4:side" ? GESTURE_SIDE.slice() : GESTURE_ACTIONS.map(a => a.value)
+    return { def: def, type: "gestures", positions: GESTURE_POSITIONS[fingers], choices: choices,
+             options: GESTURE_ACTIONS, page: "gestos", card: card, label: label,
+             syn: ["touchpad", "deslizar", "dedos", "gestos"] }
+}
 
 function opts(pairs) {
     return pairs.map(p => ({ value: p[0], label: p[1] }))
@@ -309,6 +355,12 @@ var KEYS = {
     tapAndDrag: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Tocar e arrastar" },
     touchpadNatural: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Rolagem natural" },
     disableWhileTyping: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Desligar ao digitar" },
+
+    // ── Gestos (what the keybinds did before this page: the defaults) ──
+    gestures3: gestureKey(3, { "3:left": "cycle_prev", "3:right": "cycle_next", "3:up": "overview", "3:down": "empty_area" },
+                          "tres", "Gestos de 3 dedos"),
+    gestures4: gestureKey(4, { "4:side": "areas", "4:up": "media_next", "4:down": "media_prev", "4:pinch": "media_play" },
+                          "quatro", "Gestos de 4 dedos"),
 
     // ── Apps padrão (this machine only: "" is the system's choice) ──
     appBrowser: appKey("Navegador", ["internet", "web"]),

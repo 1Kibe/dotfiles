@@ -55,7 +55,7 @@ Flickable {
     readonly property var builtCards: ["ThemePreview", "WallpaperGallery", "AnimationPreview", "BarItems", "UserPhoto",
                                        "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit",
                                        "MonitorNotice", "MonitorLayout", "KeyboardLayout", "KeybindList", "DefaultApps",
-                                       "Autostart", "AboutVersion", "AboutData"]
+                                       "Autostart", "AboutVersion", "AboutData", "GestureList"]
     // A card that needs something this machine does not have stays out
     // (the touchpad's: SystemLists.hasTouchpad). Hyprland tells nothing when
     // a device is plugged in: the devices are read again when this page opens
@@ -164,6 +164,8 @@ Flickable {
                     Layout.fillWidth: true
                     Layout.margins: group.plain || group.modelData.flush === true ? 0 : 12
                     source: active ? Qt.resolvedUrl(`cards/${group.modelData.component}.qml`) : ""
+                    // A card drawn for more than one group learns which one
+                    onLoaded: if (item.cardId !== undefined) item.cardId = group.cardId
                 }
                 Repeater {
                     model: group.modelData.component ? [] : root.rowsOf(group.cardId)

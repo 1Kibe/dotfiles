@@ -11,6 +11,8 @@ import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
 import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
+import "../settings/gestures.js" as Gestures
+import "../settings/validate.js" as Validate
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -210,7 +212,12 @@ Singleton {
     property string hyprWanted: ""
     property bool hyprLoaded: false
     readonly property bool locked: LockState.locked || LockState.wanted
-    onLockedChanged: if (!locked) hyprTimer.restart()
+    onLockedChanged: {
+        if (!locked) {
+            hyprTimer.restart()
+            gesturesTimer.restart()
+        }
+    }
     Timer {
         id: hyprTimer
         interval: 500
@@ -281,6 +288,92 @@ Singleton {
         }
         onSaved: Quickshell.execDetached(["hyprctl", "reload"])
         onSaveFailed: root.failed("accent", "Não deu para salvar a configuração do Hyprland")
+    }
+
+    // ── Gestos (settings/gestures.js) ──
+    // ~/.config/hypr/dotfiles_gestures.lua (read by modules/keybinds.lua, in
+    // the repo's .gitignore): data only, every name checked again before it
+    // is written. Written like dotfiles_settings.lua: only when its text
+    // changes, half a second after the last change, never with the session
+    // locked, only over a plain file or none; then Hyprland reads its
+    // configuration again.
+    readonly property string gesturesFile: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/hypr/dotfiles_gestures.lua`
+    readonly property string gesturesWanted: gesturesLua(SettingsStore.ready, SettingsStore.values)
+    function gesturesLua(ready, values) {
+        if (!ready)
+            return ""
+        try {
+            return Gestures.dataLua(Schema.KEYS, values, Validate.validate, Serialize.luaValue)
+        } catch (e) {
+            return ""
+        }
+    }
+    onGesturesWantedChanged: gesturesTimer.restart()
+    property bool gesturesLoaded: false
+    Timer {
+        id: gesturesTimer
+        interval: 500
+        onTriggered: root.writeGestures()
+    }
+    function writeGestures() {
+        if (!gesturesLoaded || gesturesWanted === "" || locked)
+            return
+        if (gesturesView.text() === gesturesWanted)
+            return
+        if (gesturesStat.running) {
+            gesturesStatAgain = true
+            return
+        }
+        gesturesStat.running = true
+    }
+    property bool gesturesStatAgain: false
+    Process {
+        id: gesturesStat
+        command: Serialize.writeCheck(root.gesturesFile)
+        // The same limit and refusal as hyprStat above
+        property bool timedOut: false
+        onRunningChanged: {
+            if (running) {
+                timedOut = false
+                gesturesStatLimit.restart()
+            } else {
+                gesturesStatLimit.stop()
+            }
+        }
+        onExited: (code, status) => {
+            if (timedOut || status !== 0 || !Serialize.mayWrite(code))
+                root.failed("gestures3", "O arquivo dos gestos é um link ou não pôde ser conferido: nada foi gravado")
+            else if (gesturesView.text() !== root.gesturesWanted && !root.locked)
+                gesturesView.setText(root.gesturesWanted)
+            if (root.gesturesStatAgain) {
+                root.gesturesStatAgain = false
+                root.writeGestures()
+            }
+        }
+    }
+    Timer {
+        id: gesturesStatLimit
+        interval: 10000
+        onTriggered: {
+            gesturesStat.timedOut = true
+            gesturesStat.running = false
+        }
+    }
+    FileView {
+        id: gesturesView
+        path: root.gesturesFile
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.gesturesLoaded = true
+            root.writeGestures()
+        }
+        onLoadFailed: {
+            root.gesturesLoaded = true
+            root.writeGestures()
+        }
+        onSaved: Quickshell.execDetached(["hyprctl", "reload"])
+        onSaveFailed: root.failed("gestures3", "Não deu para salvar os gestos")
     }
 
     // ── Kitty's colors (settings/kitty.js) ──
