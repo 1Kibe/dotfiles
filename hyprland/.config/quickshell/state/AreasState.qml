@@ -167,7 +167,8 @@ Singleton {
         }
         held = false
         saves = saves.concat([now])
-        SettingsStore.set("monitorPositions", text)
+        // Kept by the shell itself: never takes away a pending Desfazer
+        SettingsStore.setAuto("monitorPositions", text)
         return true
     }
 

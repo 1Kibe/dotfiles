@@ -75,15 +75,29 @@ Singleton {
     }
 
     // false when the key is unknown, the value does not pass or the first
-    // read is not done yet
+    // read is not done yet. A change from the user: a pending Desfazer of
+    // Restaurar tudo is gone (it would undo this too)
     function set(key, value) {
+        return write(key, value, true)
+    }
+    // The shell's own writes of the keys it keeps itself (schema `auto`, the
+    // areas' places): the same checks, but a pending Desfazer stays (those
+    // keys are not part of it). Only for `auto` keys
+    function setAuto(key, value) {
+        const s = spec(key)
+        if (!s || !s.auto)
+            return false
+        return write(key, value, false)
+    }
+    function write(key, value, fromUser) {
         const s = spec(key)
         if (!s || !ready)
             return false
         const r = Validate.validate(s, value, home)
         if (!r.ok)
             return false
-        dropUndo()
+        if (fromUser)
+            dropUndo()
         const next = Object.assign({}, user)
         if (same(r.value, defaults[key]))
             delete next[key]
@@ -140,7 +154,8 @@ Singleton {
     // (mode 600, settings.json.bak-<date>-<n>, the last three kept); if the
     // copy fails, nothing is restored. Then every machine choice goes, but
     // the system's own (schema `system`: the login's keyboard, which only its
-    // card changes) and the keys this version does not know stay. For half a
+    // card changes), the ones the shell keeps itself (schema `auto`: the
+    // areas' places) and the keys this version does not know stay. For half a
     // minute undoRestore() puts back what went, unless anything changes in
     // between (then the Desfazer is gone: it would undo that too). While a
     // Desfazer is pending, a second Restaurar tudo is refused. Nothing here
@@ -149,9 +164,10 @@ Singleton {
     property var undoUser: null
     property double undoUntil: 0
     readonly property int undoSeconds: 30
-    // The choices Restaurar tudo would take away
+    // The choices Restaurar tudo would take away: not the system's own keys
+    // nor the ones the shell keeps itself (schema `system`, `auto`)
     function restorableKeys() {
-        return Object.keys(user).filter(k => !(spec(k) && spec(k).system))
+        return Object.keys(user).filter(k => !(spec(k) && (spec(k).system || spec(k).auto)))
     }
     function dropUndo() {
         undoUser = null
