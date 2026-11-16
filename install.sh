@@ -1000,7 +1000,7 @@ install_etc_file() {   # source, destination
   fi
   if ! sudo install -m0644 -o root -g root -T -- "$src" "${dest}.dotfiles-new" \
       || ! sudo mv -f -T -- "${dest}.dotfiles-new" "$dest"; then
-    sudo rm -f -- "${dest}.dotfiles-new"
+    sudo rm -f -- "${dest}.dotfiles-new" || true
     warn "Could not install ${dest}"
     return 1
   fi
@@ -1013,54 +1013,75 @@ install_etc_file() {   # source, destination
 # nsswitch.conf: printers named "<name>.local" are found through
 # mdns_minimal, which only answers while avahi runs. The hosts: line changes
 # only when it is exactly Arch's stock one; any other line is left alone (a
-# broken nsswitch.conf breaks login and sudo). After the change localhost
-# (and the DNS name, when it worked before) must still resolve, else the
-# file goes back as it was.
+# broken nsswitch.conf breaks login and sudo). After the change, localhost
+# and the DNS name (when it resolved before) must still resolve, else the
+# file goes back as it was. Only those are checked: a .local name needs
+# avahi, which is off here. Every command may fail without stopping the
+# install (set -e).
 NSS_STOCK_HOSTS='hosts: mymachines resolve [!UNAVAIL=return] files myhostname dns'
 NSS_MDNS_HOSTS='hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns'
+resolves() {
+  timeout 10 getent hosts "$1" >/dev/null 2>&1
+}
 configure_nss_mdns() {
-  local conf="$NSSWITCH_CONF" new orig dns_before=0
-  if grep -qxF -- "$NSS_MDNS_HOSTS" "$conf"; then
+  local conf="$NSSWITCH_CONF" new="" orig="" dns_before=0
+  if grep -qxF -- "$NSS_MDNS_HOSTS" "$conf" 2>/dev/null; then
     return 0
   fi
-  if ! grep -qxF -- "$NSS_STOCK_HOSTS" "$conf"; then
+  if ! grep -qxF -- "$NSS_STOCK_HOSTS" "$conf" 2>/dev/null; then
     warn "${conf}: the hosts: line is not the stock one, left as it is (printers named .local are not found by name)"
     return 0
   fi
-  getent hosts "$NSS_CHECK_NAME" >/dev/null 2>&1 && dns_before=1
-  new="$(mktemp)"
-  orig="$(mktemp)"
-  cp -- "$conf" "$orig"
-  awk -v stock="$NSS_STOCK_HOSTS" -v mdns="$NSS_MDNS_HOSTS" '$0 == stock { print mdns; next } { print }' "$conf" > "$new"
+  if resolves "$NSS_CHECK_NAME"; then dns_before=1; fi
+  if ! new="$(mktemp)" || ! orig="$(mktemp)" || ! cp -- "$conf" "$orig" \
+      || ! awk -v stock="$NSS_STOCK_HOSTS" -v mdns="$NSS_MDNS_HOSTS" \
+             '$0 == stock { print mdns; next } { print }' "$conf" > "$new"; then
+    warn "Could not prepare the change of ${conf}; left as it is"
+    rm -f -- "$new" "$orig"
+    return 0
+  fi
   if install_etc_file "$new" "$conf"; then
-    if ! getent hosts localhost >/dev/null 2>&1 \
-        || { (( dns_before )) && ! getent hosts "$NSS_CHECK_NAME" >/dev/null 2>&1; }; then
-      install_etc_file "$orig" "$conf"
-      warn "${conf} went back as it was: names stopped resolving after the change"
+    if ! resolves localhost || { (( dns_before )) && ! resolves "$NSS_CHECK_NAME"; }; then
+      if install_etc_file "$orig" "$conf"; then
+        warn "${conf} went back as it was: names stopped resolving after the change"
+      else
+        warn "${conf} could NOT go back after names stopped resolving; the original is in ${conf}.bak-dotfiles"
+      fi
     else
       log "Printers named .local resolve while printer discovery is on (${conf})."
     fi
   fi
   rm -f -- "$new" "$orig"
+  return 0
+}
+
+# A unit systemd knows (installed), whatever its state
+unit_exists() {
+  [[ -n "$(systemctl list-unit-files --no-legend -- "$1" 2>/dev/null || true)" ]]
+}
+unit_state() {
+  systemctl is-enabled -- "$1" 2>/dev/null || true
 }
 
 # CUPS starts when something prints (cups.socket; the service itself is not
 # enabled), listens only on this machine (its default) and gets its web
-# interface turned off the CUPS way (cupsctl). cups-browsed never runs: it is
-# masked (a bug of 2024 let anyone on the network add queues that run
-# commands). avahi (a dependency of CUPS) stays installed but disabled, with
-# nothing published: Configurações → Dispositivos starts and stops it on
-# request to find network printers. A USB printer never becomes a queue on
-# its own (the override of system-config-printer's udev rule).
+# interface turned off the CUPS way (cupsctl, which rewrites cupsd.conf).
+# cups-browsed never runs: it is masked (a bug of 2024 let anyone on the
+# network add queues that run commands). avahi (a dependency of CUPS) stays
+# installed but disabled, with nothing published: Configurações →
+# Dispositivos starts and stops it on request to find network printers. A
+# USB printer never becomes a queue on its own (the override of
+# system-config-printer's udev rule). Nothing here asks (the same with
+# --yes), and no step stops the install when it fails (set -e).
 configure_printing() {
-  local unit state
+  local unit
   if ! command -v cupsctl &>/dev/null; then
     warn "CUPS is not installed, skipping printing."
     return 0
   fi
   info "Printing (CUPS) and printer discovery (avahi, off until turned on in Configurações)..."
-  sudo systemctl mask cups-browsed.service >/dev/null 2>&1
-  if [[ "$(systemctl is-enabled cups-browsed.service 2>/dev/null)" == masked ]]; then
+  sudo systemctl mask cups-browsed.service >/dev/null 2>&1 || true
+  if [[ "$(unit_state cups-browsed.service)" == masked ]]; then
     log "cups-browsed masked."
   else
     warn "cups-browsed is not masked."
@@ -1076,10 +1097,15 @@ configure_printing() {
   else
     warn "Could not enable cups.socket."
   fi
-  sudo systemctl disable avahi-daemon.service avahi-daemon.socket >/dev/null 2>&1
   for unit in avahi-daemon.service avahi-daemon.socket; do
-    state="$(systemctl is-enabled "$unit" 2>/dev/null)"
-    if [[ "$state" == enabled* ]]; then
+    unit_exists "$unit" || continue
+    if [[ "$(systemctl is-active -- "$unit" 2>/dev/null || true)" == active ]]; then
+      warn "${unit} was running: stopped now (Configurações turns it on when you search for printers)."
+      sudo systemctl disable --now "$unit" >/dev/null 2>&1 || warn "Could not stop ${unit}."
+    else
+      sudo systemctl disable "$unit" >/dev/null 2>&1 || warn "Could not disable ${unit}."
+    fi
+    if [[ "$(unit_state "$unit")" == enabled* ]]; then
       warn "${unit} is still enabled (it should only run when turned on in Configurações)."
     fi
   done
@@ -1091,36 +1117,51 @@ configure_printing() {
     sudo udevadm control --reload 2>/dev/null || true
     log "A USB printer is not added on its own (${UDEV_RULES_DIR}/70-printers.rules)."
   fi
+  return 0
 }
 
 # Removable drives: udisks mounts them with noexec,nosuid,nodev,nosymfollow
 # (mount_options.conf, also for Thunar and gio), and only Configurações →
 # Dispositivos mounts on its own: the automount of gvfs (GNOME's setting,
 # read by gvfs and Thunar) and of thunar-volman (its xfconf channel) is off.
+# Each setting is read back after it is written.
 configure_removable() {
-  local kv key failed=0
+  local key value got done_gs=0 done_xf=0 failed=0
   if [[ -d "$UDISKS_DIR" ]]; then
-    install_etc_file "${DOTFILES_DIR}/system/udisks2/mount_options.conf" "${UDISKS_DIR}/mount_options.conf" \
-      && log "Removable drives mount with noexec,nosuid,nodev,nosymfollow (${UDISKS_DIR}/mount_options.conf)."
+    if install_etc_file "${DOTFILES_DIR}/system/udisks2/mount_options.conf" "${UDISKS_DIR}/mount_options.conf"; then
+      log "Removable drives mount with noexec,nosuid,nodev,nosymfollow (${UDISKS_DIR}/mount_options.conf)."
+    fi
   else
     warn "udisks2 is not installed, skipping the mount options."
   fi
   if command -v gsettings &>/dev/null; then
-    for kv in "automount false" "automount-open false" "autorun-never true"; do
-      # shellcheck disable=SC2086  # key and value, fixed above
-      gsettings set org.gnome.desktop.media-handling $kv 2>/dev/null || failed=1
+    done_gs=1
+    for key in automount:false automount-open:false autorun-never:true; do
+      value="${key#*:}"
+      key="${key%%:*}"
+      gsettings set org.gnome.desktop.media-handling "$key" "$value" 2>/dev/null || true
+      got="$(gsettings get org.gnome.desktop.media-handling "$key" 2>/dev/null || true)"
+      [[ "$got" == "$value" ]] || failed=1
     done
   fi
   if command -v xfconf-query &>/dev/null; then
+    done_xf=1
     for key in automount-drives automount-media autobrowse autoopen autorun; do
-      xfconf-query -c thunar-volman -p "/${key}/enabled" -n -t bool -s false 2>/dev/null || failed=1
+      xfconf-query -c thunar-volman -p "/${key}/enabled" -n -t bool -s false 2>/dev/null || true
+      got="$(xfconf-query -c thunar-volman -p "/${key}/enabled" 2>/dev/null || true)"
+      [[ "$got" == false ]] || failed=1
     done
   fi
   if (( failed )); then
     warn "Could not turn off every automount setting (run install.sh again inside the session)."
-  else
+  elif (( done_gs && done_xf )); then
     log "Drives are not mounted or opened on their own by gvfs, Thunar or thunar-volman."
+  elif (( done_gs )); then
+    log "gvfs and Thunar do not mount drives on their own (thunar-volman is not installed)."
+  else
+    warn "gsettings is not available: gvfs's automount setting was not changed."
   fi
+  return 0
 }
 
 # Background shared by the lock and login screens: lock/BackgroundPicker
