@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../settings/schema.js" as Schema
 import "../settings/monitors.js" as Monitors
+import "../settings/input.js" as Input
 
 // What this machine has, for the settings' lists (schema `source`): the font
 // families (fc-list), the monospaced ones, and the cursor themes (an icon
@@ -14,7 +15,12 @@ import "../settings/monitors.js" as Monitors
 // the store's check; everything runs as argument lists. The screens come
 // from Hyprland, the turned-off ones too (hyprctl -j monitors all; the
 // Quickshell screens leave them out), read again when the screens change;
-// only port names of the right shape (settings/monitors.js).
+// only port names of the right shape (settings/monitors.js). Whether there is
+// a touchpad comes from Hyprland's devices: only that answer is kept, never
+// a device's name (settings/input.js); read again when the Teclado e mouse
+// page opens (Hyprland tells nothing when a device is plugged in). The
+// keyboard layouts are the system's own list (localectl), short lowercase
+// codes only.
 Singleton {
     id: root
 
@@ -23,6 +29,11 @@ Singleton {
     property var cursorThemes: []
     // This machine's screens, on and off (the wallpaper's "Tela", the bar's)
     property var monitors: []
+    // A touchpad among the pointing devices (Configurações → Touchpad)
+    property bool hasTouchpad: false
+    // The keyboard layouts the system knows (localectl list-x11-keymap-layouts)
+    property var layouts: []
+    property bool layoutsRead: false
     // Each list has been read at least once (until then a stored value is
     // trusted as it is: the store already checked its pattern)
     property bool fontsRead: false
@@ -32,7 +43,8 @@ Singleton {
     // `source` → its list
     function list(source) {
         return source === "fonts" ? fonts : source === "monoFonts" ? monoFonts
-             : source === "cursorThemes" ? cursorThemes : source === "monitors" ? monitors : []
+             : source === "cursorThemes" ? cursorThemes : source === "monitors" ? monitors
+             : source === "layouts" ? layouts : []
     }
     function has(source, name) {
         return list(source).includes(name)
@@ -57,6 +69,8 @@ Singleton {
 
     function refresh() {
         monitorsJob.running = true
+        devicesJob.running = true
+        layoutsJob.running = true
         fontsJob.running = true
         monoJob.running = true
         cursorsJob.running = true
@@ -82,6 +96,41 @@ Singleton {
     Connections {
         target: Quickshell
         function onScreensChanged() { monitorsJob.running = true }
+    }
+
+    function refreshDevices() {
+        devicesJob.running = true
+    }
+    Process {
+        id: devicesJob
+        command: ["hyprctl", "-j", "devices"]
+        stdout: StdioCollector {
+            onStreamFinished: root.hasTouchpad = Input.hasTouchpad(text)
+        }
+    }
+
+    // A command that cannot start (no localectl) still ends the reading:
+    // an empty list, and no layout is ever applied
+    Process {
+        id: layoutsJob
+        command: ["localectl", "--no-pager", "list-x11-keymap-layouts"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.layouts = root.names(text, Schema.KEYS.kbLayout.pattern)
+                root.layoutsRead = true
+            }
+        }
+        onRunningChanged: {
+            if (!running && !root.layoutsRead)
+                layoutsFallback.restart()
+        }
+    }
+    // The output usually lands right after the end; half a second later,
+    // still nothing: there is no list
+    Timer {
+        id: layoutsFallback
+        interval: 500
+        onTriggered: root.layoutsRead = true
     }
 
     // The first family name of each font

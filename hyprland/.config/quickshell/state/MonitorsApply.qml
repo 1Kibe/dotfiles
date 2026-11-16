@@ -162,6 +162,11 @@ Singleton {
         }
         if (busy)
             return false
+        // One preview at a time: not over the keyboard's
+        if (!pending && KeyboardLayout.pending) {
+            fail("Espere a prévia do teclado acabar")
+            return false
+        }
         const result = Monitors.generate(list, Monitors.modesOf(screens), Serialize.luaValue)
         if (!result.ok) {
             fail(result.error)
@@ -191,8 +196,12 @@ Singleton {
                 root.fail("Uma volta de antes ainda está armada: espere ela acabar")
                 return
             }
+            // AccuracySec: a transient timer may otherwise fire up to a
+            // minute late (systemd's default accuracy), long after the strip
+            // is gone
             run(["systemd-run", "--user", "--collect", `--unit=${root.unit}`, `--on-active=${root.seconds}s`,
-                 `--setenv=HYPRLAND_INSTANCE_SIGNATURE=${sig}`, "hyprctl", "reload"], code2 => {
+                 "--timer-property=AccuracySec=100ms", `--setenv=HYPRLAND_INSTANCE_SIGNATURE=${sig}`,
+                 "hyprctl", "reload"], code2 => {
                 root.busy = false
                 if (code2 !== 0) {
                     root.fail("Não deu para armar a volta: nada foi aplicado")
@@ -264,11 +273,37 @@ Singleton {
             busy = false
             return
         }
-        writing = text
-        if (prevText !== "")
-            prevView.setText(prevText)
-        else
-            fileView.setText(text)
+        // The write follows a link: the file and its .prev must be missing or
+        // plain files, else nothing is written
+        plainOrMissing([file, `${file}.prev`], ok => {
+            if (!ok) {
+                root.busy = false
+                root.fail("O arquivo das telas é um link ou não pôde ser conferido: nada foi gravado")
+                return
+            }
+            root.writing = text
+            if (root.prevText !== "")
+                prevView.setText(root.prevText)
+            else
+                fileView.setText(text)
+        })
+    }
+    // Every path a plain file or missing (settings/serialize.js writeCheck);
+    // a link, an error or no answer: no
+    function plainOrMissing(paths, done) {
+        if (paths.length === 0)
+            return done(true)
+        let check = null
+        try {
+            check = Serialize.writeCheck(paths[0])
+        } catch (e) {
+            return done(false)
+        }
+        run(check, code => {
+            if (!Serialize.mayWrite(code))
+                return done(false)
+            root.plainOrMissing(paths.slice(1), done)
+        })
     }
     FileView {
         id: prevView
@@ -327,7 +362,13 @@ Singleton {
             if (prevText !== "") {
                 restoring = true
                 writing = prevText
-                fileView.setText(prevText)
+                const back = prevText
+                plainOrMissing([file], ok => {
+                    if (ok)
+                        fileView.setText(back)
+                    else
+                        root.restoring = false
+                })
             }
             fail("Sem tela depois de gravar: voltou ao arranjo anterior")
             return

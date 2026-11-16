@@ -71,6 +71,9 @@ ShellRoot {
     // is tried, and the screens' numbers on Identificar
     MonitorKeep {}
     MonitorIdentify {}
+    // Configurações → Teclado e mouse: "Manter este teclado?" while a layout
+    // is tried
+    KeyboardKeep {}
 
     IpcHandler {
         target: "capture"

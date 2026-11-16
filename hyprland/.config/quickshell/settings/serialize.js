@@ -89,6 +89,23 @@ function monitorName(name) {
     return name
 }
 
+// A file the shell writes (the write follows a link): the command that says
+// whether it may be written. Exit 0: a plain file; WRITE_MISSING: missing,
+// in a folder that is there and can be written. Anything else (a link,
+// another kind of file, a folder that cannot be reached, the command not
+// starting or running out of time) means no
+var WRITE_MISSING = 10
+var WRITE_CHECK = 'if [ -L "$1" ]; then exit 3; elif [ -e "$1" ]; then [ -f "$1" ] || exit 3; '
+    + 'else d="${1%/*}"; [ -d "$d" ] && [ -w "$d" ] && [ -x "$d" ] || exit 4; exit 10; fi'
+function writeCheck(path) {
+    if (typeof path !== "string" || !path.startsWith("/"))
+        throw new Error("serialize: caminho inválido")
+    return ["sh", "-c", WRITE_CHECK, "sh", path]
+}
+function mayWrite(code) {
+    return code === 0 || code === WRITE_MISSING
+}
+
 function desktopId(id) {
     if (typeof id !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,95}\.desktop$/.test(id))
         throw new Error("serialize: app inválido")

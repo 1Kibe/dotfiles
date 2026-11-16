@@ -9,6 +9,7 @@ import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
+import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
@@ -20,7 +21,7 @@ import "../settings/lazygit.js" as Lazygit
 Singleton {
     id: root
 
-    readonly property string hyprFile: `${Quickshell.env("HOME")}/.config/hypr/dotfiles_settings.lua`
+    readonly property string hyprFile: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/hypr/dotfiles_settings.lua`
 
     signal failed(string key, string message)
 
@@ -69,12 +70,16 @@ Singleton {
         function onFontsReadChanged() { root.applyAppearance() }
         function onMonoReadChanged() { root.applyAppearance() }
         function onCursorsReadChanged() { root.applyAppearance() }
+        function onLayoutsReadChanged() { root.applyAppearance() }
     }
     Component.onCompleted: {
         applyMotion()
         applyAppearance()
         // Configurações → Energia lives in its own singleton: load it
         EnergyApply.applyIdle()
+        // So do Apps padrão and Iniciar com o sistema (their data files follow
+        // the settings even with the page closed)
+        void AppsState.scanned
     }
 
     // ── Aparência (T4) ──
@@ -110,10 +115,10 @@ Singleton {
         Theme.fontPanels = SystemLists.usable("fonts", v.fontPanels) ? v.fontPanels
                          : SystemLists.usable("fonts", SettingsStore.defaults.fontPanels) ? SettingsStore.defaults.fontPanels
                          : Theme.font
-        // The Hyprland file only once the cursor themes are known: before,
-        // it would come out without the cursor lines and be written twice
-        // (two reloads) at every start
-        if (!SystemLists.cursorsRead)
+        // The Hyprland file only once the cursor themes and the keyboard
+        // layouts are known: before, it would come out without those lines
+        // and be written twice (two reloads) at every start
+        if (!SystemLists.cursorsRead || !SystemLists.layoutsRead)
             return
         let text = ""
         try {
@@ -123,6 +128,21 @@ Singleton {
             failed("accent", "Não deu para aplicar no Hyprland")
             return
         }
+        // Teclado e mouse (settings/input.js): a value that does not pass
+        // leaves the whole file as it was. The layout only when it is in
+        // the system's list (Hyprland takes any name and silently keeps the
+        // old keymap); out of it, it is never applied
+        try {
+            const layout = SystemLists.has("layouts", v.kbLayout) ? v.kbLayout : ""
+            text += Input.inputLua(v, Schema.KEYS, Serialize.luaValue, layout)
+        } catch (e) {
+            failed("repeatRate", "Não deu para aplicar o teclado e o mouse no Hyprland")
+            return
+        }
+        // A change elsewhere (or the store reading back its own write) that
+        // leaves the text as it is does not push the write further away
+        if (text === hyprWanted)
+            return
         hyprWanted = text
         hyprTimer.restart()
     }
@@ -182,22 +202,69 @@ Singleton {
     }
 
     // ~/.config/hypr/dotfiles_settings.lua (read by hyprland.lua before local.lua):
-    // written only when its text changes, a moment after the last change,
-    // then Hyprland reads its configuration again. The folder is the repo's
-    // (stow); the file is in its .gitignore.
+    // written only when its text changes, half a second after the last
+    // change (a slider being dragged is one write, one reload), then
+    // Hyprland reads its configuration again. With the session locked
+    // nothing is written or reloaded: the unlock writes what is waiting.
+    // The folder is the repo's (stow); the file is in its .gitignore.
     property string hyprWanted: ""
     property bool hyprLoaded: false
+    readonly property bool locked: LockState.locked || LockState.wanted
+    onLockedChanged: if (!locked) hyprTimer.restart()
     Timer {
         id: hyprTimer
-        interval: 300
+        interval: 500
         onTriggered: root.writeHypr()
     }
     function writeHypr() {
-        if (!hyprLoaded || hyprWanted === "")
+        if (!hyprLoaded || hyprWanted === "" || locked)
             return
         if (hyprView.text() === hyprWanted)
             return
-        hyprView.setText(hyprWanted)
+        // The write follows a link: the file must be missing or a plain file
+        // (settings/serialize.js writeCheck), else nothing is written
+        if (hyprStat.running) {
+            hyprStatAgain = true
+            return
+        }
+        hyprStat.running = true
+    }
+    property bool hyprStatAgain: false
+    Process {
+        id: hyprStat
+        command: Serialize.writeCheck(root.hyprFile)
+        // Ten seconds at most: a check that hangs is stopped and counts as a
+        // refusal whatever it answers then (a program may catch the signal
+        // and exit 0), so the next change can still be written. Only a normal
+        // exit counts (status 0, QProcess's NormalExit: the enum is not
+        // reachable from QML)
+        property bool timedOut: false
+        onRunningChanged: {
+            if (running) {
+                timedOut = false
+                hyprStatLimit.restart()
+            } else {
+                hyprStatLimit.stop()
+            }
+        }
+        onExited: (code, status) => {
+            if (timedOut || status !== 0 || !Serialize.mayWrite(code))
+                root.failed("accent", "O arquivo de configurações do Hyprland é um link ou não pôde ser conferido: nada foi gravado")
+            else if (hyprView.text() !== root.hyprWanted && !root.locked)
+                hyprView.setText(root.hyprWanted)
+            if (root.hyprStatAgain) {
+                root.hyprStatAgain = false
+                root.writeHypr()
+            }
+        }
+    }
+    Timer {
+        id: hyprStatLimit
+        interval: 10000
+        onTriggered: {
+            hyprStat.timedOut = true
+            hyprStat.running = false
+        }
     }
     FileView {
         id: hyprView

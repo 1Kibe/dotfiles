@@ -805,7 +805,8 @@ set_default_types() {
   fi
 }
 
-# Images open in swayimg, videos in mpv and links in Firefox. swayimg needs
+# Images open in swayimg, videos in mpv, links in Firefox and PDFs,
+# documents and spreadsheets in the Craft apps. swayimg needs
 # Wayland: in the XFCE session (X11) images don't open (README). This is
 # only the starting point: Configurações → Apps padrão changes them later.
 set_default_apps() {
@@ -816,6 +817,15 @@ set_default_apps() {
   set_default_app swayimg.desktop image/
   set_default_app mpv.desktop video/
   set_default_types firefox.desktop x-scheme-handler/http x-scheme-handler/https text/html application/xhtml+xml
+  # The Craft apps (installed by the ArtCraft Launcher): PDF, documents and
+  # spreadsheets, the same types as those rows of Configurações → Apps padrão
+  set_default_types ai.storyteller.pdfcraft.desktop application/pdf
+  set_default_types ai.storyteller.wordcraft.desktop \
+    application/vnd.openxmlformats-officedocument.wordprocessingml.document application/msword \
+    application/vnd.oasis.opendocument.text application/rtf text/rtf
+  set_default_types ai.storyteller.gridcraft.desktop \
+    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet application/vnd.ms-excel \
+    application/vnd.oasis.opendocument.spreadsheet text/csv
   # The browser some apps ask xdg-settings for; never fails the install
   if find_desktop_file firefox.desktop >/dev/null && command -v xdg-settings &>/dev/null; then
     xdg-settings set default-web-browser firefox.desktop 2>/dev/null \

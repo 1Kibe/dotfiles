@@ -10,7 +10,8 @@ function fold(text) {
     return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim()
 }
 
-// One entry per key: { key, page, card, label, text } (text is folded)
+// One entry per key: { key, page, card, label, text, needs } (text is folded;
+// needs: what the key's card needs on this machine, "" for nothing)
 function build(schema) {
     const pages = {}
     for (const p of schema.PAGES)
@@ -23,11 +24,12 @@ function build(schema) {
         const page = pages[k.page]
         const card = (schema.CARDS[k.page] || []).find(c => c.id === k.card)
         const words = [k.label, k.desc || "", (k.syn || []).join(" "), page ? page.name : "", card ? card.title : ""]
-        entries.push({ key: key, page: k.page, card: k.card, label: k.label, text: fold(words.join(" ")) })
+        entries.push({ key: key, page: k.page, card: k.card, label: k.label, text: fold(words.join(" ")),
+                       needs: card && card.needs ? card.needs : "" })
     }
     // The pages themselves (Atalhos and Sobre have no keys)
     for (const p of schema.PAGES)
-        entries.push({ key: "", page: p.id, card: "", label: p.name, text: fold(`${p.name} ${p.sub}`) })
+        entries.push({ key: "", page: p.id, card: "", label: p.name, text: fold(`${p.name} ${p.sub}`), needs: "" })
     return entries
 }
 

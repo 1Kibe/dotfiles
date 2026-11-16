@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import "../settings/schema.js" as Schema
 import "../settings/validate.js" as Validate
+import "../settings/serialize.js" as Serialize
 
 // The settings (Configurações): the defaults of the repo
 // (settings/defaults.json, over the schema's own) and this machine's choices
@@ -82,6 +83,7 @@ Singleton {
         const r = Validate.validate(s, value, home)
         if (!r.ok)
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         if (same(r.value, defaults[key]))
             delete next[key]
@@ -94,6 +96,7 @@ Singleton {
     function reset(key) {
         if (!ready || !spec(key) || (!own(user, key) && !own(extra, key)))
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         delete next[key]
         apply(next, [key])
@@ -108,6 +111,7 @@ Singleton {
         const gone = keys.filter(k => spec(k) && (own(user, k) || own(extra, k)))
         if (gone.length === 0)
             return false
+        dropUndo()
         const next = Object.assign({}, user)
         for (const k of gone)
             delete next[k]
@@ -115,44 +119,116 @@ Singleton {
         return true
     }
 
-    // Restaurar: every machine choice goes (the page asks first); keys this
-    // version does not know stay
+    // Every machine choice back to the defaults at once, with no copy and no
+    // Desfazer (the page uses restoreAll): the system's own keys (schema
+    // `system`, the keyboard's layout) and the keys this version does not
+    // know stay
     function resetAll() {
         if (!ready)
             return false
-        apply({}, Object.keys(user))
+        dropUndo()
+        const gone = restorableKeys()
+        const next = {}
+        for (const k of Object.keys(user))
+            if (!gone.includes(k))
+                next[k] = user[k]
+        apply(next, gone)
         return true
     }
 
-    // Exportar: the current values that are not machine ones become the repo's
-    // defaults (settings/defaults.json), to be committed by hand. A path under
-    // the home goes as "~/..."; any other absolute path is not exported (the
-    // repo's value stays) and is listed in `skipped`, for the page to tell.
-    // Nothing before the first read.
-    function exportDefaults() {
-        if (!ready)
-            return { ok: false, skipped: [] }
-        const out = {}
-        const skipped = []
-        for (const key of Object.keys(Schema.KEYS)) {
-            const s = Schema.KEYS[key]
-            if (s.machine)
-                continue
-            let v = values[key]
-            if (s.type === "path") {
-                if (v === home)
-                    v = "~"
-                else if (v.startsWith(home + "/"))
-                    v = "~" + v.slice(home.length)
-                else if (v !== "~" && !v.startsWith("~/")) {
-                    skipped.push(key)
-                    v = defaults[key]
-                }
+    // Restaurar tudo (Configurações → Sobre): a copy of settings.json first
+    // (mode 600, settings.json.bak-<date>-<n>, the last three kept); if the
+    // copy fails, nothing is restored. Then every machine choice goes, but
+    // the system's own (schema `system`: the login's keyboard, which only its
+    // card changes) and the keys this version does not know stay. For half a
+    // minute undoRestore() puts back what went, unless anything changes in
+    // between (then the Desfazer is gone: it would undo that too). While a
+    // Desfazer is pending, a second Restaurar tudo is refused. Nothing here
+    // reaches the system (the keyboard of the login, the default apps): only
+    // the page's own buttons do. done(ok)
+    property var undoUser: null
+    property double undoUntil: 0
+    readonly property int undoSeconds: 30
+    // The choices Restaurar tudo would take away
+    function restorableKeys() {
+        return Object.keys(user).filter(k => !(spec(k) && spec(k).system))
+    }
+    function dropUndo() {
+        undoUser = null
+        undoTimer.stop()
+    }
+    property bool restoring: false
+    function restoreAll(done) {
+        if (!ready || restoring || undoUser !== null)
+            return false
+        const gone = restorableKeys()
+        const snapshot = {}
+        for (const k of gone)
+            snapshot[k] = user[k]
+        restoring = true
+        backupForRestore(ok => {
+            root.restoring = false
+            if (!ok) {
+                notice("Não deu para guardar uma cópia das configurações: nada foi restaurado")
+                root.readSkipped()
+                if (done)
+                    done(false)
+                return
             }
-            out[key] = v
-        }
-        defaultsView.setText(JSON.stringify(out, null, 2) + "\n")
-        return { ok: true, skipped: skipped }
+            const next = {}
+            for (const k of Object.keys(root.user))
+                if (!gone.includes(k))
+                    next[k] = root.user[k]
+            root.apply(next, gone)
+            root.undoUser = snapshot
+            root.undoUntil = Date.now() + root.undoSeconds * 1000
+            undoTimer.restart()
+            if (done)
+                done(true)
+        })
+        return true
+    }
+    function undoRestore() {
+        if (!ready || undoUser === null || Date.now() > undoUntil)
+            return false
+        const back = undoUser
+        dropUndo()
+        apply(Object.assign({}, user, back), Object.keys(back))
+        return true
+    }
+    Timer {
+        id: undoTimer
+        interval: root.undoSeconds * 1000
+        onTriggered: root.undoUser = null
+    }
+    // The copy: none needed when there is no file; a plain file only
+    // (settings/serialize.js writeCheck: a link or an error, no restore);
+    // a missing folder (a new install) is made first, mode 700. The name is
+    // unique (date, milliseconds and a count); then only the newest three
+    // copies stay, never the one just made
+    property int backupCount: 0
+    function backupForRestore(done) {
+        run(["mkdir", "-p", "-m", "700", "--", userDir], () => {
+            run(Serialize.writeCheck(userFile), code => {
+                if (code === Serialize.WRITE_MISSING)
+                    return done(true)
+                if (code !== 0)
+                    return done(false)
+                root.backupCount++
+                const copy = `${userFile}.bak-${Qt.formatDateTime(new Date(), "yyyyMMdd-HHmmss-zzz")}-${root.backupCount}`
+                run(["install", "-m", "600", "-T", "--", userFile, copy], code2 => {
+                    if (code2 !== 0)
+                        return done(false)
+                    run(["find", userDir, "-maxdepth", "1", "-type", "f", "-name", "settings.json.bak-*"], (code3, out3) => {
+                        const old = out3.split("\n")
+                                        .filter(l => l !== copy && /\/settings\.json\.bak-\d{8}-\d{6}(-\d{3}-\d+)?$/.test(l)).sort()
+                        for (const f of old.slice(0, Math.max(0, old.length - 2)))
+                            root.run(["rm", "-f", "--", f])
+                        done(true)
+                    })
+                })
+            })
+        })
     }
 
     // New machine choices: values, the signal for each changed key, then the
@@ -226,6 +302,8 @@ Singleton {
                     u[key] = r.value
             }
         }
+        if (userRead && !same(u, user))
+            dropUndo()
         user = u
         extra = x
     }
@@ -283,9 +361,17 @@ Singleton {
         })
     }
 
+    // A change of ours on its way (waiting, being written, or Restaurar tudo
+    // making its copy): reading the file now would put its older content
+    // back over that change. The file is read again once ours is written
+    property bool readAfterWrite: false
     function tryRead() {
         if (userState === "pending" || userLoading)
             return
+        if (userRead && (saveTimer.running || writing || restoring)) {
+            readAfterWrite = true
+            return
+        }
         // An outside change after the first read: the keys that changed are
         // announced, like a change made here (the first read is not)
         const before = ready ? values : null
@@ -334,9 +420,8 @@ Singleton {
         printErrors: false
         onLoaded: root.readDefaults(text())
         onLoadFailed: root.readDefaults("")
+        // Exportar (state/AboutState) writes it in the repo: read again
         onFileChanged: reload()
-        // Exportar: only after the defaults are in, never half written
-        atomicWrites: true
     }
 
     // Read on its own (and again when it changes), but only used by
@@ -481,6 +566,14 @@ Singleton {
             saveTimer.restart()
         else if (ok)
             saved()
+        if (!dirty)
+            readSkipped()
+    }
+    function readSkipped() {
+        if (!readAfterWrite || saveTimer.running || writing || restoring)
+            return
+        readAfterWrite = false
+        checkUser()
     }
 
     // ── Commands (argument lists only) ──

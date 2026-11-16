@@ -27,6 +27,8 @@
 //   gives, in place of the list
 // - hidden: kept by the shell itself, never a row on the page nor a search
 //   result
+// - system: tied to a setting of the system itself (the login's keyboard):
+//   Restaurar tudo keeps it, only its own card changes it
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
@@ -73,9 +75,13 @@ var CARDS = {
                 { id: "arranjo", title: "Arranjo", component: "MonitorLayout", flush: true },
                 { id: "areas", title: "Áreas de trabalho" }, { id: "barra", title: "Barra" },
                 { id: "luz", title: "Luz noturna" }],
-    teclado: [{ id: "teclado", title: "Teclado" }, { id: "mouse", title: "Mouse" }, { id: "touchpad", title: "Touchpad" }],
+    // Touchpad: only on a machine that has one (state/SystemLists hasTouchpad)
+    teclado: [{ id: "layout", title: "Layout", component: "KeyboardLayout" }, { id: "teclado", title: "Teclado" },
+              { id: "mouse", title: "Mouse" },
+              { id: "touchpad", title: "Touchpad", needs: "touchpad" }],
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
-    apps: [{ id: "apps", title: "Apps padrão" }],
+    apps: [{ id: "apps", title: "Apps padrão", component: "DefaultApps" },
+           { id: "inicio", title: "Iniciar com o sistema", component: "Autostart" }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
@@ -276,15 +282,18 @@ var KEYS = {
                 label: "Termina às" },
 
     // ── Teclado e mouse ──
-    kbLayout: { def: "br", type: "string", pattern: /^[a-z]{2,8}$/, machine: true, page: "teclado", card: "teclado",
-                label: "Layout do sistema", syn: ["abnt", "idioma"] },
-    kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, page: "teclado",
-               card: "teclado", label: "Modelo do teclado" },
+    // The layout gets its own card (the system's list, a preview to keep);
+    // the model is never shown
+    kbLayout: { def: "br", type: "string", pattern: /^[a-z]{2,8}$/, machine: true, hidden: true, system: true, page: "teclado",
+                card: "teclado", label: "Layout do sistema", syn: ["abnt", "idioma"] },
+    kbModel: { def: "abnt2", type: "string", pattern: /^$|^[a-z0-9][a-z0-9_]{0,23}$/, machine: true, hidden: true, system: true,
+               page: "teclado", card: "teclado", label: "Modelo do teclado" },
     repeatDelay: { def: 600, type: "int", min: 150, max: 1000, step: 50, unit: "ms", page: "teclado", card: "teclado",
                    label: "Atraso da repetição" },
     repeatRate: { def: 25, type: "int", min: 10, max: 60, step: 1, unit: "por s", page: "teclado", card: "teclado",
                   label: "Velocidade da repetição" },
-    numlockOnStart: { def: false, type: "bool", page: "teclado", card: "teclado", label: "Num Lock ao iniciar" },
+    numlockOnStart: { def: false, type: "bool", page: "teclado", card: "teclado", label: "Num Lock ligado ao entrar",
+                      desc: "Vale a partir do próximo login" },
     mouseSensitivity: { def: 0, type: "real", min: -1, max: 1, step: 0.1, page: "teclado", card: "mouse",
                         label: "Velocidade do mouse" },
     mouseAccel: { def: "adaptive", type: "enum", page: "teclado", card: "mouse", label: "Aceleração",
@@ -294,14 +303,9 @@ var KEYS = {
                        syn: ["canhoto"] },
     focusFollowsMouse: { def: true, type: "bool", page: "teclado", card: "mouse", label: "Foco segue o mouse" },
     tapToClick: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Tocar para clicar" },
-    twoFingerScroll: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Rolar com dois dedos" },
     tapAndDrag: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Tocar e arrastar" },
     touchpadNatural: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Rolagem natural" },
     disableWhileTyping: { def: true, type: "bool", page: "teclado", card: "touchpad", label: "Desligar ao digitar" },
-    disableWithMouse: { def: false, type: "bool", page: "teclado", card: "touchpad",
-                        label: "Desligar com mouse externo" },
-    touchpadSensitivity: { def: 0, type: "real", min: -1, max: 1, step: 0.1, page: "teclado", card: "touchpad",
-                           label: "Velocidade do touchpad" },
 
     // ── Apps padrão (this machine only: "" is the system's choice) ──
     appBrowser: appKey("Navegador", ["internet", "web"]),
@@ -311,7 +315,20 @@ var KEYS = {
     appVideos: appKey("Vídeos", ["filmes"]),
     appMusic: appKey("Músicas", ["áudio"]),
     appText: appKey("Texto", ["editor"]),
-    appPdf: appKey("PDF", ["documentos"])
+    appPdf: appKey("PDF", ["documentos"]),
+    appDocs: appKey("Documentos", ["word", "docx", "texto formatado"]),
+    appSheets: appKey("Planilhas", ["excel", "xlsx", "csv"]),
+    appSlides: appKey("Apresentações", ["powerpoint", "pptx", "slides"]),
+    appVector: appKey("Imagens vetoriais", ["svg"]),
+    appRaw: appKey("Fotos RAW", ["câmera", "raw"]),
+    appCad: appKey("Desenhos técnicos", ["dxf", "cad"]),
+
+    // ── Iniciar com o sistema (this machine only; read at login by
+    // hypr/modules/autostart.lua, never by a reload) ──
+    autostartArtcraft: { def: true, type: "bool", machine: true, hidden: true, page: "apps", card: "inicio",
+                         label: "ArtCraft Launcher (escondido)", syn: ["iniciar", "login", "entrar"] },
+    autostartApps: { def: [], type: "idlist", pattern: DESKTOP_ID, max: 16, machine: true, hidden: true, page: "apps",
+                     card: "inicio", label: "Apps ao entrar", syn: ["iniciar", "login", "entrar"] }
 }
 
 function appKey(label, syn) {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
+import qs.state
 import "ui"
 import "schema.js" as Schema
 import "searchindex.js" as SearchIndex
@@ -15,7 +16,9 @@ Item {
     id: root
 
     signal chosen(string page, string card)
-    readonly property var entries: SearchIndex.build({ KEYS: Schema.KEYS, PAGES: Schema.PAGES, CARDS: Schema.CARDS })
+    // A card this machine does not have (the touchpad's) gives no results
+    readonly property var allEntries: SearchIndex.build({ KEYS: Schema.KEYS, PAGES: Schema.PAGES, CARDS: Schema.CARDS })
+    readonly property var entries: allEntries.filter(e => e.needs === "" || (e.needs === "touchpad" && SystemLists.hasTouchpad))
     property string text: ""
     readonly property var results: SearchIndex.query(entries, text, 8)
     property alias field: field

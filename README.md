@@ -42,7 +42,7 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
 10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio)). No `hyprland`, também a regra do limite de carga da bateria (notebooks Lenovo): o grupo `bateria` pode ligar e desligar só esse limite, sem senha, e o usuário entra no grupo (vale no próximo login)
 11. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
-12. Deixa o swayimg como padrão para imagens, o mpv para vídeos e o Firefox para links e páginas (`xdg-mime`), se estiverem instalados
+12. Deixa o swayimg como padrão para imagens, o mpv para vídeos, o Firefox para links e páginas e o PdfCraft, o WordCraft e o GridCraft para PDF, documentos e planilhas (`xdg-mime`), se estiverem instalados
 
 </details>
 

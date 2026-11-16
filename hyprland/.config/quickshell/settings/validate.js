@@ -87,6 +87,19 @@ function validate(spec, value, home) {
             seen[v] = true
         }
         return good(value.slice())
+    case "idlist":
+        // Free names (app ids): each one the key's pattern, no repeats, at
+        // most spec.max of them
+        if (!Array.isArray(value) || value.length > (spec.max || 0))
+            return bad(spec)
+        const names = {}
+        for (const v of value) {
+            if (typeof v !== "string" || v.length > 256 || CONTROL.test(v) || !spec.pattern || !spec.pattern.test(v)
+                    || names[v])
+                return bad(spec)
+            names[v] = true
+        }
+        return good(value.slice())
     default:
         return bad(spec)
     }
