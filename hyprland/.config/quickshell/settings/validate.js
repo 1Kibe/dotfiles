@@ -100,6 +100,24 @@ function validate(spec, value, home) {
             names[v] = true
         }
         return good(value.slice())
+    case "gestures": {
+        // A plain object of the key's positions (a missing one takes its
+        // default), each a name of that position's choices; the result in
+        // the positions' order
+        if (value === null || typeof value !== "object" || Array.isArray(value))
+            return bad(spec)
+        const places = spec.positions.map(p => p.id)
+        if (Object.keys(value).some(k => !places.includes(k)))
+            return bad(spec)
+        const out = {}
+        for (const id of places) {
+            const v = Object.prototype.hasOwnProperty.call(value, id) ? value[id] : spec.def[id]
+            if (typeof v !== "string" || !spec.choices[id].includes(v))
+                return bad(spec)
+            out[id] = v
+        }
+        return good(out)
+    }
     default:
         return bad(spec)
     }

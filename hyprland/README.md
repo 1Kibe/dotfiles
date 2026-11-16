@@ -81,6 +81,8 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 `Super+F1` mostra esta lista ao vivo, lida do Hyprland em execução. As tabelas abaixo são geradas com
 `hypr-atalhos --readme ~/dotfiles/hyprland/README.md` (rode de novo sempre que mudar o `keybinds.lua`).
 O `hypr-atalhos --json` dá a mesma lista para a página Configurações → Atalhos.
+Os gestos do touchpad na tabela são os padrões: cada um muda em Configurações → Gestos, e o `Super+F1` e a
+página Atalhos mostram os escolhidos.
 
 <!-- atalhos:inicio -->
 
@@ -146,14 +148,6 @@ O `hypr-atalhos --json` dá a mesma lista para a página Configurações → Ata
 | `Super+Ctrl+→ / Super+roda ↓` | Próxima área |
 | `Super+Ctrl+D` | Nova área vazia |
 
-Com várias telas, as áreas são **juntas em todas as telas** (como no Windows; Configurações → Monitores → Áreas de
-trabalho): cada área tem uma parte em cada tela, `Super+N` troca todas as telas de uma vez e o foco fica onde estava,
-`Super+Shift+N` manda a janela para a área N na mesma tela, e a barra mostra as mesmas áreas em todas as telas. A tela
-principal (Tela 1, onde a área 1 começa) se escolhe na tela escolhida da página. Tela nova ganha o próximo lugar livre e
-volta sempre com a mesma parte; tela tirada manda as janelas dela para a principal, na mesma área, e elas voltam se a
-mesma tela voltar. Com uma tela só fica igual a antes. "Separadas por tela" deixa cada tela com as suas, como o Hyprland
-faz sozinho.
-
 ### Mídia
 
 | Atalho | Ação |
@@ -172,14 +166,24 @@ faz sozinho.
 
 | Gesto | Ação |
 |---|---|
-| 3 dedos ←/→ | Janela anterior / próxima |
+| 3 dedos ← | Janela anterior |
+| 3 dedos → | Próxima janela |
 | 3 dedos ↑ | Visão geral das janelas |
-| 3 dedos ↓ | Mostrar a área de trabalho (área vazia) |
+| 3 dedos ↓ | Ir para uma área vazia |
 | 4 dedos ←/→ | Trocar de área de trabalho |
-| 4 dedos ↑ / ↓ | Próxima / anterior música |
-| 4 dedos (pinça) | Tocar / pausar música |
+| 4 dedos ↑ | Próxima música |
+| 4 dedos ↓ | Música anterior |
+| 4 dedos (pinça) | Tocar / pausar |
 
 <!-- atalhos:fim -->
+
+Com várias telas, as áreas são **juntas em todas as telas** (como no Windows; Configurações → Monitores → Áreas de
+trabalho): cada área tem uma parte em cada tela, `Super+N` troca todas as telas de uma vez e o foco fica onde estava,
+`Super+Shift+N` manda a janela para a área N na mesma tela, e a barra mostra as mesmas áreas em todas as telas. A tela
+principal (Tela 1, onde a área 1 começa) se escolhe na tela escolhida da página. Tela nova ganha o próximo lugar livre e
+volta sempre com a mesma parte; tela tirada manda as janelas dela para a principal, na mesma área, e elas voltam se a
+mesma tela voltar. Com uma tela só fica igual a antes. "Separadas por tela" deixa cada tela com as suas, como o Hyprland
+faz sozinho.
 
 No Linux não existe toque de 4 dedos (o tocar/pausar foi para a pinça de 4 dedos), e o toque de 3 dedos é o clique do meio.
 

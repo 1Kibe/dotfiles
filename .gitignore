@@ -57,6 +57,10 @@ hyprland/.config/hypr/hypridle.gerado.conf*
 hyprland/.config/hypr/dotfiles_apps.lua*
 hyprland/.config/hypr/dotfiles_autostart.lua*
 
+# Configurações → Gestos: the action of each touchpad gesture (names only,
+# written by the shell), and the temporary file of its atomic write
+hyprland/.config/hypr/dotfiles_gestures.lua*
+
 # ── Kitty: the theme's colors (written by the shell) and machine-only
 # settings, with the temporary files of their atomic writes ──
 common/.config/kitty/cores.conf*

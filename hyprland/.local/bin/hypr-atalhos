@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # Keybind list read from the running Hyprland (hyprctl binds), so it always
 # matches the config. Bound to Super+F1. Bind descriptions look like
-# "Group: text" (see modules/keybinds.lua). Gestures are a fixed block:
-# Hyprland doesn't list them, so keep it in sync with keybinds.lua.
+# "Group: text" (see modules/keybinds.lua). Hyprland doesn't list the
+# touchpad gestures: they come from the same data file modules/keybinds.lua
+# reads (Configurações → Gestos, dotfiles_gestures.lua), read here as text
+# only, with the same names and defaults.
 #
-#   hypr-atalhos                  list in a pager (q closes)
+#   hypr-atalhos                  list in a pager (q closes), with the
+#                                 gestures chosen on this machine
 #   hypr-atalhos --json           the list for Configurações → Atalhos: one
 #                                 array of { g: group, t: text, k: [keys] },
-#                                 the sections in order, then the gestures
-#   hypr-atalhos --markdown       tables in Markdown
+#                                 the sections in order, then the chosen
+#                                 gestures
+#   hypr-atalhos --markdown       tables in Markdown, with the default
+#                                 gestures (the README is the repo's)
 #   hypr-atalhos --readme FILE    replaces the tables between the markers
 #                                 <!-- atalhos:inicio --> and <!-- atalhos:fim -->
 set -euo pipefail
@@ -18,14 +23,60 @@ shopt -s inherit_errexit
 
 SECTIONS=(Sistema Janelas Áreas Mídia)
 
-GESTURES=(
-  "3 dedos ←/→|Janela anterior / próxima"
-  "3 dedos ↑|Visão geral das janelas"
-  "3 dedos ↓|Mostrar a área de trabalho (área vazia)"
-  "4 dedos ←/→|Trocar de área de trabalho"
-  "4 dedos ↑ / ↓|Próxima / anterior música"
-  "4 dedos (pinça)|Tocar / pausar música"
+# Each gesture: "position|as shown|default" (modules/keybinds.lua's
+# positions and defaults)
+GESTURE_PLACES=(
+  "3:left|3 dedos ←|cycle_prev"
+  "3:right|3 dedos →|cycle_next"
+  "3:up|3 dedos ↑|overview"
+  "3:down|3 dedos ↓|empty_area"
+  "4:side|4 dedos ←/→|areas"
+  "4:up|4 dedos ↑|media_next"
+  "4:down|4 dedos ↓|media_prev"
+  "4:pinch|4 dedos (pinça)|media_play"
 )
+# What each name does, as Configurações → Gestos says it ("none": no gesture,
+# left out). 4 fingers sideways takes only areas, cycle or none
+declare -A GESTURE_LABELS=(
+  [cycle_prev]="Janela anterior" [cycle_next]="Próxima janela" [overview]="Visão geral das janelas"
+  [launcher]="Abrir o lançador" [controlcenter]="Central de controle" [empty_area]="Ir para uma área vazia"
+  [media_next]="Próxima música" [media_prev]="Música anterior" [media_play]="Tocar / pausar"
+  [volume_up]="Aumentar o volume" [volume_down]="Diminuir o volume" [capture]="Captura de tela"
+  [lock]="Travar a tela" [none]=""
+)
+declare -A SIDE_LABELS=([areas]="Trocar de área de trabalho" [cycle]="Janela anterior / próxima" [none]="")
+GESTURE_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/dotfiles_gestures.lua"
+
+# The gestures as "as shown|action" lines. With "chosen": the names of
+# dotfiles_gestures.lua, read as text only (never run): a plain file (not a
+# link) up to 4 KB, each line exactly the shell's `  ["3:left"] = "name",`.
+# A position missing, a name it does not take or anything else on the line:
+# that position's default. Without "chosen": the defaults
+gestures() {
+  local -A chosen=()
+  local line place id shown def name label
+  if [[ "${1:-}" == chosen && -f "$GESTURE_FILE" && ! -L "$GESTURE_FILE" ]] \
+      && (( $(stat -c %s -- "$GESTURE_FILE" 2>/dev/null || echo 99999) <= 4096 )); then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      if [[ "$line" =~ ^\ \ \[\"([34]:[a-z]+)\"\]\ =\ \"([a-z_]+)\",$ ]]; then
+        chosen["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+      fi
+    done < "$GESTURE_FILE" || true
+  fi
+  for place in "${GESTURE_PLACES[@]}"; do
+    IFS='|' read -r id shown def <<< "$place"
+    name="${chosen[$id]:-$def}"
+    if [[ "$id" == 4:side ]]; then
+      [[ -v "SIDE_LABELS[$name]" ]] || name="$def"
+      label="${SIDE_LABELS[$name]}"
+    else
+      [[ -v "GESTURE_LABELS[$name]" ]] || name="$def"
+      label="${GESTURE_LABELS[$name]}"
+    fi
+    [[ -n "$label" ]] && printf '%s|%s\n' "$shown" "$label"
+  done
+  return 0
+}
 
 # One item per action, as JSON: { g, t, k: [keys] }. Binds with the same
 # group and text are merged (k gets both); runs like Super+1..9 become one
@@ -90,7 +141,7 @@ json_list() {
   local list sections gestures
   list="$(binds_json)"
   sections="$(printf '%s\n' "${SECTIONS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
-  gestures="$(printf '%s\n' "${GESTURES[@]}" | jq -R -s -c \
+  gestures="$(gestures chosen | jq -R -s -c \
     'split("\n") | map(select(length > 0) | split("|") | { g: "Gestos do touchpad", t: .[1], k: [.[0]] })')"
   jq -c -n --argjson list "$list" --argjson sections "$sections" --argjson gestures "$gestures" \
     '[$sections[] as $s | $list[] | select(.g == $s)] + $gestures'
@@ -107,9 +158,9 @@ markdown() {
     awk -F'\t' -v s="$section" '$1 == s { printf "| `%s` | %s |\n", $2, $3 }' <<< "$tsv"
   done
   printf '\n### Gestos do touchpad\n\n| Gesto | Ação |\n|---|---|\n'
-  for g in "${GESTURES[@]}"; do
+  while IFS= read -r g; do
     printf '| %s | %s |\n' "${g%%|*}" "${g#*|}"
-  done
+  done < <(gestures)
 }
 
 pager() {
@@ -123,9 +174,9 @@ pager() {
       awk -F'\t' -v s="$section" '$1 == s { printf "  %-34s %s\n", $2, $3 }' <<< "$tsv"
     done
     printf '\nGestos do touchpad\n'
-    for g in "${GESTURES[@]}"; do
+    while IFS= read -r g; do
       printf '  %-34s %s\n' "${g%%|*}" "${g#*|}"
-    done
+    done < <(gestures chosen)
   } | less
 }
 

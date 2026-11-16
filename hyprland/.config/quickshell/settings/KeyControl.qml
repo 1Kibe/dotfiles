@@ -66,6 +66,7 @@ Loader {
     Component {
         id: dropdownC
         Dropdown {
+            paired: ctl.narrow
             options: ctl.choices
             value: ctl.value
             onPicked: v => SettingsStore.set(ctl.key, v)
@@ -74,6 +75,7 @@ Loader {
     Component {
         id: listC
         Dropdown {
+            paired: ctl.narrow
             multiple: true
             options: ctl.spec.options
             value: ctl.value

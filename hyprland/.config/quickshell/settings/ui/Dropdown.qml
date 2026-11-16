@@ -7,8 +7,12 @@ import qs.theme
 // on or off (the bar's items before the reorderable list of T5). A long list
 // (the fonts) scrolls inside, at most `rows` lines tall, opening on the
 // chosen one. A list of choices too long for the button reads as a count
-// ("3 de 5", "Todos"), never cut with "…". 220 px wide, or the width it
-// is given (a paired row's column).
+// ("3 de 5", "Todos"). Always Theme.dropdownWidth wide (Theme.dropdownPairWidth
+// in a paired row's column), whatever the row around it: no page sets a
+// width of its own. A long choice is cut with "…" on the button; the open
+// list grows for it, to the left, up to Theme.dropdownMaxWidth and never
+// past the window's left edge. Opened near the bottom of the page, the page
+// scrolls so the whole list shows.
 //
 // Motion (Theme tokens, times the speed): the list unrolls and fades in
 // (animNormal) and rolls back faster (animFast), its options kept until it
@@ -22,7 +26,14 @@ ColumnLayout {
     property bool multiple: false
     property bool expanded: false
     property int rows: 8
+    // In a paired row's column (KeyRow, through KeyControl)
+    property bool paired: false
+    readonly property int buttonWidth: paired ? Theme.dropdownPairWidth : Theme.dropdownWidth
     signal picked(var value)
+
+    Layout.preferredWidth: buttonWidth
+    Layout.maximumWidth: buttonWidth
+    implicitWidth: buttonWidth
 
     spacing: 4
 
@@ -52,8 +63,7 @@ ColumnLayout {
     }
 
     Rectangle {
-        Layout.preferredWidth: 220
-        Layout.fillWidth: true
+        Layout.preferredWidth: root.buttonWidth
         implicitHeight: 28
         radius: Theme.radius
         color: mouse.containsMouse ? Theme.bg2 : Theme.bg1
@@ -98,71 +108,128 @@ ColumnLayout {
         }
     }
 
-    ListView {
-        id: list
-        readonly property real fullHeight: Math.min(count, root.rows) * 28 - (count > 0 ? 2 : 0)
-        Layout.preferredWidth: 220
-        Layout.fillWidth: true
-        // Unrolls with `reveal`; reduce motion: full height, fading only
-        Layout.preferredHeight: Theme.reduceMotion ? fullHeight : fullHeight * root.reveal
-        visible: count > 0 && root.reveal > 0
-        opacity: root.reveal
-        clip: true
-        spacing: 2
-        boundsBehavior: Flickable.StopAtBounds
-        model: root.expanded || root.reveal > 0 ? root.options : []
-        onCountChanged: {
-            if (count > 0) {
-                const i = root.options.findIndex(o => root.has(o.value))
-                if (i >= 0)
-                    positionViewAtIndex(i, ListView.Center)
-            }
-        }
+    // The open list's width: the longest choice, at least the button's, at
+    // most the ceiling and the room to the window's left edge
+    FontMetrics {
+        id: itemMetrics
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize - 1
+    }
+    property real listWidth: buttonWidth
+    function measure() {
+        let wanted = buttonWidth
+        for (const o of options)
+            wanted = Math.max(wanted, itemMetrics.advanceWidth(`󰄬  ${o.label}`) + 24)
+        const right = holder.mapToItem(null, holder.width, 0).x
+        const room = Math.max(buttonWidth, right - 8)
+        listWidth = Math.round(Math.min(wanted, Theme.dropdownMaxWidth, room))
+    }
+    onExpandedChanged: if (expanded) measure()
+    // Fully open: the page around it scrolls so the whole list shows
+    onRevealChanged: if (reveal === 1 && expanded) showTimer.restart()
+    // After the layout around it took the list's height in
+    Timer {
+        id: showTimer
+        interval: 50
+        onTriggered: root.showWhole()
+    }
+    function showWhole() {
+        let f = root.parent
+        while (f && !(f.contentY !== undefined && f.contentHeight !== undefined && f.height !== undefined))
+            f = f.parent
+        if (!f || !f.contentItem)
+            return
+        const bottom = holder.mapToItem(f.contentItem, 0, holder.height).y
+        const top = root.mapToItem(f.contentItem, 0, 0).y
+        if (bottom > f.contentY + f.height)
+            f.contentY = Math.min(Math.max(0, f.contentHeight - f.height), Math.min(top, bottom - f.height + 8))
+    }
 
-        delegate: Rectangle {
-            id: item
-            required property var modelData
-            readonly property bool chosen: root.has(modelData.value)
-            width: list.width
-            height: 26
+    // In the row's layout the list takes the button's width; drawn over it,
+    // wider to the left when a choice is long
+    Item {
+        id: holder
+        Layout.preferredWidth: root.buttonWidth
+        Layout.preferredHeight: list.shownHeight
+        // Its own condition (the list's `visible` follows this one)
+        visible: list.count > 0 && root.reveal > 0
+        z: 10
+        Rectangle {
+            anchors.fill: list
+            anchors.margins: -2
             radius: Theme.radius
-            color: itemMouse.containsMouse ? Theme.veil : chosen ? Theme.alpha(Theme.accent, 0.35) : Theme.alpha(Theme.accent, 0)
-            Behavior on color {
-                ColorAnimation { duration: Theme.dur(Theme.animFast) }
+            color: Theme.bg1
+            visible: list.width > root.buttonWidth
+        }
+        ListView {
+            id: list
+            readonly property real fullHeight: Math.min(count, root.rows) * 28 - (count > 0 ? 2 : 0)
+            // Unrolls with `reveal`; reduce motion: full height, fading only
+            readonly property real shownHeight: Theme.reduceMotion ? fullHeight : fullHeight * root.reveal
+            anchors.right: parent.right
+            width: root.listWidth
+            height: shownHeight
+            opacity: root.reveal
+            clip: true
+            spacing: 2
+            boundsBehavior: Flickable.StopAtBounds
+            model: root.expanded || root.reveal > 0 ? root.options : []
+            onCountChanged: {
+                if (count > 0) {
+                    const i = root.options.findIndex(o => root.has(o.value))
+                    if (i >= 0)
+                        positionViewAtIndex(i, ListView.Center)
+                }
             }
 
-            Text {
-                anchors.left: parent.left
-                anchors.leftMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-                text: `${item.chosen ? "󰄬" : "  "}  ${item.modelData.label}`
-                textFormat: Text.PlainText
-                color: Theme.text
-                font.family: Theme.fontPanels
-                font.pointSize: Theme.fontSize - 1
-            }
-            MouseArea {
-                id: itemMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                enabled: root.expanded
-                onClicked: {
-                    // Closing empties the list, and this item goes with it:
-                    // pick first, close last
-                    if (!root.multiple) {
-                        const dropdown = root
-                        dropdown.picked(item.modelData.value)
-                        dropdown.expanded = false
-                        return
+            delegate: Rectangle {
+                id: item
+                required property var modelData
+                readonly property bool chosen: root.has(modelData.value)
+                width: list.width
+                height: 26
+                radius: Theme.radius
+                color: itemMouse.containsMouse ? Theme.veil : chosen ? Theme.alpha(Theme.accent, 0.35) : Theme.alpha(Theme.accent, 0)
+                Behavior on color {
+                    ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                }
+
+                Text {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    elide: Text.ElideRight
+                    text: `${item.chosen ? "󰄬" : "  "}  ${item.modelData.label}`
+                    textFormat: Text.PlainText
+                    color: Theme.text
+                    font.family: Theme.fontPanels
+                    font.pointSize: Theme.fontSize - 1
+                }
+                MouseArea {
+                    id: itemMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    enabled: root.expanded
+                    onClicked: {
+                        // Closing empties the list, and this item goes with it:
+                        // pick first, close last
+                        if (!root.multiple) {
+                            const dropdown = root
+                            dropdown.picked(item.modelData.value)
+                            dropdown.expanded = false
+                            return
+                        }
+                        const list = Array.isArray(root.value) ? root.value.slice() : []
+                        const i = list.indexOf(item.modelData.value)
+                        if (i >= 0)
+                            list.splice(i, 1)
+                        else
+                            list.push(item.modelData.value)
+                        root.picked(list)
                     }
-                    const list = Array.isArray(root.value) ? root.value.slice() : []
-                    const i = list.indexOf(item.modelData.value)
-                    if (i >= 0)
-                        list.splice(i, 1)
-                    else
-                        list.push(item.modelData.value)
-                    root.picked(list)
                 }
             }
         }

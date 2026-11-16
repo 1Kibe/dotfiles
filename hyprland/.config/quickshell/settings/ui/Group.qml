@@ -99,7 +99,7 @@ ColumnLayout {
             model: root.columns
             Text {
                 required property var modelData
-                Layout.preferredWidth: 150
+                Layout.preferredWidth: Theme.dropdownPairWidth
                 horizontalAlignment: Text.AlignHCenter
                 text: modelData.icon ? `${modelData.icon}  ${modelData.label}` : modelData.label
                 color: Theme.gray

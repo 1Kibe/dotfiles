@@ -7,7 +7,8 @@ import qs.theme
 // value that differs from the default shows a dot in the accent color after
 // the name, and the description says so with the default's value. Hover
 // lights the row with the panels' veil (Theme.animFast); `divider` draws the
-// thin line that separates it from the row above.
+// thin line that separates it from the row above. `icon`: a glyph in a
+// column of its own before the name (none: no column).
 Item {
     id: root
 
@@ -18,6 +19,7 @@ Item {
     property bool changed: false
     property string defaultText
     property bool divider: false
+    property string icon: ""
     default property alias control: slot.data
 
     Layout.fillWidth: true
@@ -60,6 +62,17 @@ Item {
         anchors.rightMargin: 12
         spacing: 12
 
+        Text {
+            visible: root.icon !== ""
+            Layout.preferredWidth: Math.round(Theme.fontSize * 1.8)
+            Layout.alignment: Qt.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: root.icon
+            textFormat: Text.PlainText
+            color: Theme.fg4
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize + 2
+        }
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 2

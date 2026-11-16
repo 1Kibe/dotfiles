@@ -75,5 +75,17 @@
   "tapToClick": true,
   "tapAndDrag": true,
   "touchpadNatural": true,
-  "disableWhileTyping": true
+  "disableWhileTyping": true,
+  "gestures3": {
+    "3:left": "cycle_prev",
+    "3:right": "cycle_next",
+    "3:up": "overview",
+    "3:down": "empty_area"
+  },
+  "gestures4": {
+    "4:side": "areas",
+    "4:up": "media_next",
+    "4:down": "media_prev",
+    "4:pinch": "media_play"
+  }
 }
