@@ -305,7 +305,7 @@ Singleton {
             return
         }
         const d = find(token)
-        run(notifyJob, ["sh", "-c", 'exec notify-send -a Dispositivos -A open=Abrir -A eject=Ejetar -- "Pendrive conectado" "$1"',
+        run(notifyJob, ["setpriv", "--pdeathsig", "TERM", "--", "sh", "-c", 'exec notify-send -a Dispositivos -A open=Abrir -A eject=Ejetar -- "Pendrive conectado" "$1"',
                         "sh", Devices.notifyLabel(d.label)], 600000, (code, out) => {
             const action = String(out).trim()
             // The same drive, still there
@@ -353,7 +353,10 @@ Singleton {
     Process {
         id: watcher
         running: true
-        command: ["udevadm", "monitor", "--udev", "--subsystem-match=block"]
+        // It ends with the shell, also when the shell is killed (the kernel
+        // sends TERM when its parent dies; onDestruction only runs on a
+        // clean exit)
+        command: ["setpriv", "--pdeathsig", "TERM", "--", "udevadm", "monitor", "--udev", "--subsystem-match=block"]
         stdout: SplitParser {
             onRead: settle.restart()
         }
@@ -369,7 +372,10 @@ Singleton {
     }
     property bool stopping: false
     Component.onCompleted: refresh()
-    Component.onDestruction: stopping = true
+    Component.onDestruction: {
+        stopping = true
+        watcher.running = false
+    }
     Timer {
         id: watcherBack
         interval: 2500
