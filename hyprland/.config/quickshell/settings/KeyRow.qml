@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.theme
 import qs.state
 import "ui"
 import "schema.js" as Schema
@@ -34,7 +35,7 @@ OptionRow {
             // A pair: each control centered in its column's width
             Item {
                 required property string modelData
-                Layout.preferredWidth: row.keys.length > 1 ? 150 : control.implicitWidth
+                Layout.preferredWidth: row.keys.length > 1 ? Theme.dropdownPairWidth : control.implicitWidth
                 implicitHeight: control.implicitHeight
                 KeyControl {
                     id: control

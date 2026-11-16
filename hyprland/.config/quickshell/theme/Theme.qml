@@ -64,6 +64,13 @@ Singleton {
     property string fontPanels: "Inter"
     property real textScale: 1
     readonly property int fontSize: Math.round(11 * textScale)
+    // The lists of choice (settings/ui/Dropdown): one width for every page,
+    // following the text size. A paired row (on power / on battery) has two
+    // columns of its own width, so both fit beside the label; an open list
+    // may grow up to the ceiling for a long option
+    readonly property int dropdownWidth: Math.round(220 * textScale)
+    readonly property int dropdownPairWidth: Math.round(150 * textScale)
+    readonly property int dropdownMaxWidth: Math.round(360 * textScale)
 
     // Configurações → Barra: its height (26–40; the items keep their size),
     // the edge it sits on, and how far it is slid out through that edge
