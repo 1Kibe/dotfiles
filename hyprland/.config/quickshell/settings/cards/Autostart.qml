@@ -1,5 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import qs.theme
 import qs.state
 import "../ui"
@@ -11,7 +13,10 @@ import "../apps.js" as Apps
 // them at login only, never on a reload). Apps that run in a terminal, are
 // hidden or are not applications are not offered. Each app says where it
 // comes from (the system, your folder, Flatpak), and when your copy hides
-// the system's.
+// the system's. The launcher's own "start at login" option is read by
+// hypr-artcraft-login --proprio (the same filter as at login, never its
+// Exec): when it is on, the launcher starts through it and the switch here
+// does not stop that, so the row says where to turn it off.
 ColumnLayout {
     id: root
 
@@ -22,9 +27,36 @@ ColumnLayout {
 
     spacing: 0
 
+    readonly property string loginScript: `${Quickshell.env("HOME")}/.local/bin/hypr-artcraft-login`
+    property bool artcraftOwn: false
+    function readOwn() {
+        if (ownJob.running)
+            return
+        ownJob.running = true
+        ownLimit.restart()
+    }
+    Component.onCompleted: readOwn()
+    onVisibleChanged: if (visible) readOwn()
+    Process {
+        id: ownJob
+        command: [root.loginScript, "--proprio"]
+        stdout: StdioCollector {
+            onStreamFinished: root.artcraftOwn = text === "ligado\n"
+        }
+        onExited: ownLimit.stop()
+    }
+    // Five seconds at most
+    Timer {
+        id: ownLimit
+        interval: 5000
+        onTriggered: ownJob.running = false
+    }
+
     OptionRow {
         label: "ArtCraft Launcher (escondido)"
-        desc: "Abre sem janela; aparece pelo menu de apps"
+        desc: root.artcraftOwn
+              ? "O próprio ArtCraft também está configurado para iniciar no login; para controlar por aqui, desmarque essa opção nas configurações dele"
+              : "Abre sem janela; aparece pelo menu de apps"
         Toggle {
             checked: SettingsStore.get("autostartArtcraft") !== false
             enabled: !root.locked

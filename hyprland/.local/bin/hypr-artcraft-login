@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# The ArtCraft Launcher at login (Configurações → Apps padrão → Iniciar com o
+# sistema; modules/autostart.lua runs this once per session).
+#
+# The launcher's own "start at login" option writes an XDG autostart entry,
+# which a uwsm session also runs (systemd's XDG autostart). The launcher
+# allows one copy only: a second start makes the first one show its window.
+# So when that entry is on and the session runs it, the launcher already
+# starts (hidden) through it and this does nothing; otherwise it starts the
+# launcher hidden itself. Any doubt (no uwsm, the entry missing, a link, not
+# a plain file, over 16 KB, unreadable, no [Desktop Entry] group): this one
+# starts it, since theirs may never run.
+#
+# The entry is read as text only, and only two keys of its [Desktop Entry]
+# group: Hidden and X-GNOME-Autostart-enabled (never Exec or any other).
+#
+#   hypr-artcraft-login           start the launcher unless its own entry does
+#   hypr-artcraft-login --proprio print "ligado" when its own entry starts it,
+#                                 else "desligado" (for the settings page)
+set -u
+export LC_ALL=C
+
+ENTRY="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/ai.storyteller.artcraft-launcher.desktop"
+
+own_entry_on() {
+  local size
+  uwsm check is-active >/dev/null 2>&1 || return 1
+  [[ -f "$ENTRY" && ! -L "$ENTRY" && -r "$ENTRY" ]] || return 1
+  size="$(stat -c %s -- "$ENTRY" 2>/dev/null)" || return 1
+  [[ "$size" =~ ^[0-9]+$ ]] && (( size <= 16384 )) || return 1
+  # "on": the group is there, and neither Hidden=true nor
+  # X-GNOME-Autostart-enabled=false is in it (spaces around "=" allowed)
+  awk '
+    /^\[.*\][ \t\r]*$/ { group = ($0 ~ /^\[Desktop Entry\][ \t\r]*$/); if (group) seen = 1; next }
+    !group { next }
+    /^Hidden[ \t]*=/ { v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t\r]+$/, "", v); if (v == "true") off = 1 }
+    /^X-GNOME-Autostart-enabled[ \t]*=/ { v = $0; sub(/^[^=]*=[ \t]*/, "", v); sub(/[ \t\r]+$/, "", v); if (v == "false") off = 1 }
+    END { exit !(seen && !off) }
+  ' "$ENTRY" 2>/dev/null
+}
+
+case "${1:-}" in
+  --proprio)
+    if own_entry_on; then echo ligado; else echo desligado; fi
+    ;;
+  "")
+    own_entry_on && exit 0
+    command -v artcraft-launcher >/dev/null || exit 0
+    exec artcraft-launcher --hidden
+    ;;
+  *)
+    echo "uso: hypr-artcraft-login [--proprio]" >&2
+    exit 2
+    ;;
+esac
