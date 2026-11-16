@@ -1,0 +1,5 @@
+# Installed to /etc/udev/rules.d/70-printers.rules by install.sh: a file with
+# the same name as system-config-printer's rule replaces it, so plugging in
+# a USB printer never creates a print queue on its own. Printers are added
+# from Configurações → Dispositivos (system-config-printer, with the
+# password asked by polkit).

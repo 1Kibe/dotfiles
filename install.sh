@@ -74,6 +74,12 @@ GREETD_DIR="/etc/greetd"
 PAM_DIR="/etc/pam.d"
 SYSUSERS_DIR="/etc/sysusers.d"
 UDEV_RULES_DIR="/etc/udev/rules.d"
+# Printing and removable drives (Configurações → Dispositivos)
+AVAHI_CONF="/etc/avahi/avahi-daemon.conf"
+NSSWITCH_CONF="/etc/nsswitch.conf"
+UDISKS_DIR="/etc/udisks2"
+# A DNS name checked before and after nsswitch.conf changes (offline: only localhost)
+NSS_CHECK_NAME="archlinux.org"
 
 # System language and keyboard: the console, X11/Wayland (XFCE, cage and the
 # login screen read it from localectl) and Hyprland (hypr/modules/input.lua)
@@ -966,6 +972,157 @@ install_battery_rule() {
   log "Battery limit rule installed (${UDEV_RULES_DIR}/90-dotfiles-bateria.rules)."
 }
 
+# ── Printing and removable drives (Configurações → Dispositivos) ─────────────
+
+# A folder that exists, is not a link and is root's
+root_dir_ok() {
+  [[ -d "$1" && ! -L "$1" && "$(stat -c %u -- "$1" 2>/dev/null)" == 0 ]]
+}
+
+# Puts a file at a path under /etc in one step: written by install (root's,
+# 0644) to <path>.dotfiles-new and renamed over the path, so it is never half
+# written. The first time a different file is there, it is kept as
+# <path>.bak-dotfiles (only once). A destination that is a link, or a folder
+# that is a link or not root's, is refused; the same content is left alone.
+# Warns about a .pacnew next to it (a package brought a newer default).
+install_etc_file() {   # source, destination
+  local src="$1" dest="$2"
+  if [[ -L "$dest" ]] || ! root_dir_ok "$(dirname -- "$dest")"; then
+    warn "${dest}: the file or its folder is a link or not root's; left as it is"
+    return 1
+  fi
+  if [[ -f "$dest" ]] && cmp -s -- "$src" "$dest"; then
+    return 0
+  fi
+  if [[ -e "$dest" && ! -e "${dest}.bak-dotfiles" ]] && ! sudo cp -a -- "$dest" "${dest}.bak-dotfiles"; then
+    warn "Could not back up ${dest}; left as it is"
+    return 1
+  fi
+  if ! sudo install -m0644 -o root -g root -T -- "$src" "${dest}.dotfiles-new" \
+      || ! sudo mv -f -T -- "${dest}.dotfiles-new" "$dest"; then
+    sudo rm -f -- "${dest}.dotfiles-new"
+    warn "Could not install ${dest}"
+    return 1
+  fi
+  if [[ -e "${dest}.pacnew" ]]; then
+    warn "${dest}.pacnew exists: a package update brought a new default; compare it with ${dest}"
+  fi
+  return 0
+}
+
+# nsswitch.conf: printers named "<name>.local" are found through
+# mdns_minimal, which only answers while avahi runs. The hosts: line changes
+# only when it is exactly Arch's stock one; any other line is left alone (a
+# broken nsswitch.conf breaks login and sudo). After the change localhost
+# (and the DNS name, when it worked before) must still resolve, else the
+# file goes back as it was.
+NSS_STOCK_HOSTS='hosts: mymachines resolve [!UNAVAIL=return] files myhostname dns'
+NSS_MDNS_HOSTS='hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns'
+configure_nss_mdns() {
+  local conf="$NSSWITCH_CONF" new orig dns_before=0
+  if grep -qxF -- "$NSS_MDNS_HOSTS" "$conf"; then
+    return 0
+  fi
+  if ! grep -qxF -- "$NSS_STOCK_HOSTS" "$conf"; then
+    warn "${conf}: the hosts: line is not the stock one, left as it is (printers named .local are not found by name)"
+    return 0
+  fi
+  getent hosts "$NSS_CHECK_NAME" >/dev/null 2>&1 && dns_before=1
+  new="$(mktemp)"
+  orig="$(mktemp)"
+  cp -- "$conf" "$orig"
+  awk -v stock="$NSS_STOCK_HOSTS" -v mdns="$NSS_MDNS_HOSTS" '$0 == stock { print mdns; next } { print }' "$conf" > "$new"
+  if install_etc_file "$new" "$conf"; then
+    if ! getent hosts localhost >/dev/null 2>&1 \
+        || { (( dns_before )) && ! getent hosts "$NSS_CHECK_NAME" >/dev/null 2>&1; }; then
+      install_etc_file "$orig" "$conf"
+      warn "${conf} went back as it was: names stopped resolving after the change"
+    else
+      log "Printers named .local resolve while printer discovery is on (${conf})."
+    fi
+  fi
+  rm -f -- "$new" "$orig"
+}
+
+# CUPS starts when something prints (cups.socket; the service itself is not
+# enabled), listens only on this machine (its default) and gets its web
+# interface turned off the CUPS way (cupsctl). cups-browsed never runs: it is
+# masked (a bug of 2024 let anyone on the network add queues that run
+# commands). avahi (a dependency of CUPS) stays installed but disabled, with
+# nothing published: Configurações → Dispositivos starts and stops it on
+# request to find network printers. A USB printer never becomes a queue on
+# its own (the override of system-config-printer's udev rule).
+configure_printing() {
+  local unit state
+  if ! command -v cupsctl &>/dev/null; then
+    warn "CUPS is not installed, skipping printing."
+    return 0
+  fi
+  info "Printing (CUPS) and printer discovery (avahi, off until turned on in Configurações)..."
+  sudo systemctl mask cups-browsed.service >/dev/null 2>&1
+  if [[ "$(systemctl is-enabled cups-browsed.service 2>/dev/null)" == masked ]]; then
+    log "cups-browsed masked."
+  else
+    warn "cups-browsed is not masked."
+  fi
+  if sudo systemctl enable --now cups.socket; then
+    log "CUPS starts when something prints (cups.socket)."
+    info "cups.socket started now to turn off CUPS's web interface."
+    if sudo cupsctl WebInterface=no && sudo cupsctl 2>/dev/null | grep -qix 'WebInterface=no'; then
+      log "CUPS web interface off."
+    else
+      warn "Could not turn off CUPS's web interface (it listens only on this machine)."
+    fi
+  else
+    warn "Could not enable cups.socket."
+  fi
+  sudo systemctl disable avahi-daemon.service avahi-daemon.socket >/dev/null 2>&1
+  for unit in avahi-daemon.service avahi-daemon.socket; do
+    state="$(systemctl is-enabled "$unit" 2>/dev/null)"
+    if [[ "$state" == enabled* ]]; then
+      warn "${unit} is still enabled (it should only run when turned on in Configurações)."
+    fi
+  done
+  if [[ -e "$AVAHI_CONF" ]] && install_etc_file "${DOTFILES_DIR}/system/avahi/avahi-daemon.conf" "$AVAHI_CONF"; then
+    log "avahi publishes nothing about this machine (${AVAHI_CONF})."
+  fi
+  configure_nss_mdns
+  if install_etc_file "${DOTFILES_DIR}/system/udev/70-printers.rules" "${UDEV_RULES_DIR}/70-printers.rules"; then
+    sudo udevadm control --reload 2>/dev/null || true
+    log "A USB printer is not added on its own (${UDEV_RULES_DIR}/70-printers.rules)."
+  fi
+}
+
+# Removable drives: udisks mounts them with noexec,nosuid,nodev,nosymfollow
+# (mount_options.conf, also for Thunar and gio), and only Configurações →
+# Dispositivos mounts on its own: the automount of gvfs (GNOME's setting,
+# read by gvfs and Thunar) and of thunar-volman (its xfconf channel) is off.
+configure_removable() {
+  local kv key failed=0
+  if [[ -d "$UDISKS_DIR" ]]; then
+    install_etc_file "${DOTFILES_DIR}/system/udisks2/mount_options.conf" "${UDISKS_DIR}/mount_options.conf" \
+      && log "Removable drives mount with noexec,nosuid,nodev,nosymfollow (${UDISKS_DIR}/mount_options.conf)."
+  else
+    warn "udisks2 is not installed, skipping the mount options."
+  fi
+  if command -v gsettings &>/dev/null; then
+    for kv in "automount false" "automount-open false" "autorun-never true"; do
+      # shellcheck disable=SC2086  # key and value, fixed above
+      gsettings set org.gnome.desktop.media-handling $kv 2>/dev/null || failed=1
+    done
+  fi
+  if command -v xfconf-query &>/dev/null; then
+    for key in automount-drives automount-media autobrowse autoopen autorun; do
+      xfconf-query -c thunar-volman -p "/${key}/enabled" -n -t bool -s false 2>/dev/null || failed=1
+    done
+  fi
+  if (( failed )); then
+    warn "Could not turn off every automount setting (run install.sh again inside the session)."
+  else
+    log "Drives are not mounted or opened on their own by gvfs, Thunar or thunar-volman."
+  fi
+}
+
 # Background shared by the lock and login screens: lock/BackgroundPicker
 # writes it, the greeter user only reads it. The parent folders stay root's;
 # only the last one belongs to the user who installs (the real one, also
@@ -1203,6 +1360,10 @@ main() {
   if has_env hyprland; then
     install_lock_pam
     install_battery_rule
+  fi
+  if has_env xfce || has_env hyprland; then
+    configure_printing
+    configure_removable
   fi
   install_console_timeout
 
