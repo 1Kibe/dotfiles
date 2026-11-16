@@ -42,13 +42,15 @@ hl.on("hyprland.start", function()
   -- Iniciar com o sistema (Configurações → Apps padrão), only at login,
   -- never on a reload. dotfiles_autostart.lua (ids only, out of git) says
   -- whether the ArtCraft Launcher starts (hidden, no window: the bar has no
-  -- tray; a fixed command, "command -v" only checks it is installed) and
-  -- which apps open, each one checked and opened by actions.lua's launcher,
-  -- 16 at most. Without the file: the ArtCraft Launcher only
+  -- tray) and which apps open, each one checked and opened by actions.lua's
+  -- launcher, 16 at most. Without the file: the ArtCraft Launcher only. The
+  -- launcher goes through hypr-artcraft-login, which leaves it to the
+  -- launcher's own autostart entry when that one is on (a second start would
+  -- show its window)
   local actions = require("modules.actions")
   local start = actions.data_file("dotfiles_autostart") or { artcraft = true, apps = {} }
   if start.artcraft ~= false then
-    hl.exec_cmd("command -v artcraft-launcher >/dev/null && artcraft-launcher --hidden")
+    hl.exec_cmd("command -v hypr-artcraft-login >/dev/null && hypr-artcraft-login")
   end
   for i, id in ipairs(type(start.apps) == "table" and start.apps or {}) do
     if i > 16 then
