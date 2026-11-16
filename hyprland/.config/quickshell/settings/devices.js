@@ -165,7 +165,11 @@ function parseTitles(out) {
     for (const line of lines(out)) {
         if (line.length > MAX_LPQ_LINE || !line.endsWith(" bytes"))
             continue
-        const body = line.slice(0, line.length - " bytes".length).trimEnd()
+        // No trimEnd in the QML engine: the trailing spaces by hand
+        let end = line.length - " bytes".length
+        while (end > 0 && line[end - 1] === " ")
+            end--
+        const body = line.slice(0, end)
         const sizeAt = body.lastIndexOf(" ")
         if (sizeAt < 0 || !/^[0-9]{1,20}$/.test(body.slice(sizeAt + 1)))
             continue
@@ -192,18 +196,28 @@ function mountsOf(dev) {
     return Array.isArray(m) ? m.filter(p => typeof p === "string" && p !== "") : []
 }
 // A device and everything under it (partitions, and what lives on them:
-// LUKS, LVM), at most 64 deep in all
+// LUKS, LVM): at most 64 devices and 8 levels; past that, null (the checks
+// that use it then take the unsafe answer: excluded, not unmounted)
 function descendants(dev) {
     const out = []
+    let over = false
     const walk = (d, depth) => {
-        if (!d || typeof d !== "object" || out.length >= 64 || depth > 8)
+        if (!d || typeof d !== "object")
             return
+        if (out.length >= 64 || depth > 8) {
+            over = true
+            return
+        }
         out.push(d)
         if (Array.isArray(d.children))
             d.children.forEach(c => walk(c, depth + 1))
     }
     walk(dev, 0)
-    return out
+    return over ? null : out
+}
+// A filesystem's UUID as lsblk gives it (part of a drive's token)
+function uuidOf(d) {
+    return typeof d.uuid === "string" && /^[A-Za-z0-9-]{1,64}$/.test(d.uuid) ? d.uuid : ""
 }
 // The disk of an eligible partition: the only kind powered off
 var DISK_DEV = /^\/dev\/(sd[a-z]+|mmcblk[0-9]+)$/
@@ -220,61 +234,85 @@ function validMountpoint(path, user) {
     return rest !== "" && rest !== "." && rest !== ".." && rest.indexOf("/") < 0 && !/[\u0000-\u001f\u007f]/.test(rest)
 }
 
-// lsblk's JSON → [{ dev, parent, label, size, fstype, mounted, mountpoint,
-// avail, auto }]: only partitions (or whole disks without a table) of a disk
-// on USB or a card reader, removable or plugged in while running, with a
-// filesystem the page mounts. A disk with anything under it (at any depth:
-// a partition, LUKS, LVM) mounted outside /run/media/<user>/ is left out
-// whole: it may hold the system. mountpoint: the place to open, "" when not
-// mounted
-function parseLsblk(out, user) {
+// lsblk's JSON (with UUID) → { ok, truncated, drives, present }.
+// ok: the JSON was read as lsblk's (a failed read never empties anything);
+// truncated: a limit was hit (more drives than 32, a disk too deep), so a
+// missing drive may still be there; present: the token of every partition
+// lsblk lists, eligible or not (a drive left out of `drives`, e.g. while a
+// partition of its disk is mounted elsewhere, keeps its marks).
+// drives: [{ dev, parent, label, size, fstype, uuid, mounted, mountpoint,
+// avail, auto }]: only partitions (or whole disks without a table) of a
+// disk on USB or a card reader, removable or plugged in while running, with
+// a filesystem the page mounts. A disk with anything under it (at any
+// depth: a partition, LUKS, LVM) mounted outside /run/media/<user>/ is left
+// out whole: it may hold the system. mountpoint: the place to open, ""
+// when not mounted
+function readLsblk(out, user) {
+    const none = { ok: false, truncated: false, drives: [], present: [] }
     if (typeof out !== "string" || out.length > MAX_JSON)
-        return []
+        return none
     let data = null
     try {
         data = JSON.parse(out)
     } catch (e) {
-        return []
+        return none
     }
-    const disks = own(data, "blockdevices") && Array.isArray(data.blockdevices) ? data.blockdevices : []
-    const res = []
-    for (const disk of disks) {
-        if (!disk || typeof disk !== "object" || disk.type !== "disk")
+    if (!own(data, "blockdevices") || !Array.isArray(data.blockdevices))
+        return none
+    const res = { ok: true, truncated: false, drives: [], present: [] }
+    for (const disk of data.blockdevices) {
+        if (!disk || typeof disk !== "object")
             continue
-        if (!["usb", "mmc"].includes(disk.tran) || !(flag(disk.rm) || flag(disk.hotplug)))
+        const all = descendants(disk)
+        if (all === null) {
+            res.truncated = true
             continue
+        }
         const kids = Array.isArray(disk.children) ? disk.children.filter(c => c && typeof c === "object") : []
+        const parts = kids.length > 0 ? kids.filter(c => c.type === "part") : [disk]
+        for (const p of parts)
+            if (typeof p.name === "string")
+                res.present.push(driveToken(entry(p, disk)))
+        if (disk.type !== "disk" || !["usb", "mmc"].includes(disk.tran) || !(flag(disk.rm) || flag(disk.hotplug)))
+            continue
         const parent = `/dev/${disk.name}`
         if (typeof disk.name !== "string" || !DISK_DEV.test(parent))
             continue
-        if (descendants(disk).some(d => mountsOf(d).some(p => !validMountpoint(p, user))))
+        if (all.some(d => mountsOf(d).some(m => !validMountpoint(m, user))))
             continue
-        const parts = kids.length > 0 ? kids.filter(c => c.type === "part") : [disk]
         for (const p of parts) {
-            const dev = `/dev/${p.name}`
-            const fstype = typeof p.fstype === "string" ? p.fstype.toLowerCase() : ""
-            if (typeof p.name !== "string" || !BLOCK_DEV.test(dev))
+            const d = entry(p, disk)
+            if (typeof p.name !== "string" || !BLOCK_DEV.test(d.dev))
                 continue
-            if (!AUTO_FS.includes(fstype) && !MANUAL_FS.includes(fstype))
+            if (!AUTO_FS.includes(d.fstype) && !MANUAL_FS.includes(d.fstype))
                 continue
-            const mounts = mountsOf(p)
-            const open = mounts.length > 0 ? mounts[0] : ""
-            res.push({
-                dev: dev,
-                parent: parent,
-                label: text(p.label),
-                size: bytes(p.size),
-                fstype: fstype,
-                mounted: mounts.length > 0,
-                mountpoint: open,
-                avail: mounts.length > 0 ? bytes(p.fsavail) : null,
-                auto: AUTO_FS.includes(fstype)
-            })
-            if (res.length >= MAX_DRIVES)
-                return res
+            if (res.drives.length >= MAX_DRIVES) {
+                res.truncated = true
+                break
+            }
+            res.drives.push(d)
         }
     }
     return res
+}
+function entry(p, disk) {
+    const fstype = typeof p.fstype === "string" ? p.fstype.toLowerCase() : ""
+    const mounts = mountsOf(p)
+    return {
+        dev: `/dev/${p.name}`,
+        parent: `/dev/${disk.name}`,
+        label: text(p.label),
+        size: bytes(p.size),
+        fstype: fstype,
+        uuid: uuidOf(p),
+        mounted: mounts.length > 0,
+        mountpoint: mounts.length > 0 ? mounts[0] : "",
+        avail: mounts.length > 0 ? bytes(p.fsavail) : null,
+        auto: AUTO_FS.includes(fstype)
+    }
+}
+function parseLsblk(out, user) {
+    return readLsblk(out, user).drives
 }
 
 // ── USB (sysfs) ──
@@ -321,9 +359,10 @@ function usbList(out) {
 // ── For state/DrivesState ──
 
 // A drive's identity for the actions: the same name with another size,
-// filesystem or label is another drive (a /dev name reused by a new one)
+// filesystem, UUID or label is another drive (a /dev name reused by a new
+// one)
 function driveToken(d) {
-    return d ? `${d.dev}|${d.size}|${d.fstype}|${d.label}` : ""
+    return d ? `${d.dev}|${d.size}|${d.fstype}|${d.uuid || ""}|${d.label}` : ""
 }
 
 // lsblk's JSON → true when the disk `parent` and everything under it are
@@ -341,7 +380,8 @@ function diskUnmounted(out, parent) {
     const disk = disks.find(d => d && typeof d === "object" && `/dev/${d.name}` === parent)
     if (!disk)
         return false
-    return descendants(disk).every(d => mountsOf(d).length === 0)
+    const all = descendants(disk)
+    return all !== null && all.every(d => mountsOf(d).length === 0)
 }
 
 // `hyprctl -j monitors` → true only when every screen is free of the session

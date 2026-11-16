@@ -44,10 +44,12 @@ Singleton {
     // A short fixed text for the page (never a label or a path)
     signal notice(string text)
 
-    // token → { lockedPlug }: drives plugged now, seen since the start
+    // token → { lockedPlug }: every partition lsblk lists (eligible or not),
+    // seen since the start. Pruned only after a scan read whole (a failed
+    // or cut read never forgets a mark)
     property var known: ({})
-    // token → failed tries; kept when a drive is unplugged (plugging it
-    // again does not reset the count), the newest 64 only
+    // token → failed tries of udisksctl; kept when a drive is unplugged
+    // (plugging it again does not reset the count), the newest 64 only
     property var failures: ({})
     property bool scanned: false
     property var raw: []
@@ -81,14 +83,18 @@ Singleton {
         return (list || raw).find(d => Devices.driveToken(d) === token) || null
     }
 
-    // A scan: the new list; drives seen for the first time after the first
-    // scan are new plugs, judged against the lock below
+    // A scan. A failed read changes nothing. Partitions seen for the first
+    // time after the first scan are new plugs, judged against the lock
+    // below; "the moment of the plug" is this scan's (the event, a 700 ms
+    // wait and lsblk). Marks are forgotten only for partitions lsblk no
+    // longer lists, and only when the read was whole
     function onScan(out) {
-        const list = Devices.parseLsblk(out, user)
-        const now = {}
+        const r = Devices.readLsblk(out, user)
+        if (!r.ok)
+            return false
         const fresh = []
-        for (const d of list) {
-            const t = Devices.driveToken(d)
+        const now = {}
+        for (const t of r.present) {
             now[t] = true
             if (known[t] === undefined) {
                 known[t] = { lockedPlug: false }
@@ -96,24 +102,28 @@ Singleton {
                     fresh.push(t)
             }
         }
-        for (const t of Object.keys(known))
-            if (!now[t])
-                delete known[t]
-        raw = list
+        if (!r.truncated)
+            for (const t of Object.keys(known))
+                if (!now[t])
+                    delete known[t]
+        raw = r.drives
         scanned = true
         if (fresh.length > 0)
             judge(fresh)
         publish()
+        return true
     }
 
     // New plugs: locked now (LockState, then the screens) marks them for
-    // good; unlocked ones that may mount on their own go to the queue
-    // Each check judges only the plugs that came before it started; later
-    // ones wait for the next check
+    // good; unlocked ones that may mount on their own go to the queue. Each
+    // check judges only the plugs that came before it started; later ones
+    // wait for the next check
     property var waiting: []
     function judge(tokens) {
         if (locked()) {
-            tokens.forEach(t => { if (known[t]) known[t].lockedPlug = true })
+            tokens.concat(waiting).forEach(t => { if (known[t]) known[t].lockedPlug = true })
+            waiting = []
+            publish()
             return
         }
         waiting = waiting.concat(tokens)
@@ -143,10 +153,10 @@ Singleton {
             (code, out) => done(code === 0 && Devices.screensUnlocked(out) && !root.locked()))
     }
     // A Job that will not start (one still running, maybe stuck): the answer
-    // is a failure, never a wait
+    // is code -2 at once, never a wait
     function run(job, cmd, ms, cb) {
         if (!job.start(cmd, ms, cb))
-            Qt.callLater(() => cb(-1, "", ""))
+            Qt.callLater(() => cb(-2, "", ""))
     }
 
     // ── Actions (the page) ──
@@ -158,11 +168,13 @@ Singleton {
         if (!locked() && find(token))
             enqueue("eject", token)
     }
+    // The path goes to the file manager through sh's own argument, never as
+    // the program's argv (a program that fails to start has its argv logged)
     function open(token) {
         const d = find(token)
-        if (!d || !Devices.validMountpoint(d.mountpoint, user))
+        if (locked() || !d || !Devices.validMountpoint(d.mountpoint, user))
             return
-        Quickshell.execDetached(["thunar", "--", d.mountpoint])
+        Quickshell.execDetached(["sh", "-c", 'exec thunar -- "$1"', "sh", d.mountpoint])
     }
 
     // ── The serial queue ──
@@ -181,115 +193,139 @@ Singleton {
         current = queue[0]
         queue = queue.slice(1)
         publish()
+        if (current.kind === "auto")
+            return autoStep()
         // A fresh list before acting
         scan(ok => {
             if (!ok)
-                return finish(false, "Não deu para ler as unidades")
+                return finish("Não deu para ler as unidades")
             const d = find(current.token)
             if (!d)
-                return finish(false, "")
-            if (current.kind === "auto")
-                return autoStep(d)
+                return finish("")
             if (current.kind === "mount")
-                return d.mounted ? finish(true, "") : mountStep(d)
+                return d.mounted ? finish("") : mountStep(d, false)
             return ejectStep(d)
         })
     }
     function failed(token) {
         return failures[token] || 0
     }
-    function finish(ok, text) {
-        const op = current
+    // Only a failure of udisksctl itself counts for the drive
+    function countFailure(token) {
+        const f = Object.assign({}, failures)
+        delete f[token]
+        f[token] = failed(token) + 1
+        const keys = Object.keys(f)
+        keys.slice(0, Math.max(0, keys.length - 64)).forEach(k => delete f[k])
+        failures = f
+    }
+    function finish(text) {
         current = null
-        if (op && !ok) {
-            const f = Object.assign({}, failures)
-            delete f[op.token]
-            f[op.token] = failed(op.token) + 1
-            const keys = Object.keys(f)
-            keys.slice(0, Math.max(0, keys.length - 64)).forEach(k => delete f[k])
-            failures = f
-        }
         if (text !== "")
             notice(text)
         publish()
         Qt.callLater(next)
     }
-    function autoStep(d) {
+    // Automatic: the lock first, then a fresh list, the same drive still in
+    // the state that allows it, and the mount at once with that list's data
+    function autoStep() {
         const t = current.token
-        if (d.mounted || !d.auto || !autoMount || known[t].lockedPlug || failed(t) >= maxFailures)
-            return finish(true, "")
         if (Date.now() - lastAutoMs < autoGapMs)
-            return finish(true, "")
-        // The lock read again right before mounting
+            return finish("")
         checkLock(lockCheck, free => {
             if (!free || locked()) {
-                known[t].lockedPlug = true
-                return finish(true, "")
+                if (known[t])
+                    known[t].lockedPlug = true
+                return finish("")
             }
-            lastAutoMs = Date.now()
-            mountStep(d, true)
+            scan(ok => {
+                const d = ok ? find(t) : null
+                if (!d || d.mounted || !d.auto || !autoMount || !known[t] || known[t].lockedPlug
+                        || failed(t) >= maxFailures || locked())
+                    return finish("")
+                lastAutoMs = Date.now()
+                mountStep(d, true)
+            })
         })
     }
     function mountStep(d, automatic) {
         const t = current.token
-        if (mountJob.running)
-            return finish(false, "Uma montagem anterior ainda não terminou")
         run(mountJob, ["udisksctl", "mount", "--no-user-interaction", "-b", d.dev, "-t", d.fstype], mountLimitMs, (code, out, err) => {
-            if (code !== 0)
-                return finish(false, "Não deu para montar a unidade")
+            if (code === -2)
+                return finish("Uma montagem anterior ainda não terminou")
+            if (code !== 0) {
+                countFailure(t)
+                return finish("Não deu para montar a unidade")
+            }
             // The mount point from a new lsblk, never from udisksctl's text
             scan(ok => {
-                const m = find(t)
-                const done = ok && m && m.mounted
+                const m = ok ? find(t) : null
+                const done = m !== null && m.mounted
                 if (done && automatic)
                     notify(t)
-                finish(done, done ? "" : "Não deu para montar a unidade")
+                finish(done ? "" : "Não deu para montar a unidade")
             })
         })
     }
     function ejectStep(d) {
         const t = current.token
-        if (mountJob.running)
-            return finish(false, "Uma montagem anterior ainda não terminou")
+        // Powered off only when the drive is still the same one, on the same
+        // disk, and nothing of that disk is mounted
         const powerOff = () => {
             scanRaw((ok, out) => {
-                const parent = d.parent
-                if (!ok || !Devices.diskUnmounted(out, parent))
-                    return finish(true, "Desmontado")
-                run(mountJob, ["udisksctl", "power-off", "--no-user-interaction", "-b", parent], 30000,
-                               code => finish(true, code === 0 ? "Pode remover a unidade" : "Desmontado"))
+                const again = ok ? find(t) : null
+                if (!again || again.parent !== d.parent || !Devices.diskUnmounted(out, d.parent))
+                    return finish("Desmontado")
+                run(mountJob, ["udisksctl", "power-off", "--no-user-interaction", "-b", d.parent], 30000,
+                    code => finish(code === 0 ? "Pode remover a unidade" : "Desmontado"))
             })
         }
         if (!d.mounted)
             return powerOff()
         run(mountJob, ["udisksctl", "unmount", "--no-user-interaction", "-b", d.dev], mountLimitMs, (code, out, err) => {
+            if (code === -2)
+                return finish("Uma montagem anterior ainda não terminou")
             if (code !== 0)
-                return finish(false, Devices.busy(err) ? "Em uso: feche os arquivos e tente de novo"
-                                                       : "Não deu para ejetar a unidade")
+                return finish(Devices.busy(err) ? "Em uso: feche os arquivos e tente de novo"
+                                                : "Não deu para ejetar a unidade")
             powerOff()
         })
     }
 
     // ── The notification (until it is closed) ──
+    // One at a time; a drive mounted while one is open is shown after it
+    // (the last one only). Never with the session locked. The label goes to
+    // notify-send through sh's argument (see open()), escaped and cut
+    property string pendingNotify: ""
     function notify(token) {
-        const d = find(token)
-        if (!d || notifyJob.running)
+        if (locked() || !find(token))
             return
-        run(notifyJob, ["notify-send", "-a", "Dispositivos", "-A", "open=Abrir", "-A", "eject=Ejetar", "--",
-                         "Pendrive conectado", Devices.notifyLabel(d.label)], 600000, (code, out) => {
+        if (notifyJob.running) {
+            pendingNotify = token
+            return
+        }
+        const d = find(token)
+        run(notifyJob, ["sh", "-c", 'exec notify-send -a Dispositivos -A open=Abrir -A eject=Ejetar -- "Pendrive conectado" "$1"',
+                        "sh", Devices.notifyLabel(d.label)], 600000, (code, out) => {
             const action = String(out).trim()
             // The same drive, still there
-            if (!find(token))
-                return
-            if (action === "open")
-                open(token)
-            else if (action === "eject")
-                eject(token)
+            if (find(token)) {
+                if (action === "open")
+                    open(token)
+                else if (action === "eject")
+                    eject(token)
+            }
+            const later = pendingNotify
+            pendingNotify = ""
+            const m = later !== "" ? find(later) : null
+            if (m && m.mounted)
+                Qt.callLater(() => notify(later))
         })
     }
 
     // ── Reading ──
-    // One lsblk at a time; callers waiting for it get the same answer
+    // One lsblk at a time; callers waiting for it get the same answer. ok:
+    // lsblk answered and its JSON was read whole enough (onScan)
     property var scanWaiters: []
     function scanRaw(done) {
         // One stuck past its limit: no answer will come, so a failure now
@@ -298,13 +334,11 @@ Singleton {
         scanWaiters = scanWaiters.concat([done])
         if (lsblkJob.running)
             return
-        lsblkJob.start(["lsblk", "-J", "-b", "-o", "NAME,PKNAME,LABEL,SIZE,FSTYPE,FSAVAIL,MOUNTPOINTS,RM,HOTPLUG,TRAN,TYPE"], 10000,
+        lsblkJob.start(["lsblk", "-J", "-b", "-o", "NAME,PKNAME,LABEL,UUID,SIZE,FSTYPE,FSAVAIL,MOUNTPOINTS,RM,HOTPLUG,TRAN,TYPE"], 10000,
                        (code, out) => {
             const ws = scanWaiters
             scanWaiters = []
-            const ok = code === 0
-            if (ok)
-                onScan(out)
+            const ok = code === 0 && onScan(out)
             ws.forEach(w => w(ok, out))
         })
     }
