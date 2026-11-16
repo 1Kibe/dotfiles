@@ -1045,13 +1045,16 @@ configure_nss_mdns() {
       if install_etc_file "$orig" "$conf"; then
         warn "${conf} went back as it was: names stopped resolving after the change"
       else
-        warn "${conf} could NOT go back after names stopped resolving; the original is in ${conf}.bak-dotfiles"
+        # The copy of this run is kept for that (.bak-dotfiles may be older)
+        warn "${conf} could NOT go back after names stopped resolving; the file as it was before is in ${orig}"
+        orig=""
       fi
     else
       log "Printers named .local resolve while printer discovery is on (${conf})."
     fi
   fi
-  rm -f -- "$new" "$orig"
+  rm -f -- "$new"
+  [[ -n "$orig" ]] && rm -f -- "$orig"
   return 0
 }
 
@@ -1074,13 +1077,13 @@ unit_state() {
 # system-config-printer's udev rule). Nothing here asks (the same with
 # --yes), and no step stops the install when it fails (set -e).
 configure_printing() {
-  local unit
+  local unit settings
   if ! command -v cupsctl &>/dev/null; then
     warn "CUPS is not installed, skipping printing."
     return 0
   fi
   info "Printing (CUPS) and printer discovery (avahi, off until turned on in Configurações)..."
-  sudo systemctl mask cups-browsed.service >/dev/null 2>&1 || true
+  sudo systemctl mask --now cups-browsed.service >/dev/null 2>&1 || true
   if [[ "$(unit_state cups-browsed.service)" == masked ]]; then
     log "cups-browsed masked."
   else
@@ -1089,7 +1092,11 @@ configure_printing() {
   if sudo systemctl enable --now cups.socket; then
     log "CUPS starts when something prints (cups.socket)."
     info "cups.socket started now to turn off CUPS's web interface."
-    if sudo cupsctl WebInterface=no && sudo cupsctl 2>/dev/null | grep -qix 'WebInterface=no'; then
+    settings=""
+    if sudo cupsctl WebInterface=no; then
+      settings="$(sudo cupsctl 2>/dev/null || true)"
+    fi
+    if grep -qix 'WebInterface=no' <<< "$settings"; then
       log "CUPS web interface off."
     else
       warn "Could not turn off CUPS's web interface (it listens only on this machine)."
@@ -1097,7 +1104,8 @@ configure_printing() {
   else
     warn "Could not enable cups.socket."
   fi
-  for unit in avahi-daemon.service avahi-daemon.socket; do
+  # The socket first: it would start the daemon again in between
+  for unit in avahi-daemon.socket avahi-daemon.service; do
     unit_exists "$unit" || continue
     if [[ "$(systemctl is-active -- "$unit" 2>/dev/null || true)" == active ]]; then
       warn "${unit} was running: stopped now (Configurações turns it on when you search for printers)."

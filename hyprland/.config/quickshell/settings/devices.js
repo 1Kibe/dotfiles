@@ -28,9 +28,6 @@ var USER_NAME = /^[a-z_][a-z0-9_-]{0,31}$/
 // only by the "Montar" button
 var AUTO_FS = ["vfat", "exfat"]
 var MANUAL_FS = ["ntfs", "ntfs3", "ext4", "btrfs"]
-// Mount points of the system: a disk with a partition on one of these is
-// never listed
-var SYSTEM_MOUNTS = ["/", "/boot", "/boot/efi", "/efi", "/home", "[SWAP]"]
 
 function own(o, k) {
     return o !== null && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k)
@@ -83,7 +80,7 @@ function medium(scheme) {
 // that does not fit, a name that does not pass or a repeated one is left out
 function parsePrintersV(out) {
     const res = []
-    const seen = {}
+    const seen = Object.create(null)
     for (const line of lines(out)) {
         const m = /^device for ([^:\s]+): ([A-Za-z][A-Za-z0-9+.-]{0,31}):(\S*)$/.exec(line)
         if (!m || !printerName(m[1]) || seen[m[1]])
@@ -97,7 +94,8 @@ function parsePrintersV(out) {
     return res
 }
 
-// `lpstat -p -- <name>` → "idle", "printing", "stopped" or "unknown". Only
+// `lpstat -p <name>` → "idle", "printing", "stopped" or "unknown" (no "--":
+// lpstat would then ignore the name and list every printer). Only
 // the first line counts: the lines after it are the printer's own message
 // (which a printer may set, with line breaks, to look like another line)
 function parsePrinterState(out, name) {
@@ -138,7 +136,7 @@ function jobOf(id, names) {
 // `user` is the session's (mine: the page may cancel it)
 function parseJobs(out, names, user) {
     const res = []
-    const seen = {}
+    const seen = Object.create(null)
     for (const line of lines(out)) {
         const m = /^(\S+)\s+(\S+)\s+[0-9]+\s/.exec(line)
         if (!m)
@@ -156,13 +154,25 @@ function parseJobs(out, names, user) {
 }
 
 // `lpq -P <name>` → { number: title }: the file name of each job, filtered
-// ("" when it does not pass); the header and anything else are left out
+// ("" when it does not pass); the header and anything else are left out.
+// Split by fields, never by a pattern that backtracks (a long line of
+// spaces would freeze the shell): lines over 512 characters are left out,
+// the size is the last field before " bytes", the first three fields are
+// rank, owner and job, the rest in between is the title
+var MAX_LPQ_LINE = 512
 function parseTitles(out) {
-    const res = {}
+    const res = Object.create(null)
     for (const line of lines(out)) {
-        const m = /^(\S+)\s+(\S+)\s+([0-9]{1,10})\s+(.+?)\s+([0-9]+) bytes$/.exec(line)
-        if (m)
-            res[m[3]] = text(m[4])
+        if (line.length > MAX_LPQ_LINE || !line.endsWith(" bytes"))
+            continue
+        const body = line.slice(0, line.length - " bytes".length).trimEnd()
+        const sizeAt = body.lastIndexOf(" ")
+        if (sizeAt < 0 || !/^[0-9]{1,20}$/.test(body.slice(sizeAt + 1)))
+            continue
+        const fields = body.slice(0, sizeAt).trim().split(/ +/)
+        if (fields.length < 4 || !/^[0-9]{1,10}$/.test(fields[2]))
+            continue
+        res[fields[2]] = text(fields.slice(3).join(" "))
     }
     return res
 }
@@ -181,6 +191,22 @@ function mountsOf(dev) {
     const m = own(dev, "mountpoints") ? dev.mountpoints : []
     return Array.isArray(m) ? m.filter(p => typeof p === "string" && p !== "") : []
 }
+// A device and everything under it (partitions, and what lives on them:
+// LUKS, LVM), at most 64 deep in all
+function descendants(dev) {
+    const out = []
+    const walk = (d, depth) => {
+        if (!d || typeof d !== "object" || out.length >= 64 || depth > 8)
+            return
+        out.push(d)
+        if (Array.isArray(d.children))
+            d.children.forEach(c => walk(c, depth + 1))
+    }
+    walk(dev, 0)
+    return out
+}
+// The disk of an eligible partition: the only kind powered off
+var DISK_DEV = /^\/dev\/(sd[a-z]+|mmcblk[0-9]+)$/
 
 // A mount point the page may open: right under /run/media/<user>/ (one
 // folder), no "..", no control character
@@ -197,8 +223,10 @@ function validMountpoint(path, user) {
 // lsblk's JSON → [{ dev, parent, label, size, fstype, mounted, mountpoint,
 // avail, auto }]: only partitions (or whole disks without a table) of a disk
 // on USB or a card reader, removable or plugged in while running, with a
-// filesystem the page mounts, and never a disk with a partition of the
-// system. mountpoint: "" unless mounted where the page may open it
+// filesystem the page mounts. A disk with anything under it (at any depth:
+// a partition, LUKS, LVM) mounted outside /run/media/<user>/ is left out
+// whole: it may hold the system. mountpoint: the place to open, "" when not
+// mounted
 function parseLsblk(out, user) {
     if (typeof out !== "string" || out.length > MAX_JSON)
         return []
@@ -216,8 +244,10 @@ function parseLsblk(out, user) {
         if (!["usb", "mmc"].includes(disk.tran) || !(flag(disk.rm) || flag(disk.hotplug)))
             continue
         const kids = Array.isArray(disk.children) ? disk.children.filter(c => c && typeof c === "object") : []
-        const all = [disk].concat(kids)
-        if (all.some(d => mountsOf(d).some(p => SYSTEM_MOUNTS.includes(p))))
+        const parent = `/dev/${disk.name}`
+        if (typeof disk.name !== "string" || !DISK_DEV.test(parent))
+            continue
+        if (descendants(disk).some(d => mountsOf(d).some(p => !validMountpoint(p, user))))
             continue
         const parts = kids.length > 0 ? kids.filter(c => c.type === "part") : [disk]
         for (const p of parts) {
@@ -228,10 +258,10 @@ function parseLsblk(out, user) {
             if (!AUTO_FS.includes(fstype) && !MANUAL_FS.includes(fstype))
                 continue
             const mounts = mountsOf(p)
-            const open = mounts.find(m => validMountpoint(m, user)) || ""
+            const open = mounts.length > 0 ? mounts[0] : ""
             res.push({
                 dev: dev,
-                parent: `/dev/${disk.name}`,
+                parent: parent,
                 label: text(p.label),
                 size: bytes(p.size),
                 fstype: fstype,
@@ -250,22 +280,30 @@ function parseLsblk(out, user) {
 // ── USB (sysfs) ──
 
 // One line per device of /sys/bus/usb/devices (the state reads only these
-// files, never serial): "deviceClass<TAB>interface classes, comma
-// separated<TAB>manufacturer<TAB>product" → { devices: [{ name, hid,
-// storage, alsoKeyboard }], hubs } (hubs and host controllers counted on
-// one line; at most 64 devices)
+// files, never serial, and removes every control character from the
+// names, so a name can neither add a field nor a line): "deviceClass<TAB>
+// interface classes, comma separated<TAB>manufacturer<TAB>product" →
+// { devices: [{ name, hid, storage, alsoKeyboard }], hubs, unread,
+// truncated }. A hub (device class 09 and every interface 09, or none) is
+// counted on one line; a device that also has other interfaces is listed
+// and marked. A line that cannot be read counts in `unread` (the page says
+// so), never vanishes; past 64 devices, `truncated` says how many more
 function usbList(out) {
     const devices = []
     let hubs = 0
+    let unread = 0
+    let truncated = 0
     for (const line of lines(out)) {
+        if (line === "")
+            continue
         const f = line.split("\t")
-        if (f.length !== 4)
+        const cls = f.length === 4 ? f[0].trim().toLowerCase() : ""
+        if (f.length !== 4 || !/^[0-9a-f]{2}$/.test(cls)) {
+            unread++
             continue
-        const cls = f[0].trim().toLowerCase()
+        }
         const ifaces = f[1].split(",").map(s => s.trim().toLowerCase()).filter(s => /^[0-9a-f]{2}$/.test(s))
-        if (!/^[0-9a-f]{2}$/.test(cls))
-            continue
-        if (cls === "09" || ifaces.includes("09")) {
+        if (cls === "09" && ifaces.every(c => c === "09")) {
             hubs++
             continue
         }
@@ -274,6 +312,8 @@ function usbList(out) {
         const storage = cls === "08" || ifaces.includes("08")
         if (devices.length < MAX_USB)
             devices.push({ name: name, hid: hid, storage: storage, alsoKeyboard: hid && storage })
+        else
+            truncated++
     }
-    return { devices: devices, hubs: hubs }
+    return { devices: devices, hubs: hubs, unread: unread, truncated: truncated }
 }
