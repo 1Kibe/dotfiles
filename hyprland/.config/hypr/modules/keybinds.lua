@@ -121,7 +121,8 @@ run("XF86AudioPrev", "media_prev", "Mídia: Música anterior", { locked = true }
 -- tables below, which build the gesture here, so the file never holds a
 -- command. A missing position, an unknown name or a bad file: that
 -- position's default (the gestures from the Windows setup). Hyprland
--- doesn't list gestures: keep hypr-atalhos' GESTURES block in sync.
+-- doesn't list gestures: hypr-atalhos (Super+F1) reads the same file, so
+-- keep its positions, names and defaults the same as here.
 local gesture_actions = {
   cycle_prev    = cycle(true),
   cycle_next    = cycle(false),
