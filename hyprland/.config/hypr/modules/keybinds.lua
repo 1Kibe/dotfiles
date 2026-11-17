@@ -27,10 +27,13 @@ local function cycle(previous)
   end
 end
 
--- Gesture helper: a function that runs an action from actions.lua
+-- Gesture helper: a function that runs an action from actions.lua, only
+-- with the session unlocked. Hyprland runs gestures over the lock screen
+-- (a key bind runs there only with locked = true), so hypr-destravado asks
+-- the compositor first; when in doubt nothing runs.
 local function launch(action)
   return function()
-    hl.dispatch(hl.dsp.exec_cmd(a[action]))
+    hl.dispatch(hl.dsp.exec_cmd("hypr-destravado && (" .. a[action] .. ")"))
   end
 end
 
