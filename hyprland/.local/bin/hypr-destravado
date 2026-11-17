@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Exits 0 only when the session is unlocked: the compositor lists monitors
+# and none of them is held by a lock screen (LOCK in solitaryBlockedBy, the
+# word hypr-travar reads too). Anything unclear counts as locked (exit 1):
+# hyprctl failing or taking more than 2 s, an answer that is not a list of
+# monitors, no monitors at all.
+#
+# For what must never run over the lock screen. Hyprland runs touchpad
+# gestures with the session locked, so keybinds.lua starts a gesture's
+# command as
+#   hypr-destravado && (<command>)
+#
+# Takes no arguments (exit 2 with any).
+set -uo pipefail
+(( $# == 0 )) || exit 2
+
+if timeout 2 hyprctl -j monitors 2>/dev/null \
+     | jq -e 'type == "array" and length > 0
+              and all(.[]; (.solitaryBlockedBy // []) | index("LOCK") == null)' >/dev/null 2>&1; then
+  exit 0
+fi
+exit 1

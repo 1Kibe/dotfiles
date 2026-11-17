@@ -208,6 +208,10 @@ Singleton {
             close()
             return
         }
+        // Never over the lock screen: the bar would wait there, with a print
+        // of it, for whoever unlocks
+        if (LockState.locked || LockState.wanted)
+            return
         start("capture")
     }
 

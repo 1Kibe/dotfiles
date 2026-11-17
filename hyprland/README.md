@@ -82,7 +82,8 @@ A VM não tem sensor de temperatura da CPU, então o anel de temperatura da barr
 `hypr-atalhos --readme ~/dotfiles/hyprland/README.md` (rode de novo sempre que mudar o `keybinds.lua`).
 O `hypr-atalhos --json` dá a mesma lista para a página Configurações → Atalhos.
 Os gestos do touchpad na tabela são os padrões: cada um muda em Configurações → Gestos, e o `Super+F1` e a
-página Atalhos mostram os escolhidos.
+página Atalhos mostram os escolhidos. Com a tela travada nenhum gesto roda nada (o `hypr-destravado` pergunta ao
+Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 
 <!-- atalhos:inicio -->
 
