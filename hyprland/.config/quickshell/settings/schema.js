@@ -207,7 +207,7 @@ function migrateBar(file) {
 }
 var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"],
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
-// Reboot and power off always ask for the second click (settings/powermenu.js):
+// Reboot and power off always ask for the second click (control/power.js):
 // only these may be added to it
 var POWER_CONFIRM_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"]])
 

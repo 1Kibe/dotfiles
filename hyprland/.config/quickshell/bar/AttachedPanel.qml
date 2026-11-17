@@ -14,7 +14,7 @@ import qs.state
 //
 // Under `button`, right-aligned to it (alignLeft: left edges lined up;
 // centered: under its middle). side "right" continues the bar's right end
-// instead (the power menu), and the bar squares that corner while the panel
+// instead (the control center), and the bar squares that corner while the panel
 // shows; a panel whose concave corner would pass one of the bar's ends snaps
 // to that end the same way.
 //

@@ -5,7 +5,9 @@ import qs.state
 import qs.bar
 
 // The control center: drops down from its button and continues the bar's
-// right end. Its sections come in the next steps; for now a title only.
+// right end. The top line (battery, settings, power), and under it the
+// section folded out (one at a time, ShellState.controlSection): for now the
+// power section.
 AttachedPanel {
     id: root
 
@@ -41,13 +43,21 @@ AttachedPanel {
         }
     }
 
-    Text {
-        Layout.fillWidth: true
-        Layout.margins: 12
-        text: "Configurações rápidas"
-        textFormat: Text.PlainText
-        color: Theme.text
-        font.family: Theme.font
-        font.pointSize: Theme.fontSize
+    // The monitor this center belongs to (its bar's)
+    readonly property string monitorName: button && button.monitorName !== undefined ? button.monitorName : ""
+    // The most a section grows: a part of the screen's height (it scrolls
+    // inside past that)
+    readonly property real listMax: frame && frame.screen ? frame.screen.height * Theme.controlListMax : 400
+
+    ControlTop {
+        monitorName: root.monitorName
+    }
+    Accordion {
+        open: root.open && ShellState.controlSection === "power"
+        maxHeight: root.listMax
+
+        PowerList {
+            active: root.open && ShellState.controlSection === "power"
+        }
     }
 }

@@ -100,7 +100,7 @@ página Atalhos mostram os escolhidos.
 | `Super+N` | Central de notificações |
 | `Super+A` | Central de controle |
 | `Super+I` | Central de controle (tecla engrenagem) |
-| `Super+X / Ctrl+Alt+Del` | Menu de energia |
+| `Super+X / Ctrl+Alt+Del` | Energia (central de controle) |
 | `Super+S` | Configurações |
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |

@@ -21,7 +21,7 @@ import "baritems.js" as BarItems
 // (continuous) bottom corners. Its items go in three areas chosen in
 // Configurações → Barra; by default, left: workspaces and the CPU, memory
 // and temperature rings; center: the clock (an island with the music while a
-// player plays); right: status and the power button.
+// player plays); right: status and the control center's button.
 PanelWindow {
     id: root
 
@@ -277,7 +277,6 @@ PanelWindow {
         case "network": return networkItem
         case "bluetooth": return bluetoothItem
         case "battery": return batteryItem
-        case "power": return powerItem
         case "control": return controlItem
         case "|": return separatorItem
         }
@@ -319,10 +318,6 @@ PanelWindow {
     Component {
         id: batteryItem
         BatteryStatus {}
-    }
-    Component {
-        id: powerItem
-        PowerButton { monitor: root.hyprMonitor }
     }
     Component {
         id: controlItem
