@@ -27,6 +27,12 @@ function build(schema) {
         entries.push({ key: key, page: k.page, card: k.card, label: k.label, text: fold(words.join(" ")),
                        needs: card && card.needs ? card.needs : "" })
     }
+    // Cards with words of their own (special cards with no key)
+    for (const p of schema.PAGES)
+        for (const c of schema.CARDS[p.id] || [])
+            if (Array.isArray(c.syn) && c.syn.length > 0)
+                entries.push({ key: "", page: p.id, card: c.id, label: c.title,
+                               text: fold(`${c.title} ${c.syn.join(" ")} ${p.name}`), needs: c.needs || "" })
     // The pages themselves (Atalhos and Sobre have no keys)
     for (const p of schema.PAGES)
         entries.push({ key: "", page: p.id, card: "", label: p.name, text: fold(`${p.name} ${p.sub}`), needs: "" })

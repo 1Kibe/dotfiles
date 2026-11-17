@@ -395,6 +395,9 @@ Em Configurações → Dispositivos:
   `nosymfollow` (`/etc/udisks2/mount_options.conf`, do `install.sh`).
 - **Conectados por USB:** só os nomes, sem número de série; um pendrive que também age como teclado é marcado.
 
+O Thunar (e o tumbler, que faz as miniaturas) só gera miniatura de imagem (`common/.config/tumbler/tumbler.rc`): vídeo,
+PDF, fontes, documentos e o resto ficam sem, para um arquivo de pendrive não ser lido só por abrir a pasta.
+
 ## Bloqueio e login
 
 A tela de bloqueio e a tela de login são do Quickshell, com o mesmo tema, relógio, cartão do usuário e campo de senha. A

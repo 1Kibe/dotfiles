@@ -40,7 +40,8 @@
 // preview at the top of the page, no title or block); columns (the titles
 // of a paired row's two controls, [{ icon, label }]); flush (the component
 // draws its own rows: no inner margin). A component may say `empty: true`
-// (nothing to show here): its group hides
+// (nothing to show here): its group hides. syn: search words of a card with
+// no key of its own (settings/searchindex.js)
 
 // ── Pages, in the order of the rail ──
 var PAGES = [
@@ -94,9 +95,11 @@ var CARDS = {
            { id: "inicio", title: "Iniciar com o sistema", component: "Autostart" }],
     // Impressoras (state/PrintersState), pendrives e HDs (state/DrivesState),
     // the USB names (sysfs)
-    dispositivos: [{ id: "impressoras", title: "Impressoras", component: "DevicesPrinters" },
+    dispositivos: [{ id: "impressoras", title: "Impressoras", component: "DevicesPrinters",
+                     syn: ["impressora", "printer", "imprimir", "fila", "cups"] },
                    { id: "armazenamento", title: "Pendrives e HDs", component: "DevicesDrives" },
-                   { id: "usb", title: "Conectados por USB", component: "DevicesUsb" }],
+                   { id: "usb", title: "Conectados por USB", component: "DevicesUsb",
+                     syn: ["usb", "dispositivo", "teclado"] }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
@@ -389,7 +392,7 @@ var KEYS = {
     // the next drive plugged in) ──
     autoMount: { def: true, type: "bool", machine: true, page: "dispositivos", card: "armazenamento",
                  label: "Montar sozinho ao conectar", desc: "Só FAT32 e exFAT, com a sessão destravada",
-                 syn: ["pendrive", "usb", "hd", "disco", "ejetar", "impressora", "printer", "cartão", "montar"] },
+                 syn: ["pendrive", "hd", "disco", "ejetar", "cartão", "montar"] },
 
     // ── Iniciar com o sistema (this machine only; read at login by
     // hypr/modules/autostart.lua, never by a reload) ──

@@ -89,6 +89,7 @@ firefox-i18n-pt-br # Firefox in Brazilian Portuguese
 # ── File manager ──
 thunar
 thunar-archive-plugin
+tumbler                # thumbnails, images only (common/.config/tumbler/tumbler.rc)
 
 # ── Printing and removable drives (Configurações → Dispositivos) ──
 cups                   # printing; starts on demand (cups.socket)

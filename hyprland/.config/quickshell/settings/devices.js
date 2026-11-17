@@ -334,10 +334,11 @@ function parseLsblk(out, user) {
 // names, so a name can neither add a field nor a line): "deviceClass<TAB>
 // interface classes, comma separated<TAB>manufacturer<TAB>product" →
 // { devices: [{ name, hid, storage, alsoKeyboard }], hubs, unread,
-// truncated }. A hub (device class 09 and every interface 09, or none) is
-// counted on one line; a device that also has other interfaces is listed
+// truncated }. A hub (device class 09 and every interface it has read as
+// 09) is counted on one line; a device that also has other interfaces is listed
 // and marked. A line that cannot be read counts in `unread` (the page says
-// so), never vanishes; past 64 devices, `truncated` says how many more
+// so), never vanishes; past 64 devices, `truncated` says how many more,
+// plus those the reader itself left out (its line "+<TAB>count<TAB><TAB>")
 function usbList(out) {
     const devices = []
     let hubs = 0
@@ -347,13 +348,18 @@ function usbList(out) {
         if (line === "")
             continue
         const f = line.split("\t")
+        // The reader's own last line: how many devices it did not read
+        if (f.length === 4 && f[0] === "+" && /^[0-9]{1,6}$/.test(f[1])) {
+            truncated += Number(f[1])
+            continue
+        }
         const cls = f.length === 4 ? f[0].trim().toLowerCase() : ""
         if (f.length !== 4 || !/^[0-9a-f]{2}$/.test(cls)) {
             unread++
             continue
         }
         const ifaces = f[1].split(",").map(s => s.trim().toLowerCase()).filter(s => /^[0-9a-f]{2}$/.test(s))
-        if (cls === "09" && ifaces.every(c => c === "09")) {
+        if (cls === "09" && ifaces.length > 0 && ifaces.every(c => c === "09")) {
             hubs++
             continue
         }

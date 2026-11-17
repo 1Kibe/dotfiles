@@ -39,15 +39,18 @@ ColumnLayout {
     }
 
     readonly property string script: 'r() { [ -f "$1" ] && head -c 256 -- "$1" 2>/dev/null | tr -d "\\000-\\037\\177"; }\n'
-        + 'n=0\n'
+        + 'n=0 m=0\n'
         + 'for d in /sys/bus/usb/devices/*; do\n'
         + '  case "${d##*/}" in *:*) continue ;; esac\n'
         + '  [ -d "$d" ] || continue\n'
-        + '  n=$((n + 1)); [ "$n" -le 200 ] || break\n'
+        + '  n=$((n + 1)); if [ "$n" -gt 200 ]; then m=$((m + 1)); continue; fi\n'
         + '  ifs=""\n'
         + '  for i in "$d"/*:*/bInterfaceClass; do [ -f "$i" ] && ifs="$ifs$(r "$i"),"; done\n'
         + '  printf "%s\\t%s\\t%s\\t%s\\n" "$(r "$d/bDeviceClass")" "$ifs" "$(r "$d/manufacturer")" "$(r "$d/product")"\n'
-        + 'done'
+        + 'done\n'
+        // The ones left out, as a line of their own (counted by usbList)
+        + '[ "$m" -gt 0 ] && printf "+\\t%s\\t\\t\\n" "$m"\n'
+        + 'exit 0'
     Process {
         id: scan
         command: ["sh", "-c", root.script]

@@ -92,6 +92,7 @@ Item {
                 Layout.fillWidth: true
                 visible: text !== ""
                 text: root.shownDesc
+                textFormat: Text.PlainText
                 color: root.changed ? Theme.fg4 : Theme.gray
                 wrapMode: Text.WordWrap
                 font.family: Theme.fontPanels

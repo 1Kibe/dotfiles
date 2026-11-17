@@ -115,7 +115,7 @@ ColumnLayout {
     OptionRow {
         divider: true
         label: "Procurar impressoras na rede · sem anunciar este computador"
-        desc: "Nomes .local podem ser imitados em rede compartilhada; prefira adicionar pelo endereço (IP ou ipps://)"
+        desc: "Nomes .local podem ser imitados em rede compartilhada; prefira adicionar pelo endereço (IP ou ipps://). Uma fila adicionada pela busca só funciona com a busca ligada"
         Toggle {
             checked: PrintersState.discovery
             enabled: !root.locked && !PrintersState.discoveryBusy
