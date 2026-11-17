@@ -423,6 +423,10 @@ Em Configurações → Dispositivos:
 O Thunar (e o tumbler, que faz as miniaturas) só gera miniatura de imagem (`common/.config/tumbler/tumbler.rc`): vídeo,
 PDF, fontes, documentos e o resto ficam sem, para um arquivo de pendrive não ser lido só por abrir a pasta.
 
+No Hyprland o ícone de rede (nm-applet) e o da fila de impressão não sobem (o `install.sh` mascara as duas unidades do
+autostart): a rede fica no painel da barra e na central de controle, as impressoras em Configurações → Dispositivos. No
+XFCE eles continuam. Para voltar: `systemctl --user unmask 'app-nm\x2dapplet@autostart.service' 'app-print\x2dapplet@autostart.service'`.
+
 ## Bloqueio e login
 
 A tela de bloqueio e a tela de login são do Quickshell, com o mesmo tema, relógio, cartão do usuário e campo de senha. A
