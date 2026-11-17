@@ -33,7 +33,7 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 
 1. Detecta a distro pelo `/etc/os-release` e escolhe a lista em `packages/` (`arch`, `fedora` ou `ubuntu`)
 2. Pergunta os ambientes: `xfce` e `hyprland` (padrão sim nos dois). O `common` entra sempre
-3. Instala os pacotes das seções `[common]` + ambientes escolhidos. No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
+3. Instala os pacotes das seções `[common]` + ambientes escolhidos (no `hyprland`, também o `hyprsunset` da luz noturna). No Arch usa o **pacman** (a primeira chamada é `pacman -Syu`, que atualiza o sistema), e os pacotes marcados com `aur:` vão pelo **paru** (instalado se faltar)
 4. Deixa o sistema e o teclado em pt-BR (veja [Idioma e teclado](#idioma-e-teclado))
 5. Ativa NetworkManager e Bluetooth (e o greetd, a tela de login, nos ambientes `xfce` e `hyprland`) e pergunta se deve ativar o `sshd`
 6. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
@@ -56,7 +56,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 | `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `lazygit`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
-| `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio), `/etc/profile.d/tmout.sh` (console de texto), `/etc/udev/rules.d/90-dotfiles-bateria.rules` e `/etc/sysusers.d/dotfiles-bateria.conf` (limite de carga da bateria) | `greetd` nos ambientes `xfce` e `hyprland`; o PAM e o limite de carga no `hyprland`; o `tmout.sh` sempre |
+| `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio), `/etc/profile.d/tmout.sh` (console de texto), `/etc/udev/rules.d/90-dotfiles-bateria.rules` e `/etc/sysusers.d/dotfiles-bateria.conf` (limite de carga da bateria), `/etc/avahi/avahi-daemon.conf`, a linha `hosts:` do `/etc/nsswitch.conf`, `/etc/udisks2/mount_options.conf` e `/etc/udev/rules.d/70-printers.rules` (impressão e pendrives) | `greetd`, impressão e pendrives nos ambientes `xfce` e `hyprland`; o PAM e o limite de carga no `hyprland`; o `tmout.sh` sempre |
 | `spicetify/` | (não é linkada) | Backup do Marketplace do Spicetify (extensões, tema Hazy e snippets) para importar no Spotify |
 
 Os pacotes seguem a mesma divisão: cada `packages/<distro>.txt` tem as seções `[common]`, `[xfce]` e `[hyprland]`.
@@ -84,6 +84,14 @@ git push
 ```
 
 ## O que vem configurado
+
+### Hyprland
+
+Sessão em Lua com um shell próprio em Quickshell: barra, painéis que descem da barra colados nela (rede, volume,
+Bluetooth, música, energia), clipboard (`Super+V`), captura de tela (`Print`), bloqueio e tela de login. `Super+S` abre as
+Configurações: tema, papel de parede, fontes, barra, bloqueio, captura, energia, monitores, teclado e mouse, gestos,
+atalhos, apps padrão, dispositivos (impressoras, pendrives e USB) e o Sobre. Detalhes, atalhos e gestos em
+[hyprland/README.md](hyprland/README.md).
 
 ### Neovim
 
@@ -357,7 +365,7 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard, captura de tela, bloqueio e tela de login prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard, captura de tela, bloqueio, tela de login e Configurações prontos; próximos módulos: launcher, notificações e central de controle
 - [ ] Conferir no notebook o bloqueio pela tampa, a suspensão de verdade e o login na placa de vídeo
 - [ ] Conferir no notebook as impressoras de verdade (rede e USB) e os gestos do touchpad
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)

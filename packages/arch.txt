@@ -99,6 +99,7 @@ avahi                  # network printer discovery, off until turned on in Confi
 nss-mdns               # .local printer names while discovery is on
 udisks2                # mounts and ejects removable drives
 gvfs                   # Thunar's volumes and trash, gio
+libnotify              # notify-send: the "Pendrive conectado" notice (state/DrivesState)
 
 # ── Login screen (greetd + Quickshell in cage, for every environment) ──
 greetd
