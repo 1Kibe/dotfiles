@@ -94,6 +94,13 @@ Singleton {
     readonly property int mediaMaxChars: 35
     readonly property int hoverDelay: 500
     readonly property int panelWidth: 300
+    // The control center (control/ControlCenter): its width, the most a
+    // section's list grows (a fraction of the screen's usable height; it
+    // scrolls inside past that), and the grid's buttons
+    readonly property int controlWidth: 360
+    readonly property real controlListMax: 0.6
+    readonly property int tileHeight: 56
+    readonly property int tileGap: 8
     readonly property int cardIcon: 32     // icon circle of the device cards
 
     // System monitor rings (bar and panel)

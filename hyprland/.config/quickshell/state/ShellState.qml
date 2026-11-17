@@ -4,8 +4,11 @@ import QtQuick
 import Quickshell
 
 // Shared state of the shell's popups: one panel open at a time, on one
-// monitor. Panels: "power", "network", "volume", "bluetooth", "media",
-// "system", and "settings" (settings/SettingsPanel, Super+S).
+// monitor. Panels: "control" (control/ControlCenter, the button with the
+// Arch symbol), "network", "volume", "bluetooth", "media", "system", and
+// "settings" (settings/SettingsPanel, Super+S). "power" and "controlcenter"
+// are other names of the control center ("power" opens it on its power
+// section).
 Singleton {
     id: root
 
@@ -17,8 +20,8 @@ Singleton {
     // Set by bar/MediaPanel, read by state/MediaState
     property string mediaPlayer: "" // dbusName of the player picked in the music panel
     // A panel that continues one of the bar's ends (bar/AttachedPanel: the
-    // power menu on the right) names its monitor here while it shows; that
-    // bar squares the corner on that end
+    // control center on the right) names its monitor here while it shows;
+    // that bar squares the corner on that end
     property string attachedLeft: ""
     property string attachedRight: ""
     // The settings page asked for (IPC open(page), shell.qml); "" = the first
@@ -36,14 +39,88 @@ Singleton {
         return barScreens[0]
     }
 
-    // A click on a bar button (PowerButton, NetworkStatus, CenterIsland...)
-    function toggle(panel, monitor) {
-        if (isOpen(panel, monitor)) {
+    // The panels a click, a keybind or the IPC may open; any other name is
+    // ignored (a name from the IPC never lands in openPanel)
+    readonly property var panels: ["control", "network", "volume", "bluetooth", "media", "system", "settings"]
+    function panelId(name) {
+        if (name === "power" || name === "controlcenter")
+            return "control"
+        return panels.includes(name) ? name : ""
+    }
+
+    // ── The control center ──
+    // Its sections, one open at a time ("" = all folded). Fixed ids only:
+    // the IPC and the buttons pick from this list, nothing else does
+    readonly property var controlSections: ["wifi", "bluetooth", "updates", "tailscale", "mixer", "power",
+                                            "background", "github"]
+    property string controlSection: ""
+    // The monitor whose control center is open ("" = closed)
+    readonly property string controlOn: openPanel === "control" ? openOn : ""
+    function controlOpen(monitor) {
+        return isOpen("control", monitor)
+    }
+    // Never over the lock screen, nor while a "Manter?" strip waits for its
+    // answer (it holds the keyboard: Esc and Enter would go to it)
+    function controlAllowed() {
+        return !LockState.locked && !LockState.wanted && !MonitorsApply.pending && !KeyboardLayout.pending
+    }
+    // Opens it on `monitor` with `section` open ("" = all folded); false when
+    // it may not open or the section is not one of the list
+    function openControl(monitor, section) {
+        const s = section === undefined ? "" : section
+        if (monitor === "" || (s !== "" && !controlSections.includes(s)) || !controlAllowed())
+            return false
+        openPanel = "control"
+        openOn = monitor
+        controlSection = s
+        return true
+    }
+    // A section's button: opens it, closing the one that was open; the same
+    // one again folds it
+    function setControlSection(id) {
+        if (openPanel !== "control" || !controlSections.includes(id))
+            return
+        controlSection = controlSection === id ? "" : id
+    }
+    function closeControlSection() {
+        controlSection = ""
+    }
+    function closeControl() {
+        if (openPanel === "control")
             close()
+    }
+    // Leaving the control center (closed or another panel) folds it: it
+    // always opens with everything folded
+    onOpenPanelChanged: {
+        if (openPanel !== "control")
+            controlSection = ""
+    }
+
+    // A click on a bar button (ControlButton, NetworkStatus, CenterIsland...)
+    function toggle(panel, monitor) {
+        if (panel === "power") {
+            togglePower(monitor)
+            return
+        }
+        const id = panelId(panel)
+        if (id === "" || monitor === "")
+            return
+        if (isOpen(id, monitor)) {
+            close()
+        } else if (id === "control") {
+            openControl(monitor, "")
         } else {
-            openPanel = panel
+            openPanel = id
             openOn = monitor
         }
+    }
+    // Super+X and Ctrl+Alt+Del: the control center on its power section; the
+    // same key again closes it, from another section it moves to power
+    function togglePower(monitor) {
+        if (isOpen("control", monitor) && controlSection === "power")
+            close()
+        else
+            openControl(monitor, "power")
     }
 
     // The IPC handlers in shell.qml (keybinds and scripts). The same as a
@@ -52,6 +129,15 @@ Singleton {
     // with no bar, it opens on the bar's screen
     function toggleByKey(panel, monitor) {
         toggle(panel, panelScreen(monitor))
+    }
+
+    // Esc: in the control center first the open section, then the center;
+    // any other panel closes at once
+    function handleEscape() {
+        if (openPanel === "control" && controlSection !== "")
+            closeControlSection()
+        else
+            close()
     }
 
     // Esc, a click outside, a panel action that is done, or another popup

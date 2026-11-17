@@ -177,7 +177,40 @@ ShellRoot {
         }
     }
 
-    // Super+X and Ctrl+Alt+Del: power menu on the focused monitor's bar
+    // Super+I, F9 and Super+A: the control center on the focused monitor
+    // (on the bar's screen when that one has no bar):
+    // qs ipc call controlcenter toggle | open <section> | stats
+    // open takes only a section of ShellState.controlSections, or "" for all
+    // folded; any other text is refused
+    IpcHandler {
+        target: "controlcenter"
+
+        function toggle(): void {
+            const monitor = Hyprland.focusedMonitor
+            if (monitor)
+                ShellState.toggleByKey("control", monitor.name)
+        }
+
+        function open(section: string): string {
+            if (section !== "" && !ShellState.controlSections.includes(section))
+                return "seção desconhecida"
+            const monitor = Hyprland.focusedMonitor
+            if (!monitor)
+                return "sem monitor em foco"
+            return ShellState.openControl(ShellState.panelScreen(monitor.name), section) ? "ok" : "não abriu"
+        }
+
+        // States only, never a name (of a network, a device, a package...)
+        function stats(): string {
+            return JSON.stringify({
+                open: ShellState.openPanel === "control",
+                section: ShellState.openPanel === "control" ? ShellState.controlSection : "",
+                allowed: ShellState.controlAllowed()
+            })
+        }
+    }
+
+    // Super+X and Ctrl+Alt+Del: the control center on its power section
     IpcHandler {
         target: "powermenu"
 
@@ -214,7 +247,8 @@ ShellRoot {
     }
 
     // Any bar panel on the focused monitor, for keybinds and scripts:
-    // qs ipc call panel toggle network   (power, network, volume, bluetooth, media, system)
+    // qs ipc call panel toggle network   (control, network, volume, bluetooth, media, system;
+    // power and controlcenter are the control center; any other name is ignored)
     IpcHandler {
         target: "panel"
 

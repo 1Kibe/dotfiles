@@ -177,7 +177,34 @@ function opts(pairs) {
 var BAR_ITEMS = opts([["workspaces", "Áreas de trabalho"], ["system", "CPU, memória e temperatura"],
                       ["clock", "Relógio e música"], ["recording", "Gravação"], ["volume", "Volume"],
                       ["network", "Rede"], ["bluetooth", "Bluetooth"], ["battery", "Bateria"],
-                      ["power", "Energia"]])
+                      ["control", "Central de controle"]])
+// The power button became the control center's button: a saved bar list
+// (or defaults.json) that still has "power" gets "control" in its place, so
+// it keeps its order and its hidden items. Runs before the validation, which
+// refuses a whole list with an id it does not know. Returns a copy when
+// something changed; "power" and "control" in one list become one, where the
+// first of them was.
+var BAR_LISTS = ["barLeft", "barCenter", "barRight", "barHidden"]
+function migrateBar(file) {
+    if (!file || typeof file !== "object" || Array.isArray(file))
+        return file
+    let out = file
+    for (const key of BAR_LISTS) {
+        const list = file[key]
+        if (!Array.isArray(list) || !list.includes("power"))
+            continue
+        const moved = []
+        for (const id of list) {
+            const v = id === "power" ? "control" : id
+            if (!(v === "control" && moved.includes("control")))
+                moved.push(v)
+        }
+        if (out === file)
+            out = Object.assign({}, file)
+        out[key] = moved
+    }
+    return out
+}
 var POWER_ITEMS = opts([["lock", "Bloquear"], ["logout", "Sair"], ["suspend", "Suspender"],
                         ["reboot", "Reiniciar"], ["poweroff", "Desligar"]])
 // Reboot and power off always ask for the second click (settings/powermenu.js):
@@ -253,7 +280,7 @@ var KEYS = {
                label: "Itens à esquerda" },
     barCenter: { def: ["clock"], type: "list", options: BAR_ITEMS, page: "barra", card: "itens",
                  label: "Itens no centro" },
-    barRight: { def: ["recording", "volume", "network", "bluetooth", "battery", "power"], type: "list",
+    barRight: { def: ["recording", "volume", "network", "bluetooth", "battery", "control"], type: "list",
                 options: BAR_ITEMS, page: "barra", card: "itens", label: "Itens à direita" },
     barHidden: { def: [], type: "list", options: BAR_ITEMS, page: "barra", card: "itens", label: "Itens escondidos",
                  syn: ["esconder", "olho"] },

@@ -275,7 +275,7 @@ Singleton {
     function readDefaults(text) {
         let file = {}
         try {
-            file = text.trim() === "" ? {} : JSON.parse(text)
+            file = Schema.migrateBar(text.trim() === "" ? {} : JSON.parse(text))
         } catch (e) {
             file = {}
         }
@@ -297,7 +297,7 @@ Singleton {
     function readUser(text) {
         let file = null
         try {
-            file = JSON.parse(text)
+            file = Schema.migrateBar(JSON.parse(text))
         } catch (e) {
             file = null
         }

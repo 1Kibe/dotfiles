@@ -5,22 +5,26 @@
 
 // Every item the bar knows ("clock" is the center island: the clock, and the
 // music island around it)
-var IDS = ["workspaces", "system", "clock", "recording", "volume", "network", "bluetooth", "battery", "power"]
+var IDS = ["workspaces", "system", "clock", "recording", "volume", "network", "bluetooth", "battery", "control"]
 
 // The three areas: each item at most once (the first area that has it wins,
 // left, center, right), the hidden and the unknown ones out. A separator
-// ("|") goes after the workspaces and before the power button when
-// something is beside them in the same area, as the bar has always had.
+// ("|") goes after the workspaces and before the control center's button
+// when something is beside them in the same area, as the bar has always had.
+// "power" (the power button before the control center) reads as "control":
+// the settings store already moves it (migrateBar), this is for any list
+// that did not pass there.
 function areas(left, center, right, hidden) {
     const seen = {}
     const hid = Array.isArray(hidden) ? hidden : []
     function take(list) {
         const out = []
-        for (const id of Array.isArray(list) ? list : []) {
+        for (const raw of Array.isArray(list) ? list : []) {
+            const id = raw === "power" ? "control" : raw
             if (typeof id !== "string" || !IDS.includes(id) || seen[id])
                 continue
             seen[id] = true
-            if (!hid.includes(id))
+            if (!hid.includes(id) && !(id === "control" && hid.includes("power")))
                 out.push(id)
         }
         return withSeparators(out)
@@ -31,7 +35,7 @@ function areas(left, center, right, hidden) {
 function withSeparators(ids) {
     const out = []
     ids.forEach((id, i) => {
-        if (id === "power" && i > 0 && out[out.length - 1] !== "|")
+        if (id === "control" && i > 0 && out[out.length - 1] !== "|")
             out.push("|")
         out.push(id)
         if (id === "workspaces" && i < ids.length - 1)

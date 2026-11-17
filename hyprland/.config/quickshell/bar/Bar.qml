@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.state
 import qs.settings
+import qs.control
 import "edgemotion.js" as EdgeMotion
 import "baritems.js" as BarItems
 
@@ -156,7 +157,7 @@ PanelWindow {
     }
     Item {
         focus: true
-        Keys.onEscapePressed: ShellState.close()
+        Keys.onEscapePressed: ShellState.handleEscape()
     }
 
     // A panel that continues one of the bar's ends (ShellState.attachedLeft/
@@ -264,7 +265,7 @@ PanelWindow {
         ? BarItems.areas(SettingsStore.get("barLeft"), SettingsStore.get("barCenter"),
                          SettingsStore.get("barRight"), SettingsStore.get("barHidden"))
         : BarItems.areas(["workspaces", "system"], ["clock"],
-                         ["recording", "volume", "network", "bluetooth", "battery", "power"], [])
+                         ["recording", "volume", "network", "bluetooth", "battery", "control"], [])
 
     function itemComponent(id) {
         switch (id) {
@@ -277,6 +278,7 @@ PanelWindow {
         case "bluetooth": return bluetoothItem
         case "battery": return batteryItem
         case "power": return powerItem
+        case "control": return controlItem
         case "|": return separatorItem
         }
         return null
@@ -321,6 +323,10 @@ PanelWindow {
     Component {
         id: powerItem
         PowerButton { monitor: root.hyprMonitor }
+    }
+    Component {
+        id: controlItem
+        ControlButton { monitor: root.hyprMonitor }
     }
     Component {
         id: separatorItem

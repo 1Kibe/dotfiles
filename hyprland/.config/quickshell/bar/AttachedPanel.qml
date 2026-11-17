@@ -420,7 +420,7 @@ Item {
                 anchors.margins: 6
                 spacing: 2
                 focus: true
-                Keys.onEscapePressed: ShellState.close()
+                Keys.onEscapePressed: ShellState.handleEscape()
             }
         }
     }
