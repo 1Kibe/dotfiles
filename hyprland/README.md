@@ -409,15 +409,15 @@ Em Configurações → Dispositivos:
 
 - **Impressoras:** cada fila com o estado, a conexão (rede ou USB) e a fila de impressão, com Tornar padrão, Página de
   teste e Cancelar (só os seus trabalhos). O serviço de impressão (CUPS) só sobe quando algo imprime. "Adicionar
-  impressora" abre o `system-config-printer`. Impressora moderna funciona sem driver. A busca de impressoras na rede (avahi) fica desligada e só liga no interruptor da página, sem
-  anunciar este computador; depois de adicionada pelo endereço (IP ou `ipps://`), a impressora funciona com a busca
-  desligada. Nomes `.local` podem ser imitados numa rede compartilhada, por isso uma fila criada a partir da busca aparece
+  impressora" abre o `system-config-printer`. Impressora moderna funciona sem driver. A busca de impressoras na rede
+  (avahi) fica desligada e só liga no interruptor da página, sem anunciar este computador; depois de adicionada pelo
+  endereço (IP ou `ipps://`), a impressora funciona com a busca desligada. Nomes `.local` podem ser imitados numa rede compartilhada, por isso uma fila criada a partir da busca aparece
   marcada como "da rede" e não serve de padrão.
 - **Pendrives e HDs:** montar, abrir e ejetar (ejetar nunca força: com um arquivo aberto, avisa). "Montar sozinho ao
   conectar" vale só para FAT32 e exFAT plugados com a sessão destravada; NTFS, ext4 e btrfs montam pelo botão, e o que
   foi plugado com a tela bloqueada espera o botão mesmo depois de destravar. Tudo monta sempre sem permissão de executar
-  (`noexec`, `nosuid`, `nodev` e `nosymfollow`, em `/etc/udisks2/mount_options.conf`, do `install.sh`): nada do pendrive
-  roda como programa.
+  (`noexec`, `nosuid`, `nodev` e `nosymfollow`, em `/etc/udisks2/mount_options.conf`, do `install.sh`): nenhum arquivo
+  do pendrive roda direto como programa.
 - **Conectados por USB:** só os nomes, sem número de série; um pendrive que também age como teclado é marcado.
 
 O Thunar (e o tumbler, que faz as miniaturas) só gera miniatura de imagem (`common/.config/tumbler/tumbler.rc`): vídeo,

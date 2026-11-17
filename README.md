@@ -53,7 +53,7 @@ Cada pasta de ambiente espelha o `$HOME`: `common/.config/nvim` vira `~/.config/
 
 | Pasta | Vira | Quando entra |
 |---|---|---|
-| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `lazygit`, `rofi`, `mpv`, `paru`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
+| `common/` | `~/.config/nvim`, `kitty`, `starship.toml`, `bash`, `btop`, `lazygit`, `rofi`, `mpv`, `paru`, `tumbler`, `wallpapers`, `~/.local/bin/spotify-abrir`, a entrada do Spotify no menu e o tema padrão do cursor (`~/.local/share/icons/default`) | Sempre |
 | `xfce/` | `~/.config/xfce4`, `Thunar`, `gtk-3.0`, `pavucontrol.ini`, `user-dirs.*`, `autostart/xfce-wallpaper.desktop` e `~/.local/bin/xfce-wallpaper` | Ambiente `xfce` |
 | `hyprland/` | `~/.config/hypr`, `quickshell`, `swayimg`, o ajuste do `hypridle` em `~/.config/systemd/user`, `~/.local/bin/hypr-*` | Ambiente `hyprland` (atalhos em [hyprland/README.md](hyprland/README.md)) |
 | `system/` | (não é linkada) Copiada como root pelo `install.sh`: `/etc/greetd` (tela de login), `/etc/pam.d/quickshell-lock` (bloqueio), `/etc/profile.d/tmout.sh` (console de texto), `/etc/udev/rules.d/90-dotfiles-bateria.rules` e `/etc/sysusers.d/dotfiles-bateria.conf` (limite de carga da bateria), `/etc/avahi/avahi-daemon.conf`, a linha `hosts:` do `/etc/nsswitch.conf`, `/etc/udisks2/mount_options.conf` e `/etc/udev/rules.d/70-printers.rules` (impressão e pendrives) | `greetd`, impressão e pendrives nos ambientes `xfce` e `hyprland`; o PAM e o limite de carga no `hyprland`; o `tmout.sh` sempre |
