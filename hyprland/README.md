@@ -411,8 +411,8 @@ Em Configurações → Dispositivos:
   teste e Cancelar (só os seus trabalhos). O serviço de impressão (CUPS) só sobe quando algo imprime. "Adicionar
   impressora" abre o `system-config-printer`. Impressora moderna funciona sem driver. A busca de impressoras na rede
   (avahi) fica desligada e só liga no interruptor da página, sem anunciar este computador; depois de adicionada pelo
-  endereço (IP ou `ipps://`), a impressora funciona com a busca desligada. Nomes `.local` podem ser imitados numa rede compartilhada, por isso uma fila criada a partir da busca aparece
-  marcada como "da rede" e não serve de padrão.
+  endereço (IP ou `ipps://`), a impressora funciona com a busca desligada. Nomes `.local` podem ser imitados numa rede
+  compartilhada, por isso uma fila criada a partir da busca aparece marcada como "da rede" e não serve de padrão.
 - **Pendrives e HDs:** montar, abrir e ejetar (ejetar nunca força: com um arquivo aberto, avisa). "Montar sozinho ao
   conectar" vale só para FAT32 e exFAT plugados com a sessão destravada; NTFS, ext4 e btrfs montam pelo botão, e o que
   foi plugado com a tela bloqueada espera o botão mesmo depois de destravar. Tudo monta sempre sem permissão de executar
