@@ -191,6 +191,7 @@ O wallpaper é aplicado a cada login pelo `~/.local/bin/xfce-wallpaper`, em todo
 - **xsettings.xml** — tema GTK, ícones, fontes e cursor
 - **xfwm4.xml** — tema e botões das janelas
 - **xfce4-keyboard-shortcuts.xml** — todos os atalhos
+- **thunar-volman.xml** — pendrives e mídias não montam nem abrem sozinhos; no XFCE monta com um clique no Thunar, no Hyprland pela página Dispositivos
 - Screenshooter, Thunar, notificações e gerenciamento de energia
 
 </details>
