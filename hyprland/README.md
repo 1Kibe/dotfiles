@@ -362,6 +362,30 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 - Na VM no Windows, o `Super+L` é do Windows: ele tranca a sessão do Windows antes de chegar ao Hyprland. Na VM, trave pelo
   menu de energia (Bloquear) ou por `hyprctl dispatch 'hl.dsp.exec_cmd("hypr-travar")'`. No notebook o `Super+L` vai direto.
 
+### Configurações (Super+S)
+
+`Super+S` abre as Configurações pela borda esquerda: as páginas numa coluna e, no topo, uma busca que acha qualquer opção.
+As páginas: Tema e cores, Papel de parede, Fontes e animações, Barra, Bloqueio e login, Captura e clipboard, Energia,
+Monitores, Teclado e mouse, Gestos, Atalhos, Apps padrão, Dispositivos e Sobre. Cada mudança vale na hora.
+
+- **Onde fica o que você escolhe:** em `~/.config/dotfiles/settings.json`, só o que difere do padrão. Os padrões são o
+  `hyprland/.config/quickshell/settings/defaults.json` do repo. A partir das escolhas o shell gera os arquivos que os
+  outros programas leem, todos fora do git: `dotfiles_settings.lua`, `dotfiles_monitors.lua`, `dotfiles_apps.lua`,
+  `dotfiles_autostart.lua` e `dotfiles_gestures.lua` (Hyprland), `hypridle.gerado.conf` e as cores do Kitty, do btop e do
+  lazygit.
+- **Exportar** (em Sobre) grava no `defaults.json` do repo o que você escolheu, menos o que é só desta máquina (como
+  monitores, apps e teclado); depois é revisar o `git diff` antes do commit.
+- **Restaurar tudo** (em Sobre) volta ao padrão do repo, menos o layout do teclado e os apps padrão do sistema. Antes
+  guarda uma cópia (`settings.json.bak-…`, ficam as três últimas) e dá para desfazer por 30 segundos. "Montar sozinho ao
+  conectar" volta a ligado (vale para o próximo pendrive). Cada grupo da página tem também o seu "Restaurar padrão".
+- **Monitores:** resolução, escala e posição valem na hora e voltam sozinhas em 15 segundos se você não confirmar. A volta
+  é um timer do systemd, fora do shell: funciona mesmo se o shell travar.
+- **O que pede senha:** a janela de senha do sistema (polkit) aparece para trocar o layout do teclado do sistema
+  (`localectl`), para ligar ou desligar a busca de impressoras na rede (o avahi, pelo systemd) e para adicionar ou mudar
+  uma impressora no `system-config-printer` (pelo `cups-pk-helper`); depois de digitada, vale por alguns minutos. Montar,
+  abrir e ejetar pendrive, a impressora padrão, a página de teste, cancelar o seu trabalho e o limite da bateria não pedem
+  senha.
+
 ### Luz noturna
 
 Em Configurações → Monitores: liga sozinha no horário escolhido (pode passar da meia-noite) e deixa a tela mais quente
@@ -384,15 +408,16 @@ uwsm (ou pelo `gtk-launch`, fora dele).
 Em Configurações → Dispositivos:
 
 - **Impressoras:** cada fila com o estado, a conexão (rede ou USB) e a fila de impressão, com Tornar padrão, Página de
-  teste e Cancelar (só os seus trabalhos). "Adicionar impressora" abre o `system-config-printer`. Impressora moderna
-  funciona sem driver. A busca de impressoras na rede (avahi) fica desligada e só liga no interruptor da página, sem
-  anunciar este computador; depois de adicionada pelo endereço (IP ou `ipps://`), a impressora funciona com a busca
-  desligada. Nomes `.local` podem ser imitados numa rede compartilhada, por isso uma fila criada a partir da busca aparece
-  marcada como "da rede" e não serve de padrão.
+  teste e Cancelar (só os seus trabalhos). O serviço de impressão (CUPS) só sobe quando algo imprime. "Adicionar
+  impressora" abre o `system-config-printer`. Impressora moderna funciona sem driver. A busca de impressoras na rede
+  (avahi) fica desligada e só liga no interruptor da página, sem anunciar este computador; depois de adicionada pelo
+  endereço (IP ou `ipps://`), a impressora funciona com a busca desligada. Nomes `.local` podem ser imitados numa rede
+  compartilhada, por isso uma fila criada a partir da busca aparece marcada como "da rede" e não serve de padrão.
 - **Pendrives e HDs:** montar, abrir e ejetar (ejetar nunca força: com um arquivo aberto, avisa). "Montar sozinho ao
   conectar" vale só para FAT32 e exFAT plugados com a sessão destravada; NTFS, ext4 e btrfs montam pelo botão, e o que
-  foi plugado com a tela bloqueada espera o botão mesmo depois de destravar. Tudo monta com `noexec`, `nosuid`, `nodev` e
-  `nosymfollow` (`/etc/udisks2/mount_options.conf`, do `install.sh`).
+  foi plugado com a tela bloqueada espera o botão mesmo depois de destravar. Tudo monta sempre sem permissão de executar
+  (`noexec`, `nosuid`, `nodev` e `nosymfollow`, em `/etc/udisks2/mount_options.conf`, do `install.sh`): nenhum arquivo
+  do pendrive roda direto como programa.
 - **Conectados por USB:** só os nomes, sem número de série; um pendrive que também age como teclado é marcado.
 
 O Thunar (e o tumbler, que faz as miniaturas) só gera miniatura de imagem (`common/.config/tumbler/tumbler.rc`): vídeo,

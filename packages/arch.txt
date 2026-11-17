@@ -99,6 +99,7 @@ avahi                  # network printer discovery, off until turned on in Confi
 nss-mdns               # .local printer names while discovery is on
 udisks2                # mounts and ejects removable drives
 gvfs                   # Thunar's volumes and trash, gio
+libnotify              # notify-send: the "Pendrive conectado" notice (state/DrivesState)
 
 # ── Login screen (greetd + Quickshell in cage, for every environment) ──
 greetd
@@ -159,6 +160,7 @@ playerctl
 # ── Tools used by the keybinds ──
 btop                         # "Abrir o btop" in the bar's system panel
 jq                           # hypr-atalhos, hypr-print
+lua                          # hypr-atalhos --readme reads modules/keybinds.lua (also a dependency of hyprland)
 bluetui                      # Bluetooth TUI opened by the bar, until the control center exists
 nm-connection-editor         # "Mais opções…" of the bar's network panel
 qalculate-gtk                # calculator key (XF86Calculator)

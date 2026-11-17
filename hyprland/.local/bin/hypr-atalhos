@@ -13,7 +13,9 @@
 #                                 the sections in order, then the chosen
 #                                 gestures
 #   hypr-atalhos --markdown       tables in Markdown, with the default
-#                                 gestures (the README is the repo's)
+#                                 gestures (the README is the repo's): the
+#                                 keybinds of modules/keybinds.lua only,
+#                                 never local.lua nor the running Hyprland
 #   hypr-atalhos --readme FILE    replaces the tables between the markers
 #                                 <!-- atalhos:inicio --> and <!-- atalhos:fim -->
 set -euo pipefail
@@ -78,12 +80,101 @@ gestures() {
   return 0
 }
 
+# The repo's keybinds (for the README): modules/keybinds.lua next to this
+# script in the repo, run by the system's lua with a fake hl that only
+# records each bind, in the same JSON as `hyprctl -j binds` (key, modmask,
+# release, description). The file is loaded as text only, with an
+# environment that has only what it needs to read: no os, io, load,
+# dofile, loadfile or debug, and a require that gives only the two fake
+# modules it uses. Anything else it reaches for stops the generator with a
+# message, never acting.
+SOURCE=session
+KEYBINDS="$(dirname -- "$(readlink -f -- "$0")")/../../.config/hypr/modules/keybinds.lua"
+repo_binds() {
+  if ! command -v lua >/dev/null; then
+    echo "hypr-atalhos: falta o lua (pacote lua) para ler o keybinds.lua" >&2
+    return 1
+  fi
+  if [[ ! -f "$KEYBINDS" ]]; then
+    echo "hypr-atalhos: keybinds.lua não encontrado ao lado do script, no repo" >&2
+    return 1
+  fi
+  lua - "$KEYBINDS" <<'LUA'
+local path = arg[1]
+local binds = {}
+-- Any hl.dsp.<...>(...) is a placeholder: nothing runs
+local placeholder
+placeholder = setmetatable({}, { __index = function() return placeholder end, __call = function() return placeholder end })
+local hl = {
+  bind = function(keys, _, flags)
+    if type(keys) == "string" and type(flags) == "table" and type(flags.description) == "string" then
+      binds[#binds + 1] = { keys = keys, description = flags.description, release = flags.release == true }
+    end
+  end,
+  gesture = function() end,
+  dispatch = function() end,
+  on = function() end,
+  dsp = placeholder,
+}
+local actions = setmetatable({ data_file = function() return nil end },
+  { __index = function(_, k) return "action:" .. tostring(k) end })
+local areas = setmetatable({}, { __index = function() return function() end end })
+local modules = { ["modules.actions"] = actions, ["modules.areas"] = areas }
+local env = {
+  string = string, table = table, ipairs = ipairs, pairs = pairs, select = select, type = type,
+  tostring = tostring, tonumber = tonumber, error = error, pcall = pcall, rawget = rawget, hl = hl,
+  require = function(name)
+    local m = modules[name]
+    if m == nil then
+      error("o keybinds.lua pediu o módulo " .. tostring(name) .. ", que o gerador não tem", 0)
+    end
+    return m
+  end,
+}
+local chunk, err = loadfile(path, "t", env)
+if not chunk then
+  io.stderr:write("hypr-atalhos: não deu para ler o keybinds.lua: " .. tostring(err) .. "\n")
+  os.exit(1)
+end
+local ok, e = pcall(chunk)
+if not ok then
+  io.stderr:write("hypr-atalhos: o keybinds.lua usou algo que o gerador não oferece: " .. tostring(e) .. "\n")
+  os.exit(1)
+end
+local function json(s)
+  return '"' .. s:gsub('[%c"\\]', function(c) return string.format("\\u%04x", c:byte()) end) .. '"'
+end
+local bits = { SUPER = 64, CTRL = 4, CONTROL = 4, ALT = 8, SHIFT = 1 }
+local out = {}
+for _, b in ipairs(binds) do
+  local parts = {}
+  for p in (b.keys .. " + "):gmatch("(.-) %+ ") do parts[#parts + 1] = p end
+  local key, mask = parts[#parts], 0
+  for i = 1, #parts - 1 do
+    local bit = bits[parts[i]:upper()]
+    if not bit then
+      io.stderr:write("hypr-atalhos: modificador desconhecido no keybinds.lua: " .. parts[i] .. "\n")
+      os.exit(1)
+    end
+    mask = mask | bit
+  end
+  out[#out + 1] = string.format('{"key":%s,"modmask":%d,"release":%s,"description":%s}',
+    json(key), mask, b.release and "true" or "false", json(b.description))
+end
+io.write("[", table.concat(out, ","), "]\n")
+LUA
+}
+
 # One item per action, as JSON: { g, t, k: [keys] }. Binds with the same
 # group and text are merged (k gets both); runs like Super+1..9 become one
-# "Super+1..9". Every other output is made from this one.
+# "Super+1..9". Every other output is made from this one. SOURCE=session:
+# the running Hyprland (hyprctl binds, local.lua's too); repo: the repo's
+# keybinds.lua only
 binds_json() {
   local json
-  if ! json="$(hyprctl -j binds)"; then
+  if [[ "$SOURCE" == repo ]]; then
+    json="$(repo_binds)" || return 1
+  elif ! json="$(hyprctl -j binds)"; then
     echo "hypr-atalhos: hyprctl falhou (rodando fora do Hyprland?)" >&2
     return 1
   fi
@@ -155,7 +246,14 @@ markdown() {
   for section in "${SECTIONS[@]}"; do
     grep -q "^${section}"$'\t' <<< "$tsv" || continue
     printf '\n### %s\n\n| Atalho | Ação |\n|---|---|\n' "$section"
-    awk -F'\t' -v s="$section" '$1 == s { printf "| `%s` | %s |\n", $2, $3 }' <<< "$tsv"
+    # A "|" would end the cell and a backtick the code span: escaped (keys
+    # with a backtick get a double-backtick span)
+    awk -F'\t' -v s="$section" '$1 == s {
+      k = $2; t = $3
+      gsub(/\|/, "\\|", k); gsub(/\|/, "\\|", t); gsub(/`/, "\\`", t)
+      if (index(k, "`") > 0) printf "| `` %s `` | %s |\n", k, t
+      else printf "| `%s` | %s |\n", k, t
+    }' <<< "$tsv"
   done
   printf '\n### Gestos do touchpad\n\n| Gesto | Ação |\n|---|---|\n'
   while IFS= read -r g; do
@@ -201,8 +299,8 @@ update_readme() {
 case "${1:-}" in
   "") pager ;;
   --json) json_list ;;
-  --markdown) markdown ;;
-  --readme) update_readme "${2:?usage: hypr-atalhos --readme FILE}" ;;
+  --markdown) SOURCE=repo; markdown ;;
+  --readme) SOURCE=repo; update_readme "${2:?usage: hypr-atalhos --readme FILE}" ;;
   *)
     echo "usage: hypr-atalhos [--json | --markdown | --readme FILE]" >&2
     exit 2
