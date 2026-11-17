@@ -89,6 +89,16 @@ firefox-i18n-pt-br # Firefox in Brazilian Portuguese
 # ── File manager ──
 thunar
 thunar-archive-plugin
+tumbler                # thumbnails, images only (common/.config/tumbler/tumbler.rc)
+
+# ── Printing and removable drives (Configurações → Dispositivos) ──
+cups                   # printing; starts on demand (cups.socket)
+cups-pk-helper         # printer settings asked through polkit (system-config-printer)
+system-config-printer  # "Adicionar impressora"
+avahi                  # network printer discovery, off until turned on in Configurações
+nss-mdns               # .local printer names while discovery is on
+udisks2                # mounts and ejects removable drives
+gvfs                   # Thunar's volumes and trash, gio
 
 # ── Login screen (greetd + Quickshell in cage, for every environment) ──
 greetd

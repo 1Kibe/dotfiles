@@ -137,6 +137,7 @@ ColumnLayout {
                   + `${root.labels(root.machineKeys)}. Antes fica uma cópia (settings.json.bak-…), e dá para desfazer `
                   + `por ${SettingsStore.undoSeconds} segundos (até você mudar outra coisa). O layout do teclado e os apps padrão `
                   + `do sistema não mudam.`
+                  + (root.machineKeys.includes("autoMount") ? ` "Montar sozinho ao conectar" volta a ligado (vale para o próximo pendrive; nada é montado agora).` : "")
         }
         RowLayout {
             Layout.leftMargin: 8

@@ -41,8 +41,9 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 8. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`
 9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
 10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio)). No `hyprland`, também a regra do limite de carga da bateria (notebooks Lenovo): o grupo `bateria` pode ligar e desligar só esse limite, sem senha, e o usuário entra no grupo (vale no próximo login)
-11. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
-12. Deixa o swayimg como padrão para imagens, o mpv para vídeos, o Firefox para links e páginas e o PdfCraft, o WordCraft e o GridCraft para PDF, documentos e planilhas (`xdg-mime`), se estiverem instalados
+11. Prepara impressão e pendrives, nos ambientes `xfce` e `hyprland` (veja [Dispositivos e impressoras](hyprland/README.md#dispositivos-e-impressoras)): o CUPS sobe só quando algo imprime e atende só esta máquina, sem a interface web; o `cups-browsed` fica bloqueado; o avahi fica instalado mas desligado e sem anunciar este computador (a busca de impressoras na rede liga pela página); o `nsswitch.conf` ganha o `mdns_minimal` só se a linha `hosts:` for a padrão do Arch, e volta sozinho se os nomes pararem de resolver; impressora USB plugada não vira fila sozinha; pendrives montam com `noexec`, `nosuid`, `nodev` e `nosymfollow`, e o gvfs e o thunar-volman não montam nada sozinhos. Cada arquivo de `/etc` que muda fica com uma cópia `.bak-dotfiles`
+12. Faz os consoles de texto saírem sozinhos depois de 10 minutos sem comando (`/etc/profile.d/tmout.sh`)
+13. Deixa o swayimg como padrão para imagens, o mpv para vídeos, o Firefox para links e páginas e o PdfCraft, o WordCraft e o GridCraft para PDF, documentos e planilhas (`xdg-mime`), se estiverem instalados
 
 </details>
 
@@ -357,6 +358,7 @@ git pull
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
 - [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard, captura de tela, bloqueio e tela de login prontos; próximos módulos: launcher, notificações e central de controle
 - [ ] Conferir no notebook o bloqueio pela tampa, a suspensão de verdade e o login na placa de vídeo
+- [ ] Conferir no notebook as impressoras de verdade (rede e USB) e os gestos do touchpad
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 
