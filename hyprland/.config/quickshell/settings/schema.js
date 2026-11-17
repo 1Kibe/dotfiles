@@ -56,6 +56,7 @@ var PAGES = [
     { id: "gestos", group: "Sistema", icon: "\u{f0741}", name: "Gestos", sub: "Touchpad com 3 e 4 dedos" },
     { id: "atalhos", group: "Sistema", icon: "󰘳", name: "Atalhos", sub: "Lista dos atalhos" },
     { id: "apps", group: "Sistema", icon: "󰀻", name: "Apps padrão", sub: "Navegador, arquivos, terminal e outros" },
+    { id: "dispositivos", group: "Sistema", icon: "\u{f042a}", name: "Dispositivos", sub: "Impressoras, pendrives e USB" },
     { id: "sobre", group: "Sistema", icon: "󰋼", name: "Sobre", sub: "Versão, sistema e suas configurações" }
 ]
 
@@ -91,6 +92,11 @@ var CARDS = {
     atalhos: [{ id: "lista", title: "Atalhos", component: "KeybindList" }],
     apps: [{ id: "apps", title: "Apps padrão", component: "DefaultApps" },
            { id: "inicio", title: "Iniciar com o sistema", component: "Autostart" }],
+    // Impressoras (state/PrintersState), pendrives e HDs (state/DrivesState),
+    // the USB names (sysfs)
+    dispositivos: [{ id: "impressoras", title: "Impressoras", component: "DevicesPrinters" },
+                   { id: "armazenamento", title: "Pendrives e HDs", component: "DevicesDrives" },
+                   { id: "usb", title: "Conectados por USB", component: "DevicesUsb" }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
@@ -377,6 +383,13 @@ var KEYS = {
     appVector: appKey("Imagens vetoriais", ["svg"]),
     appRaw: appKey("Fotos RAW", ["câmera", "raw"]),
     appCad: appKey("Desenhos técnicos", ["dxf", "cad"]),
+
+    // ── Dispositivos (this machine only): mounting a pendrive on its own,
+    // state/DrivesState; turning it back on mounts nothing by itself (only
+    // the next drive plugged in) ──
+    autoMount: { def: true, type: "bool", machine: true, page: "dispositivos", card: "armazenamento",
+                 label: "Montar sozinho ao conectar", desc: "Só FAT32 e exFAT, com a sessão destravada",
+                 syn: ["pendrive", "usb", "hd", "disco", "ejetar", "impressora", "printer", "cartão", "montar"] },
 
     // ── Iniciar com o sistema (this machine only; read at login by
     // hypr/modules/autostart.lua, never by a reload) ──
