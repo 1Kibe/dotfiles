@@ -15,6 +15,8 @@ RowLayout {
     id: root
 
     required property string monitorName
+    // The button the keyboard is on (0 the gear, 1 power; -1 none)
+    property int keyIndex: -1
 
     // UPower's combined battery, as the bar's (BatteryStatus)
     readonly property var device: UPower.displayDevice
@@ -50,12 +52,14 @@ RowLayout {
         // nf-md-cog, as the panels' "Mais opções…"
         text: String.fromCodePoint(0xF0493)
         tooltip: "Configurações · Super+S"
+        keyFocus: root.keyIndex === 0
         onClicked: ShellState.toggle("settings", root.monitorName)
     }
     BarItem {
         text: Power.ACTIONS.find(a => a.id === "poweroff").icon
         textColor: Theme.red
         tooltip: ShellState.controlSection === "power" ? "" : "Energia"
+        keyFocus: root.keyIndex === 1
         onClicked: ShellState.setControlSection("power")
     }
 }
