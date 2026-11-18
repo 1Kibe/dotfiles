@@ -100,8 +100,8 @@ return {
   print_janela  = "hypr-print janela",
   -- Floats smaller and centered in the free area / back to the tiling
   float         = "hypr-flutuar",
-  -- uwsm session: stop it cleanly; the "Hyprland" entry without uwsm: exit
-  logout        = "uwsm check is-active && uwsm stop || hyprctl dispatch 'hl.dsp.exit()'",
+  -- Ends the session (hypr-sair: the uwsm session, or Hyprland itself)
+  logout        = "hypr-sair",
 
   -- Media keys (the Quickshell OSD reads PipeWire and brightness itself)
   volume_up       = "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+",

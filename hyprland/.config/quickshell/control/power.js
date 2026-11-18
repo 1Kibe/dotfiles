@@ -1,8 +1,18 @@
 .pragma library
 
-// The power menu's items (bar/PowerMenu.qml): the settings pick only ids;
-// each command comes from the menu's own fixed table. Plain JS: read by the
-// shell and by the tests.
+// The power section of the control center (control/PowerList.qml): the one
+// table of its actions, with fixed commands and no value from outside. The
+// settings (Configurações → Energia) pick ids only, never a command. Lock
+// only through hypr-travar; suspend and log out through their scripts
+// (hypr-suspender locks first and sleeps only once the lock is confirmed).
+// Plain JS: read by the shell and by the tests.
+var ACTIONS = [
+    { id: "lock", icon: "󰌾", label: "Bloquear", command: ["hypr-travar"] },
+    { id: "logout", icon: "󰍃", label: "Sair", command: ["hypr-sair"] },
+    { id: "suspend", icon: "󰤄", label: "Suspender", command: ["hypr-suspender"] },
+    { id: "reboot", icon: "󰜉", label: "Reiniciar", command: ["systemctl", "reboot"] },
+    { id: "poweroff", icon: "󰐥", label: "Desligar", command: ["systemctl", "poweroff"] }
+]
 
 // Reboot and power off always ask for the second click, whatever the
 // settings say (they are not even among the choices)

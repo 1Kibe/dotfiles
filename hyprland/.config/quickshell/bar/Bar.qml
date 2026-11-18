@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import qs.theme
 import qs.state
 import qs.settings
+import qs.control
 import "edgemotion.js" as EdgeMotion
 import "baritems.js" as BarItems
 
@@ -20,7 +21,7 @@ import "baritems.js" as BarItems
 // (continuous) bottom corners. Its items go in three areas chosen in
 // Configurações → Barra; by default, left: workspaces and the CPU, memory
 // and temperature rings; center: the clock (an island with the music while a
-// player plays); right: status and the power button.
+// player plays); right: status and the control center's button.
 PanelWindow {
     id: root
 
@@ -156,7 +157,7 @@ PanelWindow {
     }
     Item {
         focus: true
-        Keys.onEscapePressed: ShellState.close()
+        Keys.onEscapePressed: ShellState.handleEscape()
     }
 
     // A panel that continues one of the bar's ends (ShellState.attachedLeft/
@@ -264,7 +265,7 @@ PanelWindow {
         ? BarItems.areas(SettingsStore.get("barLeft"), SettingsStore.get("barCenter"),
                          SettingsStore.get("barRight"), SettingsStore.get("barHidden"))
         : BarItems.areas(["workspaces", "system"], ["clock"],
-                         ["recording", "volume", "network", "bluetooth", "battery", "power"], [])
+                         ["recording", "volume", "network", "bluetooth", "battery", "control"], [])
 
     function itemComponent(id) {
         switch (id) {
@@ -276,7 +277,7 @@ PanelWindow {
         case "network": return networkItem
         case "bluetooth": return bluetoothItem
         case "battery": return batteryItem
-        case "power": return powerItem
+        case "control": return controlItem
         case "|": return separatorItem
         }
         return null
@@ -319,8 +320,8 @@ PanelWindow {
         BatteryStatus {}
     }
     Component {
-        id: powerItem
-        PowerButton { monitor: root.hyprMonitor }
+        id: controlItem
+        ControlButton { monitor: root.hyprMonitor }
     }
     Component {
         id: separatorItem

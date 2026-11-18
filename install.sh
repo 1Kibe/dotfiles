@@ -735,6 +735,9 @@ unlink_configs() {
 
   info "Removing links: ${pkgs[*]}"
   stow --dir="${DOTFILES_DIR}" --target="${HOME}" --delete --verbose=1 "${pkgs[@]}"
+  if [[ " ${pkgs[*]} " == *" hyprland "* ]]; then
+    unmask_hypr_applets
+  fi
   log "Links removed. Files renamed to *.bak were left as they are."
 }
 
@@ -970,6 +973,49 @@ install_battery_rule() {
       || warn "udevadm did not apply the battery limit rule now (it works from the next boot)"
   fi
   log "Battery limit rule installed (${UDEV_RULES_DIR}/90-dotfiles-bateria.rules)."
+}
+
+# Applets the Hyprland session does without: the network lives in the bar
+# and the control center, the printers in Configurações → Dispositivos. In
+# Hyprland they start from the units systemd-xdg-autostart-generator makes
+# of /etc/xdg/autostart (started by uwsm); XFCE runs its autostart itself
+# (xfce4-session), so it keeps them. Masked by a link to /dev/null, as
+# "systemctl --user mask" does, which also works without the user's manager
+# running. A real file with the same name is left alone. blueman stays: its
+# applet is the Bluetooth pairing agent.
+HYPR_MASKED_UNITS=('app-nm\x2dapplet@autostart.service' 'app-print\x2dapplet@autostart.service')
+mask_hypr_applets() {
+  local dir="${HOME}/.config/systemd/user" unit link
+  mkdir -p "$dir"
+  # A folder that resolves into the repo (stow folded it) is never written
+  if [[ "$(readlink -f -- "$dir")" == "${DOTFILES_DIR}/"* ]]; then
+    warn "~/.config/systemd/user is a link into the repo: the applets were not masked"
+    return 0
+  fi
+  for unit in "${HYPR_MASKED_UNITS[@]}"; do
+    link="${dir}/${unit}"
+    if [[ -L "$link" && "$(readlink -- "$link")" == /dev/null ]]; then
+      continue
+    fi
+    if [[ -e "$link" || -L "$link" ]]; then
+      warn "Not masked: ~/.config/systemd/user/${unit} already exists"
+      continue
+    fi
+    ln -s /dev/null "$link"
+    info "Masked ${unit} for Hyprland (from the next login)."
+  done
+}
+
+# unlink of the hyprland environment: only the links this script made
+unmask_hypr_applets() {
+  local unit link
+  for unit in "${HYPR_MASKED_UNITS[@]}"; do
+    link="${HOME}/.config/systemd/user/${unit}"
+    if [[ -L "$link" && "$(readlink -- "$link")" == /dev/null ]]; then
+      rm -- "$link"
+      info "Unmasked ${unit}."
+    fi
+  done
 }
 
 # ── Printing and removable drives (Configurações → Dispositivos) ─────────────
@@ -1409,6 +1455,7 @@ main() {
   if has_env hyprland; then
     install_lock_pam
     install_battery_rule
+    mask_hypr_applets
   fi
   if has_env xfce || has_env hyprland; then
     configure_printing

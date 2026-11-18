@@ -101,7 +101,7 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Super+N` | Central de notificações |
 | `Super+A` | Central de controle |
 | `Super+I` | Central de controle (tecla engrenagem) |
-| `Super+X / Ctrl+Alt+Del` | Menu de energia |
+| `Super+X / Ctrl+Alt+Del` | Energia (central de controle) |
 | `Super+S` | Configurações |
 | `Super+Tab` | Visão geral das janelas |
 | `Super+F1` | Lista de atalhos |
@@ -423,6 +423,10 @@ Em Configurações → Dispositivos:
 
 O Thunar (e o tumbler, que faz as miniaturas) só gera miniatura de imagem (`common/.config/tumbler/tumbler.rc`): vídeo,
 PDF, fontes, documentos e o resto ficam sem, para um arquivo de pendrive não ser lido só por abrir a pasta.
+
+No Hyprland o ícone de rede (nm-applet) e o da fila de impressão não sobem (o `install.sh` mascara as duas unidades do
+autostart): a rede fica no painel da barra e na central de controle, as impressoras em Configurações → Dispositivos. No
+XFCE eles continuam. Para voltar: `systemctl --user unmask 'app-nm\x2dapplet@autostart.service' 'app-print\x2dapplet@autostart.service'`.
 
 ## Bloqueio e login
 

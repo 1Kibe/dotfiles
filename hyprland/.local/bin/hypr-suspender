@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Suspends only once the screen is locked: hypr-travar (the single way to
+# lock) has to confirm the lock first, also when hypridle, which locks
+# before sleeping too, is not running. A lock that fails: no suspend. The
+# one text of "Suspender" for the control center's power section and the
+# rofi menu (hypr-energia).
+#
+# Takes no arguments (exit 2 with any).
+set -eu
+(( $# == 0 )) || exit 2
+
+hypr-travar
+exec systemctl suspend

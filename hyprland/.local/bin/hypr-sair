@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Ends the session: the uwsm one is stopped cleanly; the "Hyprland" login
+# entry without uwsm, or a uwsm that does not stop, exits Hyprland. The one
+# text of "Sair" for the control center's power section, the logout action
+# of actions.lua and the rofi menu (hypr-energia).
+#
+# Takes no arguments (exit 2 with any).
+set -eu
+(( $# == 0 )) || exit 2
+
+if uwsm check is-active >/dev/null 2>&1; then
+  uwsm stop && exit 0
+fi
+exec hyprctl dispatch 'hl.dsp.exit()'
