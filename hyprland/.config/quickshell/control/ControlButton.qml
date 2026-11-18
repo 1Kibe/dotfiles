@@ -18,7 +18,7 @@ BarItem {
     // nf-linux-archlinux of the Nerd Font
     text: String.fromCodePoint(0xF303)
     textColor: open ? Theme.accentLight : Theme.text
-    tooltip: open ? "" : "Configurações rápidas · Super+I"
+    tooltip: open ? "" : "Super+I"
     onClicked: ShellState.toggle("control", monitorName)
 
     Rectangle {
