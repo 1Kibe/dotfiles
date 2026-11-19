@@ -210,6 +210,17 @@ ShellRoot {
         }
     }
 
+    // The updates checked now, as "Verificar agora" (3 s apart, one at a
+    // time, never locked); hypr-atualizar calls it when it ends, so the
+    // list does not show what was just updated: qs ipc call updates check
+    IpcHandler {
+        target: "updates"
+
+        function check(): string {
+            return Updates.checkNow()
+        }
+    }
+
     // Super+X and Ctrl+Alt+Del: the control center on its power section
     IpcHandler {
         target: "powermenu"

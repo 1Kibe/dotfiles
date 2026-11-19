@@ -94,11 +94,24 @@ Singleton {
 
     // "Verificar agora": ignored while one runs and within 3 s
     property double manualAt: 0
+    // Also the IPC's check (qs ipc call updates check, which hypr-atualizar
+    // calls when it ends): "ok", or why not: "travada" (it runs after the
+    // unlock), "ocupada", "cedo".
+    // With no network it is "ok" and waits for the network, as the clock.
     function checkNow() {
-        if (checking || Date.now() - manualAt < 3000)
-            return
+        // Locked: nothing runs now; it waits for the unlock, as the clock
+        if (locked) {
+            if (!checking)
+                due = true
+            return "travada"
+        }
+        if (checking)
+            return "ocupada"
+        if (Date.now() - manualAt < 3000)
+            return "cedo"
         manualAt = Date.now()
         check(true)
+        return "ok"
     }
     function check(manual) {
         if (checking)
