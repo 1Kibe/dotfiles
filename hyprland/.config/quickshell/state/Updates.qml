@@ -41,6 +41,8 @@ Singleton {
     readonly property bool checking: origin !== ""
     readonly property var summary: Lists.updatesSummary({ sys: sys, aur: aur })
     property int failures: 0
+    // When the last check ended (ms; 0 none yet)
+    property double lastCheckAt: 0
     // The wait until the next check by the clock
     property int nextMs: 0
     // Shortened by a test
@@ -180,6 +182,7 @@ Singleton {
         }
         aur = next
         origin = ""
+        lastCheckAt = Date.now()
         const anyFailed = sys.state === "failed" || aur.state === "failed"
         if (byHand && anyFailed) {
             // A failed check by hand leaves the clock as it is

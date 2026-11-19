@@ -5,14 +5,16 @@ import qs.state
 import qs.bar
 import "lists.js" as Lists
 
-// The control center's Tailscale section (Tailnet reads it): the switch
-// (it opens the terminal to connect or disconnect), "Este aparelho" with
-// its address and "Copiar", "Aparelhos" (online first, "N de M online",
-// when the offline ones were last seen), "Saída para a internet" (shown
-// only: the exit node in use and the ones that offer it), and "Esconder
-// nomes e endereços", which masks the text on screen ("aparelho N", the
-// address's kind) while "Copiar" still copies the real address; it is not
-// kept, every opening shows them. Names from outside show as plain text.
+// The control center's Tailscale section (Tailnet reads it): the header
+// with the state and the switch (it opens the terminal to connect or
+// disconnect); each group in a block of its own: "Este aparelho" with its
+// address and a copy icon, "Aparelhos" ("N de M online"; online ones with
+// their address, offline ones dim with when they were last seen and no
+// address; a name gives way, an address never); "Saída para a internet"
+// (shown only: the exit node in use, or "Nenhuma"); and "Esconder nomes e
+// endereços", which masks the text on screen ("aparelho N", the address's
+// kind) while the copy still copies the real address; it is not kept,
+// every opening shows them. Names from outside show as plain text.
 ColumnLayout {
     id: root
 
@@ -107,9 +109,9 @@ ColumnLayout {
 
     component Caption: Text {
         Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
-        Layout.topMargin: 6
+        Layout.leftMargin: 4
+        Layout.rightMargin: 4
+        Layout.topMargin: 4
         textFormat: Text.PlainText
         wrapMode: Text.WordWrap
         color: Theme.gray
@@ -124,25 +126,92 @@ ColumnLayout {
         border.width: Theme.focusWidth
         border.color: Theme.focusRing
     }
+    // A group's own block: card fill, rounded corners, a thin line between rows
+    component Block: Rectangle {
+        default property alias rows: blockRows.data
+        Layout.fillWidth: true
+        implicitHeight: blockRows.implicitHeight
+        radius: Theme.radius
+        color: Theme.bg
+        ColumnLayout {
+            id: blockRows
+            width: parent.width
+            spacing: 0
+        }
+    }
+    component Divider: Rectangle {
+        width: parent ? parent.width : 0
+        height: 1
+        color: Theme.bg1
+    }
+    component Dot: Rectangle {
+        property bool on: false
+        implicitWidth: 7
+        implicitHeight: 7
+        radius: 3.5
+        color: on ? Theme.green : Theme.bg2
+    }
+    // A group's header: its name on the left, a dim note on the right
+    component GroupHeader: RowLayout {
+        property string title
+        property string note
+        Layout.fillWidth: true
+        Layout.leftMargin: 4
+        Layout.rightMargin: 4
+        Layout.topMargin: 6
+        Text {
+            Layout.fillWidth: true
+            text: parent.title
+            textFormat: Text.PlainText
+            color: Theme.fg4
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+            font.weight: Font.Medium
+        }
+        Text {
+            visible: text !== ""
+            text: parent.note
+            textFormat: Text.PlainText
+            color: Theme.gray
+            font.family: Theme.font
+            font.pointSize: Theme.fontSizeSmall
+        }
+    }
 
     Layout.fillWidth: true
-    spacing: 2
+    spacing: 4
 
-    // Header: the switch
+    // Header: the icon, "Tailscale", the state (dim) and the switch
     RowLayout {
         Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
+        Layout.leftMargin: 6
+        Layout.rightMargin: 6
         implicitHeight: 34
+        spacing: 8
 
+        Text {
+            text: String.fromCodePoint(0xF0582)   // nf-md-vpn, as the grid's button
+            textFormat: Text.PlainText
+            color: Theme.fg4
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize
+        }
         Text {
             Layout.fillWidth: true
             text: "Tailscale"
             textFormat: Text.PlainText
-            color: Theme.text
+            color: Theme.fg4
             font.family: Theme.font
-            font.pointSize: Theme.fontSize
-            font.bold: true
+            font.pointSize: Theme.fontSize - 1
+            font.weight: Font.Medium
+        }
+        Text {
+            visible: text !== ""
+            text: Tailnet.summary
+            textFormat: Text.PlainText
+            color: Theme.gray
+            font.family: Theme.font
+            font.pointSize: Theme.fontSizeSmall
         }
         PanelSwitch {
             visible: root.installed
@@ -168,130 +237,186 @@ ColumnLayout {
             : root.backend === "unknown" || root.backend === "NoState" ? "Estado do Tailscale desconhecido" : ""
     }
 
-    // ── This device ──
-    ColumnLayout {
+    // ── This device: a dot, "Este aparelho", the address, the copy icon ──
+    Block {
         visible: root.running && root.self !== null
-        Layout.fillWidth: true
-        spacing: 2
 
-        Caption {
-            text: "Este aparelho"
-        }
-        RowLayout {
+        Item {
             Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 8
-            spacing: 6
+            implicitHeight: 30
 
-            Text {
-                Layout.fillWidth: true
-                text: (root.hide ? "este aparelho" : root.self ? root.self.name : "") + (root.selfIp !== "" ? "   " + root.shownIp(root.selfIp) : "")
-                textFormat: Text.PlainText
-                maximumLineCount: 1
-                elide: Text.ElideRight
-                color: Theme.text
-                font.family: Theme.font
-                font.pointSize: Theme.fontSize - 1
-            }
-            BarItem {
-                visible: root.selfIp !== ""
-                text: root.copied === "ok" ? "Copiado" : root.copied === "fail" ? "Não deu para copiar" : "Copiar"
-                textColor: root.copied === "fail" ? Theme.red : Theme.text
-                keyFocus: root.keyOn("copy")
-                tooltip: "Copia o endereço de verdade"
-                onClicked: root.copy()
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 4
+                spacing: 8
+
+                Dot {
+                    on: true
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: "Este aparelho"
+                    textFormat: Text.PlainText
+                    maximumLineCount: 1
+                    elide: Text.ElideRight
+                    color: Theme.fg
+                    font.family: Theme.font
+                    font.pointSize: Theme.fontSize - 1
+                }
+                Text {
+                    visible: root.selfIp !== ""
+                    text: root.shownIp(root.selfIp)
+                    textFormat: Text.PlainText
+                    color: Theme.fg4
+                    font.family: Theme.monoFont
+                    font.pointSize: Theme.fontSizeSmall
+                }
+                // The copy icon; for 2 s after a copy, how it went
+                BarItem {
+                    visible: root.selfIp !== ""
+                    text: root.copied === "ok" ? "Copiado" : root.copied === "fail" ? "Não deu para copiar"
+                        : String.fromCodePoint(0xF018F)   // nf-md-content_copy
+                    textColor: root.copied === "fail" ? Theme.red : root.copied === "ok" ? Theme.green : Theme.fg4
+                    fontSize: root.copied === "" ? Theme.fontSize : Theme.fontSizeSmall
+                    keyFocus: root.keyOn("copy")
+                    tooltip: root.copied === "" ? "Copiar o endereço (o de verdade)" : ""
+                    onClicked: root.copy()
+                }
             }
         }
     }
 
     // ── The peers ──
-    Caption {
+    GroupHeader {
         visible: root.running && root.peers.length > 0
-        text: `Aparelhos · ${root.onlineCount} de ${root.peers.length} online`
+        title: "Aparelhos"
+        note: `${root.onlineCount} de ${root.peers.length} online`
     }
-    Flickable {
-        id: flick
+    Block {
         visible: root.running && root.peers.length > 0
-        Layout.fillWidth: true
-        implicitHeight: Math.min(peerColumn.implicitHeight, root.maxListHeight)
-        contentWidth: width
-        contentHeight: peerColumn.implicitHeight
-        interactive: peerColumn.implicitHeight > root.maxListHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
 
-        ColumnLayout {
-            id: peerColumn
-            width: flick.width
-            spacing: 2
+        Flickable {
+            id: flick
+            Layout.fillWidth: true
+            implicitHeight: Math.min(peerColumn.implicitHeight, root.maxListHeight)
+            contentWidth: width
+            contentHeight: peerColumn.implicitHeight
+            interactive: peerColumn.implicitHeight > root.maxListHeight
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
 
-            Repeater {
-                model: root.peers
+            ColumnLayout {
+                id: peerColumn
+                width: flick.width
+                spacing: 0
 
-                RowLayout {
-                    required property var modelData
-                    required property int index
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 12
-                    Layout.rightMargin: 12
-                    spacing: 6
+                Repeater {
+                    model: root.peers
 
-                    Rectangle {
-                        implicitWidth: 6
-                        implicitHeight: 6
-                        radius: 3
-                        color: modelData.online ? Theme.green : Theme.gray
-                    }
-                    Text {
+                    // Online: the dot, the name, the address. Offline: the
+                    // whole row dim, and when it was last seen instead of
+                    // the address. The name gives way, the address never.
+                    Item {
+                        required property var modelData
+                        required property int index
                         Layout.fillWidth: true
-                        text: root.shownName(modelData, index) + (modelData.ips.length > 0 ? "   " + root.shownIp(modelData.ips[0]) : "")
-                        textFormat: Text.PlainText
-                        maximumLineCount: 1
-                        elide: Text.ElideRight
-                        color: Theme.text
-                        font.family: Theme.font
-                        font.pointSize: Theme.fontSize - 1
-                    }
-                    Text {
-                        text: Lists.tsSeen(modelData.online, modelData.lastSeen, Date.now())
-                        textFormat: Text.PlainText
-                        color: Theme.gray
-                        font.family: Theme.font
-                        font.pointSize: Theme.fontSize - 1
+                        implicitHeight: 30
+
+                        Divider {
+                            visible: index > 0
+                        }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+                            spacing: 8
+
+                            Dot {
+                                on: modelData.online
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.shownName(modelData, index)
+                                textFormat: Text.PlainText
+                                maximumLineCount: 1
+                                elide: Text.ElideRight
+                                color: modelData.online ? Theme.fg : Theme.gray
+                                font.family: Theme.font
+                                font.pointSize: Theme.fontSize - 1
+                            }
+                            Text {
+                                text: modelData.online ? (modelData.ips.length > 0 ? root.shownIp(modelData.ips[0]) : "")
+                                                       : Lists.tsSeen(false, modelData.lastSeen, Date.now())
+                                textFormat: Text.PlainText
+                                color: modelData.online ? Theme.fg4 : Theme.gray
+                                font.family: modelData.online ? Theme.monoFont : Theme.font
+                                font.pointSize: Theme.fontSizeSmall
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // ── The exit node: shown, never changed from here ──
-    Caption {
-        visible: root.running && (Tailnet.exits.length > 0 || Tailnet.exitNode !== null)
-        text: "Saída para a internet"
-    }
-    Caption {
-        visible: root.running && (Tailnet.exits.length > 0 || Tailnet.exitNode !== null)
-        Layout.topMargin: 0
-        color: Tailnet.exitNode !== null ? Theme.yellow : Theme.gray
-        text: Tailnet.exitNode !== null
-              ? "Em uso: o tráfego sai por " + root.shownName(Tailnet.exitNode, root.peers.indexOf(Tailnet.exitNode))
-              : `Nenhuma em uso · ${Tailnet.exits.length} ${Tailnet.exits.length === 1 ? "aparelho oferece" : "aparelhos oferecem"}`
+    // ── The exit node: one line, the value in a light pill; shown only,
+    // never chosen from here ──
+    RowLayout {
+        visible: root.running
+        Layout.fillWidth: true
+        Layout.leftMargin: 10
+        Layout.rightMargin: 6
+        Layout.topMargin: 6
+        implicitHeight: 30
+        spacing: 8
+
+        Text {
+            Layout.fillWidth: true
+            text: "Saída para a internet"
+            textFormat: Text.PlainText
+            color: Theme.fg
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+        }
+        Rectangle {
+            Layout.maximumWidth: root.width * 0.5
+            implicitWidth: exitText.implicitWidth + 16
+            implicitHeight: 22
+            radius: Theme.radius
+            color: Theme.bg1
+
+            Text {
+                id: exitText
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                verticalAlignment: Text.AlignVCenter
+                text: Tailnet.exitNode !== null ? root.shownName(Tailnet.exitNode, root.peers.indexOf(Tailnet.exitNode)) : "Nenhuma"
+                textFormat: Text.PlainText
+                maximumLineCount: 1
+                elide: Text.ElideRight
+                color: Tailnet.exitNode !== null ? Theme.yellow : Theme.fg2
+                font.family: Theme.font
+                font.pointSize: Theme.fontSizeSmall
+            }
+        }
     }
 
     // ── Hide names and addresses (screen privacy; not kept) ──
     RowLayout {
         visible: root.running
         Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
-        Layout.topMargin: 6
+        Layout.leftMargin: 10
+        Layout.rightMargin: 6
+        Layout.topMargin: 4
         implicitHeight: 30
 
         Text {
             Layout.fillWidth: true
             text: "Esconder nomes e endereços"
             textFormat: Text.PlainText
-            color: Theme.text
+            color: Theme.fg
             font.family: Theme.font
             font.pointSize: Theme.fontSize - 1
         }

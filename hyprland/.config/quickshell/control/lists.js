@@ -262,7 +262,7 @@ function mixerKeys(m, hasSource) {
 
 // ── Updates (checkupdates, paru -Qua) ──
 
-var UPDATES_SHOWN = 5        // per origin, before "e mais N"
+var UPDATES_SHOWN = 3        // per origin, before "e mais N"
 var UPDATES_MAX_LINES = 2000 // more output than this is a failure
 var PKG_NAME = /^[a-z0-9@._+][a-z0-9@._+-]{0,63}$/
 var PKG_VERSION = /^[A-Za-z0-9:._+~-]{1,40}$/
@@ -383,14 +383,14 @@ function tsSummary(state, exitActive) {
     return "Desligado"
 }
 
-// "online", "hoje", "ontem", "há N dias" (lastSeen and now in ms)
+// "online", "visto hoje", "visto ontem", "há N dias" (lastSeen and now in ms)
 function tsSeen(online, lastSeen, now) {
     if (online)
         return "online"
     if (!(lastSeen > 0) || !(now >= lastSeen))
         return "offline"
     const days = Math.floor((now - lastSeen) / 86400000)
-    return days < 1 ? "visto hoje" : days === 1 ? "visto ontem" : `visto há ${days} dias`
+    return days < 1 ? "visto hoje" : days === 1 ? "visto ontem" : `há ${days} dias`
 }
 
 // The hidden form of an address: its kind only, never a part of it
