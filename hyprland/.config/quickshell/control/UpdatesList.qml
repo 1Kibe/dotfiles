@@ -60,7 +60,7 @@ ColumnLayout {
     component Origin: ColumnLayout {
         id: origin
         required property string title
-        required property var data
+        required property var info
 
         Layout.fillWidth: true
         spacing: 2
@@ -82,17 +82,17 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignRight
-                text: root.line(origin.data)
+                text: root.line(origin.info)
                 textFormat: Text.PlainText
                 maximumLineCount: 1
                 elide: Text.ElideRight
-                color: origin.data.count > 0 ? Theme.yellow : Theme.gray
+                color: origin.info.count > 0 ? Theme.yellow : Theme.gray
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
             }
         }
         Repeater {
-            model: origin.data.state === "missing" ? [] : origin.data.list.slice(0, Lists.UPDATES_SHOWN)
+            model: origin.info.state === "missing" ? [] : origin.info.list.slice(0, Lists.UPDATES_SHOWN)
 
             RowLayout {
                 required property var modelData
@@ -126,8 +126,8 @@ ColumnLayout {
         Text {
             Layout.leftMargin: 16
             // Those not shown: past the first ones, and the lines too long to show
-            readonly property int more: origin.data.state === "missing" || origin.data.count < 0 ? 0
-                                      : origin.data.count - Math.min(origin.data.list.length, Lists.UPDATES_SHOWN)
+            readonly property int more: origin.info.state === "missing" || origin.info.count < 0 ? 0
+                                      : origin.info.count - Math.min(origin.info.list.length, Lists.UPDATES_SHOWN)
             visible: more > 0
             text: `e mais ${more}`
             textFormat: Text.PlainText
@@ -142,11 +142,11 @@ ColumnLayout {
 
     Origin {
         title: "Sistema"
-        data: Updates.sys
+        info: Updates.sys
     }
     Origin {
         title: "AUR"
-        data: Updates.aur
+        info: Updates.aur
     }
 
     Rectangle {
