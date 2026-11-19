@@ -267,12 +267,19 @@ var UPDATES_MAX_LINES = 2000 // more output than this is a failure
 var PKG_NAME = /^[a-z0-9@._+][a-z0-9@._+-]{0,63}$/
 var PKG_VERSION = /^[A-Za-z0-9:._+~-]{1,40}$/
 
-// One line of checkupdates or paru -Qua: "name old -> new"; null for
-// anything else (never shown)
+// One line of checkupdates or paru -Qua: "name old -> new", or the same
+// with " [ignored]" (held back by IgnorePkg: still an update, the marker
+// left out); a line over 200 characters that starts like one counts as an
+// update that is not shown ({ hidden: true }); null for anything else
+// (never shown, never counted)
 function updateLine(line) {
-    if (typeof line !== "string" || line.length > 200)
+    if (typeof line !== "string")
         return null
     const parts = line.trim().split(/ +/)
+    if (line.length > 200)
+        return parts.length >= 4 && PKG_NAME.test(parts[0]) && parts[2] === "->" ? { hidden: true } : null
+    if (parts.length === 5 && parts[4] === "[ignored]")
+        parts.pop()
     if (parts.length !== 4 || parts[2] !== "->")
         return null
     if (!PKG_NAME.test(parts[0]) || !PKG_VERSION.test(parts[1]) || !PKG_VERSION.test(parts[3]))

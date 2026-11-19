@@ -41,9 +41,11 @@ ColumnLayout {
     }
 
     // What an origin says under its title (fixed words only)
-    function line(o, missingText) {
+    function line(o) {
         if (o.state === "missing")
-            return missingText
+            return o.missing === "fakeroot" ? "checkupdates precisa do fakeroot (base-devel)"
+                 : o.missing === "pacman-contrib" ? "checkupdates não instalado (pacman-contrib)"
+                 : "paru não instalado"
         if (o.state === "checking" && o.count < 0)
             return "Verificando…"
         if (o.state === "failed")
@@ -59,7 +61,6 @@ ColumnLayout {
         id: origin
         required property string title
         required property var data
-        required property string missingText
 
         Layout.fillWidth: true
         spacing: 2
@@ -81,7 +82,7 @@ ColumnLayout {
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignRight
-                text: root.line(origin.data, origin.missingText)
+                text: root.line(origin.data)
                 textFormat: Text.PlainText
                 maximumLineCount: 1
                 elide: Text.ElideRight
@@ -124,7 +125,9 @@ ColumnLayout {
         }
         Text {
             Layout.leftMargin: 16
-            readonly property int more: origin.data.state === "missing" ? 0 : origin.data.list.length - Lists.UPDATES_SHOWN
+            // Those not shown: past the first ones, and the lines too long to show
+            readonly property int more: origin.data.state === "missing" || origin.data.count < 0 ? 0
+                                      : origin.data.count - Math.min(origin.data.list.length, Lists.UPDATES_SHOWN)
             visible: more > 0
             text: `e mais ${more}`
             textFormat: Text.PlainText
@@ -140,12 +143,10 @@ ColumnLayout {
     Origin {
         title: "Sistema"
         data: Updates.sys
-        missingText: "checkupdates não instalado (pacman-contrib)"
     }
     Origin {
         title: "AUR"
         data: Updates.aur
-        missingText: "paru não instalado"
     }
 
     Rectangle {

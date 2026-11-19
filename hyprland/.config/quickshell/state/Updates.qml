@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Networking
 import qs.state
 import "../control/lists.js" as Lists
 
@@ -10,40 +11,48 @@ import "../control/lists.js" as Lists
 // its button. Nothing updates by itself: this only checks, with fixed
 // commands, one after the other: "checkupdates" (pacman, no root) and
 // "paru -Qua" (AUR), both in the C locale, checkupdates with its database
-// in a 0700 folder of the session's runtime directory. The output is read
-// line by line by a fixed pattern ("name old -> new"), at most 2000 lines;
-// anything else is dropped, never shown. Exit codes: checkupdates 0 found,
-// 2 nothing, anything else failed; paru 0 found, 1 with no lines nothing,
-// anything else failed. A failure keeps the counts from before (it never
-// turns into "em dia"), and each origin keeps its own state; a missing
-// program is a state of its own. Everything stays in memory.
+// in a 0700 folder of the session's runtime directory. Each command runs
+// under timeout (85 s, then killed 5 s later) and its output is cut at
+// 1 MiB inside the child; here it is read line by line by a fixed pattern
+// ("name old -> new"), at most 2000 lines; anything else is dropped, never
+// shown, and the error output (it carries package names) is never read.
+// Exit codes: checkupdates 0 found (at least one line in the pattern), 2
+// nothing; paru 0 found (the same), 1 with no lines nothing; anything else,
+// a process ended by a signal, too much output, or a 0 with no valid line
+// failed. A failure keeps the counts from before (it never turns into "em
+// dia"), and each origin keeps its own state; a missing program is a state
+// of its own. Everything stays in memory.
 //
 // The clock: the first check 2 min after the shell starts, then every
 // ~6 h; a failed one is tried again in 15 min, 1 h, then 6 h. Never while
-// the session is locked (it waits for the unlock). One check at a time,
-// each command 90 s at most and ending with the shell. "Verificar agora"
-// runs one right away. This is the one thing of the control center that
-// runs with it closed.
+// the session is locked, and never with no network at all (it waits for
+// the unlock or the network, without counting a failure). One check at a
+// time. "Verificar agora" runs one right away (ignored within 3 s), and
+// its failure does not change the clock. This is the one thing of the
+// control center that runs with it closed.
 Singleton {
     id: root
 
     // Each origin: state ("idle", "checking", "ok", "failed", "missing"),
-    // count (-1 never known) and the packages ({ name, from, to })
-    property var sys: ({ state: "idle", count: -1, list: [] })
-    property var aur: ({ state: "idle", count: -1, list: [] })
-    readonly property bool checking: sys.state === "checking" || aur.state === "checking"
+    // count (-1 never known), the packages ({ name, from, to }, those
+    // shown) and why it is missing
+    property var sys: ({ state: "idle", count: -1, list: [], missing: "" })
+    property var aur: ({ state: "idle", count: -1, list: [], missing: "" })
+    readonly property bool checking: origin !== ""
     readonly property var summary: Lists.updatesSummary({ sys: sys, aur: aur })
     property int failures: 0
     // The wait until the next check by the clock
     property int nextMs: 0
     // Shortened by a test
     property int firstDelayMs: 120000
-    property int timeoutMs: 90000
+    property int timeoutMs: 95000
     readonly property var retryMs: [15 * 60000, 60 * 60000, 6 * 3600000]
     readonly property int everyMs: 6 * 3600000
 
     readonly property bool locked: LockState.wanted || LockState.locked
-    property bool dueWhileLocked: false
+    // No network at all (an unknown connectivity is tried)
+    readonly property bool offline: Networking.connectivity === NetworkConnectivity.None
+    property bool due: false
 
     // The checkupdates database: a folder of the runtime directory (a plain
     // absolute path; the script makes it 0700 and checks it is ours)
@@ -52,63 +61,83 @@ Singleton {
         return /^\/[A-Za-z0-9._\/-]{1,200}$/.test(r) && !r.includes("..") ? r + "/qs-checkupdates" : ""
     }
 
-    // Fixed scripts; "exit 90" is "not installed"
+    // Fixed scripts (bash, for the exit code of the first command of the
+    // pipe); 90 not installed, 92 no fakeroot (checkupdates needs it)
     readonly property string sysScript: [
         'umask 077',
         'mkdir -p "$1" && [ -O "$1" ] && chmod 700 "$1" || exit 91',
         'command -v checkupdates >/dev/null 2>&1 || exit 90',
-        'CHECKUPDATES_DB="$1" LC_ALL=C exec setpriv --pdeathsig TERM -- checkupdates'
+        'command -v fakeroot >/dev/null 2>&1 || exit 92',
+        'CHECKUPDATES_DB="$1" LC_ALL=C timeout -k 5 85 setpriv --pdeathsig TERM -- checkupdates | head -c 1048577',
+        'exit "${PIPESTATUS[0]}"'
     ].join("\n")
     readonly property string aurScript: [
         'command -v paru >/dev/null 2>&1 || exit 90',
-        'LC_ALL=C exec setpriv --pdeathsig TERM -- paru -Qua --color never'
+        'LC_ALL=C timeout -k 5 85 setpriv --pdeathsig TERM -- paru -Qua --color never | head -c 1048577',
+        'exit "${PIPESTATUS[0]}"'
     ].join("\n")
+    readonly property int maxBytes: 1048576
 
     // The hook for the notifications module, once it exists: the count only
     function notify(count) {
     }
 
+    // "Verificar agora": ignored while one runs and within 3 s
+    property double manualAt: 0
     function checkNow() {
-        check()
+        if (checking || Date.now() - manualAt < 3000)
+            return
+        manualAt = Date.now()
+        check(true)
     }
-    function check() {
+    function check(manual) {
         if (checking)
             return
-        if (locked) {
-            dueWhileLocked = true
+        first.stop()
+        if (locked || offline) {
+            due = true
             return
         }
-        dueWhileLocked = false
-        clock.stop()
-        start(sysJob, "sys")
+        due = false
+        byHand = manual === true
+        if (!byHand)
+            clock.stop()
+        start("sys")
     }
 
+    property bool byHand: false
     property var found: []
     property int lines: 0
+    property int bytes: 0
     property bool overflow: false
     property string origin: ""
-    function start(job, which) {
+    function start(which) {
         origin = which
         found = []
         lines = 0
+        bytes = 0
         overflow = false
+        const before = which === "sys" ? sys : aur
+        const now = { state: "checking", count: before.count, list: before.list, missing: "" }
         if (which === "sys")
-            sys = { state: "checking", count: sys.count, list: sys.list }
+            sys = now
         else
-            aur = { state: "checking", count: aur.count, list: aur.list }
+            aur = now
         if (which === "sys" && dbDir === "") {
-            done("sys", 91)
+            done("sys", 91, 0)
             return
         }
-        job.command = which === "sys" ? ["sh", "-c", sysScript, "sh", dbDir] : ["sh", "-c", aurScript, "sh"]
+        const job = which === "sys" ? sysJob : aurJob
+        job.command = which === "sys" ? ["bash", "-c", sysScript, "bash", dbDir] : ["bash", "-c", aurScript, "bash"]
         deadline.interval = timeoutMs
         deadline.restart()
         job.running = true
     }
-    function readLine(line) {
-        if (overflow)
+    function readLine(which, line) {
+        if (which !== origin || overflow)
             return
-        if (++lines > Lists.UPDATES_MAX_LINES) {
+        bytes += line.length + 1
+        if (++lines > Lists.UPDATES_MAX_LINES || bytes > maxBytes) {
             overflow = true
             sysJob.running = false
             aurJob.running = false
@@ -116,82 +145,115 @@ Singleton {
         }
         const u = Lists.updateLine(line)
         if (u !== null)
-            found.push({ name: Lists.trim(u.name), from: Lists.trim(u.from), to: Lists.trim(u.to) })
+            found.push(u.hidden ? u : { name: Lists.trim(u.name), from: Lists.trim(u.from), to: Lists.trim(u.to) })
     }
-    function done(which, code) {
+    // code: the exit code; status: 0 a normal exit, else ended by a signal
+    function done(which, code, status) {
+        if (which !== origin)
+            return
         deadline.stop()
+        stuck.stop()
         const before = which === "sys" ? sys : aur
+        const failed = { state: "failed", count: before.count, list: before.list, missing: "" }
         let next
-        if (overflow || code === null)
-            next = { state: "failed", count: before.count, list: before.list }
-        else if (code === 90)
-            next = { state: "missing", count: -1, list: [] }
-        else if (code === 0 || (which === "sys" && code === 2) || (which === "aur" && code === 1 && found.length === 0))
-            next = { state: "ok", count: found.length, list: found }
+        if (overflow || status !== 0)
+            next = failed
+        else if (code === 90 || code === 92)
+            next = { state: "missing", count: -1, list: [], missing: code === 92 ? "fakeroot" : which === "sys" ? "pacman-contrib" : "paru" }
+        else if (code === 0 && found.length > 0)
+            next = { state: "ok", count: found.length, list: found.filter(p => !p.hidden), missing: "" }
+        else if (found.length === 0 && ((which === "sys" && code === 2) || (which === "aur" && code === 1)))
+            next = { state: "ok", count: 0, list: [], missing: "" }
         else
-            next = { state: "failed", count: before.count, list: before.list }
+            next = failed
         found = []
         if (which === "sys") {
             sys = next
-            start(aurJob, "aur")
+            // Locked (or the network gone) in the middle: the AUR waits
+            if (locked || offline) {
+                origin = ""
+                due = true
+                return
+            }
+            start("aur")
             return
         }
         aur = next
         origin = ""
-        const failed = sys.state === "failed" || aur.state === "failed"
-        failures = failed ? failures + 1 : 0
-        nextMs = failed ? retryMs[Math.min(failures, retryMs.length) - 1] : everyMs
-        clock.interval = nextMs
-        clock.restart()
+        const anyFailed = sys.state === "failed" || aur.state === "failed"
+        if (byHand && anyFailed) {
+            // A failed check by hand leaves the clock as it is
+            if (!clock.running) {
+                nextMs = retryMs[0]
+                clock.interval = nextMs
+                clock.restart()
+            }
+        } else {
+            failures = anyFailed ? failures + 1 : 0
+            nextMs = anyFailed ? retryMs[Math.min(failures, retryMs.length) - 1] : everyMs
+            clock.interval = nextMs
+            clock.restart()
+        }
         const total = Math.max(0, sys.count) + Math.max(0, aur.count)
         if (total > 0)
             notify(total)
     }
 
-    // No reader for the error output: it would carry package names
     Process {
         id: sysJob
         stdout: SplitParser {
-            onRead: line => root.readLine(line)
+            onRead: line => root.readLine("sys", line)
         }
-        onExited: code => root.done("sys", code)
+        onExited: (code, status) => root.done("sys", code, status)
     }
     Process {
         id: aurJob
         stdout: SplitParser {
-            onRead: line => root.readLine(line)
+            onRead: line => root.readLine("aur", line)
         }
-        onExited: code => root.done("aur", code)
+        onExited: (code, status) => root.done("aur", code, status)
     }
-    // 90 s for the running command: stopped, and a failure
+    // Past its time the command is stopped; if it still does not end, the
+    // step ends here anyway, so "checking" never stays on
     Timer {
         id: deadline
         onTriggered: {
             root.overflow = true
             sysJob.running = false
             aurJob.running = false
+            stuck.restart()
         }
+    }
+    Timer {
+        id: stuck
+        interval: 5000
+        onTriggered: root.done(root.origin, -1, 1)
     }
 
     Timer {
         id: first
         interval: root.firstDelayMs
         running: true
-        onTriggered: root.check()
+        onTriggered: root.check(false)
     }
     Timer {
         id: clock
-        onTriggered: root.check()
+        onTriggered: root.check(false)
     }
-    // A check that came due while locked runs at the unlock
+    // A check that came due while locked or offline runs once both are back
     onLockedChanged: {
-        if (!locked && dueWhileLocked)
-            check()
+        if (!locked && !offline && due)
+            check(false)
+    }
+    onOfflineChanged: {
+        if (!locked && !offline && due)
+            check(false)
     }
 
     // "Atualizar tudo no terminal": a fixed script of the repo in Kitty, in
     // the control center's special workspace (hypr/modules/rules.lua); the
-    // password is typed there, never here. Clicks within 3 s are ignored.
+    // password is typed there, never here; the script itself refuses a
+    // second one while one is open. Clicks within 3 s are ignored.
     property double openedAt: 0
     function openTerminal() {
         if (locked || Date.now() - openedAt < 3000)

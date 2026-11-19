@@ -4,11 +4,22 @@
 # the special workspace by hypr/modules/rules.lua): paru -Syu (yay if only
 # yay is there), where its review and the password are seen and typed.
 # The window closes by itself after a "Pronto" line when it worked; on an
-# error it waits for Enter, so the message can be read.
+# error it waits for Enter, so the message can be read. Only one runs at a
+# time (a lock in the session's runtime directory).
 #
 # Takes no arguments (exit 2 with any).
 set -u
 (( $# == 0 )) || exit 2
+
+# One at a time: a second window says so and waits, instead of running a
+# second paru -Syu over the first
+lock="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr-atualizar.lock"
+exec 9>"$lock"
+if ! flock -n 9; then
+  echo "Já há uma atualização aberta. Enter para fechar."
+  read -r _ || true
+  exit 1
+fi
 
 if command -v paru >/dev/null 2>&1; then
   paru -Syu
