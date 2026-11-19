@@ -367,12 +367,22 @@ function updatesTool(o, name, time) {
 }
 
 // The grid button's state line and whether it shows yellow. s: { sys, aur }
-// each { state ("idle", "checking", "ok", "failed", "missing"), count }
+// each { state ("idle", "checking", "ok", "failed", "missing"), count }.
+// The total only when both origins are known; with one of them missing or
+// failed (or not checked yet) only the known part, named ("2 do AUR",
+// "5 do sistema"), never passed off as the whole.
 function updatesSummary(s) {
-    const known = o => o && o.count >= 0
-    const n = (known(s.sys) ? s.sys.count : 0) + (known(s.aur) ? s.aur.count : 0)
-    if (n > 0)
+    const known = o => !!o && o.count >= 0 && o.state !== "missing" && o.state !== "failed"
+    const sys = known(s.sys) ? s.sys.count : -1
+    const aur = known(s.aur) ? s.aur.count : -1
+    if (sys >= 0 && aur >= 0 && sys + aur > 0) {
+        const n = sys + aur
         return { text: n === 1 ? "1 atualização" : `${n} atualizações`, warn: true }
+    }
+    if (sys > 0 && aur < 0)
+        return { text: `${sys} do sistema`, warn: true }
+    if (aur > 0 && sys < 0)
+        return { text: `${aur} do AUR`, warn: true }
     const checking = (s.sys && s.sys.state === "checking") || (s.aur && s.aur.state === "checking")
     if (checking)
         return { text: "Verificando…", warn: false }
