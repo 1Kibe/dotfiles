@@ -70,6 +70,14 @@ AttachedPanel {
         })
     }
 
+    // The Bluetooth button's state: a count at most, never a device's name
+    readonly property string btState: Lists.bluetoothSummary({
+        available: BluetoothPower.available,
+        powered: BluetoothPower.powered,
+        connected: BluetoothPower.powered && BluetoothPower.adapter !== null
+                   ? BluetoothPower.adapter.devices.values.filter(d => d.connected).length : 0
+    })
+
     // A button without a list, pressed by a click or a key
     function toggle(id) {
         if (id === "nightlight" && SettingsStore.ready)
@@ -124,7 +132,8 @@ AttachedPanel {
                 open: modelData.hasList && ShellState.controlSection === modelData.id
                 on: modelData.id === "nightlight" && NightLight.enabled
                 status: modelData.id === "nightlight" ? root.night.status
-                      : modelData.id === "wifi" ? root.netState : ""
+                      : modelData.id === "wifi" ? root.netState
+                      : modelData.id === "bluetooth" ? root.btState : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
                 keyFocus: keys.keyFocus("grid", index)
                 onClicked: {
@@ -151,10 +160,23 @@ AttachedPanel {
         }
     }
 
+    // The Bluetooth section: the same list as the bar's Bluetooth panel
+    Accordion {
+        open: root.open && ShellState.controlSection === "bluetooth"
+        maxHeight: root.listMax
+
+        BluetoothList {
+            id: bluetooth
+            active: root.open && ShellState.controlSection === "bluetooth"
+            maxListHeight: Math.max(120, root.listMax - 240)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
+        }
+    }
+
     // The other sections of the grid's buttons, under it; their contents come
     // in the next steps
     Repeater {
-        model: root.tiles.filter(t => t.hasList && t.id !== "wifi")
+        model: root.tiles.filter(t => t.hasList && t.id !== "wifi" && t.id !== "bluetooth")
 
         Accordion {
             required property var modelData
@@ -206,7 +228,8 @@ AttachedPanel {
         monitorName: root.monitorName
         tiles: root.tiles
         sectionList: ShellState.controlSection === "power" ? power
-                   : ShellState.controlSection === "wifi" ? wifi : null
+                   : ShellState.controlSection === "wifi" ? wifi
+                   : ShellState.controlSection === "bluetooth" ? bluetooth : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness
