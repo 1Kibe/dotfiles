@@ -8,6 +8,8 @@ Item {
 
     property real value: 0
     property bool muted: false
+    // The keyboard is on it (the control center): a ring of the Theme
+    property bool keyFocus: false
     // The slider never sets `value` itself: the owner applies the new value
     // and it comes back through the binding (VolumePanel sets the node volume)
     signal moved(real value)
@@ -19,6 +21,16 @@ Item {
 
     implicitHeight: 20
     implicitWidth: 160
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -3
+        radius: Theme.radius
+        color: Theme.clear
+        visible: root.keyFocus
+        border.width: Theme.focusWidth
+        border.color: Theme.focusRing
+    }
 
     Rectangle {
         id: track
