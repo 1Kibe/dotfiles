@@ -2,25 +2,32 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Bluetooth
 import qs.theme
+import "../control/lists.js" as Lists
 
 // One Bluetooth device as a card: icon by type (accent when connected),
-// name, a state line and a battery bar. Click: disconnect, connect, or
-// pair and connect. BlueZ sends no failure signal, so a failed attempt is
-// detected when the device falls back to disconnected, or after 20 s.
+// name (or the address for one with none), a state line and a battery bar.
+// It only draws: the attempt to connect or pair and the "Esquecer" with its
+// second click live in BluetoothList, which outlives the cards (a device
+// that pairs moves to another list, and its card is made again).
 Rectangle {
     id: root
 
-    // A BluetoothDevice from Bluetooth.defaultAdapter, passed in by
-    // BluetoothPanel's Repeaters
+    // A BluetoothDevice from Bluetooth.defaultAdapter
     required property var device
-    property string attempt: ""   // "connect" or "pair" while trying
-    // A connect attempt fails only after BlueZ went through Connecting:
-    // right after connect() the state can still read Disconnected
-    property bool sawConnecting: false
-    // Shown in the state line (red) until the next attempt or a connection
+    // The list's attempt on this device ("connect", "pair", or "")
+    property string attempt: ""
+    // A fixed message (red) until the next attempt or a connection
     property string error: ""
+    property bool keyFocus: false
+    // "Esquecer": shown for a paired device; armed waits for the second
+    // click; forgetFocus is the keyboard on it
+    property bool canForget: false
+    property bool forgetArmed: false
+    property bool forgetFocus: false
+    signal clicked()
+    signal forgetClicked()
 
-    readonly property int battery: device.batteryAvailable ? Math.round(device.battery * 100) : -1
+    readonly property int battery: device.batteryAvailable === true ? Math.round(device.battery * 100) : -1
     // From the freedesktop icon name BlueZ gives the device (its class);
     // a plain Bluetooth icon for anything unknown
     readonly property string typeIcon: {
@@ -48,9 +55,9 @@ Rectangle {
     readonly property string status: {
         if (error !== "")
             return error
-        if (device.pairing)
+        if (device.pairing || attempt === "pair")
             return "Pareando…"
-        if (device.state === BluetoothDeviceState.Connecting)
+        if (device.state === BluetoothDeviceState.Connecting || attempt === "connect")
             return "Conectando…"
         if (device.state === BluetoothDeviceState.Disconnecting)
             return "Desconectando…"
@@ -61,39 +68,12 @@ Rectangle {
         return "Novo · clique para parear"
     }
 
-    function fail(message) {
-        attempt = ""
-        sawConnecting = false
-        error = message
-        timeout.stop()
-    }
-
-    function start(kind) {
-        error = ""
-        attempt = kind
-        sawConnecting = false
-        timeout.restart()
-        if (kind === "pair")
-            device.pair()
-        else
-            device.connect()
-    }
-
-    // Only connect and pair are tracked as attempts; a disconnect just shows
-    // up in the state line as "Desconectando…"
-    function activate() {
-        if (device.connected)
-            device.disconnect()
-        else if (device.paired)
-            start("connect")
-        else
-            start("pair")
-    }
-
     Layout.fillWidth: true
     implicitHeight: 52
     radius: Theme.radius
     color: mouse.containsMouse ? Theme.veil : Theme.clear
+    border.width: keyFocus ? Theme.focusWidth : 0
+    border.color: Theme.focusRing
     Behavior on color {
         ColorAnimation { duration: Theme.animFast }
     }
@@ -104,59 +84,22 @@ Rectangle {
         SpringAnimation { spring: 4; damping: 0.4; epsilon: 0.005 }
     }
 
-    // Last resort when BlueZ never reports a state change: the attempt is
-    // called failed after 20 s
-    Timer {
-        id: timeout
-        interval: 20000
-        onTriggered: root.fail(root.attempt === "pair" ? "Não pareou" : "Não conectou")
+    // The pointer anywhere on the card, the "Esquecer" button included
+    HoverHandler {
+        id: hover
     }
-
-    // Follows the attempt through the device's property changes, since no
-    // failure signal comes (see the header)
-    Connections {
-        target: root.device
-        // Connected by any path (this click, auto reconnect): attempt over
-        function onConnectedChanged() {
-            if (root.device.connected) {
-                root.attempt = ""
-                root.error = ""
-                timeout.stop()
-            }
-        }
-        function onStateChanged() {
-            if (root.attempt !== "connect")
-                return
-            if (root.device.state === BluetoothDeviceState.Connecting)
-                root.sawConnecting = true
-            else if (root.device.state === BluetoothDeviceState.Disconnected && root.sawConnecting)
-                root.fail("Não conectou")
-        }
-        // Pairing ended: paired means go on to connect, otherwise it failed
-        function onPairingChanged() {
-            if (root.attempt !== "pair" || root.device.pairing)
-                return
-            if (root.device.paired) {
-                root.device.trusted = true   // reconnect by itself next time
-                root.start("connect")
-            } else {
-                root.fail("Não pareou")
-            }
-        }
-    }
-
     MouseArea {
         id: mouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.activate()
+        onClicked: root.clicked()
     }
 
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 10
-        anchors.rightMargin: 12
+        anchors.rightMargin: 8
         spacing: 12
 
         // Icon circle: accent while connected
@@ -185,10 +128,9 @@ Rectangle {
 
             Text {
                 Layout.fillWidth: true
-                // Some devices only announce their address
                 textFormat: Text.PlainText
                 maximumLineCount: 1
-                text: root.device.name || root.device.address
+                text: Lists.deviceLabel(root.device)
                 elide: Text.ElideRight
                 color: Theme.text
                 font.family: Theme.font
@@ -220,6 +162,16 @@ Rectangle {
                     color: root.battery <= 15 ? Theme.red : root.battery <= 30 ? Theme.yellow : Theme.green
                 }
             }
+        }
+
+        // Only for a paired device, while the pointer or the keyboard is on
+        // the card, or while armed
+        BarItem {
+            visible: root.canForget && (hover.hovered || root.keyFocus || root.forgetFocus || root.forgetArmed)
+            text: root.forgetArmed ? "Clique de novo para esquecer" : "Esquecer"
+            textColor: root.forgetArmed ? Theme.red : Theme.gray
+            keyFocus: root.forgetFocus
+            onClicked: root.forgetClicked()
         }
     }
 }

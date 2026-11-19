@@ -17,8 +17,12 @@ import "lists.js" as Lists
 // go through lists.js trim() and show as plain text. Known or open
 // networks connect on click; new ones ask for the password right under the
 // row. The password is never stored or logged here: it goes to
-// NetworkManager and the field is cleared. Every opening starts clean (no
-// row open, no error, no search, the short list).
+// NetworkManager and the field is cleared. "Esquecer" (a saved network)
+// asks for a second click: the first arms it, a second within 300 ms (a
+// double click) does nothing, a later one forgets that network's object;
+// 5 s, another network, a click elsewhere, the keyboard moving, or the list
+// closing (also by the lock) disarm it. Every opening starts clean (no row
+// open, no error, no search, the short list).
 ColumnLayout {
     id: root
 
@@ -51,6 +55,7 @@ ColumnLayout {
     }
 
     onActiveChanged: {
+        disarm()
         selected = ""
         query = ""
         showAll = false
@@ -123,6 +128,41 @@ ColumnLayout {
         onTriggered: addressJob.running = false
     }
 
+    // ── "Esquecer", with the second click ──
+    property var armed: null
+    property double armedAt: 0
+    function disarm() {
+        armed = null
+        disarmTimer.stop()
+    }
+    function pressForget(net) {
+        if (!active || !net || net.known !== true || WifiJoin.busy)
+            return
+        if (armed !== net) {
+            armed = net
+            armedAt = Date.now()
+            disarmTimer.restart()
+            return
+        }
+        if (Date.now() - armedAt < 300)
+            return
+        disarm()
+        if (net.name === selected)
+            selected = ""
+        net.forget()
+    }
+    Timer {
+        id: disarmTimer
+        interval: 5000
+        onTriggered: root.armed = null
+    }
+    onKeyIndexChanged: disarm()
+    // The armed network left the list (or is no longer saved)
+    onListChanged: {
+        if (armed !== null && !list.shown.some(n => n === armed && n.known === true))
+            disarm()
+    }
+
     // ── The control center's keyboard ──
     // Its items, in order: the switch, the search (when it shows), each
     // network shown, "Mostrar mais" (when some are left out), "Mais opções…"
@@ -137,8 +177,12 @@ ColumnLayout {
         const it = keyItems[k]
         if (!it)
             return
+        if (it.kind !== "forget")
+            disarm()
         if (it.kind === "switch")
             Networking.wifiEnabled = !Networking.wifiEnabled
+        else if (it.kind === "forget")
+            pressForget(list.shown[it.index])
         else if (it.kind === "search")
             search.forceActiveFocus()
         else if (it.kind === "network")
@@ -151,6 +195,7 @@ ColumnLayout {
             openOptions()
     }
     function toggleOther() {
+        disarm()
         otherOpen = !otherOpen
         otherName.text = ""
         otherForm.message = ""
@@ -186,7 +231,10 @@ ColumnLayout {
         PanelSwitch {
             visible: root.wifiDevice !== null
             checked: Networking.wifiEnabled
-            onToggled: Networking.wifiEnabled = !Networking.wifiEnabled
+            onToggled: {
+                root.disarm()
+                Networking.wifiEnabled = !Networking.wifiEnabled
+            }
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: -3
@@ -305,6 +353,7 @@ ColumnLayout {
                     // Connected: the details open and close. Else WifiJoin
                     // decides (saved: connect; open: the warning; new: the field)
                     function press() {
+                        root.disarm()
                         if (entry.modelData.connected)
                             root.selected = entry.details ? "" : entry.name
                         else
@@ -338,13 +387,18 @@ ColumnLayout {
                             }
                         }
 
-                        // Inside the row (PanelRow's trailing slot), only on hover, so
-                        // the list stays clean
+                        // Inside the row (PanelRow's trailing slot): on hover (the
+                        // connected one has it in its details), with the keyboard on
+                        // it, or armed, so the list stays clean
                         BarItem {
-                            visible: entry.modelData.known && !entry.modelData.connected && row.hovered && !WifiJoin.busy
-                            text: "Esquecer"
-                            textColor: Theme.gray
-                            onClicked: entry.modelData.forget()
+                            readonly property bool armed: root.armed === entry.modelData
+                            visible: entry.modelData.known && !WifiJoin.busy
+                                     && ((row.hovered && !entry.modelData.connected) || root.keyOn("forget", entry.index)
+                                         || (armed && !entry.details))
+                            text: armed ? "Clique de novo para esquecer" : "Esquecer"
+                            textColor: armed ? Theme.red : Theme.gray
+                            keyFocus: root.keyOn("forget", entry.index)
+                            onClicked: root.pressForget(entry.modelData)
                         }
                     }
 
@@ -380,17 +434,16 @@ ColumnLayout {
                             BarItem {
                                 text: "Desconectar"
                                 onClicked: {
+                                    root.disarm()
                                     root.selected = ""
                                     entry.modelData.disconnect()
                                 }
                             }
                             BarItem {
-                                text: "Esquecer"
-                                textColor: Theme.gray
-                                onClicked: {
-                                    root.selected = ""
-                                    entry.modelData.forget()
-                                }
+                                readonly property bool armed: root.armed === entry.modelData
+                                text: armed ? "Clique de novo para esquecer" : "Esquecer"
+                                textColor: armed ? Theme.red : Theme.gray
+                                onClicked: root.pressForget(entry.modelData)
                             }
                         }
                     }
@@ -441,7 +494,10 @@ ColumnLayout {
         icon: ""
         text: `Mostrar mais ${root.list.hidden} ${root.list.hidden === 1 ? "rede" : "redes"}`
         keyFocus: root.keyOn("more")
-        onClicked: root.showAll = true
+        onClicked: {
+            root.disarm()
+            root.showAll = true
+        }
     }
 
     // A hidden network: its name and password (WifiJoin.joinHidden)

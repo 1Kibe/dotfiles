@@ -38,15 +38,19 @@ function networks(list, opts) {
 
 // The Wi-Fi list's items for the control center's keyboard, in order: the
 // switch (with a Wi-Fi device), the search (when it shows), each network
-// shown, "Mostrar mais" (when some are left out), "Outra rede…" (with a
-// Wi-Fi device), "Mais opções…"
+// shown (a saved one followed by its "Esquecer"), "Mostrar mais" (when some
+// are left out), "Outra rede…" (with a Wi-Fi device), "Mais opções…"
 function wifiKeys(hasWifi, list, wifiOn) {
     const items = []
     if (hasWifi)
         items.push({ kind: "switch" })
     if (list.search)
         items.push({ kind: "search" })
-    list.shown.forEach((n, i) => items.push({ kind: "network", index: i }))
+    list.shown.forEach((n, i) => {
+        items.push({ kind: "network", index: i })
+        if (n.known === true)
+            items.push({ kind: "forget", index: i })
+    })
     if (list.hidden > 0)
         items.push({ kind: "more" })
     if (hasWifi && wifiOn !== false)
@@ -97,4 +101,82 @@ function summary(s) {
     if (s.hasWifi && !s.wifiOn)
         return "Wi-Fi desligado"
     return "Desconectado"
+}
+
+// ── Bluetooth ──
+
+// An address as BlueZ gives it (with ":"), or as its alias falls back to
+// it (with "-")
+var ADDRESS = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/
+
+// A device's name as shown (the alias, else the name it announces); ""
+// when it only has its address
+function deviceName(d) {
+    if (!d)
+        return ""
+    const alias = trim(d.name)
+    if (alias !== "" && !ADDRESS.test(alias))
+        return alias
+    const own = trim(d.deviceName)
+    return ADDRESS.test(own) ? "" : own
+}
+// What a row says: the name, or the address for one with none
+function deviceLabel(d) {
+    const n = deviceName(d)
+    return n !== "" ? n : trim(d ? d.address : "")
+}
+
+// The Bluetooth devices as listed. devices: the adapter's ({ name,
+// deviceName, address, paired, connected }); opts: { showUnnamed }. mine:
+// the paired ones (always on top), the connected first, then by name.
+// near: the others with a name, by name, and the ones with none (by
+// address) only with showUnnamed. unnamed: how many have no name.
+function bluetoothList(devices, opts) {
+    const o = opts || {}
+    const all = (Array.isArray(devices) ? devices : []).filter(d => d)
+    const byName = (a, b) => deviceLabel(a).localeCompare(deviceLabel(b))
+    const mine = all.filter(d => d.paired === true || d.connected === true)
+    mine.sort((a, b) => (Number(b.connected === true) - Number(a.connected === true)) || byName(a, b))
+    const others = all.filter(d => d.paired !== true && d.connected !== true)
+    const named = others.filter(d => deviceName(d) !== "").sort(byName)
+    const unnamed = others.filter(d => deviceName(d) === "").sort(byName)
+    const show = o.showUnnamed === true
+    return { mine: mine, near: show ? named.concat(unnamed) : named, unnamed: show ? 0 : unnamed.length }
+}
+
+// The Bluetooth list's items for the control center's keyboard, in order:
+// the switch (with an adapter), each of mine with its "Esquecer" (paired
+// ones), "Procurar", each nearby one, "+ N sem nome", "Mais opções…".
+// s: { available, powered, list }
+function bluetoothKeys(s) {
+    const items = []
+    if (s.available)
+        items.push({ kind: "switch" })
+    if (s.available && s.powered) {
+        s.list.mine.forEach((d, i) => {
+            items.push({ kind: "mine", index: i })
+            if (d.paired === true)
+                items.push({ kind: "forget", index: i })
+        })
+        items.push({ kind: "scan" })
+        s.list.near.forEach((d, i) => items.push({ kind: "near", index: i }))
+        if (s.list.unnamed > 0)
+            items.push({ kind: "unnamed" })
+    }
+    items.push({ kind: "options" })
+    return items
+}
+
+// The grid button's state line: generic words only, never a device's name
+// s: { available, powered, connected (a count) }
+function bluetoothSummary(s) {
+    if (!s.available)
+        return "Sem Bluetooth"
+    if (!s.powered)
+        return "Desligado"
+    if (s.connected === 1)
+        return "1 conectado"
+    if (s.connected > 1)
+        return `${s.connected} conectados`
+    return "Ligado"
 }

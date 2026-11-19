@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Bluetooth
 import qs.theme
 import qs.state
+import "../control/lists.js" as Lists
 
 // Hidden without an adapter. Off, on, or connected devices. Click: the
 // Bluetooth panel.
@@ -29,8 +30,10 @@ BarItem {
             return "Bluetooth desligado"
         if (connected.length === 0)
             return "Nenhum aparelho conectado"
-        // One line per connected device, with its battery when it reports one
-        return connected.map(d => d.batteryAvailable ? `${d.name} — ${Math.round(d.battery * 100)}%` : d.name).join("\n")
+        // One line per connected device (its name as shown, or the address
+        // for one with none), with its battery when it reports one
+        return connected.map(d => d.batteryAvailable ? `${Lists.deviceLabel(d)} — ${Math.round(d.battery * 100)}%`
+                                                     : Lists.deviceLabel(d)).join("\n")
     }
     onClicked: ShellState.toggle("bluetooth", monitorName)
 
