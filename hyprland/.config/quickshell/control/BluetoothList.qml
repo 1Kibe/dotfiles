@@ -8,13 +8,16 @@ import qs.bar
 import "lists.js" as Lists
 
 // The Bluetooth list, in the control center's Bluetooth section and in the
-// bar's Bluetooth panel: the switch (BluetoothPower, by rfkill), the paired
-// devices on top (the connected first), "Por perto" (found by "Procurar",
-// scrolling inside past maxListHeight, the ones with no name behind
-// "+ N sem nome") and "Mais opções…". Names from outside go through
-// lists.js and show as plain text.
+// bar's Bluetooth panel: the header with the state and the switch
+// (BluetoothPower, by rfkill), "Pareados" (the connected first), "Por
+// perto" ("Procurar" on top, scrolling inside past maxListHeight, the ones
+// with no name behind "+ N sem nome") and "Mais opções…", with the
+// sections' common parts (ListHeader, ListBlock, ListRow). Each device is
+// one row: its icon by type, the name, and on the right its state or what
+// a click does ("80% · conectado", "Conectar", "Parear"). Names from
+// outside go through lists.js and show as plain text.
 //
-// The list keeps what outlives a card (the Repeaters make the cards again
+// The list keeps what outlives a row (the Repeaters make the rows again
 // whenever a device moves between the lists): the one attempt to connect
 // or pair, with its message, and the "Esquecer" armed. Pairing from here
 // marks the device as trusted, so it reconnects by itself next time.
@@ -41,6 +44,27 @@ ColumnLayout {
     // a moment while BluetoothPower's state already changed
     readonly property bool scanning: adapter !== null && adapter.discovering
     readonly property var list: Lists.bluetoothList(powered && adapter !== null ? adapter.devices.values : [], { showUnnamed: showUnnamed })
+
+    // The state in the header and on the grid's button: a count at most,
+    // never a device's name
+    readonly property string stateText: Lists.bluetoothSummary({
+        available: available,
+        powered: powered,
+        connected: powered && adapter !== null ? adapter.devices.values.filter(d => d.connected).length : 0
+    })
+    // A device's row, on the right
+    function status(d) {
+        return Lists.deviceStatus({
+            error: errorDevice === d ? error : "",
+            attempt: attemptDevice === d ? attemptKind : "",
+            pairing: d.pairing === true,
+            connecting: d.state === BluetoothDeviceState.Connecting,
+            disconnecting: d.state === BluetoothDeviceState.Disconnecting,
+            connected: d.connected === true,
+            paired: d.paired === true,
+            battery: d.batteryAvailable === true ? Math.round(d.battery * 100) : -1
+        })
+    }
 
     property bool showUnnamed: false
     // This list started the search (another one, or bluetui, may have)
@@ -306,187 +330,155 @@ ColumnLayout {
         Quickshell.execDetached(["kitty", "--class", "bluetui", "bluetui"])
     }
 
-    component SectionLabel: Text {
-        Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
-        Layout.topMargin: 6
-        wrapMode: Text.WordWrap
-        textFormat: Text.PlainText
-        color: Theme.gray
-        font.family: Theme.font
-        font.pointSize: Theme.fontSize - 1
-    }
-    component Card: DeviceCard {
-        required property var modelData
-        required property int index
-        attempt: root.attemptDevice === modelData ? root.attemptKind : ""
-        error: root.errorDevice === modelData ? root.error : ""
-        onClicked: root.pressDevice(modelData)
-    }
-
     Layout.fillWidth: true
-    spacing: 2
+    spacing: 4
 
-    // Header: the switch
-    RowLayout {
-        Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
-        implicitHeight: 34
-
-        Text {
-            Layout.fillWidth: true
-            text: "Bluetooth"
-            textFormat: Text.PlainText
-            color: Theme.text
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize
-            font.bold: true
-        }
-        PanelSwitch {
-            visible: root.available
-            checked: root.powered
-            onToggled: root.toggleSwitch()
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -3
-                radius: Theme.radius
-                color: Theme.clear
-                visible: root.keyOn("switch")
-                border.width: Theme.focusWidth
-                border.color: Theme.focusRing
-            }
-        }
+    ListHeader {
+        section: true
+        icon: String.fromCodePoint(0xF00AF)   // nf-md-bluetooth, as the grid's button
+        title: "Bluetooth"
+        detail: root.stateText
+        hasSwitch: root.available
+        checked: root.powered
+        switchFocus: root.keyOn("switch")
+        onToggled: root.toggleSwitch()
     }
 
     // Why the list is empty, or the switch's failure (fixed words only)
-    SectionLabel {
-        Layout.bottomMargin: 6
+    Text {
+        Layout.fillWidth: true
+        Layout.leftMargin: 4
+        Layout.rightMargin: 4
         visible: text !== ""
         text: !root.available ? "Sem Bluetooth neste computador"
             : BluetoothPower.error !== "" ? BluetoothPower.error
             : BluetoothPower.busy ? (BluetoothPower.wantOn ? "Ligando…" : "Desligando…")
             : !root.powered ? "Bluetooth desligado" : ""
+        textFormat: Text.PlainText
+        wrapMode: Text.WordWrap
         color: BluetoothPower.error !== "" && root.available ? Theme.red : Theme.gray
+        font.family: Theme.font
+        font.pointSize: Theme.fontSize - 1
     }
 
     // Paired, always on top
-    SectionLabel {
+    ListHeader {
         visible: root.list.mine.length > 0
-        text: "Seus aparelhos"
-    }
-    Repeater {
-        model: root.list.mine
-        Card {
-            canForget: modelData.paired === true
-            forgetArmed: root.armed === modelData
-            keyFocus: root.keyOn("mine", index)
-            forgetFocus: root.keyOn("forget", index)
-            onForgetClicked: root.pressForget(modelData)
+        title: "Pareados"
+        detail: {
+            const n = root.list.mine.filter(d => d.connected).length
+            return n === 1 ? "1 conectado" : n > 1 ? `${n} conectados` : ""
         }
     }
+    ListBlock {
+        visible: root.list.mine.length > 0
 
-    // Nearby: searched on demand
-    RowLayout {
-        visible: root.powered
-        Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 6
-        Layout.topMargin: 6
+        Repeater {
+            model: root.list.mine
 
-        Text {
-            Layout.fillWidth: true
-            text: "Por perto"
-            textFormat: Text.PlainText
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 1
-        }
-        Text {
-            visible: root.scanning
-            text: "󰑓"
-            textFormat: Text.PlainText
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize
-            // Still with animations off or reduced motion (a zero length
-            // would loop with no pause)
-            RotationAnimation on rotation {
-                running: root.scanning && root.active && Theme.speed > 0 && !Theme.reduceMotion
-                from: 0
-                to: 360
-                duration: Theme.dur(Theme.spinnerPeriod)
-                loops: Animation.Infinite
-            }
-        }
-        BarItem {
-            text: root.scanning ? "Parar" : "Procurar"
-            keyFocus: root.keyOn("scan")
-            onClicked: root.toggleScan()
-        }
-    }
-    // BlueZ keeps the devices an earlier search found, so they stay listed
-    // after "Parar" until they drop off
-    Flickable {
-        id: flick
-        visible: root.powered && root.list.near.length > 0
-        Layout.fillWidth: true
-        implicitHeight: Math.min(near.implicitHeight, root.maxListHeight)
-        contentWidth: width
-        contentHeight: near.implicitHeight
-        interactive: near.implicitHeight > root.maxListHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
+            ListRow {
+                id: mineRow
+                required property var modelData
+                required property int index
+                readonly property bool armed: root.armed === modelData
 
-        ColumnLayout {
-            id: near
-            width: flick.width
-            spacing: 2
+                divider: index > 0
+                clickable: true
+                icon: Lists.deviceIcon(modelData.icon)
+                iconColor: modelData.connected ? Theme.accentLight : Theme.fg4
+                text: Lists.deviceLabel(modelData)
+                detail: root.status(modelData)
+                detailColor: root.errorDevice === modelData && root.error !== "" ? Theme.red : Theme.fg4
+                keyFocus: root.keyOn("mine", index)
+                onClicked: root.pressDevice(modelData)
 
-            Repeater {
-                model: root.list.near
-                Card {
-                    id: nearCard
-                    keyFocus: root.keyOn("near", index)
-                    onKeyFocusChanged: {
-                        if (keyFocus) {
-                            if (y < flick.contentY)
-                                flick.contentY = y
-                            else if (y + height > flick.contentY + flick.height)
-                                flick.contentY = y + height - flick.height
-                        }
-                    }
+                // Only for a paired device, while the pointer or the
+                // keyboard is on the row, or while armed
+                ListButton {
+                    visible: mineRow.modelData.paired === true
+                             && (mineRow.hovered || mineRow.keyFocus || root.keyOn("forget", mineRow.index) || mineRow.armed)
+                    compact: true
+                    danger: mineRow.armed
+                    text: mineRow.armed ? "Clique de novo para esquecer" : "Esquecer"
+                    keyFocus: root.keyOn("forget", mineRow.index)
+                    onClicked: root.pressForget(mineRow.modelData)
                 }
             }
         }
     }
-    PanelRow {
-        visible: root.powered && root.list.unnamed > 0
-        icon: ""
-        text: `+ ${root.list.unnamed} sem nome`
-        keyFocus: root.keyOn("unnamed")
-        onClicked: root.revealUnnamed()
+
+    // Nearby: searched on demand; BlueZ keeps the devices an earlier search
+    // found, so they stay listed after "Parar" until they drop off
+    ListHeader {
+        visible: root.powered
+        title: "Por perto"
+        detail: root.scanning ? "procurando…"
+              : root.list.near.length === 1 ? "1 aparelho"
+              : root.list.near.length > 1 ? `${root.list.near.length} aparelhos` : ""
     }
-    SectionLabel {
-        visible: root.scanning && root.list.near.length === 0 && root.list.unnamed === 0
-        text: "Procurando aparelhos…"
+    ListBlock {
+        id: nearBlock
+        visible: root.powered
+        maxHeight: root.maxListHeight
+
+        ListRow {
+            action: true
+            clickable: true
+            icon: String.fromCodePoint(root.scanning ? 0xF04DB : 0xF0450)   // nf-md-stop, nf-md-refresh
+            text: root.scanning ? "Parar de procurar" : "Procurar aparelhos"
+            keyFocus: root.keyOn("scan")
+            onClicked: root.toggleScan()
+        }
+        Repeater {
+            model: root.list.near
+
+            ListRow {
+                id: nearRow
+                required property var modelData
+                required property int index
+
+                divider: true
+                clickable: true
+                icon: Lists.deviceIcon(modelData.icon)
+                text: Lists.deviceLabel(modelData)
+                detail: root.status(modelData)
+                detailColor: root.errorDevice === modelData && root.error !== "" ? Theme.red : Theme.fg4
+                keyFocus: root.keyOn("near", index)
+                onClicked: root.pressDevice(modelData)
+                onKeyFocusChanged: {
+                    if (keyFocus)
+                        nearBlock.reveal(nearRow)
+                }
+            }
+        }
+        ListRow {
+            id: unnamedRow
+            visible: root.list.unnamed > 0
+            divider: true
+            action: true
+            clickable: true
+            icon: String.fromCodePoint(0xF0208)   // nf-md-eye
+            text: `+ ${root.list.unnamed} sem nome`
+            keyFocus: root.keyOn("unnamed")
+            onClicked: root.revealUnnamed()
+            onKeyFocusChanged: {
+                if (keyFocus)
+                    nearBlock.reveal(unnamedRow)
+            }
+        }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        Layout.leftMargin: 8
-        Layout.rightMargin: 8
+    // Anything the list does not cover
+    ListBlock {
         Layout.topMargin: 4
-        Layout.bottomMargin: 4
-        implicitHeight: 1
-        color: Theme.bg2
-    }
 
-    PanelRow {
-        icon: "󰒓"
-        text: "Mais opções…"
-        keyFocus: root.keyOn("options")
-        onClicked: root.openOptions()
+        ListRow {
+            action: true
+            clickable: true
+            icon: String.fromCodePoint(0xF0493)   // nf-md-cog
+            text: "Mais opções…"
+            keyFocus: root.keyOn("options")
+            onClicked: root.openOptions()
+        }
     }
 }

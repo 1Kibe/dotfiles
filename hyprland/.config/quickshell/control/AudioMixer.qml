@@ -7,9 +7,10 @@ import qs.bar
 import "lists.js" as Lists
 
 // The mixer, in the control center's mixer section (under the volume
-// slider) and in the bar's volume panel: the output devices, the
-// microphone (mute, level and its devices) and one control per app playing
-// sound (icon, name, mute, level), the apps scrolling inside past
+// slider) and in the bar's volume panel, with the sections' common parts
+// (ListHeader, ListBlock, ListRow): the output devices, the microphone
+// (its level and mute, and its devices) and one row per app playing sound
+// (icon, name, level, mute), the apps scrolling inside past
 // maxListHeight. In the bar's panel the output's own level shows on top too
 // (outputLevel). Nodes are tracked (volume and mute only work on tracked
 // nodes) only while the list shows, at most MAX_STREAMS apps; closed,
@@ -83,206 +84,158 @@ ColumnLayout {
             toggleMute(m.streams[it.index])
     }
 
-    component Caption: Text {
-        Layout.fillWidth: true
-        Layout.leftMargin: 12
-        Layout.rightMargin: 12
-        Layout.topMargin: 6
-        textFormat: Text.PlainText
-        wrapMode: Text.WordWrap
-        color: Theme.gray
-        font.family: Theme.font
-        font.pointSize: Theme.fontSize - 1
-    }
-    // A mute button, a slider (0..100%) and the percent, for one node
-    component Level: RowLayout {
-        id: level
-        required property var node
-        property string onIcon: String.fromCodePoint(0xF057E)     // nf-md-volume_high
-        property string offIcon: String.fromCodePoint(0xF075F)    // nf-md-volume_off
-        property bool muteFocus: false
-        readonly property bool ok: root.live(node)
-        readonly property bool muted: ok && node.audio.muted
-
-        Layout.fillWidth: true
-        Layout.leftMargin: 8
-        Layout.rightMargin: 8
-        spacing: 6
-
-        BarItem {
-            text: level.muted || !level.ok ? level.offIcon : level.onIcon
-            textColor: !level.ok ? Theme.gray : level.muted ? Theme.red : Theme.text
-            tooltip: level.muted ? "Ativar o som" : "Silenciar"
-            keyFocus: level.muteFocus
-            onClicked: root.toggleMute(level.node)
-        }
-        PanelSlider {
-            Layout.fillWidth: true
-            enabled: level.ok
-            value: level.ok ? Math.min(1, level.node.audio.volume) : 0
-            muted: level.muted
-            onMoved: v => root.setVolume(level.node, v)
-        }
-        // Fixed width so the slider does not jump as the digits change
-        Text {
-            Layout.preferredWidth: 38
-            horizontalAlignment: Text.AlignRight
-            textFormat: Text.PlainText
-            text: level.ok ? `${Math.round(level.node.audio.volume * 100)}%` : ""
-            color: level.muted ? Theme.red : Theme.text
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize
-        }
-    }
-    // A device row: the default one checked; a click makes it the default
-    component Device: PanelRow {
-        required property var modelData
-        required property int index
-        property bool output: true
-        readonly property bool isDefault: (output ? root.sink : root.source) === modelData
-        // A blank icon still takes the space, so the names stay aligned
-        icon: isDefault ? "󰄬" : " "
-        text: Lists.audioDeviceName(modelData) || "Aparelho sem nome"
-        onClicked: root.makeDefault(modelData, output)
-    }
-
     Layout.fillWidth: true
-    spacing: 2
+    spacing: 4
 
-    // ── Output ──
-    Caption {
-        text: "Saída"
+    ListHeader {
+        section: true
+        icon: String.fromCodePoint(0xF057E)   // nf-md-volume_high
+        title: "Mixer"
+        detail: root.m.streams.length === 0 ? "Nenhum app tocando"
+              : root.m.streams.length === 1 ? "1 app tocando" : `${root.m.streams.length + root.m.hiddenStreams} apps tocando`
     }
-    Level {
-        visible: root.outputLevel && root.live(root.sink)
-        node: root.sink
+
+    // ── Output: in the bar's panel its own level on top; the devices, the
+    // default one "em uso", a click on another makes it the default ──
+    ListHeader {
+        title: "Saídas"
     }
-    Caption {
-        visible: root.m.sinks.length === 0
-        text: "Sem saída de áudio"
-    }
-    Repeater {
-        model: root.m.sinks
-        Device {
-            output: true
-            keyFocus: root.keyOn("sink", index)
+    ListBlock {
+        ListRow {
+            visible: root.outputLevel && root.live(root.sink)
+            fillTrailing: true
+            textWidth: 0
+            icon: String.fromCodePoint(0xF04C3)   // nf-md-speaker
+
+            LevelRow {
+                Layout.fillWidth: true
+                node: root.sink
+                ok: root.live(root.sink)
+                onMuteClicked: root.toggleMute(root.sink)
+                onMoved: v => root.setVolume(root.sink, v)
+            }
         }
-    }
-
-    // ── Microphone ──
-    Caption {
-        text: "Microfone"
-    }
-    Level {
-        visible: root.live(root.source)
-        node: root.source
-        onIcon: String.fromCodePoint(0xF036C)    // nf-md-microphone
-        offIcon: String.fromCodePoint(0xF036D)   // nf-md-microphone_off
-        muteFocus: root.keyOn("micMute")
-    }
-    Caption {
-        visible: root.m.sources.length === 0
-        text: "Sem microfone"
-    }
-    Repeater {
-        model: root.m.sources
-        Device {
-            output: false
-            keyFocus: root.keyOn("source", index)
+        ListRow {
+            visible: root.m.sinks.length === 0
+            text: "Sem saída de áudio"
+            textColor: Theme.gray
         }
-    }
+        Repeater {
+            model: root.m.sinks
 
-    // ── Apps playing sound ──
-    Caption {
-        text: "Apps"
-    }
-    Caption {
-        visible: root.m.streams.length === 0
-        text: "Nenhum app tocando som"
-    }
-    Flickable {
-        id: flick
-        visible: root.m.streams.length > 0
-        Layout.fillWidth: true
-        implicitHeight: Math.min(apps.implicitHeight, root.maxListHeight)
-        contentWidth: width
-        contentHeight: apps.implicitHeight
-        interactive: apps.implicitHeight > root.maxListHeight
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
-
-        ColumnLayout {
-            id: apps
-            width: flick.width
-            spacing: 4
-
-            Repeater {
-                model: root.m.streams
-
-                ColumnLayout {
-                    id: app
-                    required property var modelData
-                    required property int index
-                    readonly property string iconName: Lists.streamIcon(modelData)
-                    readonly property string iconPath: iconName !== "" ? Quickshell.iconPath(iconName, true) : ""
-
-                    Layout.fillWidth: true
-                    spacing: 0
-
-                    readonly property bool keyed: root.keyOn("stream", index)
-                    onKeyedChanged: {
-                        if (keyed) {
-                            if (y < flick.contentY)
-                                flick.contentY = y
-                            else if (y + height > flick.contentY + flick.height)
-                                flick.contentY = y + height - flick.height
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 12
-                        Layout.rightMargin: 12
-                        spacing: 8
-
-                        // The theme's icon for the app, else a generic one
-                        Image {
-                            visible: app.iconPath !== ""
-                            source: app.iconPath
-                            sourceSize.width: 16
-                            sourceSize.height: 16
-                            Layout.preferredWidth: 16
-                            Layout.preferredHeight: 16
-                        }
-                        Text {
-                            visible: app.iconPath === ""
-                            text: String.fromCodePoint(0xF075A)   // nf-md-music_note
-                            textFormat: Text.PlainText
-                            color: Theme.gray
-                            font.family: Theme.font
-                            font.pointSize: Theme.fontSize
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: Lists.streamName(app.modelData) || "App sem nome"
-                            textFormat: Text.PlainText
-                            maximumLineCount: 1
-                            elide: Text.ElideRight
-                            color: Theme.text
-                            font.family: Theme.font
-                            font.pointSize: Theme.fontSize - 1
-                        }
-                    }
-                    Level {
-                        node: app.modelData
-                        muteFocus: app.keyed
-                    }
-                }
+            ListRow {
+                required property var modelData
+                required property int index
+                readonly property bool isDefault: root.sink === modelData
+                divider: index > 0 || (root.outputLevel && root.live(root.sink))
+                clickable: !isDefault
+                icon: isDefault ? String.fromCodePoint(0xF012C) : " "   // nf-md-check; a blank keeps the names aligned
+                iconColor: Theme.accentLight
+                text: Lists.audioDeviceName(modelData) || "Aparelho sem nome"
+                detail: isDefault ? "em uso" : "Usar"
+                keyFocus: root.keyOn("sink", index)
+                onClicked: root.makeDefault(modelData, true)
             }
         }
     }
-    Caption {
-        visible: root.m.hiddenStreams > 0
-        text: `e mais ${root.m.hiddenStreams}`
+
+    // ── Microphone: its level and mute, then its devices ──
+    ListHeader {
+        title: "Microfone"
+    }
+    ListBlock {
+        ListRow {
+            visible: root.live(root.source)
+            fillTrailing: true
+            textWidth: 0
+            icon: String.fromCodePoint(0xF036C)   // nf-md-microphone
+
+            LevelRow {
+                Layout.fillWidth: true
+                node: root.source
+                ok: root.live(root.source)
+                onIcon: String.fromCodePoint(0xF036C)    // nf-md-microphone
+                offIcon: String.fromCodePoint(0xF036D)   // nf-md-microphone_off
+                muteFocus: root.keyOn("micMute")
+                onMuteClicked: root.toggleMute(root.source)
+                onMoved: v => root.setVolume(root.source, v)
+            }
+        }
+        ListRow {
+            visible: root.m.sources.length === 0
+            text: "Sem microfone"
+            textColor: Theme.gray
+        }
+        Repeater {
+            model: root.m.sources
+
+            ListRow {
+                required property var modelData
+                required property int index
+                readonly property bool isDefault: root.source === modelData
+                divider: index > 0 || root.live(root.source)
+                clickable: !isDefault
+                icon: isDefault ? String.fromCodePoint(0xF012C) : " "   // nf-md-check
+                iconColor: Theme.accentLight
+                text: Lists.audioDeviceName(modelData) || "Aparelho sem nome"
+                detail: isDefault ? "em uso" : "Usar"
+                keyFocus: root.keyOn("source", index)
+                onClicked: root.makeDefault(modelData, false)
+            }
+        }
+    }
+
+    // ── Apps playing sound: one row each (icon, name, level, mute) ──
+    ListHeader {
+        title: "Apps"
+        detail: root.m.streams.length > 0 ? String(root.m.streams.length + root.m.hiddenStreams) : ""
+    }
+    ListBlock {
+        id: appsBlock
+        maxHeight: root.maxListHeight
+
+        ListRow {
+            visible: root.m.streams.length === 0
+            text: "Nenhum app tocando som"
+            textColor: Theme.gray
+        }
+        Repeater {
+            model: root.m.streams
+
+            ListRow {
+                id: app
+                required property var modelData
+                required property int index
+                readonly property string iconName: Lists.streamIcon(modelData)
+                readonly property bool keyed: root.keyOn("stream", index)
+
+                divider: index > 0
+                fillTrailing: true
+                textWidth: Math.round(root.width * 0.3)
+                // The theme's icon for the app, else a generic one
+                image: iconName !== "" ? Quickshell.iconPath(iconName, true) : ""
+                icon: String.fromCodePoint(0xF075A)   // nf-md-music_note
+                text: Lists.streamName(modelData) || "App sem nome"
+                onKeyedChanged: {
+                    if (keyed)
+                        appsBlock.reveal(app)
+                }
+
+                LevelRow {
+                    Layout.fillWidth: true
+                    node: app.modelData
+                    ok: root.live(app.modelData)
+                    muteFocus: app.keyed
+                    onMuteClicked: root.toggleMute(app.modelData)
+                    onMoved: v => root.setVolume(app.modelData, v)
+                }
+            }
+        }
+        ListRow {
+            visible: root.m.hiddenStreams > 0
+            divider: true
+            text: `e mais ${root.m.hiddenStreams}`
+            textColor: Theme.gray
+        }
     }
 }

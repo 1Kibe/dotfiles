@@ -103,6 +103,8 @@ Singleton {
     readonly property real controlListMax: 0.6
     readonly property int tileHeight: 56
     readonly property int tileGap: 8
+    // A row of the sections' lists (control/ListRow), the same in all of them
+    readonly property int listRowHeight: 30
     // Its buttons: at rest, switched on (also the bar button of a panel that
     // is open), and the ring of the one the keyboard is on
     readonly property color tileFill: cardFill

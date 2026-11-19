@@ -182,6 +182,47 @@ function bluetoothKeys(s) {
     return items
 }
 
+// A device's icon by its type (the freedesktop icon name BlueZ gives it,
+// from its class); a plain Bluetooth icon for anything unknown
+function deviceIcon(icon) {
+    const i = typeof icon === "string" ? icon : ""
+    if (i.startsWith("audio-head"))
+        return String.fromCodePoint(0xF02CB)   // nf-md-headphones
+    if (i.startsWith("audio"))
+        return String.fromCodePoint(0xF04C3)   // nf-md-speaker
+    if (i === "input-mouse")
+        return String.fromCodePoint(0xF037D)   // nf-md-mouse
+    if (i === "input-keyboard")
+        return String.fromCodePoint(0xF030C)   // nf-md-keyboard
+    if (i === "input-gaming")
+        return String.fromCodePoint(0xF02B4)   // nf-md-gamepad_variant
+    if (i.startsWith("phone"))
+        return String.fromCodePoint(0xF03F2)   // nf-md-cellphone
+    if (i.startsWith("video") || i.includes("tv"))
+        return String.fromCodePoint(0xF0502)   // nf-md-television
+    if (i === "computer")
+        return String.fromCodePoint(0xF0322)   // nf-md-laptop
+    return String.fromCodePoint(0xF00AF)       // nf-md-bluetooth
+}
+
+// What a device's row says on its right: an error, the state while it
+// changes, the battery and "conectado", or what a click does. s: { error,
+// attempt ("connect", "pair", ""), pairing, connecting, disconnecting,
+// connected, paired, battery (0..100, -1 none) }
+function deviceStatus(s) {
+    if (s.error)
+        return s.error
+    if (s.pairing || s.attempt === "pair")
+        return "Pareando…"
+    if (s.connecting || s.attempt === "connect")
+        return "Conectando…"
+    if (s.disconnecting)
+        return "Desconectando…"
+    if (s.connected)
+        return s.battery >= 0 ? `${s.battery}% · conectado` : "conectado"
+    return s.paired ? "Conectar" : "Parear"
+}
+
 // The grid button's state line: generic words only, never a device's name
 // s: { available, powered, connected (a count) }
 function bluetoothSummary(s) {
@@ -285,6 +326,44 @@ function updateLine(line) {
     if (!PKG_NAME.test(parts[0]) || !PKG_VERSION.test(parts[1]) || !PKG_VERSION.test(parts[3]))
         return null
     return { name: parts[0], from: parts[1], to: parts[3] }
+}
+
+// How many of an origin stay out of its block (all: "e mais N" opened)
+function updatesHidden(o, all) {
+    if (!o || o.state === "missing" || o.count <= 0)
+        return 0
+    const n = o.list.length
+    return o.count - Math.min(n, all ? n : UPDATES_SHOWN)
+}
+// "e mais N" opens the rest when there is a rest to show
+function updatesCanOpen(o, all) {
+    return !all && !!o && o.state !== "missing" && o.list.length > UPDATES_SHOWN
+}
+// The one line of an origin's block with nothing to list ("" when it lists)
+function updatesWhy(o) {
+    if (o.state === "missing")
+        return o.missing === "fakeroot" ? "checkupdates precisa do fakeroot (base-devel)"
+             : o.missing === "pacman-contrib" ? "checkupdates não instalado (pacman-contrib)"
+             : "paru não instalado"
+    if (o.state === "failed")
+        return o.count > 0 ? "Não deu para verificar agora" : "Não deu para verificar"
+    if (o.count > 0)
+        return ""
+    if (o.state === "checking")
+        return "Verificando…"
+    if (o.count === 0)
+        return "Em dia"
+    return "Ainda não verificado"
+}
+// An origin's header, on the right: the tool, the count once known, and
+// the last check's time when given ("pacman · 9 · 12:24")
+function updatesTool(o, name, time) {
+    const parts = [name]
+    if (o.state !== "missing" && o.count >= 0)
+        parts.push(String(o.count))
+    if (time)
+        parts.push(time)
+    return parts.join(" · ")
 }
 
 // The grid button's state line and whether it shows yellow. s: { sys, aur }

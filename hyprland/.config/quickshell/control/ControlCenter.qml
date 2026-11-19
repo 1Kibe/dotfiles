@@ -3,9 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 import qs.bar
-import Quickshell.Networking
 import "sections.js" as Sections
-import "lists.js" as Lists
 
 // The control center: drops down from its button and continues the bar's
 // right end. The top line (battery, settings, power) with the power section
@@ -57,27 +55,6 @@ AttachedPanel {
     // The grid's buttons drawn now (sections.js)
     readonly property var tiles: Sections.visible(Sections.SECTIONS, { dndAvailable: ShellState.dndAvailable })
     readonly property var night: Sections.nightText(NightLight.enabled, NightLight.start, NightLight.end, NightLight.wanted)
-    // The network button's state: generic words, never a network's name
-    readonly property string netState: {
-        const w = WifiScan.wifiDevice
-        const nets = w ? w.networks.values : []
-        return Lists.summary({
-            hasWifi: w !== null,
-            wifiOn: Networking.wifiEnabled,
-            wired: WifiScan.wiredDevice !== null && WifiScan.wiredDevice.connected,
-            connected: nets.some(n => n.connected),
-            connecting: WifiJoin.busy || nets.some(n => n.stateChanging)
-        })
-    }
-
-    // The Bluetooth button's state: a count at most, never a device's name
-    readonly property string btState: Lists.bluetoothSummary({
-        available: BluetoothPower.available,
-        powered: BluetoothPower.powered,
-        connected: BluetoothPower.powered && BluetoothPower.adapter !== null
-                   ? BluetoothPower.adapter.devices.values.filter(d => d.connected).length : 0
-    })
-
     // The Tailscale button shows the generic state read at each opening
     onOpenChanged: {
         if (open)
@@ -139,8 +116,8 @@ AttachedPanel {
                 on: (modelData.id === "nightlight" && NightLight.enabled) || (modelData.id === "tailscale" && Tailnet.backend === "Running")
                 warn: modelData.id === "updates" && Updates.summary.warn
                 status: modelData.id === "nightlight" ? root.night.status
-                      : modelData.id === "wifi" ? root.netState
-                      : modelData.id === "bluetooth" ? root.btState
+                      : modelData.id === "wifi" ? wifi.stateText
+                      : modelData.id === "bluetooth" ? bluetooth.stateText
                       : modelData.id === "updates" ? Updates.summary.text
                       : modelData.id === "tailscale" ? Tailnet.summary : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
