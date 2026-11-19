@@ -25,7 +25,7 @@ BarItem {
         anchors.fill: parent
         z: -1
         radius: Theme.radius
-        color: root.open ? Theme.alpha(Theme.accentLight, 0.22) : Theme.clear
+        color: root.open ? Theme.tileOn : Theme.clear
     }
 
     // A child of the button so it anchors under it

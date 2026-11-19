@@ -12,6 +12,8 @@ Rectangle {
     property string detail
     property bool clickable: true
     property bool danger: false
+    // The keyboard is on it (the control center's lists): a ring of the Theme
+    property bool keyFocus: false
     // Read by NetworkPanel to show a row's extra buttons only on hover
     readonly property bool hovered: mouse.containsMouse
     default property alias trailing: trail.data   // extra buttons at the end
@@ -26,6 +28,8 @@ Rectangle {
     Behavior on color {
         ColorAnimation { duration: Theme.animFast }
     }
+    border.width: keyFocus ? Theme.focusWidth : 0
+    border.color: Theme.focusRing
 
     // Declared before the RowLayout, so buttons in `trailing` sit on top of
     // it and get their own clicks

@@ -54,6 +54,15 @@ Singleton {
     readonly property var controlSections: ["wifi", "bluetooth", "updates", "tailscale", "mixer", "power",
                                             "background", "github"]
     property string controlSection: ""
+    // Opened by a key (Super+I, Super+X, the IPC) rather than a click: the
+    // keyboard's ring shows at once on the first button
+    property bool controlByKey: false
+    // Não perturbe has a button only once the notifications module exists
+    // (it owns that state; the control center only shows and switches it)
+    property bool dndAvailable: false
+    // The minimize strip asks the control center of `monitor` to fold its
+    // section when it needs the room (it never reopens by itself)
+    signal accordionCollapseRequested(string monitor)
     // The monitor whose control center is open ("" = closed)
     readonly property string controlOn: openPanel === "control" ? openOn : ""
     function controlOpen(monitor) {
@@ -66,10 +75,11 @@ Singleton {
     }
     // Opens it on `monitor` with `section` open ("" = all folded); false when
     // it may not open or the section is not one of the list
-    function openControl(monitor, section) {
+    function openControl(monitor, section, byKey) {
         const s = section === undefined ? "" : section
         if (monitor === "" || (s !== "" && !controlSections.includes(s)) || !controlAllowed())
             return false
+        controlByKey = byKey === true
         openPanel = "control"
         openOn = monitor
         controlSection = s
@@ -97,9 +107,9 @@ Singleton {
     }
 
     // A click on a bar button (ControlButton, NetworkStatus, CenterIsland...)
-    function toggle(panel, monitor) {
+    function toggle(panel, monitor, byKey) {
         if (panel === "power") {
-            togglePower(monitor)
+            togglePower(monitor, byKey)
             return
         }
         const id = panelId(panel)
@@ -108,7 +118,7 @@ Singleton {
         if (isOpen(id, monitor)) {
             close()
         } else if (id === "control") {
-            openControl(monitor, "")
+            openControl(monitor, "", byKey)
         } else {
             openPanel = id
             openOn = monitor
@@ -116,11 +126,11 @@ Singleton {
     }
     // Super+X and Ctrl+Alt+Del: the control center on its power section; the
     // same key again closes it, from another section it moves to power
-    function togglePower(monitor) {
+    function togglePower(monitor, byKey) {
         if (isOpen("control", monitor) && controlSection === "power")
             close()
         else
-            openControl(monitor, "power")
+            openControl(monitor, "power", byKey)
     }
 
     // The IPC handlers in shell.qml (keybinds and scripts). The same as a
@@ -128,7 +138,7 @@ Singleton {
     // focus grab and keyboard work the same either way. Asked from a screen
     // with no bar, it opens on the bar's screen
     function toggleByKey(panel, monitor) {
-        toggle(panel, panelScreen(monitor))
+        toggle(panel, panelScreen(monitor), true)
     }
 
     // Esc: in the control center first the open section, then the center;

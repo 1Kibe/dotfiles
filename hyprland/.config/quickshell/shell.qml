@@ -197,7 +197,7 @@ ShellRoot {
             const monitor = Hyprland.focusedMonitor
             if (!monitor)
                 return "sem monitor em foco"
-            return ShellState.openControl(ShellState.panelScreen(monitor.name), section) ? "ok" : "não abriu"
+            return ShellState.openControl(ShellState.panelScreen(monitor.name), section, true) ? "ok" : "não abriu"
         }
 
         // States only, never a name (of a network, a device, a package...)

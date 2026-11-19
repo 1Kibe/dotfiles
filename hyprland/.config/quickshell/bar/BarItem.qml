@@ -12,6 +12,8 @@ Item {
     property bool clickable: true
     property int maxWidth: 0      // > 0: cut the text with "…" at this width
     property int fontSize: Theme.fontSize
+    // The keyboard is on it (the control center's top line): a ring of the Theme
+    property bool keyFocus: false
 
     // Qt.LeftButton, MiddleButton or RightButton; only sent when clickable
     signal clicked(int button)
@@ -32,6 +34,8 @@ Item {
         anchors.fill: parent
         radius: Theme.radius
         color: root.clickable && mouse.containsMouse ? Theme.veil : Theme.clear
+        border.width: root.keyFocus ? Theme.focusWidth : 0
+        border.color: Theme.focusRing
     }
 
     Text {

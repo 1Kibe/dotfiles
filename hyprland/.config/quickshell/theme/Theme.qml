@@ -64,6 +64,8 @@ Singleton {
     property string fontPanels: "Inter"
     property real textScale: 1
     readonly property int fontSize: Math.round(11 * textScale)
+    // The second lines of the control center's buttons (state, hours)
+    readonly property int fontSizeSmall: Math.round(9 * textScale)
     // The lists of choice (settings/ui/Dropdown): one width for every page,
     // following the text size. A paired row (on power / on battery) has two
     // columns of its own width, so both fit beside the label; an open list
@@ -101,6 +103,12 @@ Singleton {
     readonly property real controlListMax: 0.6
     readonly property int tileHeight: 56
     readonly property int tileGap: 8
+    // Its buttons: at rest, switched on (also the bar button of a panel that
+    // is open), and the ring of the one the keyboard is on
+    readonly property color tileFill: cardFill
+    readonly property color tileOn: root.alpha(accentLight, 0.22)
+    readonly property color focusRing: accentLight
+    readonly property int focusWidth: 2
     readonly property int cardIcon: 32     // icon circle of the device cards
 
     // System monitor rings (bar and panel)

@@ -20,6 +20,8 @@ ColumnLayout {
 
     // This section open in a center that shows (ControlCenter)
     required property bool active
+    // The row the keyboard is on (-1 none); Enter is a click (ControlKeys)
+    property int keyIndex: -1
 
     property string armed: ""   // action waiting for its second click
     property double armedAt: 0
@@ -67,8 +69,10 @@ ColumnLayout {
 
         PanelRow {
             required property var modelData
+            required property int index
 
             Layout.fillWidth: true
+            keyFocus: root.keyIndex === index
             icon: modelData.icon
             text: root.armed === modelData.id ? `Clique de novo para ${modelData.label.toLowerCase()}` : modelData.label
             // The armed row turns red and asks for the second click
