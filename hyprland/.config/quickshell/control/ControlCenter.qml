@@ -207,14 +207,11 @@ AttachedPanel {
         open: root.open && ShellState.controlSection === "mixer"
         maxHeight: root.listMax
 
-        Text {
-            Layout.fillWidth: true
-            Layout.margins: 12
-            text: "(em breve)"
-            textFormat: Text.PlainText
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize
+        AudioMixer {
+            id: mixer
+            active: root.open && ShellState.controlSection === "mixer"
+            maxListHeight: Math.max(120, root.listMax - 260)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
         }
     }
     BrightnessSlider {
@@ -229,7 +226,8 @@ AttachedPanel {
         tiles: root.tiles
         sectionList: ShellState.controlSection === "power" ? power
                    : ShellState.controlSection === "wifi" ? wifi
-                   : ShellState.controlSection === "bluetooth" ? bluetooth : null
+                   : ShellState.controlSection === "bluetooth" ? bluetooth
+                   : ShellState.controlSection === "mixer" ? mixer : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness

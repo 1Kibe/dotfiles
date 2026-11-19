@@ -195,3 +195,67 @@ function bluetoothSummary(s) {
         return `${s.connected} conectados`
     return "Ligado"
 }
+
+// ── The mixer (PipeWire) ──
+
+var MAX_STREAMS = 50   // app streams shown (and tracked) at most
+// An icon only by a theme name: no path, no URL
+var ICON_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+
+// A device as shown: the friendliest name it has
+function audioDeviceName(n) {
+    return n ? trim(n.description || n.nickname || n.name) : ""
+}
+// An app's stream as shown: the name the app announces, else the node's
+function streamName(n) {
+    if (!n)
+        return ""
+    const p = n.properties || {}
+    const app = trim(p["application.name"])
+    return app !== "" ? app : trim(n.description || n.name)
+}
+// The theme icon name the app announces, "" for none or one that is not a
+// plain name
+function streamIcon(n) {
+    const p = (n && n.properties) || {}
+    const i = typeof p["application.icon-name"] === "string" ? p["application.icon-name"] : ""
+    return ICON_NAME.test(i) ? i : ""
+}
+// A volume as written: 0..1, never above 100%
+function clampVolume(v) {
+    const x = Number(v)
+    return isFinite(x) ? Math.max(0, Math.min(1, x)) : 0
+}
+
+// The audio flag of a node's PwNodeType (Audio = 1; AudioSink is 17,
+// AudioSource 9, AudioOutStream 21): known before the node is tracked,
+// unlike its audio object, which an untracked stream does not have yet
+var AUDIO_FLAG = 1
+
+// The mixer's nodes: the output and input devices (not app streams) and the
+// apps playing sound (output streams), each by name, the apps cut at
+// MAX_STREAMS. nodes: Pipewire.nodes ({ type, isSink, isStream, ... }).
+// Returns { sinks, sources, streams, hiddenStreams }.
+function mixer(nodes) {
+    const all = toList(nodes).filter(n => n && (Number(n.type) & AUDIO_FLAG) === AUDIO_FLAG)
+    const byDevice = (a, b) => audioDeviceName(a).localeCompare(audioDeviceName(b))
+    const byStream = (a, b) => streamName(a).localeCompare(streamName(b))
+    const sinks = all.filter(n => n.isStream !== true && n.isSink === true).sort(byDevice)
+    const sources = all.filter(n => n.isStream !== true && n.isSink !== true).sort(byDevice)
+    const playing = all.filter(n => n.isStream === true && n.isSink === true).sort(byStream)
+    const streams = playing.slice(0, MAX_STREAMS)
+    return { sinks: sinks, sources: sources, streams: streams, hiddenStreams: playing.length - streams.length }
+}
+
+// The mixer's items for the control center's keyboard, in order: each
+// output, the microphone's mute (with a default input), each input, each
+// app's mute
+function mixerKeys(m, hasSource) {
+    const items = []
+    m.sinks.forEach((n, i) => items.push({ kind: "sink", index: i }))
+    if (hasSource)
+        items.push({ kind: "micMute" })
+    m.sources.forEach((n, i) => items.push({ kind: "source", index: i }))
+    m.streams.forEach((n, i) => items.push({ kind: "stream", index: i }))
+    return items
+}
