@@ -7,8 +7,9 @@ import "sections.js" as Sections
 
 // The control center: drops down from its button and continues the bar's
 // right end. The top line (battery, settings, power) with the power section
-// under it, the grid of buttons (sections.js) with their sections under it;
-// one section open at a time (ShellState.controlSection). The keyboard moves
+// under it, the grid of buttons (sections.js) with their sections under it,
+// and the sliders (volume, with the mixer under it, and brightness); one
+// section open at a time (ShellState.controlSection). The keyboard moves
 // over all of it (ControlKeys).
 AttachedPanel {
     id: root
@@ -144,12 +145,40 @@ AttachedPanel {
         }
     }
 
+    // The sliders: the volume (its arrow folds out the mixer, under it) and
+    // the brightness
+    VolumeSlider {
+        id: volume
+        active: root.open
+        keyPart: keys.keyFocus("sliders", 0) ? "slider" : keys.keyFocus("sliders", 1) ? "mixer" : ""
+    }
+    Accordion {
+        open: root.open && ShellState.controlSection === "mixer"
+        maxHeight: root.listMax
+
+        Text {
+            Layout.fillWidth: true
+            Layout.margins: 12
+            text: "(em breve)"
+            textFormat: Text.PlainText
+            color: Theme.gray
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize
+        }
+    }
+    BrightnessSlider {
+        id: brightness
+        keyFocus: keys.keyFocus("sliders", 2)
+    }
+
     ControlKeys {
         id: keys
         active: root.open
         monitorName: root.monitorName
         tiles: root.tiles
         powerList: power
+        volume: volume
+        brightness: brightness
         onToggleRequested: id => root.toggle(id)
     }
 }
