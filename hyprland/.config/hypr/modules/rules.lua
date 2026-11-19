@@ -19,6 +19,17 @@ hl.window_rule({
   float = true,
   center = true,
 })
+-- The control center's terminal (hypr-atualizar, hypr-tailscale): its own
+-- special workspace, shown over the current one on the focused monitor,
+-- never in a numbered workspace; it goes away with the window.
+hl.window_rule({
+  name = "central-terminal",
+  match = { class = "^(qs-central)$" },
+  workspace = "special:central",
+  float = true,
+  size = { "monitor_w * 0.55", "monitor_h * 0.6" },
+  center = true,
+})
 hl.window_rule({
   name = "float-nmtui",
   match = { class = "^(nmtui)$" },

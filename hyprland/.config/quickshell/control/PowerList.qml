@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import qs.theme
 import qs.state
-import qs.bar
 import "power.js" as Power
 
 // The control center's power section: lock, log out, suspend, reboot and
@@ -68,22 +67,30 @@ ColumnLayout {
     }
 
     Layout.fillWidth: true
-    spacing: 2
+    spacing: 4
 
-    Repeater {
-        model: root.shown
+    ListHeader {
+        section: true
+        icon: String.fromCodePoint(0xF0425)   // nf-md-power
+        title: "Energia"
+    }
+    ListBlock {
+        Repeater {
+            model: root.shown
 
-        PanelRow {
-            required property var modelData
-            required property int index
+            ListRow {
+                required property var modelData
+                required property int index
 
-            Layout.fillWidth: true
-            keyFocus: root.keyIndex === index
-            icon: modelData.icon
-            text: root.armed === modelData.id ? `Clique de novo para ${modelData.label.toLowerCase()}` : modelData.label
-            // The armed row turns red and asks for the second click
-            danger: root.armed === modelData.id
-            onClicked: root.run(modelData)
+                divider: index > 0
+                clickable: true
+                keyFocus: root.keyIndex === index
+                icon: modelData.icon
+                text: root.armed === modelData.id ? `Clique de novo para ${modelData.label.toLowerCase()}` : modelData.label
+                // The armed row turns red and asks for the second click
+                danger: root.armed === modelData.id
+                onClicked: root.run(modelData)
+            }
         }
     }
 }

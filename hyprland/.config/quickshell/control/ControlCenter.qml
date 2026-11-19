@@ -3,9 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 import qs.bar
-import Quickshell.Networking
 import "sections.js" as Sections
-import "lists.js" as Lists
 
 // The control center: drops down from its button and continues the bar's
 // right end. The top line (battery, settings, power) with the power section
@@ -57,26 +55,11 @@ AttachedPanel {
     // The grid's buttons drawn now (sections.js)
     readonly property var tiles: Sections.visible(Sections.SECTIONS, { dndAvailable: ShellState.dndAvailable })
     readonly property var night: Sections.nightText(NightLight.enabled, NightLight.start, NightLight.end, NightLight.wanted)
-    // The network button's state: generic words, never a network's name
-    readonly property string netState: {
-        const w = WifiScan.wifiDevice
-        const nets = w ? w.networks.values : []
-        return Lists.summary({
-            hasWifi: w !== null,
-            wifiOn: Networking.wifiEnabled,
-            wired: WifiScan.wiredDevice !== null && WifiScan.wiredDevice.connected,
-            connected: nets.some(n => n.connected),
-            connecting: WifiJoin.busy || nets.some(n => n.stateChanging)
-        })
+    // The Tailscale button shows the generic state read at each opening
+    onOpenChanged: {
+        if (open)
+            Tailnet.readState()
     }
-
-    // The Bluetooth button's state: a count at most, never a device's name
-    readonly property string btState: Lists.bluetoothSummary({
-        available: BluetoothPower.available,
-        powered: BluetoothPower.powered,
-        connected: BluetoothPower.powered && BluetoothPower.adapter !== null
-                   ? BluetoothPower.adapter.devices.values.filter(d => d.connected).length : 0
-    })
 
     // A button without a list, pressed by a click or a key
     function toggle(id) {
@@ -130,10 +113,13 @@ AttachedPanel {
                 label: modelData.label
                 hasArrow: modelData.hasList
                 open: modelData.hasList && ShellState.controlSection === modelData.id
-                on: modelData.id === "nightlight" && NightLight.enabled
+                on: (modelData.id === "nightlight" && NightLight.enabled) || (modelData.id === "tailscale" && Tailnet.backend === "Running")
+                warn: modelData.id === "updates" && Updates.summary.warn
                 status: modelData.id === "nightlight" ? root.night.status
-                      : modelData.id === "wifi" ? root.netState
-                      : modelData.id === "bluetooth" ? root.btState : ""
+                      : modelData.id === "wifi" ? wifi.stateText
+                      : modelData.id === "bluetooth" ? bluetooth.stateText
+                      : modelData.id === "updates" ? Updates.summary.text
+                      : modelData.id === "tailscale" ? Tailnet.summary : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
                 keyFocus: keys.keyFocus("grid", index)
                 onClicked: {
@@ -173,26 +159,28 @@ AttachedPanel {
         }
     }
 
-    // The other sections of the grid's buttons, under it; their contents come
-    // in the next steps
-    Repeater {
-        model: root.tiles.filter(t => t.hasList && t.id !== "wifi" && t.id !== "bluetooth")
+    // The updates section
+    Accordion {
+        open: root.open && ShellState.controlSection === "updates"
+        maxHeight: root.listMax
 
-        Accordion {
-            required property var modelData
+        UpdatesList {
+            id: updates
+            active: root.open && ShellState.controlSection === "updates"
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
+        }
+    }
 
-            open: root.open && ShellState.controlSection === modelData.id
-            maxHeight: root.listMax
+    // The Tailscale section
+    Accordion {
+        open: root.open && ShellState.controlSection === "tailscale"
+        maxHeight: root.listMax
 
-            Text {
-                Layout.fillWidth: true
-                Layout.margins: 12
-                text: "(em breve)"
-                textFormat: Text.PlainText
-                color: Theme.gray
-                font.family: Theme.font
-                font.pointSize: Theme.fontSize
-            }
+        TailscaleList {
+            id: tailscale
+            active: root.open && ShellState.controlSection === "tailscale"
+            maxListHeight: Math.max(120, root.listMax - 260)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
         }
     }
 
@@ -207,14 +195,11 @@ AttachedPanel {
         open: root.open && ShellState.controlSection === "mixer"
         maxHeight: root.listMax
 
-        Text {
-            Layout.fillWidth: true
-            Layout.margins: 12
-            text: "(em breve)"
-            textFormat: Text.PlainText
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize
+        AudioMixer {
+            id: mixer
+            active: root.open && ShellState.controlSection === "mixer"
+            maxListHeight: Math.max(120, root.listMax - 260)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
         }
     }
     BrightnessSlider {
@@ -229,7 +214,10 @@ AttachedPanel {
         tiles: root.tiles
         sectionList: ShellState.controlSection === "power" ? power
                    : ShellState.controlSection === "wifi" ? wifi
-                   : ShellState.controlSection === "bluetooth" ? bluetooth : null
+                   : ShellState.controlSection === "bluetooth" ? bluetooth
+                   : ShellState.controlSection === "mixer" ? mixer
+                   : ShellState.controlSection === "updates" ? updates
+                   : ShellState.controlSection === "tailscale" ? tailscale : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness
