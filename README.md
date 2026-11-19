@@ -88,7 +88,8 @@ git push
 ### Hyprland
 
 Sessão em Lua com um shell próprio em Quickshell: barra, painéis que descem da barra colados nela (rede, volume,
-Bluetooth, música, energia), clipboard (`Super+V`), captura de tela (`Print`), bloqueio e tela de login. `Super+S` abre as
+Bluetooth, música), a central de controle (`Super+I`: rede, Bluetooth, mixer, atualizações, Tailscale, energia, luz noturna e
+os apps em segundo plano), clipboard (`Super+V`), captura de tela (`Print`), bloqueio e tela de login. `Super+S` abre as
 Configurações: tema, papel de parede, fontes, barra, bloqueio, captura, energia, monitores, teclado e mouse, gestos,
 atalhos, apps padrão, dispositivos (impressoras, pendrives e USB) e o Sobre. Detalhes, atalhos e gestos em
 [hyprland/README.md](hyprland/README.md).
@@ -211,7 +212,7 @@ A tela de login é do **greetd**, com uma tela própria em **Quickshell** dentro
 pela CPU. Ela lista as sessões (Hyprland e Xfce), lembra o último usuário e usa o mesmo fundo do bloqueio, guardado em
 `/usr/local/share/dotfiles/login` (o login copia para `/var/cache/qs-greeter` e confere antes de mostrar).
 
-No Hyprland, a tela trava com o bloqueio do Quickshell (`Super+L`, menu de energia, tampa, ou sozinha pelo **hypridle**
+No Hyprland, a tela trava com o bloqueio do Quickshell (`Super+L`, a energia da central, tampa, ou sozinha pelo **hypridle**
 depois de 5 minutos parado), com a senha pelo PAM (`/etc/pam.d/quickshell-lock`). Se o Quickshell não responder, o
 `hyprlock` entra como bloqueio reserva. Tempos, fundo, senha errada muitas vezes e como voltar se uma das telas cair estão em
 [hyprland/README.md](hyprland/README.md#bloqueio-e-login).
@@ -365,9 +366,10 @@ git pull
 
 - [x] Organizar em pastas por ambiente (`common/`, `xfce/`, `hyprland/`) com GNU Stow
 - [x] Hyprland base em `hyprland/`: config em Lua, atalhos, gestos e tela de login
-- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, clipboard, captura de tela, bloqueio, tela de login e Configurações prontos; próximos módulos: launcher, notificações e central de controle
+- [ ] Quickshell personalizado em `hyprland/.config/quickshell`: barra, painéis, central de controle, clipboard, captura de tela, bloqueio, tela de login e Configurações prontos; próximos módulos: launcher e notificações
 - [ ] Conferir no notebook o bloqueio pela tampa, a suspensão de verdade e o login na placa de vídeo
 - [ ] Conferir no notebook as impressoras de verdade (rede e USB) e os gestos do touchpad
+- [ ] Conferir no notebook a central de controle com o hardware de verdade: Wi-Fi (listas reais, senha, esquecer), Bluetooth (rádio, parear, esquecer), o mixer com apps tocando, o brilho da tela interna, o Tailscale logado e os apps de bandeja reais
 - [ ] Listas de pacotes para Fedora e Ubuntu (`packages/fedora.txt` e `packages/ubuntu.txt`, hoje só com as seções vazias)
 - [ ] Dependências opcionais do Neovim fora do Arch
 

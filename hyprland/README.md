@@ -8,7 +8,7 @@ captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do vi
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
 | `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
-| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-hypridle` (sobe o hypridle com os tempos das Configurações), `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair) |
+| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-hypridle` (sobe o hypridle com os tempos das Configurações), `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair, `hypr-atualizar` e `hypr-tailscale`, os terminais da central de controle) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
 
@@ -202,22 +202,71 @@ Uma faixa translúcida colada no topo (o Hyprland desfoca o que está atrás), c
 | Esquerda | Áreas de trabalho como pontinhos (1 a 5 sempre, as outras quando têm janela; a ativa é um traço) | Clique vai para a área; a roda passa para a anterior/próxima |
 | Esquerda | Anéis de CPU, memória e temperatura da CPU, com o número ao lado; amarelo acima de 70% (75 °C) e vermelho acima de 90% (90 °C). Sem sensor, o de temperatura some | Passar o mouse mostra o resumo; clique abre o painel do sistema |
 | Centro | Dia e hora (`qua 07/11  16:42`). Com música tocando vira uma ilha com a capa desfocada ao fundo, a capinha e um equalizador | Passar o mouse mostra a data (ou a música); clique abre o painel de música; clique do meio toca/pausa |
-| Direita | Volume, rede, Bluetooth, bateria (Bluetooth e bateria somem se a máquina não tem) e o botão de energia | Roda no volume muda 5%; clique em cada um abre o painel dele |
+| Direita | Volume, rede, Bluetooth, bateria (Bluetooth e bateria somem se a máquina não tem) e, na ponta, o símbolo do Arch, que abre a [central de controle](#central-de-controle-superi) | Roda no volume muda 5%; clique em cada um abre o painel dele |
 
 ### Painéis
 
 Descem da barra, um por vez, colados nela: barra e painel são uma forma só, com cantos contínuos que crescem enquanto o painel
-abre. O de energia continua a ponta direita da barra. Esc ou um clique fora fecham, sempre com a animação. Os atalhos abrem o
-mesmo painel no monitor em foco.
+abre. A central de controle continua a ponta direita da barra. Esc ou um clique fora fecham, sempre com a animação. Os atalhos
+abrem o mesmo painel no monitor em foco. Rede, volume e Bluetooth usam as mesmas listas da central.
 
 | Painel | O que tem |
 |---|---|
-| Rede | Wi-Fi liga/desliga, estado do cabo e as redes por sinal. Clique conecta; rede nova pede a senha ali mesmo (a senha vai direto para o NetworkManager). "Mais opções…" abre o `nm-connection-editor` |
-| Volume | Saída e microfone: mudo, volume e a lista de dispositivos (clique escolhe o padrão) |
-| Bluetooth | Liga/desliga e um cartão por aparelho (conectados, pareados e "Por perto", achados com "Procurar"). "Mais opções…" abre o `bluetui` |
+| Rede | A lista do Wi-Fi da central (veja [Central de controle](#central-de-controle-superi)) |
+| Volume | O volume da saída em cima e o mixer da central (saídas, microfone, um nível por app) |
+| Bluetooth | A lista do Bluetooth da central |
 | Música | Capa desfocada ao fundo, música, artista e álbum, progresso (clique pula), anterior/tocar/próxima e "Ir para o player". Com mais de um player, botões no topo escolhem qual a barra controla |
-| Energia | Bloquear, Sair, Suspender, Reiniciar e Desligar. Suspender trava antes; Reiniciar e Desligar pedem um segundo clique |
 | Sistema | Anéis grandes de CPU, memória e temperatura, tempo ligado e os 8 processos que mais gastam CPU ou memória (CPU do momento, atualizado a cada 2 s). O ✕ de um processo seu pede um segundo clique e encerra ele; os da sessão (Hyprland, Xwayland, PipeWire, o próprio Quickshell) não têm ✕. "Abrir o btop" no rodapé |
+
+### Central de controle (Super+I)
+
+Abre pelo símbolo do Arch na ponta direita da barra, por `Super+I` (a tecla engrenagem do notebook, F9) ou `Super+A`, no
+monitor em foco. `Super+X` e `Ctrl+Alt+Del` abrem já na energia. Esc fecha a seção aberta e, de novo, a central; um clique fora
+também fecha. Ela abre sempre com tudo dobrado.
+
+De cima para baixo:
+
+- **Topo:** a bateria (com "Conservação ligada" quando o limite de carga está ligado), a engrenagem (Configurações, como
+  `Super+S`) e o botão de energia, que abre a seção da energia: Bloquear, Sair, Suspender, Reiniciar e Desligar (quais
+  aparecem e quais pedem segundo clique ficam em Configurações → Energia; Reiniciar e Desligar sempre pedem).
+- **Grade:** Rede, Bluetooth, Tailscale, Atualizações e Luz noturna (este só liga e desliga, com o horário embaixo). Cada botão
+  com lista abre a sua seção logo abaixo, uma por vez: abrir outra fecha a que estava aberta.
+- **Volume** (mudo, nível e a seta do mixer) e **brilho** (só com tela interna).
+- **Em segundo plano**, no fim: os apps rodando sem janela.
+
+Todas as seções têm o mesmo desenho: cabeçalho com o estado e o interruptor quando há, as listas em blocos, as linhas com o
+valor ou a ação à direita. Cada uma fica num cartão próprio e rola por dentro quando passa da altura.
+
+| Seção | O que tem |
+|---|---|
+| Rede | Liga/desliga o Wi-Fi, o cabo quando conectado e as redes: a conectada e as salvas primeiro, depois por sinal; as 5 primeiras e "Mostrar mais"; busca a partir de 9 redes. Clique conecta; rede nova pede a senha ali mesmo, e a senha vai direto ao NetworkManager. "Esquecer" pede um segundo clique. "Outra rede…" entra numa rede escondida; "Mais opções…" abre o `nm-connection-editor` |
+| Bluetooth | Liga/desliga (pelo `rfkill`, como no Windows: fica desligado depois de reiniciar), os pareados com a bateria e "Por perto", achados com "Procurar aparelhos" (os sem nome ficam atrás de "+ N sem nome"). Clique conecta ou pareia (pareado aqui fica confiável); "Esquecer" pede um segundo clique. "Mais opções…" abre o `bluetui` |
+| Mixer | Saídas e microfone (clique escolhe o padrão, o microfone com nível e mudo) e um nível com mudo por app tocando som |
+| Atualizações | O sistema (`checkupdates`, com a hora da última verificação) e o AUR (`paru -Qua`), os 3 primeiros pacotes de cada e "e mais N". "Verificar agora" e "Atualizar tudo no terminal": abre o Kitty com o `paru -Syu`, onde se vê o que vai instalar e se digita a senha. Procura sozinho 2 min depois de entrar e a cada 6 h, nunca com a tela travada; depois do "Atualizar tudo" a lista se atualiza sozinha. O botão da grade fica amarelo com o total, e mostra só a parte conhecida ("2 do AUR") quando uma das origens não deu para ler |
+| Tailscale | O estado, este aparelho (nome e endereço, com copiar), os aparelhos da tailnet (online com o endereço, offline com quando foi visto), o aviso quando a internet está saindo por outro aparelho e "Esconder nomes e endereços" (para prints; o copiar continua copiando o de verdade). O interruptor abre o terminal com `sudo tailscale up`/`down`; "Abrir o painel do Tailscale" abre o painel da conta no navegador |
+
+**Em segundo plano.** Uma ficha por app com ícone de bandeja (o shell é a bandeja; não há ícones fixos na barra), em até duas
+linhas; o resto vira "+N", que abre a lista inteira. Sem nenhum app, a faixa não aparece. Clique abre o app; o botão direito abre
+o menu do próprio app; o × encerra pelo "Sair" do menu do app (só quando ele tem exatamente um; nunca força). O blueman fica sem
+×, porque fechar ele derruba também o agente de pareamento do Bluetooth. Um ponto amarelo: o app pede atenção.
+
+**O que pede senha:** a senha do Wi-Fi vai direto ao NetworkManager (nunca fica no shell); atualizar e ligar/desligar o
+Tailscale abrem o terminal, onde o `sudo` pede a senha. A central nunca roda nada como root.
+
+**Teclado:** as setas andam dentro do grupo (topo, grade, volume e brilho, a seção aberta, as fichas), Tab e Shift+Tab trocam de
+grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
+
+**Falta conferir no notebook** (a VM não tem o hardware):
+
+- A tecla engrenagem (F9) chegando como `Super+I`, e a bateria e a conservação com a bateria de verdade.
+- Wi-Fi com as redes reais: entrar com senha, senha errada, rede escondida, "Esquecer" com o segundo clique.
+- Bluetooth com rádio: ligar e desligar pelo `rfkill` (e continuar desligado depois de reiniciar), parear, conectar,
+  esquecer; o blueman como ficha do segundo plano.
+- O mixer com apps tocando de verdade e mais de uma saída.
+- O brilho da tela interna (`brightnessctl`).
+- O Tailscale logado: os aparelhos, o copiar, o aviso de saída em uso, o painel no navegador e o terminal do `sudo`.
+- As atualizações com o paru compilando (na VM com 4 GB o Rust ficou sem memória; com 6 GB foi).
+- O segundo plano com os apps de bandeja reais (Spotify, Steam, Discord…): os ícones, o menu de cada um e o × pelo "Sair".
 
 ### Clipboard (Super+V)
 
@@ -311,8 +360,8 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `launcher` | `toggle` | `Super`, `Super+D`, `Super+R` (hoje abre o rofi) |
 | `clipboard` | `toggle` | `Super+V` (clipboard do Quickshell) |
 | `notifications` | `toggle` | `Super+N` |
-| `controlcenter` | `toggle` | `Super+A` |
-| `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (painel de energia da barra) |
+| `controlcenter` | `toggle` | `Super+I` (F9), `Super+A` |
+| `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (a central já na energia) |
 | `overview` | `toggle` | `Super+Tab`, 3 dedos ↑ |
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
@@ -322,7 +371,10 @@ Outros alvos, para scripts:
 
 | Comando | O que faz |
 |---|---|
-| `qs ipc call panel toggle <nome>` | Abre ou fecha um painel no monitor em foco: `power`, `network`, `volume`, `bluetooth`, `media`, `system` |
+| `qs ipc call panel toggle <nome>` | Abre ou fecha um painel no monitor em foco: `control`, `network`, `volume`, `bluetooth`, `media`, `system` (`power` abre a central na energia) |
+| `qs ipc call controlcenter open <seção>` | Abre a central com uma seção aberta: `wifi`, `bluetooth`, `updates`, `tailscale`, `mixer`, `power`, `background` (vazio: tudo dobrado) |
+| `qs ipc call controlcenter stats` | O estado da central em JSON (aberta, seção); nunca nomes de rede, aparelho ou pacote |
+| `qs ipc call updates check` | Procura atualizações agora, como "Verificar agora" (o `hypr-atualizar` chama no fim) |
 | `qs ipc call taskmanager stats` | Os números do painel do sistema em JSON |
 | `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
 | `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
