@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Networking
 import qs.theme
 import qs.state
+import "../control/lists.js" as Lists
 
 // Cable, Wi-Fi by signal, or grey when offline. Click: the network panel.
 // The network name only shows at runtime, in the tooltip.
@@ -51,7 +52,7 @@ BarItem {
         if (wired)
             return "Cabo conectado"
         if (wifiNet)
-            return `${wifiNet.name} — ${strength}%`
+            return `${Lists.trim(wifiNet.name)} — ${strength}%`
         if (!backend)
             return "NetworkManager não está rodando"
         if (!Networking.wifiEnabled)

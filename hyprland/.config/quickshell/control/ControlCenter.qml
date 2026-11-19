@@ -3,7 +3,9 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 import qs.bar
+import Quickshell.Networking
 import "sections.js" as Sections
+import "lists.js" as Lists
 
 // The control center: drops down from its button and continues the bar's
 // right end. The top line (battery, settings, power) with the power section
@@ -55,6 +57,18 @@ AttachedPanel {
     // The grid's buttons drawn now (sections.js)
     readonly property var tiles: Sections.visible(Sections.SECTIONS, { dndAvailable: ShellState.dndAvailable })
     readonly property var night: Sections.nightText(NightLight.enabled, NightLight.start, NightLight.end, NightLight.wanted)
+    // The network button's state: generic words, never a network's name
+    readonly property string netState: {
+        const w = WifiScan.wifiDevice
+        const nets = w ? w.networks.values : []
+        return Lists.summary({
+            hasWifi: w !== null,
+            wifiOn: Networking.wifiEnabled,
+            wired: WifiScan.wiredDevice !== null && WifiScan.wiredDevice.connected,
+            connected: nets.some(n => n.connected),
+            connecting: nets.some(n => n.stateChanging)
+        })
+    }
 
     // A button without a list, pressed by a click or a key
     function toggle(id) {
@@ -109,7 +123,8 @@ AttachedPanel {
                 hasArrow: modelData.hasList
                 open: modelData.hasList && ShellState.controlSection === modelData.id
                 on: modelData.id === "nightlight" && NightLight.enabled
-                status: modelData.id === "nightlight" ? root.night.status : ""
+                status: modelData.id === "nightlight" ? root.night.status
+                      : modelData.id === "wifi" ? root.netState : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
                 keyFocus: keys.keyFocus("grid", index)
                 onClicked: {
@@ -122,10 +137,24 @@ AttachedPanel {
         }
     }
 
-    // The sections of the grid's buttons, under it; their contents come in
-    // the next steps
+    // The Wi-Fi section: the same list as the bar's network panel
+    Accordion {
+        open: root.open && ShellState.controlSection === "wifi"
+        maxHeight: root.listMax
+
+        NetworkList {
+            id: wifi
+            active: root.open && ShellState.controlSection === "wifi"
+            maxListHeight: root.listMax - 120
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
+            onKeysReleased: keys.reclaim()
+        }
+    }
+
+    // The other sections of the grid's buttons, under it; their contents come
+    // in the next steps
     Repeater {
-        model: root.tiles.filter(t => t.hasList)
+        model: root.tiles.filter(t => t.hasList && t.id !== "wifi")
 
         Accordion {
             required property var modelData
@@ -176,9 +205,10 @@ AttachedPanel {
         active: root.open
         monitorName: root.monitorName
         tiles: root.tiles
-        powerList: power
+        sectionList: ShellState.controlSection === "power" ? power
+                   : ShellState.controlSection === "wifi" ? wifi : null
+        onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness
-        onToggleRequested: id => root.toggle(id)
     }
 }

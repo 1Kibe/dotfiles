@@ -22,6 +22,12 @@ ColumnLayout {
     required property bool active
     // The row the keyboard is on (-1 none); Enter is a click (ControlKeys)
     property int keyIndex: -1
+    readonly property int keyCount: shown.length
+    function pressKey(k) {
+        const a = shown[k]
+        if (a)
+            run(a)
+    }
 
     property string armed: ""   // action waiting for its second click
     property double armedAt: 0
