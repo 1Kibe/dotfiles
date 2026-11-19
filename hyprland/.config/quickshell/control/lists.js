@@ -38,15 +38,19 @@ function networks(list, opts) {
 
 // The Wi-Fi list's items for the control center's keyboard, in order: the
 // switch (with a Wi-Fi device), the search (when it shows), each network
-// shown, "Mostrar mais" (when some are left out), "Outra rede…" (with a
-// Wi-Fi device), "Mais opções…"
+// shown (a saved one followed by its "Esquecer"), "Mostrar mais" (when some
+// are left out), "Outra rede…" (with a Wi-Fi device), "Mais opções…"
 function wifiKeys(hasWifi, list, wifiOn) {
     const items = []
     if (hasWifi)
         items.push({ kind: "switch" })
     if (list.search)
         items.push({ kind: "search" })
-    list.shown.forEach((n, i) => items.push({ kind: "network", index: i }))
+    list.shown.forEach((n, i) => {
+        items.push({ kind: "network", index: i })
+        if (n.known === true)
+            items.push({ kind: "forget", index: i })
+    })
     if (list.hidden > 0)
         items.push({ kind: "more" })
     if (hasWifi && wifiOn !== false)
