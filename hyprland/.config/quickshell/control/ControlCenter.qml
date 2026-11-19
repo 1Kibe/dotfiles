@@ -66,7 +66,7 @@ AttachedPanel {
             wifiOn: Networking.wifiEnabled,
             wired: WifiScan.wiredDevice !== null && WifiScan.wiredDevice.connected,
             connected: nets.some(n => n.connected),
-            connecting: nets.some(n => n.stateChanging)
+            connecting: WifiJoin.busy || nets.some(n => n.stateChanging)
         })
     }
 

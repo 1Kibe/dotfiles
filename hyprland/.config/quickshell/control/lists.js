@@ -38,8 +38,9 @@ function networks(list, opts) {
 
 // The Wi-Fi list's items for the control center's keyboard, in order: the
 // switch (with a Wi-Fi device), the search (when it shows), each network
-// shown, "Mostrar mais" (when some are left out), "Mais opções…"
-function wifiKeys(hasWifi, list) {
+// shown, "Mostrar mais" (when some are left out), "Outra rede…" (with a
+// Wi-Fi device), "Mais opções…"
+function wifiKeys(hasWifi, list, wifiOn) {
     const items = []
     if (hasWifi)
         items.push({ kind: "switch" })
@@ -48,8 +49,40 @@ function wifiKeys(hasWifi, list) {
     list.shown.forEach((n, i) => items.push({ kind: "network", index: i }))
     if (list.hidden > 0)
         items.push({ kind: "more" })
+    if (hasWifi && wifiOn !== false)
+        items.push({ kind: "other" })
     items.push({ kind: "options" })
     return items
+}
+
+// A Wi-Fi password as NetworkManager takes it: 8 to 63 printable ASCII
+// characters, or 64 hexadecimal digits (the key itself)
+function validPsk(psk) {
+    return typeof psk === "string" && (/^[ -~]{8,63}$/.test(psk) || /^[0-9A-Fa-f]{64}$/.test(psk))
+}
+
+// How many bytes a text takes in UTF-8; Infinity for one that is not valid
+// text (a lone half of a surrogate pair), never an exception
+function utf8Bytes(text) {
+    try {
+        return unescape(encodeURIComponent(String(text))).length
+    } catch (e) {
+        return Infinity
+    }
+}
+
+// A hidden network typed by hand: "" when it may go to nmcli, else the
+// message to show. The name is refused, never cleaned (a cleaned name would
+// join another network than the one typed): 1 to 32 bytes, nothing that
+// lists.js trim() would change, no control, direction or invisible
+// character (lock/text.js BAD), not starting with "-"
+function hiddenCheck(name, psk) {
+    if (typeof name !== "string" || name.length === 0 || Clean.BAD.test(name) || utf8Bytes(name) > 32
+            || name !== trim(name) || name.charAt(0) === "-")
+        return "Nome de rede inválido"
+    if (!validPsk(psk))
+        return "A senha precisa ter de 8 a 63 caracteres"
+    return ""
 }
 
 // The grid button's state line: generic words only, never a network's name
