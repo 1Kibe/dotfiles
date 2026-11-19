@@ -126,57 +126,6 @@ ColumnLayout {
         border.width: Theme.focusWidth
         border.color: Theme.focusRing
     }
-    // A group's own block: card fill, rounded corners, a thin line between rows
-    component Block: Rectangle {
-        default property alias rows: blockRows.data
-        Layout.fillWidth: true
-        implicitHeight: blockRows.implicitHeight
-        radius: Theme.radius
-        color: Theme.bg
-        ColumnLayout {
-            id: blockRows
-            width: parent.width
-            spacing: 0
-        }
-    }
-    component Divider: Rectangle {
-        width: parent ? parent.width : 0
-        height: 1
-        color: Theme.bg1
-    }
-    component Dot: Rectangle {
-        property bool on: false
-        implicitWidth: 7
-        implicitHeight: 7
-        radius: 3.5
-        color: on ? Theme.green : Theme.bg2
-    }
-    // A group's header: its name on the left, a dim note on the right
-    component GroupHeader: RowLayout {
-        property string title
-        property string note
-        Layout.fillWidth: true
-        Layout.leftMargin: 4
-        Layout.rightMargin: 4
-        Layout.topMargin: 6
-        Text {
-            Layout.fillWidth: true
-            text: parent.title
-            textFormat: Text.PlainText
-            color: Theme.fg4
-            font.family: Theme.font
-            font.pointSize: Theme.fontSize - 1
-            font.weight: Font.Medium
-        }
-        Text {
-            visible: text !== ""
-            text: parent.note
-            textFormat: Text.PlainText
-            color: Theme.gray
-            font.family: Theme.font
-            font.pointSize: Theme.fontSizeSmall
-        }
-    }
 
     Layout.fillWidth: true
     spacing: 4
@@ -238,12 +187,16 @@ ColumnLayout {
     }
 
     // ── This device: a dot, "Este aparelho", the address, the copy icon ──
-    Block {
+    // Its own block: card fill, rounded corners
+    Rectangle {
         visible: root.running && root.self !== null
+        Layout.fillWidth: true
+        implicitHeight: 30
+        radius: Theme.radius
+        color: Theme.bg
 
         Item {
-            Layout.fillWidth: true
-            implicitHeight: 30
+            anchors.fill: parent
 
             RowLayout {
                 anchors.fill: parent
@@ -251,8 +204,11 @@ ColumnLayout {
                 anchors.rightMargin: 4
                 spacing: 8
 
-                Dot {
-                    on: true
+                Rectangle {
+                    implicitWidth: 7
+                    implicitHeight: 7
+                    radius: 3.5
+                    color: Theme.green
                 }
                 Text {
                     Layout.fillWidth: true
@@ -288,17 +244,41 @@ ColumnLayout {
     }
 
     // ── The peers ──
-    GroupHeader {
+    // The group's header: its name left, the count right, dim
+    RowLayout {
         visible: root.running && root.peers.length > 0
-        title: "Aparelhos"
-        note: `${root.onlineCount} de ${root.peers.length} online`
+        Layout.fillWidth: true
+        Layout.leftMargin: 4
+        Layout.rightMargin: 4
+        Layout.topMargin: 6
+
+        Text {
+            Layout.fillWidth: true
+            text: "Aparelhos"
+            textFormat: Text.PlainText
+            color: Theme.fg4
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+            font.weight: Font.Medium
+        }
+        Text {
+            text: `${root.onlineCount} de ${root.peers.length} online`
+            textFormat: Text.PlainText
+            color: Theme.gray
+            font.family: Theme.font
+            font.pointSize: Theme.fontSizeSmall
+        }
     }
-    Block {
+    Rectangle {
         visible: root.running && root.peers.length > 0
+        Layout.fillWidth: true
+        implicitHeight: flick.implicitHeight
+        radius: Theme.radius
+        color: Theme.bg
 
         Flickable {
             id: flick
-            Layout.fillWidth: true
+            width: parent.width
             implicitHeight: Math.min(peerColumn.implicitHeight, root.maxListHeight)
             contentWidth: width
             contentHeight: peerColumn.implicitHeight
@@ -323,8 +303,12 @@ ColumnLayout {
                         Layout.fillWidth: true
                         implicitHeight: 30
 
-                        Divider {
+                        // A thin line between the rows
+                        Rectangle {
                             visible: index > 0
+                            width: parent.width
+                            height: 1
+                            color: Theme.bg1
                         }
                         RowLayout {
                             anchors.fill: parent
@@ -332,8 +316,11 @@ ColumnLayout {
                             anchors.rightMargin: 10
                             spacing: 8
 
-                            Dot {
-                                on: modelData.online
+                            Rectangle {
+                                implicitWidth: 7
+                                implicitHeight: 7
+                                radius: 3.5
+                                color: modelData.online ? Theme.green : Theme.bg2
                             }
                             Text {
                                 Layout.fillWidth: true

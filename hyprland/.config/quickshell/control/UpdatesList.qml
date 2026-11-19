@@ -106,12 +106,6 @@ ColumnLayout {
            ? `Última verificação: ${Qt.formatTime(new Date(Updates.lastCheckAt), "HH:mm")} · procura de novo a cada 6 h`
            : "Ainda não verificado")
 
-    component Divider: Rectangle {
-        width: parent ? parent.width : 0
-        height: 1
-        color: Theme.bg1
-    }
-
     component Origin: ColumnLayout {
         id: origin
         required property string title
@@ -192,8 +186,12 @@ ColumnLayout {
                                 Layout.fillWidth: true
                                 implicitHeight: 30
 
-                                Divider {
+                                // A thin line between the rows
+                                Rectangle {
                                     visible: index > 0
+                                    width: parent.width
+                                    height: 1
+                                    color: Theme.bg1
                                 }
                                 RowLayout {
                                     anchors.fill: parent
@@ -250,8 +248,11 @@ ColumnLayout {
                     Layout.fillWidth: true
                     implicitHeight: 30
 
-                    Divider {
+                    Rectangle {
                         visible: origin.rows.length > 0
+                        width: parent.width
+                        height: 1
+                        color: Theme.bg1
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
@@ -274,7 +275,11 @@ ColumnLayout {
                     Layout.fillWidth: true
                     implicitHeight: 30
 
-                    Divider {}
+                    Rectangle {
+                        width: parent.width
+                        height: 1
+                        color: Theme.bg1
+                    }
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 2
