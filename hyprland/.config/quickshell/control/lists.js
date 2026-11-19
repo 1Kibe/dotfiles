@@ -486,3 +486,104 @@ function tsSeen(online, lastSeen, now) {
 function tsMask(ip) {
     return typeof ip === "string" && ip.includes(":") ? "fd7a:•••" : "100.•••.•••.•••"
 }
+
+// ── Em segundo plano (the tray: StatusNotifierItem) ──
+
+var TRAY_MAX = 32          // items considered at most
+var TRAY_MENU_MAX = 40     // entries read per menu level
+var TRAY_MENU_DEPTH = 3    // menu levels at most
+var TRAY_TEXT_MAX = 80
+// Ids whose chip never gets the ×, only the menu: blueman's "Sair" also
+// ends Bluetooth's pairing agent. This list only takes the × away.
+var TRAY_NO_QUIT = ["blueman"]
+// What counts as a menu's quit entry: the word alone or the word and a
+// space. "fechar"/"close" are left out on purpose: they usually only close
+// the window and leave the app running.
+var TRAY_QUIT_WORDS = ["sair", "quit", "exit", "encerrar"]
+var TRAY_ICON_NAME = /^[A-Za-z0-9._-]{1,64}$/
+
+// The items shown: the ones not Passive (passive is the Status enum's
+// value for it), by name (the host's order is not stable), at most
+// TRAY_MAX
+function trayItems(items, passive) {
+    return toList(items).filter(it => it && it.status !== passive)
+        .sort((a, b) => trayName(a).localeCompare(trayName(b))).slice(0, TRAY_MAX)
+}
+
+// A menu entry's or an item's text as shown: no markup, the "&" mnemonics
+// out ("&&" is a plain "&"), cleaned, one line
+function trayText(text) {
+    const t = typeof text === "string" ? text : ""
+    return Clean.clean(t.replace(/<[^>]*>/g, "").replace(/&&/g, "\u0001").replace(/&/g, "").replace(/\u0001/g, "&"),
+                       TRAY_TEXT_MAX)
+}
+
+// An item's name: its title, else its id
+function trayName(item) {
+    if (!item)
+        return ""
+    const t = trayText(item.title)
+    return t !== "" ? t : trayText(item.id)
+}
+
+// Whether a text is a quit entry: markup, "&", "_" and the ellipsis out,
+// lower case, one of TRAY_QUIT_WORDS alone or followed by a space
+function trayIsQuit(text) {
+    const n = trayText(text).replace(/_/g, "").replace(/(…|\.\.\.)\s*$/, "").trim().toLowerCase()
+    return TRAY_QUIT_WORDS.some(w => n === w || n.startsWith(w + " "))
+}
+
+// The index of a menu's one quit entry, or -1: only an enabled entry with
+// no children that is not a separator; more than one is ambiguous (none).
+// entries: [{ text, enabled, isSeparator, hasChildren }]
+function trayQuitIndex(entries) {
+    const hits = []
+    toList(entries).slice(0, TRAY_MENU_MAX).forEach((e, i) => {
+        if (e && e.enabled === true && e.isSeparator !== true && e.hasChildren !== true && trayIsQuit(e.text))
+            hits.push(i)
+    })
+    return hits.length === 1 ? hits[0] : -1
+}
+
+// Whether an item may get the ×: not on TRAY_NO_QUIT
+function trayMayQuit(id) {
+    return !TRAY_NO_QUIT.includes(typeof id === "string" ? id : "")
+}
+
+// The icon source to load, or "" for the generic one: only a theme icon
+// by a plain name, or the shell's own pixmap provider
+function trayIcon(icon) {
+    const s = typeof icon === "string" ? icon : String(icon || "")
+    if (/^image:\/\/qspixmap\/[0-9]+\/[0-9]+$/.test(s))
+        return s
+    const m = /^image:\/\/icon\/(.*)$/.exec(s)
+    return m && TRAY_ICON_NAME.test(m[1]) ? s : ""
+}
+
+// How many chips fit in `lines` lines of `width`, the last place left for
+// a "+N" chip of plusWidth when not all fit. widths: each chip's width.
+function trayFit(widths, width, gap, plusWidth, lines) {
+    const w = toList(widths)
+    const place = k => {
+        let line = 0, x = 0
+        for (let i = 0; i < k; i++) {
+            if (x > 0 && x + w[i] > width) {
+                line++
+                x = 0
+            }
+            x += w[i] + gap
+        }
+        return { line: line, x: x }
+    }
+    const all = place(w.length)
+    if (all.line < lines)
+        return w.length
+    let k = w.length
+    while (k > 0) {
+        const p = place(k)
+        if (p.line < lines - 1 || (p.line === lines - 1 && p.x + plusWidth <= width))
+            break
+        k--
+    }
+    return k
+}

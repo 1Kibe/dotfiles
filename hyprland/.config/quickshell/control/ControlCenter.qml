@@ -8,7 +8,8 @@ import "sections.js" as Sections
 // The control center: drops down from its button and continues the bar's
 // right end. The top line (battery, settings, power) with the power section
 // under it, the grid of buttons (sections.js) with their sections under it,
-// and the sliders (volume, with the mixer under it, and brightness); one
+// the sliders (volume, with the mixer under it, and brightness) and, at the
+// end, the apps running in the background (BackgroundStrip); one
 // section open at a time (ShellState.controlSection). The keyboard moves
 // over all of it (ControlKeys).
 AttachedPanel {
@@ -207,6 +208,15 @@ AttachedPanel {
         keyFocus: keys.keyFocus("sliders", 2)
     }
 
+    // The apps running in the background: chips, at the end
+    BackgroundStrip {
+        id: background
+        active: root.open
+        listMax: root.listMax
+        chipKeyIndex: keys.group === "strip" && keys.keyFocus("strip", keys.index) ? keys.index : -1
+        listKeyIndex: ShellState.controlSection === "background" && keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
+    }
+
     ControlKeys {
         id: keys
         active: root.open
@@ -217,9 +227,11 @@ AttachedPanel {
                    : ShellState.controlSection === "bluetooth" ? bluetooth
                    : ShellState.controlSection === "mixer" ? mixer
                    : ShellState.controlSection === "updates" ? updates
-                   : ShellState.controlSection === "tailscale" ? tailscale : null
+                   : ShellState.controlSection === "tailscale" ? tailscale
+                   : ShellState.controlSection === "background" ? background.listKeys : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness
+        strip: background
     }
 }
