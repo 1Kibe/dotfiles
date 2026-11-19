@@ -109,6 +109,9 @@ Singleton {
     readonly property color tileOn: root.alpha(accentLight, 0.22)
     readonly property color focusRing: accentLight
     readonly property int focusWidth: 2
+    // Wi-Fi networks below this signal (0..1) stay out of the lists (the
+    // connected one always shows)
+    readonly property real wifiMinSignal: 0.2
     readonly property int cardIcon: 32     // icon circle of the device cards
 
     // System monitor rings (bar and panel)

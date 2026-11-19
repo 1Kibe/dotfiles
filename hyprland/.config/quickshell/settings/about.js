@@ -1,4 +1,5 @@
 .pragma library
+.import "../lock/text.js" as Clean
 
 // Configurações → Sobre, the parts with no state: what the system and the
 // repo's git say, read as data only (every value passes a pattern or is cut
@@ -10,7 +11,7 @@ var NONE = "—"
 // Control characters, direction marks, separators and invisible ones (zero
 // width, soft hyphen, fillers, variation selectors, BOM, tags, format marks,
 // a lone half of a pair)
-var BAD_TEXT = /[\u0000-\u001f\u007f-\u009f\u00ad\u034f\u0600-\u0605\u061c\u06dd\u070f\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffc]|\udb40[\udc00-\udc7f\udd00-\uddef]|[\ud800-\udbff](?![\udc00-\udfff])|(?:^|[^\ud800-\udbff])[\udc00-\udfff]/
+var BAD_TEXT = Clean.BAD
 
 // A short plain text (at most 64 characters, nothing that is not shown as
 // typed), or "—". Cut by characters, never in the middle of a pair

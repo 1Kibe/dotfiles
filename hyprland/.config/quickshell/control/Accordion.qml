@@ -2,18 +2,23 @@ import QtQuick
 import QtQuick.Layouts
 import qs.theme
 
-// A section of the control center that folds out under the grid: its height
-// grows from 0 to its content in Theme.animNormal, never past maxHeight (the
-// content scrolls inside past that). With reduce motion the height changes
-// at once and the content only fades. ShellState.controlSection says which
-// one is open, so opening one folds the other in the same movement.
+// A section of the control center that folds out: a card of its own (the
+// grid buttons' fill and corners), a gap of the grid's spacing above it and
+// the same padding inside. Its height grows from 0 to the card in
+// Theme.animNormal, never past maxHeight (the content scrolls inside past
+// that). With reduce motion the height changes at once and the content only
+// fades. ShellState.controlSection says which one is open, so opening one
+// folds the other in the same movement.
 Item {
     id: root
 
     property bool open: false
     property real maxHeight: 400
     default property alias content: column.data
-    readonly property real fullHeight: Math.min(column.implicitHeight, maxHeight)
+    // The gap above the card and the padding inside it
+    readonly property real pad: Theme.tileGap
+    // The whole height (gap, card, padding), never past maxHeight
+    readonly property real fullHeight: Math.min(pad + column.implicitHeight + 2 * pad, maxHeight)
 
     Layout.fillWidth: true
     implicitHeight: open ? fullHeight : 0
@@ -28,17 +33,29 @@ Item {
     visible: implicitHeight > 0
     clip: true
 
-    Flickable {
-        anchors.fill: parent
-        contentWidth: width
-        contentHeight: column.implicitHeight
-        interactive: column.implicitHeight > root.maxHeight
-        boundsBehavior: Flickable.StopAtBounds
+    Rectangle {
+        id: card
+        x: 4
+        y: root.pad
+        width: root.width - 8
+        height: root.fullHeight - root.pad
+        radius: Theme.radius
+        color: Theme.tileFill
 
-        ColumnLayout {
-            id: column
-            width: parent.width
-            spacing: 2
+        Flickable {
+            anchors.fill: parent
+            anchors.margins: root.pad
+            contentWidth: width
+            contentHeight: column.implicitHeight
+            interactive: column.implicitHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+
+            ColumnLayout {
+                id: column
+                width: parent.width
+                spacing: 2
+            }
         }
     }
 }

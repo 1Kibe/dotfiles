@@ -23,8 +23,9 @@ Item {
     required property string monitorName
     // The grid's buttons drawn (sections.js visible())
     required property var tiles
-    // The power section's list (PowerList)
-    required property var powerList
+    // The open section's list (PowerList, NetworkList...): it gives keyCount,
+    // keyIndex and pressKey(); null when the open section has none
+    property var sectionList: null
     // The sliders (VolumeSlider, BrightnessSlider); null leaves them out
     property var volume: null
     property var brightness: null
@@ -41,7 +42,7 @@ Item {
         { name: "top", count: 2, columns: 2 },
         { name: "grid", count: tiles.length, columns: 2 },
         { name: "sliders", count: (volume ? 2 : 0) + (volume && brightness && Brightness.available ? 1 : 0), columns: 1 },
-        { name: "list", count: ShellState.controlSection === "power" && powerList ? powerList.shown.length : 0, columns: 1 }
+        { name: "list", count: sectionList ? sectionList.keyCount : 0, columns: 1 }
     ]
     function keyFocus(g, i) {
         return active && ringVisible && group === g && index === i
@@ -79,12 +80,29 @@ Item {
             }
         }
     }
-    // The list it was on folded: back to the button of that list
+    // The section whose list the keyboard can reach (for the way back)
+    property string listSection: ""
+    onSectionListChanged: {
+        if (sectionList !== null)
+            listSection = ShellState.controlSection
+    }
+    // The list it was on folded: back to the button of that list (power on
+    // the top line, the others in the grid)
     onGroupsChanged: {
-        if (group === "list" && groups[3].count === 0)
-            place("top", 1)
-        else
+        if (group === "list" && groups[3].count === 0) {
+            const t = tiles.findIndex(x => x.id === listSection)
+            if (t >= 0)
+                place("grid", t)
+            else
+                place("top", 1)
+        } else {
             place(group, index)
+        }
+    }
+    // A field inside a list (the Wi-Fi search) gives the keyboard back
+    function reclaim() {
+        ringVisible = true
+        keys.forceActiveFocus()
     }
 
     function press() {
@@ -107,9 +125,8 @@ Item {
             else if (index === 1)
                 ShellState.setControlSection("mixer")
         } else if (group === "list") {
-            const a = powerList.shown[index]
-            if (a)
-                powerList.run(a)
+            if (sectionList)
+                sectionList.pressKey(index)
         }
     }
 
