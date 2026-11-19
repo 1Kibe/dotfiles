@@ -13,6 +13,21 @@ function trim(text) {
     return Clean.clean(text, 64)
 }
 
+// A list from Quickshell (a model's values: list-like, not a JS Array) or
+// a JS Array, as a JS Array; anything else is empty. Array.isArray alone
+// would turn every real model into an empty list.
+function toList(x) {
+    if (Array.isArray(x))
+        return x
+    const out = []
+    if (x !== null && x !== undefined && typeof x !== "string" && typeof x.length === "number") {
+        const n = Math.min(Math.max(0, Math.floor(x.length)), 100000)
+        for (let i = 0; i < n; i++)
+            out.push(x[i])
+    }
+    return out
+}
+
 // The Wi-Fi networks as listed. list: the device's networks ({ name,
 // signalStrength 0..1, known, connected }); opts: { query, showAll,
 // minSignal }. Out: the ones with no name and the ones below minSignal
@@ -24,7 +39,7 @@ function trim(text) {
 function networks(list, opts) {
     const o = opts || {}
     const min = typeof o.minSignal === "number" ? o.minSignal : 0.2
-    const kept = (Array.isArray(list) ? list : []).filter(n => n && trim(n.name) !== ""
+    const kept = toList(list).filter(n => n && trim(n.name) !== ""
         && (n.connected === true || Number(n.signalStrength) >= min))
     kept.sort((a, b) => (Number(b.connected === true) - Number(a.connected === true))
         || (Number(b.known === true) - Number(a.known === true))
@@ -133,7 +148,7 @@ function deviceLabel(d) {
 // address) only with showUnnamed. unnamed: how many have no name.
 function bluetoothList(devices, opts) {
     const o = opts || {}
-    const all = (Array.isArray(devices) ? devices : []).filter(d => d)
+    const all = toList(devices).filter(d => d)
     const byName = (a, b) => deviceLabel(a).localeCompare(deviceLabel(b))
     const mine = all.filter(d => d.paired === true || d.connected === true)
     mine.sort((a, b) => (Number(b.connected === true) - Number(a.connected === true)) || byName(a, b))
