@@ -33,53 +33,65 @@ import "../control/lists.js" as Lists
 Singleton {
     id: root
 
-    // The network being joined (null with none, or the hidden one)
+    // The network being joined (null with none or the hidden one). Its name
+    // and, for a new network, the UUID of the profile the attempt created:
+    // the network's object may go away mid attempt (out of the scan), and
+    // that profile still has to go if the attempt fails.
     property var target: null
+    property string targetName: ""
+    property string createdUuid: ""
     property bool busy: false
     property bool wasKnown: false
     property bool withPassword: false
     // The network whose password field is open, the open network waiting for
     // its confirmation, and the last message with the network it is about
-    // ("" none; "<oculta>" the hidden network form)
-    property string asking: ""
-    property string confirming: ""
+    // (objects, not names: two networks can share a name). The hidden
+    // network form has its own message.
+    property var askingNet: null
+    property var confirmingNet: null
     property string error: ""
-    property string errorFor: ""
-    property int timeoutMs: 20000   // 20 s (a test shortens it)
+    property var errorNet: null
+    property string hiddenError: ""
+    property int timeoutMs: 20000         // 20 s (a test shortens it)
+    property int hiddenTimeoutMs: 35000   // the hidden network's script, all of it
+
+    readonly property var uuidPattern: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
     function isOpen(net) {
         return net !== null && net !== undefined && net.security === WifiSecurityType.Open
     }
 
     // The list closed (or the center, or the screen locked): the fields,
-    // the confirmation and the message go away. An attempt already running
-    // goes on.
+    // the confirmation and the messages go away. An attempt already running
+    // goes on to its end (and a new network that fails is still forgotten).
     function reset() {
-        asking = ""
-        confirming = ""
+        askingNet = null
+        confirmingNet = null
         error = ""
-        errorFor = ""
+        errorNet = null
+        hiddenError = ""
     }
 
-    // A click (or Enter) on a network that is not connected
+    // A click (or Enter) on a network that is not connected; one row open at
+    // a time
     function choose(net) {
         if (!net || busy)
             return
         error = ""
-        errorFor = ""
+        errorNet = null
         if (net.known) {
             begin(net, "")
         } else if (isOpen(net)) {
-            asking = ""
-            confirming = confirming === net.name ? "" : net.name
+            askingNet = null
+            confirmingNet = confirmingNet === net ? null : net
         } else {
-            confirming = ""
-            asking = asking === net.name ? "" : net.name
+            confirmingNet = null
+            askingNet = askingNet === net ? null : net
         }
     }
     // "Conectar" under an open network's warning
     function confirmOpen(net) {
-        if (!net || busy || !isOpen(net) || confirming !== net.name)
+        if (!net || busy || !isOpen(net) || confirmingNet !== net)
             return
         begin(net, "")
     }
@@ -95,13 +107,15 @@ Singleton {
 
     function begin(net, psk) {
         target = net
+        targetName = net.name
+        createdUuid = ""
         busy = true
         wasKnown = net.known === true
         withPassword = psk !== ""
-        asking = ""
-        confirming = ""
+        askingNet = null
+        confirmingNet = null
         error = ""
-        errorFor = ""
+        errorNet = null
         deadline.interval = timeoutMs
         deadline.restart()
         if (withPassword)
@@ -109,7 +123,7 @@ Singleton {
         else
             net.connect()
     }
-    // Ends the attempt; returns its network
+    // Ends the attempt; returns its network (null if it went away)
     function finish(message) {
         deadline.stop()
         const net = target
@@ -117,7 +131,7 @@ Singleton {
         target = null
         if (message !== "") {
             error = message
-            errorFor = net ? net.name : ""
+            errorNet = net
         }
         return net
     }
@@ -132,70 +146,145 @@ Singleton {
             if (root.target && root.target.connected)
                 root.joined()
         }
+        // The profile a new network's attempt creates: its UUID, while the
+        // object is still there
+        function onNmSettingsChanged() {
+            root.noteProfile()
+        }
+    }
+    function noteProfile() {
+        if (!target || wasKnown || createdUuid !== "")
+            return
+        const s = target.nmSettings
+        if (s && s.length > 0 && typeof s[0].uuid === "string" && uuidPattern.test(s[0].uuid))
+            createdUuid = s[0].uuid
+    }
+
+    // A new network that did not join leaves no profile behind: forget()
+    // when its object is still there, else the profile by the UUID noted
+    function forgetNew(net, known) {
+        if (known)
+            return
+        if (net) {
+            net.forget()
+        } else if (uuidPattern.test(createdUuid)) {
+            dropProfile.command = ["sh", "-c", 'exec "$@"', "sh", "nmcli", "connection", "delete", "uuid", createdUuid]
+            dropProfile.running = true
+        }
+        createdUuid = ""
+    }
+    Process {
+        id: dropProfile
     }
 
     // A signal with no attempt running (a late or repeated one) does nothing
     function failed(reason) {
         if (!target)
             return
+        noteProfile()
         const known = wasKnown
         const typed = withPassword
         let net
         if (reason === ConnectionFailReason.NoSecrets && !typed) {
             // A saved network whose kept password no longer works: ask for it
             net = finish("")
-            if (net)
-                asking = net.name
+            askingNet = net
         } else if (reason === ConnectionFailReason.NoSecrets) {
             net = finish("Senha incorreta")
-            if (net)
-                asking = net.name
+            askingNet = net
         } else {
             net = finish("Não deu para conectar")
         }
-        if (net && !known)
-            net.forget()
+        forgetNew(net, known)
     }
 
     function joined() {
         if (!target)
             return
-        const known = wasKnown
+        createdUuid = ""
         const net = finish("")
-        if (!net || !isOpen(net))
-            return
-        // Never join an open network by itself; only a profile with no
-        // security part is written (see above)
-        for (const s of net.nmSettings) {
-            const m = s.read()
-            if (m["802-11-wireless-security"] === undefined)
-                s.write({ connection: { autoconnect: false } })
+        if (net && isOpen(net)) {
+            openPending = net
+            openTries = 0
+            closeOpenNetwork()
         }
+    }
+
+    // Never join an open network by itself. Only a loaded profile with no
+    // security part is written (an update made from here goes without the
+    // secrets: written on a secured profile it would drop its password, and
+    // on one not loaded yet it would empty it). A profile not there yet is
+    // tried again, every 0.5 s, for 5 s.
+    property var openPending: null
+    property int openTries: 0
+    function closeOpenNetwork() {
+        const net = openPending
+        if (!net || !isOpen(net)) {
+            openPending = null
+            return
+        }
+        let done = false
+        const list = net.nmSettings || []
+        for (let i = 0; i < list.length; i++) {
+            const m = list[i].read()
+            if (m && m.connection !== undefined && m["802-11-wireless-security"] === undefined) {
+                list[i].write({ connection: { autoconnect: false } })
+                done = true
+            }
+        }
+        if (done || ++openTries >= 10)
+            openPending = null
+        else
+            openRetry.restart()
+    }
+    Timer {
+        id: openRetry
+        interval: 500
+        onTriggered: root.closeOpenNetwork()
     }
 
     // 20 s with no answer
     Timer {
         id: deadline
         onTriggered: {
+            root.noteProfile()
             const known = root.wasKnown
             const net = root.finish("Não deu para conectar")
-            if (net) {
+            if (net)
                 net.disconnect()
-                if (!known)
-                    net.forget()
-            }
+            root.forgetNew(net, known)
         }
     }
 
     // ── A hidden network (nmcli) ──
+    // Killed or failed, the script itself undoes what it made: the trap
+    // brings the Wi-Fi down and deletes the profile it added (its UUID, once
+    // checked), unless the connection came up. nmcli runs in the background
+    // and is waited for, so a TERM reaches the trap at once.
     readonly property string hiddenScript: [
+        'name="$1"; iface="$2"; uuid=""; pid=""; ok=0',
+        'cleanup() {',
+        '  [ "$ok" = 1 ] && return',
+        '  [ -n "$pid" ] && kill "$pid" 2>/dev/null',
+        '  pid=""',
+        '  if [ -n "$uuid" ]; then',
+        '    nmcli device disconnect "$iface" >/dev/null 2>&1',
+        '    nmcli connection delete uuid "$uuid" >/dev/null 2>&1',
+        '  fi',
+        '  uuid=""',
+        '}',
+        'trap "cleanup; exit 1" TERM HUP INT',
+        'trap cleanup EXIT',
         'IFS= read -r psk || exit 3',
-        'out=$(nmcli -t connection add type wifi ifname "$2" ssid "$1" 802-11-wireless.hidden yes wifi-sec.key-mgmt wpa-psk 2>/dev/null) || exit 4',
-        'uuid=$(printf "%s\\n" "$out" | grep -oE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" | head -n 1)',
-        'printf "%s\\n" "$uuid" | grep -qxE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" || exit 5',
-        'if printf "%s\\n" "$psk" | timeout 25 nmcli --ask connection up uuid "$uuid" >/dev/null 2>&1; then exit 0; fi',
-        'nmcli device disconnect "$2" >/dev/null 2>&1',
-        'nmcli connection delete uuid "$uuid" >/dev/null 2>&1',
+        'out=$(nmcli -t connection add type wifi ifname "$iface" ssid "$name" 802-11-wireless.hidden yes wifi-sec.key-mgmt wpa-psk 2>/dev/null) || exit 4',
+        'found=$(printf "%s\\n" "$out" | grep -oE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" | head -n 1)',
+        'printf "%s\\n" "$found" | grep -qxE "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" || exit 5',
+        'uuid="$found"',
+        'printf "%s\\n" "$psk" | timeout 25 nmcli --ask connection up uuid "$uuid" >/dev/null 2>&1 &',
+        'pid=$!',
+        'psk=""',
+        'wait "$pid" && ok=1',
+        '[ "$ok" = 1 ] && exit 0',
         'exit 1'
     ].join("\n")
 
@@ -211,10 +300,12 @@ Singleton {
             return "Não deu para conectar"
         busy = true
         target = null
-        asking = ""
-        confirming = ""
+        targetName = ""
+        askingNet = null
+        confirmingNet = null
         error = ""
-        errorFor = ""
+        errorNet = null
+        hiddenError = ""
         // The name and the interface as the script's arguments, through sh
         // (always there), so a missing setpriv never puts them in the log
         hidden.command = ["sh", "-c", 'exec setpriv --pdeathsig TERM -- sh -c "$1" sh "$2" "$3"', "sh",
@@ -223,34 +314,35 @@ Singleton {
         hidden.input = psk + "\n"
         hidden.stdinEnabled = true
         hidden.running = true
+        hiddenDeadline.interval = hiddenTimeoutMs
         hiddenDeadline.restart()
         return ""
     }
+    function hiddenDone(ok) {
+        hiddenDeadline.stop()
+        hidden.input = ""
+        busy = false
+        hiddenError = ok ? "" : "Não deu para conectar"
+    }
 
+    // No reader on its output: nothing of it is kept or logged
     Process {
         id: hidden
         property string input: ""
-        stdout: StdioCollector {}
-        stderr: StdioCollector {}
         onStarted: {
             write(input)
             input = ""
             stdinEnabled = false
         }
-        onExited: code => {
-            hiddenDeadline.stop()
-            hidden.input = ""
-            root.busy = false
-            if (code !== 0) {
-                root.error = "Não deu para conectar"
-                root.errorFor = "<oculta>"
-            }
-        }
+        onExited: code => root.hiddenDone(code === 0)
     }
-    // The script gives nmcli 25 s; past 35 s the whole thing stops
+    // Past the deadline the script is stopped (its trap cleans up), and the
+    // attempt ends here too, also when the process never started
     Timer {
         id: hiddenDeadline
-        interval: 35000
-        onTriggered: hidden.running = false
+        onTriggered: {
+            hidden.running = false
+            root.hiddenDone(false)
+        }
     }
 }

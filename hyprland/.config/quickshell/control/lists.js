@@ -40,7 +40,7 @@ function networks(list, opts) {
 // switch (with a Wi-Fi device), the search (when it shows), each network
 // shown, "Mostrar mais" (when some are left out), "Outra rede…" (with a
 // Wi-Fi device), "Mais opções…"
-function wifiKeys(hasWifi, list) {
+function wifiKeys(hasWifi, list, wifiOn) {
     const items = []
     if (hasWifi)
         items.push({ kind: "switch" })
@@ -49,7 +49,7 @@ function wifiKeys(hasWifi, list) {
     list.shown.forEach((n, i) => items.push({ kind: "network", index: i }))
     if (list.hidden > 0)
         items.push({ kind: "more" })
-    if (hasWifi)
+    if (hasWifi && wifiOn !== false)
         items.push({ kind: "other" })
     items.push({ kind: "options" })
     return items
@@ -61,9 +61,14 @@ function validPsk(psk) {
     return typeof psk === "string" && (/^[ -~]{8,63}$/.test(psk) || /^[0-9A-Fa-f]{64}$/.test(psk))
 }
 
-// How many bytes a text takes in UTF-8
+// How many bytes a text takes in UTF-8; Infinity for one that is not valid
+// text (a lone half of a surrogate pair), never an exception
 function utf8Bytes(text) {
-    return unescape(encodeURIComponent(String(text))).length
+    try {
+        return unescape(encodeURIComponent(String(text))).length
+    } catch (e) {
+        return Infinity
+    }
 }
 
 // A hidden network typed by hand: "" when it may go to nmcli, else the
@@ -72,8 +77,8 @@ function utf8Bytes(text) {
 // lists.js trim() would change, no control, direction or invisible
 // character (lock/text.js BAD), not starting with "-"
 function hiddenCheck(name, psk) {
-    if (typeof name !== "string" || name.length === 0 || utf8Bytes(name) > 32 || name !== trim(name)
-            || Clean.BAD.test(name) || name.charAt(0) === "-")
+    if (typeof name !== "string" || name.length === 0 || Clean.BAD.test(name) || utf8Bytes(name) > 32
+            || name !== trim(name) || name.charAt(0) === "-")
         return "Nome de rede inválido"
     if (!validPsk(psk))
         return "A senha precisa ter de 8 a 63 caracteres"

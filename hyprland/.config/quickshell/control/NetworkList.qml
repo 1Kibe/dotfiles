@@ -65,29 +65,56 @@ ColumnLayout {
     // The connected network's address: only while its details show, one
     // read at a time, 3 s at most, the output read by a fixed pattern
     readonly property bool detailsShown: active && selected !== "" && list.shown.some(n => n.name === selected && n.connected)
+    // A read still running when the details close and open again is read
+    // once more as soon as it ends
+    property bool addressAgain: false
+    property string addressFound: ""
+    property int addressLines: 0
     onDetailsShownChanged: {
         address = ""
-        if (detailsShown)
+        addressFound = ""
+        if (detailsShown) {
             readAddress()
-        else
+        } else {
+            addressAgain = false
             addressJob.running = false
+        }
     }
     function readAddress() {
         const iface = wifiDevice ? wifiDevice.name : ""
-        if (addressJob.running || !/^[A-Za-z0-9_.-]{1,15}$/.test(iface))
+        if (!/^[A-Za-z0-9_.-]{1,15}$/.test(iface))
             return
+        if (addressJob.running) {
+            addressAgain = true
+            return
+        }
+        addressFound = ""
+        addressLines = 0
         addressJob.command = ["sh", "-c", 'exec "$@"', "sh", "ip", "-4", "-o", "addr", "show", "dev", iface]
         addressTimeout.restart()
         addressJob.running = true
     }
     Process {
         id: addressJob
-        stdout: StdioCollector { id: addressOut }
-        stderr: StdioCollector {}
+        // Line by line, at most 16 lines looked at, only the first address
+        // kept; nothing else of the output is kept
+        stdout: SplitParser {
+            onRead: line => {
+                if (++root.addressLines > 16 || root.addressFound !== "")
+                    return
+                const m = /inet (([0-9]{1,3}\.){3}[0-9]{1,3})\/[0-9]{1,2}/.exec(line)
+                if (m)
+                    root.addressFound = m[1]
+            }
+        }
         onExited: code => {
             addressTimeout.stop()
-            const m = code === 0 ? /inet (([0-9]{1,3}\.){3}[0-9]{1,3})\/[0-9]{1,2}/.exec(addressOut.text) : null
-            root.address = m && root.detailsShown ? m[1] : ""
+            root.address = code === 0 && root.detailsShown ? root.addressFound : ""
+            root.addressFound = ""
+            if (root.addressAgain && root.detailsShown) {
+                root.addressAgain = false
+                root.readAddress()
+            }
         }
     }
     Timer {
@@ -99,7 +126,7 @@ ColumnLayout {
     // ── The control center's keyboard ──
     // Its items, in order: the switch, the search (when it shows), each
     // network shown, "Mostrar mais" (when some are left out), "Mais opções…"
-    readonly property var keyItems: Lists.wifiKeys(wifiDevice !== null, list)
+    readonly property var keyItems: Lists.wifiKeys(wifiDevice !== null, list, Networking.wifiEnabled)
     readonly property int keyCount: keyItems.length
     function keyOn(kind, i) {
         const it = keyItems[keyIndex]
@@ -127,8 +154,7 @@ ColumnLayout {
         otherOpen = !otherOpen
         otherName.text = ""
         otherForm.message = ""
-        if (WifiJoin.errorFor === "<oculta>")
-            WifiJoin.reset()
+        WifiJoin.hiddenError = ""
         if (otherOpen)
             otherName.forceActiveFocus()
     }
@@ -271,10 +297,10 @@ ColumnLayout {
                     readonly property bool secured: modelData.security !== WifiSecurityType.Open
                     readonly property int strength: Math.round(modelData.signalStrength * 100)
                     readonly property bool joining: WifiJoin.busy && WifiJoin.target === modelData
-                    readonly property bool asking: root.active && WifiJoin.asking === name
-                    readonly property bool confirming: root.active && WifiJoin.confirming === name
+                    readonly property bool asking: root.active && WifiJoin.askingNet === modelData
+                    readonly property bool confirming: root.active && WifiJoin.confirmingNet === modelData
                     readonly property bool details: root.selected === name && modelData.connected
-                    readonly property bool hasError: root.active && WifiJoin.errorFor === name && WifiJoin.error !== ""
+                    readonly property bool hasError: root.active && WifiJoin.errorNet === modelData && WifiJoin.error !== ""
 
                     // Connected: the details open and close. Else WifiJoin
                     // decides (saved: connect; open: the warning; new: the field)
@@ -429,7 +455,7 @@ ColumnLayout {
     ColumnLayout {
         id: otherForm
         Layout.fillWidth: true
-        visible: root.otherOpen && root.active
+        visible: root.otherOpen && root.active && Networking.wifiEnabled
         spacing: 4
 
         property string message: ""
@@ -490,7 +516,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 12
             readonly property string shown: otherForm.message !== "" ? otherForm.message
-                                             : WifiJoin.errorFor === "<oculta>" ? WifiJoin.error
+                                             : WifiJoin.hiddenError !== "" ? WifiJoin.hiddenError
                                              : WifiJoin.busy && WifiJoin.target === null ? "Conectando…" : ""
             visible: shown !== ""
             text: shown
