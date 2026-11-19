@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Networking
+import Quickshell.Io
 import qs.theme
 import qs.state
 import qs.bar
@@ -36,12 +37,14 @@ ColumnLayout {
     readonly property var list: Lists.networks(all, { query: query, showAll: showAll, minSignal: Theme.wifiMinSignal })
 
     // Kept here by name rather than inside each row: the Repeater rebuilds
-    // its rows whenever the sorted list changes (a signal update). Only one
-    // row is expanded at a time.
-    property string selected: ""   // network with the password field or actions open
-    property string failed: ""     // network of the last failed connection
+    // its rows whenever the sorted list changes (a signal update). The
+    // password field, the open network's warning and the last message are
+    // WifiJoin's (one attempt for the whole shell).
+    property string selected: ""   // the connected network with its details open
     property string query: ""
     property bool showAll: false
+    property bool otherOpen: false // the hidden network form
+    property string address: ""    // the connected network's IPv4, only while its details show
 
     function signalIcon(strength) {
         return strength < 25 ? "󰤟" : strength < 50 ? "󰤢" : strength < 75 ? "󰤥" : "󰤨"
@@ -49,10 +52,48 @@ ColumnLayout {
 
     onActiveChanged: {
         selected = ""
-        failed = ""
         query = ""
         showAll = false
+        otherOpen = false
+        address = ""
         search.text = ""
+        otherName.text = ""
+        otherForm.message = ""
+        WifiJoin.reset()
+    }
+
+    // The connected network's address: only while its details show, one
+    // read at a time, 3 s at most, the output read by a fixed pattern
+    readonly property bool detailsShown: active && selected !== "" && list.shown.some(n => n.name === selected && n.connected)
+    onDetailsShownChanged: {
+        address = ""
+        if (detailsShown)
+            readAddress()
+        else
+            addressJob.running = false
+    }
+    function readAddress() {
+        const iface = wifiDevice ? wifiDevice.name : ""
+        if (addressJob.running || !/^[A-Za-z0-9_.-]{1,15}$/.test(iface))
+            return
+        addressJob.command = ["sh", "-c", 'exec "$@"', "sh", "ip", "-4", "-o", "addr", "show", "dev", iface]
+        addressTimeout.restart()
+        addressJob.running = true
+    }
+    Process {
+        id: addressJob
+        stdout: StdioCollector { id: addressOut }
+        stderr: StdioCollector {}
+        onExited: code => {
+            addressTimeout.stop()
+            const m = code === 0 ? /inet (([0-9]{1,3}\.){3}[0-9]{1,3})\/[0-9]{1,2}/.exec(addressOut.text) : null
+            root.address = m && root.detailsShown ? m[1] : ""
+        }
+    }
+    Timer {
+        id: addressTimeout
+        interval: 3000
+        onTriggered: addressJob.running = false
     }
 
     // ── The control center's keyboard ──
@@ -77,8 +118,19 @@ ColumnLayout {
             rows.itemAt(it.index)?.press()
         else if (it.kind === "more")
             showAll = true
+        else if (it.kind === "other")
+            toggleOther()
         else if (it.kind === "options")
             openOptions()
+    }
+    function toggleOther() {
+        otherOpen = !otherOpen
+        otherName.text = ""
+        otherForm.message = ""
+        if (WifiJoin.errorFor === "<oculta>")
+            WifiJoin.reset()
+        if (otherOpen)
+            otherName.forceActiveFocus()
     }
     function openOptions() {
         ShellState.close()
@@ -206,8 +258,9 @@ ColumnLayout {
                 id: rows
                 model: root.list.shown
 
-                // One network: its row, the error line, and under it either the
-                // actions (connected) or the password field (new secured network)
+                // One network: its row, then under it its details (connected),
+                // its password field (WifiJoin asking), or the open network's
+                // warning (WifiJoin confirming), and the last message
                 ColumnLayout {
                     id: entry
 
@@ -216,41 +269,28 @@ ColumnLayout {
                     readonly property string name: modelData.name
                     readonly property string shownName: Lists.trim(name)
                     readonly property bool secured: modelData.security !== WifiSecurityType.Open
-                    readonly property bool expanded: root.selected === name
                     readonly property int strength: Math.round(modelData.signalStrength * 100)
-                    property bool showPassword: false
+                    readonly property bool joining: WifiJoin.busy && WifiJoin.target === modelData
+                    readonly property bool asking: root.active && WifiJoin.asking === name
+                    readonly property bool confirming: root.active && WifiJoin.confirming === name
+                    readonly property bool details: root.selected === name && modelData.connected
+                    readonly property bool hasError: root.active && WifiJoin.errorFor === name && WifiJoin.error !== ""
 
-                    // Connected or needing a password: toggle the row open.
-                    // Known or open: connect right away with what NetworkManager has.
+                    // Connected: the details open and close. Else WifiJoin
+                    // decides (saved: connect; open: the warning; new: the field)
                     function press() {
-                        root.failed = ""
-                        if (entry.modelData.connected || (entry.secured && !entry.modelData.known))
-                            root.selected = entry.expanded ? "" : entry.name
+                        if (entry.modelData.connected)
+                            root.selected = entry.details ? "" : entry.name
                         else
-                            entry.modelData.connect()
+                            WifiJoin.choose(entry.modelData)
                     }
 
                     Layout.fillWidth: true
                     spacing: 2
 
-                    // Opening or closing the row always wipes the field and hides the
-                    // password again; focus goes to it so typing can start at once
-                    onExpandedChanged: {
-                        password.text = ""
-                        showPassword = false
-                        if (expanded && password.visible)
-                            password.forceActiveFocus()
-                    }
-
-                    Connections {
-                        target: entry.modelData
-                        // The reason is not shown. A new secured network reopens its
-                        // password field to try again.
-                        function onConnectionFailed(reason) {
-                            root.failed = entry.name
-                            if (entry.secured && !entry.modelData.known)
-                                root.selected = entry.name
-                        }
+                    onAskingChanged: {
+                        if (asking)
+                            Qt.callLater(() => password.focusField())
                     }
 
                     PanelRow {
@@ -259,7 +299,7 @@ ColumnLayout {
                         text: entry.shownName
                         keyFocus: root.keyOn("network", entry.index)
                         detail: entry.modelData.connected ? "conectada"
-                              : entry.modelData.stateChanging ? "conectando…"
+                              : entry.joining || entry.modelData.stateChanging ? "conectando…"
                               : entry.secured ? "󰌾" : ""
                         onClicked: entry.press()
                         onKeyFocusChanged: {
@@ -275,18 +315,19 @@ ColumnLayout {
                         // Inside the row (PanelRow's trailing slot), only on hover, so
                         // the list stays clean
                         BarItem {
-                            visible: entry.modelData.known && !entry.modelData.connected && row.hovered
+                            visible: entry.modelData.known && !entry.modelData.connected && row.hovered && !WifiJoin.busy
                             text: "Esquecer"
                             textColor: Theme.gray
                             onClicked: entry.modelData.forget()
                         }
                     }
 
+                    // The last message about this network (fixed words only)
                     Text {
                         Layout.fillWidth: true
                         Layout.leftMargin: 12
-                        visible: root.failed === entry.name
-                        text: "Não conectou: senha errada ou rede fora de alcance"
+                        visible: entry.hasError
+                        text: WifiJoin.error
                         textFormat: Text.PlainText
                         wrapMode: Text.WordWrap
                         color: Theme.red
@@ -294,88 +335,74 @@ ColumnLayout {
                         font.pointSize: Theme.fontSize - 1
                     }
 
-                    // Connected: disconnect or forget
-                    RowLayout {
-                        Layout.leftMargin: 8
-                        visible: entry.expanded && entry.modelData.connected
-                        spacing: 4
+                    // Connected: signal, address, disconnect or forget
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 12
+                        visible: entry.details
+                        spacing: 2
 
-                        BarItem {
-                            text: "Desconectar"
-                            onClicked: {
-                                root.selected = ""
-                                entry.modelData.disconnect()
-                            }
+                        Text {
+                            text: `Sinal ${entry.strength}%` + (root.address !== "" ? `   Endereço ${root.address}` : "")
+                            textFormat: Text.PlainText
+                            color: Theme.gray
+                            font.family: Theme.font
+                            font.pointSize: Theme.fontSize - 1
                         }
-                        BarItem {
-                            text: "Esquecer"
-                            textColor: Theme.gray
-                            onClicked: {
-                                root.selected = ""
-                                entry.modelData.forget()
+                        RowLayout {
+                            spacing: 4
+                            BarItem {
+                                text: "Desconectar"
+                                onClicked: {
+                                    root.selected = ""
+                                    entry.modelData.disconnect()
+                                }
+                            }
+                            BarItem {
+                                text: "Esquecer"
+                                textColor: Theme.gray
+                                onClicked: {
+                                    root.selected = ""
+                                    entry.modelData.forget()
+                                }
                             }
                         }
                     }
 
-                    // New network with a password
-                    RowLayout {
+                    // An open network: never joins by itself, and says why
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 4
-                        visible: entry.expanded && !entry.modelData.connected && entry.secured && !entry.modelData.known
-                        spacing: 4
+                        Layout.leftMargin: 12
+                        Layout.rightMargin: 8
+                        visible: entry.confirming
+                        spacing: 2
 
-                        Rectangle {
+                        Text {
                             Layout.fillWidth: true
-                            implicitHeight: 28
-                            radius: Theme.radius
-                            color: Theme.bg1
-
-                            TextInput {
-                                id: password
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                anchors.rightMargin: 10
-                                verticalAlignment: TextInput.AlignVCenter
-                                echoMode: entry.showPassword ? TextInput.Normal : TextInput.Password
-                                color: Theme.text
-                                selectionColor: Theme.accent
-                                font.family: Theme.font
-                                font.pointSize: Theme.fontSize
-                                clip: true
-                                // Enter does the same as the Conectar button
-                                onAccepted: connectButton.clicked(Qt.LeftButton)
-
-                                // Placeholder: TextInput has none of its own
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    visible: password.text === ""
-                                    text: "Senha"
-                                    textFormat: Text.PlainText
-                                    color: Theme.gray
-                                    font: password.font
-                                }
-                            }
+                            text: "Rede aberta: não entra sozinha nesta rede. Qualquer um pode criar outra com o mesmo nome."
+                            textFormat: Text.PlainText
+                            wrapMode: Text.WordWrap
+                            color: Theme.gray
+                            font.family: Theme.font
+                            font.pointSize: Theme.fontSize - 1
                         }
                         BarItem {
-                            text: entry.showPassword ? "󰈉" : "󰈈"
-                            tooltip: entry.showPassword ? "Esconder a senha" : "Mostrar a senha"
-                            onClicked: entry.showPassword = !entry.showPassword
-                        }
-                        BarItem {
-                            id: connectButton
                             text: "Conectar"
-                            onClicked: {
-                                if (password.text === "")
-                                    return
-                                root.failed = ""
-                                // Handed to NetworkManager, then the field is wiped
-                                // right away so the text does not linger in memory here
-                                entry.modelData.connectWithPsk(password.text)
-                                password.text = ""
-                                root.selected = ""
-                                root.keysReleased()
-                            }
+                            onClicked: WifiJoin.confirmOpen(entry.modelData)
+                        }
+                    }
+
+                    // A new secured network, or a saved one whose password no
+                    // longer works
+                    WifiPassword {
+                        id: password
+                        visible: entry.asking
+                        wrong: entry.hasError && WifiJoin.error === "Senha incorreta"
+                        deliver: psk => WifiJoin.submit(entry.modelData, psk)
+                        onReleased: root.keysReleased()
+                        onEscaped: {
+                            WifiJoin.reset()
+                            root.keysReleased()
                         }
                     }
                 }
@@ -389,6 +416,90 @@ ColumnLayout {
         text: `Mostrar mais ${root.list.hidden} ${root.list.hidden === 1 ? "rede" : "redes"}`
         keyFocus: root.keyOn("more")
         onClicked: root.showAll = true
+    }
+
+    // A hidden network: its name and password (WifiJoin.joinHidden)
+    PanelRow {
+        visible: root.wifiDevice !== null && Networking.wifiEnabled
+        icon: ""
+        text: "Outra rede…"
+        keyFocus: root.keyOn("other")
+        onClicked: root.toggleOther()
+    }
+    ColumnLayout {
+        id: otherForm
+        Layout.fillWidth: true
+        visible: root.otherOpen && root.active
+        spacing: 4
+
+        property string message: ""
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.leftMargin: 8
+            Layout.rightMargin: 4
+            implicitHeight: 28
+            radius: Theme.radius
+            color: Theme.bg1
+            border.width: otherName.activeFocus ? Theme.focusWidth : 0
+            border.color: Theme.focusRing
+
+            TextInput {
+                id: otherName
+                anchors.fill: parent
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                verticalAlignment: TextInput.AlignVCenter
+                color: Theme.text
+                selectionColor: Theme.accent
+                font.family: Theme.font
+                font.pointSize: Theme.fontSize
+                maximumLength: 32
+                clip: true
+                onAccepted: otherPassword.focusField()
+                Keys.onEscapePressed: {
+                    root.otherOpen = false
+                    root.keysReleased()
+                }
+                Keys.onTabPressed: otherPassword.focusField()
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: otherName.text === ""
+                    text: "Nome da rede"
+                    textFormat: Text.PlainText
+                    color: Theme.gray
+                    font: otherName.font
+                }
+            }
+        }
+        WifiPassword {
+            id: otherPassword
+            deliver: psk => {
+                const bad = WifiJoin.joinHidden(otherName.text, root.wifiDevice ? root.wifiDevice.name : "", psk)
+                otherForm.message = bad
+                return bad === ""
+            }
+            onReleased: root.keysReleased()
+            onEscaped: {
+                root.otherOpen = false
+                root.keysReleased()
+            }
+        }
+        Text {
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            readonly property string shown: otherForm.message !== "" ? otherForm.message
+                                             : WifiJoin.errorFor === "<oculta>" ? WifiJoin.error
+                                             : WifiJoin.busy && WifiJoin.target === null ? "Conectando…" : ""
+            visible: shown !== ""
+            text: shown
+            textFormat: Text.PlainText
+            wrapMode: Text.WordWrap
+            color: shown === "Conectando…" ? Theme.gray : Theme.red
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+        }
     }
 
     Rectangle {

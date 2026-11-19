@@ -38,7 +38,8 @@ function networks(list, opts) {
 
 // The Wi-Fi list's items for the control center's keyboard, in order: the
 // switch (with a Wi-Fi device), the search (when it shows), each network
-// shown, "Mostrar mais" (when some are left out), "Mais opções…"
+// shown, "Mostrar mais" (when some are left out), "Outra rede…" (with a
+// Wi-Fi device), "Mais opções…"
 function wifiKeys(hasWifi, list) {
     const items = []
     if (hasWifi)
@@ -48,8 +49,35 @@ function wifiKeys(hasWifi, list) {
     list.shown.forEach((n, i) => items.push({ kind: "network", index: i }))
     if (list.hidden > 0)
         items.push({ kind: "more" })
+    if (hasWifi)
+        items.push({ kind: "other" })
     items.push({ kind: "options" })
     return items
+}
+
+// A Wi-Fi password as NetworkManager takes it: 8 to 63 printable ASCII
+// characters, or 64 hexadecimal digits (the key itself)
+function validPsk(psk) {
+    return typeof psk === "string" && (/^[ -~]{8,63}$/.test(psk) || /^[0-9A-Fa-f]{64}$/.test(psk))
+}
+
+// How many bytes a text takes in UTF-8
+function utf8Bytes(text) {
+    return unescape(encodeURIComponent(String(text))).length
+}
+
+// A hidden network typed by hand: "" when it may go to nmcli, else the
+// message to show. The name is refused, never cleaned (a cleaned name would
+// join another network than the one typed): 1 to 32 bytes, nothing that
+// lists.js trim() would change, no control, direction or invisible
+// character (lock/text.js BAD), not starting with "-"
+function hiddenCheck(name, psk) {
+    if (typeof name !== "string" || name.length === 0 || utf8Bytes(name) > 32 || name !== trim(name)
+            || Clean.BAD.test(name) || name.charAt(0) === "-")
+        return "Nome de rede inválido"
+    if (!validPsk(psk))
+        return "A senha precisa ter de 8 a 63 caracteres"
+    return ""
 }
 
 // The grid button's state line: generic words only, never a network's name
