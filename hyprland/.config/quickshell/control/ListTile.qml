@@ -16,6 +16,7 @@ Rectangle {
     property bool hasArrow: true
     property bool open: false     // its section folded out
     property bool on: false       // switched on: lit
+    property bool warn: false     // something waiting (updates): icon and state in yellow
     property bool keyFocus: false
 
     signal clicked()
@@ -47,7 +48,7 @@ Rectangle {
         Text {
             textFormat: Text.PlainText
             text: root.icon
-            color: root.on ? Theme.accentLight : Theme.text
+            color: root.warn ? Theme.yellow : root.on ? Theme.accentLight : Theme.text
             font.family: Theme.font
             font.pointSize: Theme.fontSize + 3
         }
@@ -72,7 +73,7 @@ Rectangle {
                 maximumLineCount: 1
                 elide: Text.ElideRight
                 text: root.status
-                color: Theme.gray
+                color: root.warn ? Theme.yellow : Theme.gray
                 font.family: Theme.font
                 font.pointSize: Theme.fontSizeSmall
             }

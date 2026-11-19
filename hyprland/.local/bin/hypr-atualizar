@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Updates the whole system in the terminal the control center opens
+# ("Atualizar tudo no terminal", Kitty with the class qs-central, sent to
+# the special workspace by hypr/modules/rules.lua): paru -Syu (yay if only
+# yay is there), where its review and the password are seen and typed.
+# The window closes by itself after a "Pronto" line when it worked; on an
+# error it waits for Enter, so the message can be read.
+#
+# Takes no arguments (exit 2 with any).
+set -u
+(( $# == 0 )) || exit 2
+
+if command -v paru >/dev/null 2>&1; then
+  paru -Syu
+  rc=$?
+elif command -v yay >/dev/null 2>&1; then
+  yay -Syu
+  rc=$?
+else
+  echo "Nem paru nem yay instalados."
+  rc=127
+fi
+
+echo
+if (( rc == 0 )); then
+  echo "Pronto."
+  sleep 2
+  exit 0
+fi
+echo "Não terminou (código $rc). Enter para fechar."
+read -r _ || true
+exit "$rc"

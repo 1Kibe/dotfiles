@@ -259,3 +259,41 @@ function mixerKeys(m, hasSource) {
     m.streams.forEach((n, i) => items.push({ kind: "stream", index: i }))
     return items
 }
+
+// ── Updates (checkupdates, paru -Qua) ──
+
+var UPDATES_SHOWN = 5        // per origin, before "e mais N"
+var UPDATES_MAX_LINES = 2000 // more output than this is a failure
+var PKG_NAME = /^[a-z0-9@._+][a-z0-9@._+-]{0,63}$/
+var PKG_VERSION = /^[A-Za-z0-9:._+~-]{1,40}$/
+
+// One line of checkupdates or paru -Qua: "name old -> new"; null for
+// anything else (never shown)
+function updateLine(line) {
+    if (typeof line !== "string" || line.length > 200)
+        return null
+    const parts = line.trim().split(/ +/)
+    if (parts.length !== 4 || parts[2] !== "->")
+        return null
+    if (!PKG_NAME.test(parts[0]) || !PKG_VERSION.test(parts[1]) || !PKG_VERSION.test(parts[3]))
+        return null
+    return { name: parts[0], from: parts[1], to: parts[3] }
+}
+
+// The grid button's state line and whether it shows yellow. s: { sys, aur }
+// each { state ("idle", "checking", "ok", "failed", "missing"), count }
+function updatesSummary(s) {
+    const known = o => o && o.count >= 0
+    const n = (known(s.sys) ? s.sys.count : 0) + (known(s.aur) ? s.aur.count : 0)
+    if (n > 0)
+        return { text: n === 1 ? "1 atualização" : `${n} atualizações`, warn: true }
+    const checking = (s.sys && s.sys.state === "checking") || (s.aur && s.aur.state === "checking")
+    if (checking)
+        return { text: "Verificando…", warn: false }
+    // "Em dia" only when the system's check came back with nothing
+    if (s.sys && s.sys.state === "ok" && s.sys.count === 0)
+        return { text: "Sistema em dia", warn: false }
+    if (s.sys && s.sys.state === "failed")
+        return { text: "Não deu para verificar", warn: false }
+    return { text: "Não verificado", warn: false }
+}
