@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Connects or disconnects Tailscale in the terminal the control center
+# opens (Kitty with the class qs-central, sent to the special workspace by
+# hypr/modules/rules.lua): sudo tailscale up|down, where the password is
+# typed (and, logged out, the login address shows). The window closes by
+# itself after a "Pronto" line when it worked; on an error it waits for
+# Enter, so the message can be read.
+#
+# One argument from a fixed list: up or down (exit 2 with anything else).
+set -u
+(( $# == 1 )) || exit 2
+case "$1" in
+  up|down) ;;
+  *) exit 2 ;;
+esac
+
+sudo tailscale "$1"
+rc=$?
+
+echo
+if (( rc == 0 )); then
+  echo "Pronto."
+  sleep 2
+  exit 0
+fi
+echo "Não terminou (código $rc). Enter para fechar."
+read -r _ || true
+exit "$rc"

@@ -297,3 +297,90 @@ function updatesSummary(s) {
         return { text: "Não deu para verificar", warn: false }
     return { text: "Não verificado", warn: false }
 }
+
+// ── Tailscale (tailscale status --json) ──
+
+var TS_MAX_PEERS = 500
+var TS_MAX_BYTES = 4 * 1024 * 1024
+var TS_STATES = ["NoState", "NeedsLogin", "NeedsMachineAuth", "Stopped", "Starting", "Running"]
+
+// A tailnet address: IPv4 in 100.64.0.0/10, or IPv6 under fd7a:115c:a1e0:
+function tsAddress(ip) {
+    if (typeof ip !== "string" || ip.length > 45)
+        return false
+    const v4 = /^100\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/.exec(ip)
+    if (v4)
+        return Number(v4[1]) >= 64 && Number(v4[1]) <= 127 && Number(v4[2]) <= 255 && Number(v4[3]) <= 255
+    return /^fd7a:115c:a1e0:[0-9a-f:]{1,30}$/.test(ip)
+}
+
+// One node, only the fields of the white list, checked
+function tsNode(n) {
+    if (!n || typeof n !== "object")
+        return null
+    const ips = (Array.isArray(n.TailscaleIPs) ? n.TailscaleIPs : []).filter(tsAddress).slice(0, 4)
+    const dns = Clean.clean(typeof n.DNSName === "string" ? n.DNSName.replace(/\.$/, "") : "", 63)
+    const host = Clean.clean(typeof n.HostName === "string" ? n.HostName : "", 63)
+    const seen = typeof n.LastSeen === "string" ? Date.parse(n.LastSeen) : NaN
+    return {
+        name: host !== "" ? host : dns.split(".")[0] || "",
+        ips: ips,
+        online: n.Online === true,
+        exitNode: n.ExitNode === true,
+        exitOption: n.ExitNodeOption === true,
+        lastSeen: isFinite(seen) && seen > 0 ? seen : 0
+    }
+}
+
+// The status as kept: { state (one of TS_STATES, or "unknown"), self,
+// peers (at most TS_MAX_PEERS, online first, then by name) }; null for
+// text that is not that JSON. Everything else of the status (the login
+// address, keys, public addresses, users, health) is never kept.
+function tsParse(text) {
+    if (typeof text !== "string" || text.length > TS_MAX_BYTES)
+        return null
+    let d
+    try {
+        d = JSON.parse(text)
+    } catch (e) {
+        return null
+    }
+    if (!d || typeof d !== "object" || Array.isArray(d))
+        return null
+    const state = TS_STATES.includes(d.BackendState) ? d.BackendState : "unknown"
+    const raw = d.Peer && typeof d.Peer === "object" && !Array.isArray(d.Peer) ? Object.keys(d.Peer).slice(0, TS_MAX_PEERS).map(k => d.Peer[k]) : []
+    const peers = raw.map(tsNode).filter(p => p !== null)
+    peers.sort((a, b) => (Number(b.online) - Number(a.online)) || a.name.localeCompare(b.name))
+    return { state: state, self: tsNode(d.Self), peers: peers }
+}
+
+// The grid button's state line: generic words only, never a name or an
+// address. state: a TS_STATES value, "unknown", or "off" (no answer)
+function tsSummary(state, exitActive) {
+    if (state === "Running")
+        return exitActive ? "Conectado · saída ativa" : "Conectado"
+    if (state === "Starting")
+        return "Conectando…"
+    if (state === "NeedsLogin" || state === "NeedsMachineAuth")
+        return "Entre pelo terminal"
+    if (state === "Stopped")
+        return "Desconectado"
+    if (state === "")
+        return ""
+    return "Desligado"
+}
+
+// "online", "hoje", "ontem", "há N dias" (lastSeen and now in ms)
+function tsSeen(online, lastSeen, now) {
+    if (online)
+        return "online"
+    if (!(lastSeen > 0) || !(now >= lastSeen))
+        return "offline"
+    const days = Math.floor((now - lastSeen) / 86400000)
+    return days < 1 ? "visto hoje" : days === 1 ? "visto ontem" : `visto há ${days} dias`
+}
+
+// The hidden form of an address: its kind only, never a part of it
+function tsMask(ip) {
+    return typeof ip === "string" && ip.includes(":") ? "fd7a:•••" : "100.•••.•••.•••"
+}

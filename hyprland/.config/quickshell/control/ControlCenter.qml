@@ -78,6 +78,12 @@ AttachedPanel {
                    ? BluetoothPower.adapter.devices.values.filter(d => d.connected).length : 0
     })
 
+    // The Tailscale button shows the generic state read at each opening
+    onOpenChanged: {
+        if (open)
+            Tailnet.readState()
+    }
+
     // A button without a list, pressed by a click or a key
     function toggle(id) {
         if (id === "nightlight" && SettingsStore.ready)
@@ -130,12 +136,13 @@ AttachedPanel {
                 label: modelData.label
                 hasArrow: modelData.hasList
                 open: modelData.hasList && ShellState.controlSection === modelData.id
-                on: modelData.id === "nightlight" && NightLight.enabled
+                on: (modelData.id === "nightlight" && NightLight.enabled) || (modelData.id === "tailscale" && Tailnet.backend === "Running")
                 warn: modelData.id === "updates" && Updates.summary.warn
                 status: modelData.id === "nightlight" ? root.night.status
                       : modelData.id === "wifi" ? root.netState
                       : modelData.id === "bluetooth" ? root.btState
-                      : modelData.id === "updates" ? Updates.summary.text : ""
+                      : modelData.id === "updates" ? Updates.summary.text
+                      : modelData.id === "tailscale" ? Tailnet.summary : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
                 keyFocus: keys.keyFocus("grid", index)
                 onClicked: {
@@ -187,26 +194,16 @@ AttachedPanel {
         }
     }
 
-    // The other sections of the grid's buttons, under it; their contents come
-    // in the next steps
-    Repeater {
-        model: root.tiles.filter(t => t.hasList && t.id !== "wifi" && t.id !== "bluetooth" && t.id !== "updates")
+    // The Tailscale section
+    Accordion {
+        open: root.open && ShellState.controlSection === "tailscale"
+        maxHeight: root.listMax
 
-        Accordion {
-            required property var modelData
-
-            open: root.open && ShellState.controlSection === modelData.id
-            maxHeight: root.listMax
-
-            Text {
-                Layout.fillWidth: true
-                Layout.margins: 12
-                text: "(em breve)"
-                textFormat: Text.PlainText
-                color: Theme.gray
-                font.family: Theme.font
-                font.pointSize: Theme.fontSize
-            }
+        TailscaleList {
+            id: tailscale
+            active: root.open && ShellState.controlSection === "tailscale"
+            maxListHeight: Math.max(120, root.listMax - 260)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
         }
     }
 
@@ -242,7 +239,8 @@ AttachedPanel {
                    : ShellState.controlSection === "wifi" ? wifi
                    : ShellState.controlSection === "bluetooth" ? bluetooth
                    : ShellState.controlSection === "mixer" ? mixer
-                   : ShellState.controlSection === "updates" ? updates : null
+                   : ShellState.controlSection === "updates" ? updates
+                   : ShellState.controlSection === "tailscale" ? tailscale : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
         brightness: brightness
