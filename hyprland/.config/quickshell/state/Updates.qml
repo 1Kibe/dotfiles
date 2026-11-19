@@ -39,7 +39,15 @@ Singleton {
     property var sys: ({ state: "idle", count: -1, list: [], missing: "" })
     property var aur: ({ state: "idle", count: -1, list: [], missing: "" })
     readonly property bool checking: origin !== ""
-    readonly property var summary: Lists.updatesSummary({ sys: sys, aur: aur })
+    // While a check runs the button keeps the last complete summary (one
+    // origin new and the other old would add up to a total that never was)
+    readonly property var summary: checking ? held : Lists.updatesSummary({ sys: sys, aur: aur })
+    property var held: ({ text: "Verificando…", warn: false })
+    onCheckingChanged: {
+        if (checking)
+            held = sys.count < 0 && aur.count < 0 ? { text: "Verificando…", warn: false }
+                 : Lists.updatesSummary({ sys: sys, aur: aur })
+    }
     property int failures: 0
     // When the last check ended (ms; 0 none yet)
     property double lastCheckAt: 0

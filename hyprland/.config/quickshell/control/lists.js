@@ -15,13 +15,15 @@ function trim(text) {
 
 // A list from Quickshell (a model's values: list-like, not a JS Array) or
 // a JS Array, as a JS Array; anything else is empty. Array.isArray alone
-// would turn every real model into an empty list.
-function toList(x) {
+// would turn every real model into an empty list. max: the most copied
+// (100000 when not given), so a long list is cut before any work on it.
+function toList(x, max) {
+    const cap = max > 0 ? max : 100000
     if (Array.isArray(x))
-        return x
+        return x.length > cap ? x.slice(0, cap) : x
     const out = []
     if (x !== null && x !== undefined && typeof x !== "string" && typeof x.length === "number") {
-        const n = Math.min(Math.max(0, Math.floor(x.length)), 100000)
+        const n = Math.min(Math.max(0, Math.floor(x.length)), cap)
         for (let i = 0; i < n; i++)
             out.push(x[i])
     }
@@ -367,18 +369,28 @@ function updatesTool(o, name, time) {
 }
 
 // The grid button's state line and whether it shows yellow. s: { sys, aur }
-// each { state ("idle", "checking", "ok", "failed", "missing"), count }
+// each { state ("idle", "checking", "ok", "failed", "missing"), count }.
+// The total only when both origins are known; with one of them missing or
+// failed (or not checked yet) only the known part, named ("2 do AUR",
+// "5 do sistema"), never passed off as the whole.
 function updatesSummary(s) {
-    const known = o => o && o.count >= 0
-    const n = (known(s.sys) ? s.sys.count : 0) + (known(s.aur) ? s.aur.count : 0)
-    if (n > 0)
+    const known = o => !!o && o.count >= 0 && o.state !== "missing" && o.state !== "failed"
+    const sys = known(s.sys) ? s.sys.count : -1
+    const aur = known(s.aur) ? s.aur.count : -1
+    if (sys >= 0 && aur >= 0 && sys + aur > 0) {
+        const n = sys + aur
         return { text: n === 1 ? "1 atualização" : `${n} atualizações`, warn: true }
+    }
+    if (sys > 0 && aur < 0)
+        return { text: `${sys} do sistema`, warn: true }
+    if (aur > 0 && sys < 0)
+        return { text: `${aur} do AUR`, warn: true }
     const checking = (s.sys && s.sys.state === "checking") || (s.aur && s.aur.state === "checking")
     if (checking)
         return { text: "Verificando…", warn: false }
     // "Em dia" only when the system's check came back with nothing
     if (s.sys && s.sys.state === "ok" && s.sys.count === 0)
-        return { text: "Sistema em dia", warn: false }
+        return { text: aur === 0 ? "Sistema em dia" : "Sistema em dia · AUR não verificado", warn: false }
     if (s.sys && s.sys.state === "failed")
         return { text: "Não deu para verificar", warn: false }
     return { text: "Não verificado", warn: false }
@@ -475,4 +487,110 @@ function tsSeen(online, lastSeen, now) {
 // The hidden form of an address: its kind only, never a part of it
 function tsMask(ip) {
     return typeof ip === "string" && ip.includes(":") ? "fd7a:•••" : "100.•••.•••.•••"
+}
+
+// ── Em segundo plano (the tray: StatusNotifierItem) ──
+
+var TRAY_MAX = 32          // items shown at most
+var TRAY_RAW_MAX = 64      // items looked at, before any sorting
+var TRAY_MENU_MAX = 40     // entries read per menu level
+var TRAY_MENU_DEPTH = 3    // menu levels at most
+var TRAY_TEXT_MAX = 80
+// Ids whose chip never gets the ×, only the menu: blueman's "Sair" also
+// ends Bluetooth's pairing agent. This list only takes the × away.
+var TRAY_NO_QUIT = ["blueman"]
+// What counts as a menu's quit entry: the word alone or the word and a
+// space. "fechar"/"close" are left out on purpose: they usually only close
+// the window and leave the app running.
+var TRAY_QUIT_WORDS = ["sair", "quit", "exit", "encerrar"]
+var TRAY_ICON_NAME = /^[A-Za-z0-9._-]{1,64}$/
+
+// The items shown: the ones not Passive (passive is the Status enum's
+// value for it), by name (the host's order is not stable), at most
+// TRAY_MAX
+function trayItems(items, passive) {
+    return toList(items, TRAY_RAW_MAX).filter(it => it && it.status !== passive)
+        .map(it => ({ it: it, name: trayName(it) }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(0, TRAY_MAX).map(x => x.it)
+}
+
+// A menu entry's or an item's text as shown: no markup, the "&" mnemonics
+// out ("&&" is a plain "&"), cleaned, one line
+function trayText(text) {
+    // cut first, so the patterns never run over a huge text
+    const t = typeof text === "string" ? text.slice(0, 256) : ""
+    return Clean.clean(t.replace(/<[^>]*>/g, "").replace(/&&/g, "\u0001").replace(/&/g, "").replace(/\u0001/g, "&"),
+                       TRAY_TEXT_MAX)
+}
+
+// An item's name: its title, else its id
+function trayName(item) {
+    if (!item)
+        return ""
+    const t = trayText(item.title)
+    return t !== "" ? t : trayText(item.id)
+}
+
+// Whether a text is a quit entry: markup, "&", "_" and the ellipsis out,
+// lower case, one of TRAY_QUIT_WORDS alone or followed by a space
+function trayIsQuit(text) {
+    const n = trayText(text).replace(/_/g, "").replace(/(…|\.\.\.)\s*$/, "").trim().toLowerCase()
+    return TRAY_QUIT_WORDS.some(w => n === w || n.startsWith(w + " "))
+}
+
+// The index of a menu's one quit entry, or -1: only an enabled entry with
+// no children that is not a separator; more than one is ambiguous (none).
+// entries: [{ text, enabled, isSeparator, hasChildren }], the same names
+// as the menu entries themselves and as TrayMenu's copy
+function trayQuitIndex(entries) {
+    const hits = []
+    toList(entries, TRAY_MENU_MAX).forEach((e, i) => {
+        if (e && e.enabled === true && e.isSeparator !== true && e.hasChildren !== true && trayIsQuit(e.text))
+            hits.push(i)
+    })
+    return hits.length === 1 ? hits[0] : -1
+}
+
+// Whether an item may get the ×: not on TRAY_NO_QUIT
+function trayMayQuit(id) {
+    return !TRAY_NO_QUIT.includes(typeof id === "string" ? id : "")
+}
+
+// The icon source to load, or "" for the generic one: only a theme icon
+// by a plain name, or the shell's own pixmap provider
+function trayIcon(icon) {
+    const s = typeof icon === "string" ? icon : String(icon || "")
+    if (/^image:\/\/qspixmap\/[0-9]+\/[0-9]+$/.test(s))
+        return s
+    const m = /^image:\/\/icon\/(.*)$/.exec(s)
+    return m && TRAY_ICON_NAME.test(m[1]) ? s : ""
+}
+
+// How many chips fit in `lines` lines of `width`, the last place left for
+// a "+N" chip of plusWidth when not all fit. widths: each chip's width.
+function trayFit(widths, width, gap, plusWidth, lines) {
+    const w = toList(widths)
+    const place = k => {
+        let line = 0, x = 0
+        for (let i = 0; i < k; i++) {
+            if (x > 0 && x + w[i] > width) {
+                line++
+                x = 0
+            }
+            x += w[i] + gap
+        }
+        return { line: line, x: x }
+    }
+    const all = place(w.length)
+    if (all.line < lines)
+        return w.length
+    let k = w.length
+    while (k > 0) {
+        const p = place(k)
+        if (p.line < lines - 1 || (p.line === lines - 1 && p.x + plusWidth <= width))
+            break
+        k--
+    }
+    return k
 }

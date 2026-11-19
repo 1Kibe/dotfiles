@@ -5,7 +5,8 @@ import "focus.js" as Focus
 // The keyboard inside the control center. It holds the keyboard while the
 // center shows (nothing else in it takes focus, so the focus stays inside)
 // and keeps where the keyboard is: a group (the top line, the grid, the
-// sliders, the open section's list) and an index; the buttons draw their
+// sliders, the open section's list, the background apps' chips) and an
+// index; the buttons draw their
 // ring from keyFocus(). Arrows move inside the group, Tab and Shift+Tab
 // between the groups, Enter and Space press the button, Esc folds the
 // section and then closes the center. In the sliders (the volume, the
@@ -29,6 +30,9 @@ Item {
     // The sliders (VolumeSlider, BrightnessSlider); null leaves them out
     property var volume: null
     property var brightness: null
+    // The background apps' strip (BackgroundStrip): its chips are a group
+    // of their own, after the list; null leaves it out
+    property var strip: null
 
     property string group: "grid"
     property int index: 0
@@ -42,7 +46,8 @@ Item {
         { name: "top", count: 2, columns: 2 },
         { name: "grid", count: tiles.length, columns: 2 },
         { name: "sliders", count: (volume ? 2 : 0) + (volume && brightness && Brightness.available ? 1 : 0), columns: 1 },
-        { name: "list", count: sectionList ? sectionList.keyCount : 0, columns: 1 }
+        { name: "list", count: sectionList ? sectionList.keyCount : 0, columns: 1 },
+        { name: "strip", count: strip ? strip.chipKeyCount : 0, columns: 1 }
     ]
     function keyFocus(g, i) {
         return active && ringVisible && group === g && index === i
@@ -127,6 +132,9 @@ Item {
         } else if (group === "list") {
             if (sectionList)
                 sectionList.pressKey(index)
+        } else if (group === "strip") {
+            if (strip)
+                strip.pressChipKey(index)
         }
     }
 

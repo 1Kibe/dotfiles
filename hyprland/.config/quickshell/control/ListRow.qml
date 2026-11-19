@@ -15,8 +15,10 @@ Item {
 
     property string icon
     property color iconColor: Theme.fg4
-    // A resolved icon path (an app's, from the icon theme)
+    // A resolved icon path (an app's, from the icon theme); the glyph in
+    // `icon` shows instead while it does not load (or loads empty)
     property string image
+    readonly property bool imageOk: image !== "" && picture.status === Image.Ready && picture.implicitWidth > 0
     property bool dot: false
     property color dotColor: Theme.green
     property string text
@@ -87,7 +89,8 @@ Item {
             color: root.dotColor
         }
         Image {
-            visible: !root.dot && root.image !== ""
+            id: picture
+            visible: !root.dot && root.imageOk
             source: root.image
             sourceSize.width: 16
             sourceSize.height: 16
@@ -95,7 +98,7 @@ Item {
             Layout.preferredHeight: 16
         }
         Text {
-            visible: !root.dot && root.image === "" && root.icon !== ""
+            visible: !root.dot && !root.imageOk && root.icon !== ""
             Layout.minimumWidth: 16
             horizontalAlignment: Text.AlignHCenter
             text: root.icon
