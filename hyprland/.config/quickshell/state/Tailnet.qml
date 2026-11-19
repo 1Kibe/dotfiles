@@ -16,7 +16,8 @@ import "../control/lists.js" as Lists
 // generic state, read once when the control center opens. Connecting and
 // disconnecting open Kitty with the fixed script hypr-tailscale (sudo is
 // typed there, never here); the shell never changes the tailnet itself
-// (no operator, no "tailscale set"): the exit node is only shown. Copying
+// (no operator, no "tailscale set"): an exit node in use is only shown;
+// the account's admin console opens in the browser at a fixed address. Copying
 // this device's address goes to wl-copy --sensitive through its input
 // only, never as an argument.
 Singleton {
@@ -139,6 +140,19 @@ Singleton {
             return false
         openedAt = Date.now()
         Quickshell.execDetached(["kitty", "--class", "qs-central", "hypr-tailscale", action])
+        return true
+    }
+
+    // The admin console of the Tailscale account in the default browser: a
+    // fixed address of the code, never one read from the status (its login
+    // address is never kept); clicks within 3 s are ignored
+    readonly property string adminUrl: "https://login.tailscale.com/admin/machines"
+    property double adminAt: 0
+    function openAdmin() {
+        if (locked || Date.now() - adminAt < 3000)
+            return false
+        adminAt = Date.now()
+        Quickshell.execDetached(["xdg-open", adminUrl])
         return true
     }
 

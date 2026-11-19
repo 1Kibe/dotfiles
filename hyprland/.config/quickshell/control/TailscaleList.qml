@@ -11,12 +11,15 @@ import "lists.js" as Lists
 // "este aparelho" beside it, its address and a copy icon), "Aparelhos"
 // ("N de M online"; online ones with
 // their address, offline ones dim with when they were last seen and no
-// address; a name gives way, an address never); "Saída para a internet"
-// (shown only: the exit node in use, or "Nenhuma"); and "Esconder nomes e
+// address; a name gives way, an address never); a yellow line while an
+// exit node is in use ("A internet está saindo por …", never hidden; only
+// shown, never chosen here); "Esconder nomes e
 // endereços", which masks the text on screen ("aparelho N", only "este
 // aparelho" for this one, the address's kind) while the copy still copies
 // the real address; it is not kept, every opening shows them. Names from
-// outside show as plain text.
+// outside show as plain text. "Abrir o painel do Tailscale" (whenever
+// Tailscale is installed) closes the center and opens the account's admin
+// console in the browser, at the fixed address of Tailnet.openAdmin.
 ColumnLayout {
     id: root
 
@@ -93,6 +96,8 @@ ColumnLayout {
             items.push({ kind: "copy" })
         if (running)
             items.push({ kind: "hide" })
+        if (installed)
+            items.push({ kind: "admin" })
         return items
     }
     readonly property int keyCount: keyItems.length
@@ -110,6 +115,12 @@ ColumnLayout {
             copy()
         else if (it.kind === "hide")
             hide = !hide
+        else if (it.kind === "admin")
+            openAdmin()
+    }
+    function openAdmin() {
+        if (active && installed && Tailnet.openAdmin())
+            ShellState.close()
     }
 
     Layout.fillWidth: true
@@ -205,37 +216,19 @@ ColumnLayout {
         }
     }
 
-    // ── The exit node, the value in a light pill (shown only, never chosen
-    // from here), and hiding names and addresses (screen privacy; not
-    // kept) ──
+    // ── An exit node in use: never hidden (only shown, never chosen from
+    // here); the name goes through "Esconder" like the others ──
     ListRow {
-        visible: root.running
+        visible: root.running && Tailnet.exitNode !== null
         Layout.topMargin: 4
-        text: "Saída para a internet"
-
-        Rectangle {
-            Layout.maximumWidth: root.width * 0.5
-            implicitWidth: exitText.implicitWidth + 16
-            implicitHeight: 22
-            radius: Theme.radius
-            color: Theme.bg1
-
-            Text {
-                id: exitText
-                anchors.fill: parent
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                verticalAlignment: Text.AlignVCenter
-                text: Tailnet.exitNode !== null ? root.shownName(Tailnet.exitNode, root.peers.indexOf(Tailnet.exitNode)) : "Nenhuma"
-                textFormat: Text.PlainText
-                maximumLineCount: 1
-                elide: Text.ElideRight
-                color: Tailnet.exitNode !== null ? Theme.yellow : Theme.fg2
-                font.family: Theme.font
-                font.pointSize: Theme.fontSizeSmall
-            }
-        }
+        icon: String.fromCodePoint(0xF0026)   // nf-md-alert
+        iconColor: Theme.yellow
+        textColor: Theme.yellow
+        text: Tailnet.exitNode !== null
+              ? `A internet está saindo por ${root.shownName(Tailnet.exitNode, root.peers.indexOf(Tailnet.exitNode))}` : ""
     }
+
+    // ── Hiding names and addresses (screen privacy; not kept) ──
     ListRow {
         visible: root.running
         text: "Esconder nomes e endereços"
@@ -246,6 +239,21 @@ ColumnLayout {
         PanelSwitch {
             checked: root.hide
             onToggled: root.hide = !root.hide
+        }
+    }
+
+    // The account's admin console, in the browser (a fixed address)
+    ListBlock {
+        visible: root.installed
+        Layout.topMargin: 4
+
+        ListRow {
+            action: true
+            clickable: true
+            icon: String.fromCodePoint(0xF03CC)   // nf-md-open_in_new
+            text: "Abrir o painel do Tailscale"
+            keyFocus: root.keyOn("admin")
+            onClicked: root.openAdmin()
         }
     }
 }
