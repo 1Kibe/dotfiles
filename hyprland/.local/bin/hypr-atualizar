@@ -5,7 +5,10 @@
 # yay is there), where its review and the password are seen and typed.
 # The window closes by itself after a "Pronto" line when it worked; on an
 # error it waits for Enter, so the message can be read. Only one runs at a
-# time (a lock in the session's runtime directory).
+# time (a lock in the session's runtime directory). At the end, either way,
+# it asks the shell to check the updates again (qs ipc call updates check),
+# so the control center's list follows what was just installed; that call
+# never holds the script (5 s at most, its output and failure ignored).
 #
 # Takes no arguments (exit 2 with any).
 set -u
@@ -32,12 +35,20 @@ else
   rc=127
 fi
 
+# The control center's list checked again (only the one holding the lock
+# gets here)
+recheck() {
+  timeout 5 qs ipc call updates check >/dev/null 2>&1 || true
+}
+
 echo
 if (( rc == 0 )); then
   echo "Pronto."
   sleep 2
+  recheck
   exit 0
 fi
 echo "Não terminou (código $rc). Enter para fechar."
 read -r _ || true
+recheck
 exit "$rc"

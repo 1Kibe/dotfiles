@@ -29,6 +29,7 @@ rofi
 # ── Terminal ──
 kitty                        # the terminal (Hyprland and XFCE)
 pacman-contrib               # checkupdates: the control center's updates, without root
+fakeroot                     # checkupdates needs it (also in base-devel, which only the paru bootstrap brings)
 starship                     # the bash prompt (starship.toml)
 
 # ── Editor ──
@@ -106,6 +107,7 @@ libnotify              # notify-send: the "Pendrive conectado" notice (state/Dri
 greetd
 cage
 quickshell             # the login screen (system/greetd/quickshell) and Hyprland's shell
+upower                 # the shell's battery (bar, control center, lock); only a dependency of XFCE's power manager otherwise
 gnome-themes-extra     # Adwaita-dark GTK theme
 breeze-icons           # breeze-dark icon theme
 
