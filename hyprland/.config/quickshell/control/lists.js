@@ -15,13 +15,15 @@ function trim(text) {
 
 // A list from Quickshell (a model's values: list-like, not a JS Array) or
 // a JS Array, as a JS Array; anything else is empty. Array.isArray alone
-// would turn every real model into an empty list.
-function toList(x) {
+// would turn every real model into an empty list. max: the most copied
+// (100000 when not given), so a long list is cut before any work on it.
+function toList(x, max) {
+    const cap = max > 0 ? max : 100000
     if (Array.isArray(x))
-        return x
+        return x.length > cap ? x.slice(0, cap) : x
     const out = []
     if (x !== null && x !== undefined && typeof x !== "string" && typeof x.length === "number") {
-        const n = Math.min(Math.max(0, Math.floor(x.length)), 100000)
+        const n = Math.min(Math.max(0, Math.floor(x.length)), cap)
         for (let i = 0; i < n; i++)
             out.push(x[i])
     }
@@ -388,7 +390,7 @@ function updatesSummary(s) {
         return { text: "Verificando…", warn: false }
     // "Em dia" only when the system's check came back with nothing
     if (s.sys && s.sys.state === "ok" && s.sys.count === 0)
-        return { text: "Sistema em dia", warn: false }
+        return { text: aur === 0 ? "Sistema em dia" : "Sistema em dia · AUR não verificado", warn: false }
     if (s.sys && s.sys.state === "failed")
         return { text: "Não deu para verificar", warn: false }
     return { text: "Não verificado", warn: false }
@@ -489,7 +491,8 @@ function tsMask(ip) {
 
 // ── Em segundo plano (the tray: StatusNotifierItem) ──
 
-var TRAY_MAX = 32          // items considered at most
+var TRAY_MAX = 32          // items shown at most
+var TRAY_RAW_MAX = 64      // items looked at, before any sorting
 var TRAY_MENU_MAX = 40     // entries read per menu level
 var TRAY_MENU_DEPTH = 3    // menu levels at most
 var TRAY_TEXT_MAX = 80
@@ -506,14 +509,17 @@ var TRAY_ICON_NAME = /^[A-Za-z0-9._-]{1,64}$/
 // value for it), by name (the host's order is not stable), at most
 // TRAY_MAX
 function trayItems(items, passive) {
-    return toList(items).filter(it => it && it.status !== passive)
-        .sort((a, b) => trayName(a).localeCompare(trayName(b))).slice(0, TRAY_MAX)
+    return toList(items, TRAY_RAW_MAX).filter(it => it && it.status !== passive)
+        .map(it => ({ it: it, name: trayName(it) }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(0, TRAY_MAX).map(x => x.it)
 }
 
 // A menu entry's or an item's text as shown: no markup, the "&" mnemonics
 // out ("&&" is a plain "&"), cleaned, one line
 function trayText(text) {
-    const t = typeof text === "string" ? text : ""
+    // cut first, so the patterns never run over a huge text
+    const t = typeof text === "string" ? text.slice(0, 256) : ""
     return Clean.clean(t.replace(/<[^>]*>/g, "").replace(/&&/g, "\u0001").replace(/&/g, "").replace(/\u0001/g, "&"),
                        TRAY_TEXT_MAX)
 }
@@ -535,10 +541,11 @@ function trayIsQuit(text) {
 
 // The index of a menu's one quit entry, or -1: only an enabled entry with
 // no children that is not a separator; more than one is ambiguous (none).
-// entries: [{ text, enabled, isSeparator, hasChildren }]
+// entries: [{ text, enabled, isSeparator, hasChildren }], the same names
+// as the menu entries themselves and as TrayMenu's copy
 function trayQuitIndex(entries) {
     const hits = []
-    toList(entries).slice(0, TRAY_MENU_MAX).forEach((e, i) => {
+    toList(entries, TRAY_MENU_MAX).forEach((e, i) => {
         if (e && e.enabled === true && e.isSeparator !== true && e.hasChildren !== true && trayIsQuit(e.text))
             hits.push(i)
     })

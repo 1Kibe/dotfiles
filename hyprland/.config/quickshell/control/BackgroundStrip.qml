@@ -31,8 +31,9 @@ ColumnLayout {
 
     readonly property var items: TrayApps.items
     readonly property bool expanded: active && ShellState.controlSection === "background"
-    // The menus' top level is read only while the strip shows
-    readonly property bool watching: active && items.length > 0
+    // The list is made (and the menus' top level read) only while the
+    // center is open (TrayApps.watch)
+    readonly property bool watching: active
     onWatchingChanged: TrayApps.watch(watching)
     Component.onDestruction: {
         if (watching)
@@ -100,9 +101,9 @@ ColumnLayout {
         menuStack = []
     }
     function pressEntry(e) {
-        if (!e || !e.enabled || e.separator)
+        if (!e || !e.enabled || e.isSeparator)
             return
-        if (e.children) {
+        if (e.hasChildren) {
             if (menuStack.length < Lists.TRAY_MENU_DEPTH)
                 menuStack = menuStack.concat([e.entry])
             return
@@ -132,7 +133,7 @@ ColumnLayout {
         if (menuStack.length > 1)
             k.push({ kind: "back" })
         menuReader.entries.forEach((e, j) => {
-            if (e.enabled && !e.separator)
+            if (e.enabled && !e.isSeparator)
                 k.push({ kind: "entry", index: j })
         })
         k.push({ kind: "close" })
@@ -177,10 +178,28 @@ ColumnLayout {
     function menuKeyOn(kind, j) {
         return (expanded ? listKeyOn(kind, j) : chipKeyOn(kind, j))
     }
-    function press(it) {
+    // The item the keyboard went to, kept by itself (the list is sorted by
+    // name and can change under the ring): Enter acts on that item, or on
+    // nothing if it went away
+    property var chipFocus: null
+    property var listFocus: null
+    function snap(list, k) {
+        const it = list[k]
+        if (!it)
+            return null
+        return { kind: it.kind, item: it.index !== undefined && it.kind !== "entry" ? items[it.index] ?? null : null }
+    }
+    onChipKeyIndexChanged: chipFocus = snap(chipKeys, chipKeyIndex)
+    onListKeyIndexChanged: listFocus = snap(listKeyItems, listKeyIndex)
+    function press(it, focus) {
         if (!it)
             return
-        const item = it.index !== undefined ? items[it.index] : null
+        let item = null
+        if (it.index !== undefined && it.kind !== "entry") {
+            item = focus && focus.kind === it.kind && focus.item ? focus.item : items[it.index]
+            if (!item || !items.includes(item))
+                return
+        }
         if (it.kind === "open")
             open(item)
         else if (it.kind === "quit")
@@ -199,13 +218,13 @@ ColumnLayout {
             closeMenu()
     }
     function pressChipKey(k) {
-        press(chipKeys[k])
+        press(chipKeys[k], chipFocus)
     }
     // The opened list, as the control center's section list
     readonly property QtObject listKeys: QtObject {
         readonly property int keyCount: root.listKeyItems.length
         function pressKey(k) {
-            root.press(root.listKeyItems[k])
+            root.press(root.listKeyItems[k], root.listFocus)
         }
     }
 
@@ -224,7 +243,7 @@ ColumnLayout {
 
         Repeater {
             id: chips
-            model: root.items
+            model: root.active ? root.items : []
 
             Rectangle {
                 id: chip
@@ -468,10 +487,10 @@ ColumnLayout {
                 readonly property var e: modelData
 
                 Layout.fillWidth: true
-                implicitHeight: e.separator ? 9 : Theme.listRowHeight
+                implicitHeight: e.isSeparator ? 9 : Theme.listRowHeight
 
                 Rectangle {
-                    visible: entryItem.e.separator
+                    visible: entryItem.e.isSeparator
                     anchors.verticalCenter: parent.verticalCenter
                     x: 10
                     width: parent.width - 20
@@ -479,7 +498,7 @@ ColumnLayout {
                     color: Theme.bg2
                 }
                 ListRow {
-                    visible: !entryItem.e.separator
+                    visible: !entryItem.e.isSeparator
                     width: parent.width
                     divider: entryItem.index > 0 || root.menuStack.length > 1
                     clickable: entryItem.e.enabled
@@ -487,7 +506,7 @@ ColumnLayout {
                     textColor: entryItem.e.enabled ? Theme.fg : Theme.gray
                     icon: entryItem.e.check === "check" ? String.fromCodePoint(entryItem.e.checked ? 0xF0132 : 0xF0131)
                         : entryItem.e.check === "radio" ? String.fromCodePoint(entryItem.e.checked ? 0xF043E : 0xF043D) : ""
-                    detail: entryItem.e.children && root.menuStack.length < Lists.TRAY_MENU_DEPTH
+                    detail: entryItem.e.hasChildren && root.menuStack.length < Lists.TRAY_MENU_DEPTH
                             ? String.fromCodePoint(0xF0142) : ""   // nf-md-chevron_right
                     keyFocus: root.menuKeyOn("entry", entryItem.index)
                     onClicked: root.pressEntry(entryItem.e)

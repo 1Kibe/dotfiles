@@ -9,10 +9,11 @@ import "../control/lists.js" as Lists
 // The apps running in the background, for the control center's "Em
 // segundo plano" strip: the tray items (StatusNotifierItem; the shell is
 // the tray host), the Passive ones left out, at most TRAY_MAX. Passive
-// model: with the strip hidden nothing is read but the items themselves;
-// the menus are read only while the strip shows (watch), and only the
-// top level, to find the one quit entry for the × (lists.js
-// trayQuitIndex; never on TRAY_NO_QUIT ids).
+// model: with the control center closed nothing here is read (the host
+// itself keeps each item's properties, read once when it registers); while
+// it is open (watch) the list is made and the menus' top level read, to
+// find the one quit entry for the × (lists.js trayQuitIndex; never on
+// TRAY_NO_QUIT ids), checked again live right before the × acts.
 //
 // What the shell does to an app is only what the app offers: activate()
 // (open its window), a menu entry's triggered(), its own quit entry. Never
@@ -23,40 +24,50 @@ import "../control/lists.js" as Lists
 Singleton {
     id: root
 
+    // The tray host from the shell's start (the apps see a tray at once and
+    // register; nothing of them is read here until the center opens)
+    readonly property var host: SystemTray
     readonly property bool locked: LockState.wanted || LockState.locked
-    readonly property var items: Lists.trayItems(SystemTray.items.values, Status.Passive)
+    readonly property var items: watchers > 0 ? Lists.trayItems(SystemTray.items.values, Status.Passive) : []
 
-    // ── The strip showing: the menus' top level read ──
+    // ── The control center open: the list made, the menus' top level read ──
     property int watchers: 0
     function watch(on) {
         watchers = Math.max(0, watchers + (on ? 1 : -1))
+        if (watchers === 0)
+            forget()
     }
 
-    // One reader per tray item (the host's own model, so a reader lives as
-    // long as its item and is not made again when the list changes); it
-    // reads only for an item shown that may get the ×
+    // TRAY_MAX readers, one per place of the list (made once; each reads
+    // the menu of the item now in its place, if it may get the ×)
     property var readers: []
     Instantiator {
-        model: SystemTray.items
+        model: Lists.TRAY_MAX
         delegate: TrayMenu {
-            required property var modelData
-            readonly property var item: modelData
-            menu: root.watchers > 0 && modelData.hasMenu && Lists.trayMayQuit(modelData.id)
-                  && root.items.includes(modelData) ? modelData.menu : null
+            required property int index
+            readonly property var item: index < root.items.length ? root.items[index] : null
+            menu: item !== null && item.hasMenu && Lists.trayMayQuit(item.id) ? item.menu : null
         }
         onObjectAdded: (i, o) => root.readers = root.readers.concat([o])
         onObjectRemoved: (i, o) => root.readers = root.readers.filter(r => r !== o)
     }
-    // The item's quit entry (a QsMenuEntry), or null: none, ambiguous, or
-    // not allowed
-    function quitEntry(item) {
+    function readerOf(item) {
+        return item ? readers.find(x => x.item === item) ?? null : null
+    }
+    // The item's quit entry (a copy: { entry, text, ... }), or null: none,
+    // ambiguous, or not allowed
+    function quitCopy(item) {
         if (!item || !Lists.trayMayQuit(item.id))
             return null
-        const r = readers.find(x => x.item === item)
+        const r = readerOf(item)
         if (!r)
             return null
         const i = Lists.trayQuitIndex(r.entries)
-        return i >= 0 ? r.entries[i].entry : null
+        return i >= 0 ? r.entries[i] : null
+    }
+    function quitEntry(item) {
+        const c = quitCopy(item)
+        return c ? c.entry : null
     }
 
     // An item's icon source, or "" for the generic one: lists.js trayIcon
@@ -79,12 +90,10 @@ Singleton {
     // Open the app: "menu" when the item is only a menu (the strip opens
     // its menu), "done" when asked, "" when refused
     function activate(item) {
-        if (!item || !items.includes(item))
+        if (!item || !items.includes(item) || !allowed())
             return ""
         if (item.onlyMenu)
             return "menu"
-        if (!allowed())
-            return ""
         item.activate()
         return "done"
     }
@@ -107,14 +116,35 @@ Singleton {
         return stayed.some(x => x.item === item)
     }
     function quit(item) {
-        const entry = quitEntry(item)
-        if (!entry || isLeaving(item) || !allowed())
+        const shown = quitCopy(item)
+        if (!shown || isLeaving(item) || !allowed())
             return false
-        entry.triggered()
+        // The entry again, live: the same entry, still the one quit entry,
+        // the same text, enabled, no children; anything changed, nothing
+        // runs (the copy follows and the × goes away)
+        const r = readerOf(item)
+        const now = r ? r.live() : []
+        const i = Lists.trayQuitIndex(now)
+        if (i < 0 || now[i].entry !== shown.entry || now[i].text !== shown.text) {
+            if (r)
+                r.schedule()
+            return false
+        }
+        shown.entry.triggered()
         leaving = leaving.concat([{ item: item, at: Date.now() }])
         stayed = stayed.filter(x => x.item !== item)
         watcher.start()
         return true
+    }
+    // The waits end with the center closing or the session locking
+    function forget() {
+        leaving = []
+        stayed = []
+        watcher.stop()
+    }
+    onLockedChanged: {
+        if (locked)
+            forget()
     }
     property int leaveMs: 5000
     property int stayedMs: 2000
