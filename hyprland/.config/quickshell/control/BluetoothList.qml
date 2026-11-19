@@ -63,6 +63,8 @@ ColumnLayout {
         }
     }
     onKeyIndexChanged: disarm()
+    // A bar going away while this list searches: the search stops with it
+    Component.onDestruction: stopScan()
 
     function toggleScan() {
         if (!active || !powered || adapter === null)

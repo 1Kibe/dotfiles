@@ -368,10 +368,16 @@ function tsSummary(state, exitActive) {
         return exitActive ? "Conectado · saída ativa" : "Conectado"
     if (state === "Starting")
         return "Conectando…"
-    if (state === "NeedsLogin" || state === "NeedsMachineAuth")
+    if (state === "NeedsLogin")
         return "Entre pelo terminal"
+    if (state === "NeedsMachineAuth")
+        return "Aguardando aprovação"
     if (state === "Stopped")
         return "Desconectado"
+    if (state === "timeout")
+        return "Não deu para ler"
+    if (state === "NoState" || state === "unknown")
+        return "Desconhecido"
     if (state === "")
         return ""
     return "Desligado"

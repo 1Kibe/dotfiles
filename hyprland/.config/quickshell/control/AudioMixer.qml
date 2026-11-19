@@ -142,7 +142,7 @@ ColumnLayout {
         readonly property bool isDefault: (output ? root.sink : root.source) === modelData
         // A blank icon still takes the space, so the names stay aligned
         icon: isDefault ? "󰄬" : " "
-        text: Lists.audioDeviceName(modelData)
+        text: Lists.audioDeviceName(modelData) || "Aparelho sem nome"
         onClicked: root.makeDefault(modelData, output)
     }
 
@@ -264,7 +264,7 @@ ColumnLayout {
                         }
                         Text {
                             Layout.fillWidth: true
-                            text: Lists.streamName(app.modelData)
+                            text: Lists.streamName(app.modelData) || "App sem nome"
                             textFormat: Text.PlainText
                             maximumLineCount: 1
                             elide: Text.ElideRight

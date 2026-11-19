@@ -12,6 +12,9 @@
 //   U+202A–U+202E                embeddings and overrides
 //   U+2066–U+2069                isolates
 //   U+00AD, U+180E               soft hyphen, Mongolian vowel separator → removed
+//   U+115F, U+1160, U+2800, U+3164, U+FFA0  Hangul fillers and the blank
+//                                Braille pattern (a name of only these
+//                                would look blank)
 //   U+200B–U+200D, U+2060–U+2064, U+FEFF  zero-width and invisible operators
 //   U+FFF9–U+FFFB                interlinear annotation marks
 //   U+E0000–U+E007F              tag characters
@@ -23,7 +26,7 @@ function clean(value, max) {
     const limit = max > 0 ? max : 120
     return value
         .replace(/[\u0000-\u001F\u007F-\u009F\u061C\u200E\u200F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g, " ")
-        .replace(/[\u00AD\u180E\u200B-\u200D\u2060-\u2064\uFEFF\uFFF9-\uFFFB]|\uDB40[\uDC00-\uDC7F]/g, "")
+        .replace(/[\u00AD\u115F\u1160\u180E\u200B-\u200D\u2060-\u2064\u2800\u3164\uFEFF\uFFA0\uFFF9-\uFFFB]|\uDB40[\uDC00-\uDC7F]/g, "")
         .replace(/([\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]{2})[\u0300-\u036F\u1AB0-\u1AFF\u1DC0-\u1DFF\u20D0-\u20FF\uFE20-\uFE2F]+/g, "$1")
         .replace(/ {2,}/g, " ")
         .trim()

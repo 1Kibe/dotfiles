@@ -50,12 +50,17 @@ Singleton {
     }
 
     property bool details: false
+    // A read with the details asked for while one without them ran
+    property bool detailsAgain: false
     property var chunks: []
     property int bytes: 0
     property bool overflow: false
     function read(withDetails) {
-        if (reader.running)
+        if (reader.running) {
+            if (withDetails === true && !details)
+                detailsAgain = true
             return
+        }
         details = withDetails === true
         chunks = []
         bytes = 0
@@ -65,7 +70,9 @@ Singleton {
     }
     Process {
         id: reader
-        command: ["sh", "-c", 'exec "$@"', "sh", "tailscale", "status", "--json"]
+        // Cut at 4 MiB in the child too (one huge line would otherwise pile
+        // up until the deadline), keeping tailscale's own exit code
+        command: ["bash", "-c", 'tailscale status --json | head -c 4194305; exit "${PIPESTATUS[0]}"', "bash"]
         stdout: SplitParser {
             onRead: line => {
                 if (root.overflow)
@@ -80,18 +87,24 @@ Singleton {
                 root.chunks.push(line)
             }
         }
-        onExited: code => {
+        onExited: (code, status) => {
             readTimeout.stop()
             const text = root.chunks.join("\n")
             root.chunks = []
-            const st = code === 0 && !root.overflow ? Lists.tsParse(text) : null
+            const st = code === 0 && status === 0 && !root.overflow ? Lists.tsParse(text) : null
+            const again = root.detailsAgain && root.watchers > 0
+            root.detailsAgain = false
+            if (again)
+                Qt.callLater(() => root.read(true))
             if (st === null) {
-                root.backend = "off"
+                root.backend = root.timedOut ? "timeout" : "off"
+                root.timedOut = false
                 root.exitActive = false
                 root.self = null
                 root.peers = []
                 return
             }
+            root.timedOut = false
             root.backend = st.state
             root.exitActive = st.state === "Running" && st.peers.some(p => p.exitNode)
             if (root.details && root.watchers > 0) {
@@ -100,11 +113,13 @@ Singleton {
             }
         }
     }
+    property bool timedOut: false
     Timer {
         id: readTimeout
         interval: 5000
         onTriggered: {
             root.overflow = true
+            root.timedOut = true
             reader.running = false
         }
     }
@@ -130,6 +145,8 @@ Singleton {
     // This device's address, as the last read gave it, to the clipboard:
     // only through wl-copy's input (one line read, then wl-copy gets it
     // and its end), marked sensitive so the clipboard history leaves it out
+    // The copy's end: true when wl-copy took it
+    signal copied(bool ok)
     function copy(ip) {
         if (locked || copier.running || !self || !self.ips.includes(ip) || !Lists.tsAddress(ip))
             return false
@@ -148,9 +165,10 @@ Singleton {
             input = ""
             stdinEnabled = false
         }
-        onExited: {
+        onExited: (code, status) => {
             copyTimeout.stop()
             input = ""
+            root.copied(code === 0 && status === 0)
         }
     }
     Timer {

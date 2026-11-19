@@ -23,10 +23,11 @@ ColumnLayout {
     property int keyIndex: -1
 
     property bool hide: false
-    property bool copied: false
+    // "" nothing, "ok" copied, "fail" not copied (for 2 s)
+    property string copied: ""
     readonly property string backend: Tailnet.backend
     readonly property bool running: backend === "Running"
-    readonly property bool installed: backend !== "off" && backend !== ""
+    readonly property bool installed: backend !== "off" && backend !== "" && backend !== "timeout"
     readonly property var self: Tailnet.self
     readonly property var peers: Tailnet.peers
     readonly property string selfIp: self && self.ips.length > 0 ? self.ips[0] : ""
@@ -34,8 +35,13 @@ ColumnLayout {
 
     onActiveChanged: {
         hide = false
-        copied = false
+        copied = ""
         Tailnet.watch(active)
+    }
+    // A bar going away with the section open: the reading stops with it
+    Component.onDestruction: {
+        if (active)
+            Tailnet.watch(false)
     }
 
     function shownName(p, i) {
@@ -50,16 +56,25 @@ ColumnLayout {
         if (Tailnet.openTerminal(running ? "down" : "up"))
             ShellState.close()
     }
+    property bool copying: false
     function copy() {
-        if (active && Tailnet.copy(selfIp)) {
-            copied = true
+        if (active && Tailnet.copy(selfIp))
+            copying = true
+    }
+    Connections {
+        target: Tailnet
+        function onCopied(ok) {
+            if (!root.copying)
+                return
+            root.copying = false
+            root.copied = ok ? "ok" : "fail"
             copiedTimer.restart()
         }
     }
     Timer {
         id: copiedTimer
         interval: 2000
-        onTriggered: root.copied = false
+        onTriggered: root.copied = ""
     }
 
     // ── The control center's keyboard ──
@@ -145,10 +160,12 @@ ColumnLayout {
         visible: text !== ""
         text: root.backend === "" ? "Lendo…"
             : root.backend === "off" ? "Tailscale desligado: o serviço tailscaled não responde"
-            : root.backend === "NeedsLogin" || root.backend === "NeedsMachineAuth" ? "Entre pelo terminal: a chave abre o login"
+            : root.backend === "timeout" ? "Não deu para ler o Tailscale"
+            : root.backend === "NeedsLogin" ? "Entre pelo terminal: a chave abre o login"
+            : root.backend === "NeedsMachineAuth" ? "Aguardando aprovação na sua conta Tailscale"
             : root.backend === "Stopped" ? "Desconectado. A chave conecta pelo terminal (pede a senha)"
             : root.backend === "Starting" ? "Conectando…"
-            : root.backend === "unknown" ? "Estado desconhecido" : ""
+            : root.backend === "unknown" || root.backend === "NoState" ? "Estado do Tailscale desconhecido" : ""
     }
 
     // ── This device ──
@@ -178,7 +195,8 @@ ColumnLayout {
             }
             BarItem {
                 visible: root.selfIp !== ""
-                text: root.copied ? "Copiado" : "Copiar"
+                text: root.copied === "ok" ? "Copiado" : root.copied === "fail" ? "Não deu para copiar" : "Copiar"
+                textColor: root.copied === "fail" ? Theme.red : Theme.text
                 keyFocus: root.keyOn("copy")
                 tooltip: "Copia o endereço de verdade"
                 onClicked: root.copy()
