@@ -38,7 +38,14 @@ Rectangle {
 
         Text {
             Layout.fillWidth: true
-            text: root.entry ? Lists.trim([root.entry.cls, root.entry.title].filter(t => t !== "").join(" · ")) : ""
+            // "App · title"; just one when they are the same (a terminal)
+            text: {
+                if (!root.entry)
+                    return ""
+                const cls = root.entry.cls || "", title = root.entry.title || ""
+                const parts = title.toLowerCase() === cls.toLowerCase() ? [cls] : [cls, title]
+                return Lists.trim(parts.filter(t => t !== "").join(" · "))
+            }
             textFormat: Text.PlainText
             maximumLineCount: 1
             elide: Text.ElideRight
