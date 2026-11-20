@@ -141,11 +141,8 @@ Singleton {
     readonly property int notesListWidth: 210
     property string monoFont: "Agave Nerd Font Mono"
 
-    // Quick notes (post-its above the strip): the 5 colors a note cycles through
+    // Anotações (the clipboard drawer's tab): the 5 colors of a note
     readonly property var noteColors: [yellow, green, blue, orange, purple]
-    readonly property color noteInk: bgHard     // text on a post-it
-    readonly property color notesFill: root.alpha(bgHard, 0.82)
-    readonly property int noteSize: 180
     readonly property int emojiCell: 48     // emoji tab of the strip
     readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 

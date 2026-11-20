@@ -295,7 +295,9 @@ Rectangle {
                         } else if (event.key === Qt.Key_Escape) {
                             root.pressEscape()
                         } else if (root.tab === "notes") {
-                            return
+                            // The list's keys; other keys type into the search
+                            if (!notesTab.key(event))
+                                return
                         } else if (root.tab === "emoji") {
                             // Arrows and Enter go to the emoji grid; other keys type
                             if (!emojiGrid.key(event))
@@ -367,9 +369,12 @@ Rectangle {
             Layout.fillHeight: true
 
             // The notes (the Anotações tab)
-            NotesGrid {
+            NotesTab {
+                id: notesTab
                 anchors.fill: parent
                 visible: root.tab === "notes"
+                active: root.tab === "notes"
+                query: root.tab === "notes" ? root.query : ""
                 onLeave: search.forceActiveFocus()
             }
 
@@ -447,7 +452,7 @@ Rectangle {
             text: root.tab === "history"
                   ? "← → navegar   ·   Enter copiar   ·   Ctrl+P fixar   ·   Del apagar   ·   Tab emoji   ·   digite para buscar   ·   Esc fechar"
                   : root.tab === "notes"
-                  ? "Tab clipboard   ·   digite para buscar   ·   Esc fechar"
+                  ? "↑ ↓ escolher   ·   Enter escrever   ·   Ctrl+N nova   ·   Ctrl+P fixar   ·   Del apagar   ·   Tab clipboard   ·   digite para buscar   ·   Esc fechar"
                   : `${emojiGrid.current && emojiGrid.current.name ? emojiGrid.current.name + "   ·   " : ""}setas navegar   ·   Enter copiar   ·   Tab anotações   ·   digite para buscar (em inglês)   ·   Esc fechar`
             color: Theme.gray
             font.family: Theme.font
