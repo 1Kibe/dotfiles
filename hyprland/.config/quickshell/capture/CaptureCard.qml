@@ -20,6 +20,7 @@ PanelWindow {
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
     // Stays mapped until the fade-out ends
     visible: shown || leave.running
+    onVisibleChanged: ShellState.setOverlay("captureCard", visible)
     anchors.bottom: true
     anchors.right: true
     margins.bottom: Theme.gap

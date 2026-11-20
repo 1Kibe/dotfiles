@@ -85,6 +85,10 @@ Item {
             gap: Theme.minimizeRadius, level: lvl, n: count
         }, m).visible
     }
+    // Open over the screen: the minimize picture waits (it would be in it)
+    readonly property bool openNow: level === "icons" || level === "names"
+    onOpenNowChanged: MinimizeState.setStripOpen(screenName, openNow)
+    Component.onDestruction: MinimizeState.setStripOpen(screenName, false)
     readonly property int count: entries.length
     onCountChanged: {
         if (count === 0) {

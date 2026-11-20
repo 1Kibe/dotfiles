@@ -59,7 +59,8 @@ Singleton {
     property var monitorsNow: () => Lists.toList(Hyprland.monitors.values).map(m => ({
         // The size in layout units (the windows' at and size use them)
         id: m.id, name: m.name, active: m.activeWorkspace ? m.activeWorkspace.id : 0,
-        x: m.x, y: m.y, w: Math.round(m.width / (m.scale || 1)), h: Math.round(m.height / (m.scale || 1))
+        x: m.x, y: m.y, w: Math.round(m.width / (m.scale || 1)), h: Math.round(m.height / (m.scale || 1)),
+        special: !!(m.lastIpcObject && m.lastIpcObject.specialWorkspace && m.lastIpcObject.specialWorkspace.id)
     }))
     property var windowsNow: () => Lists.toList(Hyprland.toplevels.values)
     function exists(address) {
@@ -98,6 +99,8 @@ Singleton {
     }
     function hideFound(address, list) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
+        // A picture is only ever the one taken for this hide
+        lastShot = ""
         if (locked || Lists.toList(list).length === 0) {
             done()
             return
@@ -200,6 +203,8 @@ Singleton {
     function hideNowAfterSlide(address, e) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
         if (!send(Act.hide(address))) {
+            dropShot(address)
+            lastShot = ""
             slideBack(e)
             done()
             return
@@ -239,12 +244,14 @@ Singleton {
                     } else if (!c) {
                         // Closed meanwhile: nothing to say
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.dropShot(w.address)
                     } else if ((w.tries ?? 0) < 1) {
                         // Late: one more look before giving up
                         root.confirm = root.confirm.concat([Object.assign({}, w, { tries: 1 })])
                         confirmTimer.restart()
                     } else {
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.dropShot(w.address)
                         root.slideBack(w.entry)
                         root.refused("A janela não foi minimizada")
                     }
@@ -345,10 +352,12 @@ Singleton {
             if (all.length === 0 || root.locked)
                 return
             const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === a)
-            if (c && c.workspace && c.workspace.name === List.SPECIAL)
+            if (c && c.workspace && c.workspace.name === List.SPECIAL) {
                 root.send(Act.close(a))
-            else
+            } else {
+                root.dropShot(a)
                 root.entries = List.remove(root.entries, a)
+            }
         })
         return true
     }
@@ -452,7 +461,22 @@ Singleton {
         return shotDir !== "" && Act.isAddress(address) ? `${shotDir}/${address}.png` : ""
     }
     // Swapped by the tests (the panels and the windows "covering")
+    // Anything drawn over the windows (grim takes the composed screen): a
+    // bar panel, the capture and its toast/card, the clipboard, the
+    // overview, the dimming before the lock, the confirm strips, the
+    // monitors' numbers, the background picker, this strip open
     property var screenBusy: () => ShellState.openPanel !== "" || CaptureState.open || ClipboardStore.open
+        || OverviewState.open || LockState.dimmed || MonitorsApply.pending || MonitorsApply.identifying
+        || KeyboardLayout.pending || BackgroundStore.pickerOpen || ShellState.overlayShown || stripsOpen.length > 0
+    // The screens whose strip is open in icons or names (the strip says)
+    property var stripsOpen: []
+    function setStripOpen(screen, on) {
+        const has = stripsOpen.includes(screen)
+        if (on && !has)
+            stripsOpen = stripsOpen.concat([screen])
+        else if (!on && has)
+            stripsOpen = stripsOpen.filter(x => x !== screen)
+    }
     function canShot(c, list) {
         if (locked || shotDir === "" || screenBusy())
             return false
@@ -461,9 +485,14 @@ Singleton {
         const ws = c.workspace && typeof c.workspace === "object" ? c.workspace : {}
         if (!mon || mon.active !== ws.id || mon.w === undefined)
             return false
-        const at = Array.isArray(c.at) ? c.at.map(List.whole) : [0, 0]
-        const size = Array.isArray(c.size) ? c.size.map(List.whole) : [0, 0]
-        if (size[0] <= 0 || size[1] <= 0)
+        const g = shotGeom(c)
+        if (!g)
+            return false
+        const at = g.at, size = g.size
+        // Another window in fullscreen on this screen, or a special
+        // workspace shown over it (a scratchpad): it would be the picture
+        if (mon.special || list.some(o => o !== c && (Number(o.fullscreen) || 0) !== 0 && o.monitor === c.monitor
+                                         && o.workspace && o.workspace.id === ws.id))
             return false
         // Whole inside its screen
         if (at[0] < mon.x || at[1] < mon.y || at[0] + size[0] > mon.x + mon.w || at[1] + size[1] > mon.y + mon.h)
@@ -475,14 +504,25 @@ Singleton {
             && o.at[1] < at[1] + size[1] && at[1] < o.at[1] + o.size[1])
         return !over
     }
+    // The window's place and size as whole numbers, or null
+    function shotGeom(c) {
+        const p = v => Array.isArray(v) && v.length === 2 ? v.map(List.whole) : null
+        const at = p(c.at), size = p(c.size)
+        if (!at || !size || at.some(n => !Number.isFinite(n)) || size.some(n => !Number.isFinite(n))
+            || size[0] <= 0 || size[1] <= 0)
+            return null
+        return { at: at, size: size }
+    }
     property var shotWaiting: null
     function shoot(address, c, then) {
         const file = shotPath(address)
-        const at = c.at.map(List.whole), size = c.size.map(List.whole)
-        if (file === "" || shotJob.running) {
+        const g = shotGeom(c)
+        lastShot = ""
+        if (file === "" || !g || shotJob.running) {
             then()
             return
         }
+        const at = g.at, size = g.size
         const scale = Math.min(1, 400 / size[0]).toFixed(3)
         shotWaiting = { address: address, file: file, then: then }
         shotJob.command = ["bash", "-c", root.shotScript, "bash", shotDir, file, `${at[0]},${at[1]} ${size[0]}x${size[1]}`, scale]
@@ -493,10 +533,11 @@ Singleton {
     // with fixed options (no cursor), the file 0600
     readonly property string shotScript: [
         'umask 077',
+        '[ -O "$(dirname -- "$1")" ] || exit 3',
         '[ -e "$1" ] || mkdir -m 700 -- "$1" || exit 3',
         '[ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ] || exit 3',
         '[ "$(stat -c %a -- "$1")" = 700 ] || exit 3',
-        'grim -g "$3" -s "$4" "$2" || exit 4',
+        'timeout 2 grim -g "$3" -s "$4" "$2" || { rm -f -- "$2"; exit 4; }',
         'chmod 600 -- "$2"'
     ].join("\n")
     Process {
@@ -507,7 +548,11 @@ Singleton {
             root.shotWaiting = null
             if (!w)
                 return
-            w.ok = code === 0
+            // Something came over the screen meanwhile (the lock, a
+            // panel): the picture is not kept
+            w.ok = code === 0 && !root.locked && !root.screenBusy()
+            if (!w.ok)
+                Quickshell.execDetached(["rm", "-f", "--", w.file])
             root.lastShot = w.ok ? w.file : ""
             w.then()
         }
@@ -517,7 +562,7 @@ Singleton {
     readonly property int shotMs: 2000
     Timer {
         id: shotTimeout
-        interval: root.shotMs
+        interval: root.shotMs + 500
         onTriggered: shotJob.running = false
     }
     function dropShot(address) {
@@ -545,6 +590,9 @@ Singleton {
             })
             // Kept ones first (their order), then the found ones not listed
             const kept = root.entries.filter(e => found.some(f => f.address === e.address))
+            for (const e of root.entries)
+                if (!kept.includes(e))
+                    root.dropShot(e.address)
             root.entries = kept.concat(found.filter(f => !kept.some(e => e.address === f.address)))
             if ((root.monitorsNow().length === 0 || all.length === 0) && root.reloads < 5)
                 reloadTimer.restart()

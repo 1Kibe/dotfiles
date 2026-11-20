@@ -106,6 +106,20 @@ Singleton {
     // The minimized strip wants room on `monitor`: the control center folds
     // its section (it listens to accordionCollapseRequested); the strip then
     // closes the panel itself if that was not enough (closePanelOn)
+    // Overlay pieces with no state of their own (the capture's toast and
+    // card) say when they show: the minimize picture is not taken then
+    property var overlays: ({})
+    readonly property bool overlayShown: Object.keys(overlays).length > 0
+    function setOverlay(name, on) {
+        if (!!overlays[name] === on)
+            return
+        const m = Object.assign({}, overlays)
+        if (on)
+            m[name] = true
+        else
+            delete m[name]
+        overlays = m
+    }
     function requestRoom(monitor) {
         accordionCollapseRequested(monitor)
     }
