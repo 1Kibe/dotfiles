@@ -47,6 +47,8 @@ Singleton {
     readonly property color coverShade: root.alpha(bgHard, 0.55)  // over the blurred cover (island)
     readonly property color panelShade: root.alpha(bgHard, 0.6)   // over the blurred cover (music panel)
     readonly property color danger: root.alpha(red, 0.18)   // armed power action
+    // How long an action armed for its second click waits (ms)
+    readonly property int armTimeout: 5000
     readonly property color clear: root.alpha(bgHard, 0)
 
     // Workspace dots: empty, with windows, active (a longer dash)
@@ -131,16 +133,17 @@ Singleton {
     readonly property color stripFill: root.alpha(bgHard, 0.94)
     readonly property color cardFill: root.alpha(bg1, 0.55)
     readonly property color pinBorder: root.alpha(yellow, 0.75)
-    readonly property int stripHeight: 330
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // Clipboard drawer (Super+V): one height for its three tabs (the cards
+    // take what is left), its fill, and the Anotações' list column
+    readonly property int clipboardHeight: 220
+    readonly property color clipboardFill: bgHard
+    readonly property int notesListWidth: 210
     property string monoFont: "Agave Nerd Font Mono"
 
-    // Quick notes (post-its above the strip): the 5 colors a note cycles through
+    // Anotações (the clipboard drawer's tab): the 5 colors of a note
     readonly property var noteColors: [yellow, green, blue, orange, purple]
-    readonly property color noteInk: bgHard     // text on a post-it
-    readonly property color notesFill: root.alpha(bgHard, 0.82)
-    readonly property int noteSize: 180
     readonly property int emojiCell: 48     // emoji tab of the strip
     readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 
