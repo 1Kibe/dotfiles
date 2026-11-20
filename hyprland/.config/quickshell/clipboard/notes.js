@@ -14,14 +14,17 @@ function ordered(list) {
 
 // Lower case and no accents, so "Ação" matches "acao"
 function fold(text) {
-    return String(text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
-// The notes whose title or text has the query (no case, no accents)
-function filtered(list, query) {
+// The notes whose title or text has the query (no case, no accents); the
+// note `keep` (the one being written in) stays listed even when the
+// writing takes it out of the query
+function filtered(list, query, keep) {
     const q = fold(query).trim()
     const all = Array.isArray(list) ? list : []
-    return q === "" ? all : all.filter(n => fold(n.title).includes(q) || fold(n.body).includes(q))
+    return q === "" ? all : all.filter(n => n.nid === keep && keep !== undefined && keep !== ""
+                                            || fold(n.title).includes(q) || fold(n.body).includes(q))
 }
 
 // The start of a note's text on the list: its first line with text,

@@ -34,6 +34,9 @@ Rectangle {
     }
 
     readonly property string nid: note ? note.nid : ""
+    // The keyboard is in the title or the text (NotesTab keeps this note
+    // listed meanwhile, so the keys never reach another one)
+    readonly property bool editing: titleField.activeFocus || bodyField.activeFocus
     onNidChanged: {
         titleField.text = note ? note.title : ""
         bodyField.text = note ? note.body : ""

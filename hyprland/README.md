@@ -319,7 +319,8 @@ as escondidas, a janela em tela cheia e a fixada, e dois monitores.
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
 sem escurecer o resto. Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e **Anotações**. A aba Clipboard
 mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado; senhas marcadas como sensíveis pelo
-gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde quiser.
+gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde quiser. A gaveta fecha ao travar a
+tela e ao abrir um painel da barra.
 
 - **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
   prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.
@@ -327,8 +328,10 @@ gerenciador de senhas não entram). Escolher um item **só copia**: depois é co
 - **Limpar:** apaga o histórico inteiro, com um segundo clique para confirmar. Os fixados ficam.
 - **Anotações:** a anotação escolhida fica em destaque à esquerda, pronta para escrever (título e texto no lugar, salvam
   sozinhos), com as 5 cores, "Copiar", "Fixar" e "Apagar" (com segundo clique) embaixo. À direita, a lista de todas, com a
-  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem dentro do grupo dela (as fixadas entre si, as outras entre si). "+ Nova anotação" cria uma no
-  topo. As fixadas ficam no topo da lista, na ordem em que foram fixadas. A busca filtra pelo título e pelo texto.
+  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem dentro do grupo dela (as
+  fixadas entre si, as outras entre si). "+ Nova anotação" cria uma no topo. As fixadas ficam no topo da lista, na ordem em
+  que foram fixadas. A busca filtra pelo título e pelo texto; a anotação em que se está escrevendo fica na lista mesmo que
+  deixe de combinar com a busca.
 - **Emoji:** a aba Emoji (ou `Tab`) mostra os emoji por grupo, com os recentes; a busca é pelo nome em inglês ("heart",
   "cat"). Clicar copia.
 

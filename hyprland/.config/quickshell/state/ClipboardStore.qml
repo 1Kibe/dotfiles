@@ -454,4 +454,13 @@ Singleton {
     // The folder is shared with NotesStore and EmojiStore: private before
     // any of them writes there
     Component.onCompleted: Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && chmod 700 \"$1\"", "sh", dataDir])
+
+    // One thing open at a time: a bar panel opening closes the drawer
+    Connections {
+        target: ShellState
+        function onOpenPanelChanged() {
+            if (ShellState.openPanel !== "" && root.open)
+                root.close()
+        }
+    }
 }

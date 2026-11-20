@@ -85,6 +85,9 @@ Rectangle {
             // The place a dragged row would go (-1 none): only inside the
             // dragged note's group (pinned or not)
             property int dropAt: -1
+            // The row being dragged (the mark goes under the target when
+            // it moves down: it lands after it)
+            property int dragFrom: -1
 
             delegate: Item {
                 id: row
@@ -100,6 +103,7 @@ Rectangle {
                 // Where a dragged note would land
                 Rectangle {
                     visible: list.dropAt === row.index
+                    y: list.dragFrom >= 0 && list.dragFrom < row.index ? parent.height - height : 0
                     width: parent.width
                     height: 2
                     color: Theme.accentLight
@@ -172,8 +176,10 @@ Rectangle {
                     onPositionChanged: event => {
                         if (!pressed)
                             return
-                        if (!dragging && Math.abs(event.y - startY) > 8)
+                        if (!dragging && Math.abs(event.y - startY) > 8) {
                             dragging = true
+                            list.dragFrom = row.index
+                        }
                         if (dragging) {
                             const p = mapToItem(list.contentItem, event.x, event.y)
                             const at = Math.max(0, Math.min(root.rows.length - 1, Math.floor(p.y / row.height)))
@@ -187,10 +193,12 @@ Rectangle {
                             root.picked(row.modelData.nid)
                         dragging = false
                         list.dropAt = -1
+                        list.dragFrom = -1
                     }
                     onCanceled: {
                         dragging = false
                         list.dropAt = -1
+                        list.dragFrom = -1
                     }
                 }
             }
