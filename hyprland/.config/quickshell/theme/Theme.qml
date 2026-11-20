@@ -144,6 +144,25 @@ Singleton {
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewPlusSize: Math.round(15 * textScale)
     readonly property int overviewCloseSize: 20
+    // The minimized windows' strip on the right edge: the wire, the icons'
+    // and the names' widths, a row, the margin, the corners, the wire's
+    // least height, the dots, the invisible hit zone of the wire, and the
+    // rows shown at most
+    readonly property int wireWidth: 5
+    readonly property int minimizeIcons: 30
+    readonly property int minimizeNames: 190
+    readonly property int minimizeRow: 32
+    readonly property int minimizeMargin: 7
+    readonly property int minimizeRadius: 9
+    readonly property int minimizeWireMin: 64
+    readonly property int minimizeDot: 3
+    readonly property int minimizeDotGap: 4
+    readonly property int minimizeHit: 22
+    readonly property int minimizeMaxRows: 12
+    // How long the strip stays open in icons after a window is minimized
+    readonly property int minimizeFlash: 1500
+    // Something asks for attention (the minimized strip's wire)
+    readonly property color alert: orange
     readonly property int overviewListWidth: 420
     property string monoFont: "Agave Nerd Font Mono"
 

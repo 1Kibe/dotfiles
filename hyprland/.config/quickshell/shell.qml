@@ -10,6 +10,7 @@ import qs.wallpaper
 import qs.state
 import qs.settings
 import qs.overview
+import qs.minimize
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -224,6 +225,9 @@ ShellRoot {
 
     // The overview's windows, one per screen (shown while it is open)
     Overview {}
+
+    // The minimized windows' strip on each screen's right edge
+    MinimizedStrip {}
 
     // Super+Tab and the 3-finger swipe up: the overview of the windows,
     // on every screen: qs ipc call overview toggle | open | close

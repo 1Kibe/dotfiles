@@ -73,6 +73,28 @@ Singleton {
     // title and appId never go into Lua, a command line or a log.
     property var minimized: []
     signal restoreMinimizedRequested(string address)
+
+    // ── What reaches the screen's right edge, for the minimized strip ──
+    // Per screen, the y where a bar panel reaching the right edge ends
+    // (rightPanelEdge, from the top; with the bar at the bottom, from the
+    // bottom up) and where a drawer from the bottom begins (bottomPanelEdge);
+    // 0 or missing = nothing there. Replaced whole at each change.
+    property var rightPanelEdge: ({})
+    property var bottomPanelEdge: ({})
+    function setRightPanelEdge(monitor, y) {
+        if ((rightPanelEdge[monitor] ?? 0) === y)
+            return
+        const m = Object.assign({}, rightPanelEdge)
+        m[monitor] = y
+        rightPanelEdge = m
+    }
+    function setBottomPanelEdge(monitor, y) {
+        if ((bottomPanelEdge[monitor] ?? 0) === y)
+            return
+        const m = Object.assign({}, bottomPanelEdge)
+        m[monitor] = y
+        bottomPanelEdge = m
+    }
     // The monitor whose control center is open ("" = closed)
     readonly property string controlOn: openPanel === "control" ? openOn : ""
     function controlOpen(monitor) {
