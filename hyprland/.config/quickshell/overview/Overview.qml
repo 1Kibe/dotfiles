@@ -45,8 +45,8 @@ Variants {
                 .filter(t => t && t.workspace && t.workspace.id === id && (!t.monitor || t.monitor === mon))
                 .map(t => {
                     const o = t.lastIpcObject || {}
-                    const at = Array.isArray(o.at) ? o.at : [0, 0]
-                    const size = Array.isArray(o.size) ? o.size : [0, 0]
+                    const at = o.at ? Lists.toList(o.at) : [0, 0]
+                    const size = o.size ? Lists.toList(o.size) : [0, 0]
                     return { id: Hypr.windowAddress(t.address), title: t.title, appClass: o.class || "",
                              x: at[0] - mon.x, y: at[1] - mon.y, w: size[0], h: size[1], toplevel: t }
                 })
@@ -66,12 +66,15 @@ Variants {
                     ids.push(id)
             }
             ids.sort((a, b) => a - b)
+            // The screen in layout units (the windows' at and size use them)
+            const sw = Math.max(1, mon.width / (mon.scale || 1)), sh = Math.max(1, mon.height / (mon.scale || 1))
             return ids.map(n => {
-                const wsId = together && k > 0 ? n * 10 + k : n
-                const rects = windowsOf(wsId).map(w => ({
-                    x: w.x / Math.max(1, mon.width), y: w.y / Math.max(1, mon.height),
-                    w: w.w / Math.max(1, mon.width), h: w.h / Math.max(1, mon.height)
-                }))
+                // Together, a screen outside the areas (k 0) has no
+                // workspace of them: nothing to drop on
+                const wsId = together ? (k > 0 ? n * 10 + k : 0) : n
+                const rects = wsId > 0 ? windowsOf(wsId).map(w => ({
+                    x: w.x / sw, y: w.y / sh, w: w.w / sw, h: w.h / sh
+                })) : []
                 return { area: n, ws: wsId, label: String(n), shown: wsId === win.shownWs, rects: rects }
             })
         }
@@ -89,7 +92,7 @@ Variants {
             }
             for (let n = 1; n <= 20; n++) {
                 if (!busy[n])
-                    return together && k > 0 ? n * 10 + k : n
+                    return together ? (k > 0 ? n * 10 + k : 0) : n
             }
             return 0
         }
@@ -121,7 +124,7 @@ Variants {
             screenName: win.name
             windows: win.shownWindows
             areas: win.stripAreas
-            minimizedCount: ShellState.minimized.length
+            minimizedCount: Lists.toList(ShellState.minimized).length
             emptyWs: win.emptyWs
             focus: true
             Keys.onPressed: event => {

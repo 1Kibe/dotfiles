@@ -114,8 +114,15 @@ Singleton {
             const area = Act.areaOfWorkspace(ws, true)
             const here = Lists.toList(Hyprland.monitors.values).some(m => m && m.activeWorkspace
                                                                     && Act.areaOfWorkspace(m.activeWorkspace.id, true) === area)
-            if (area > 0 && !here)
-                evalLua(Act.goToAreaTogether(area))
+            // Another area: the area and the focus in one eval, in order
+            if (area > 0 && !here) {
+                const text = Act.goToAreaAndFocus(area, address)
+                if (text !== null)
+                    evalLua(text)
+                landing = address
+                hide()
+                return text !== null
+            }
         }
         const ok = send(Act.focusWindow(address))
         landing = address

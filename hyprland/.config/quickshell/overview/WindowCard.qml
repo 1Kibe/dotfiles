@@ -44,7 +44,7 @@ Rectangle {
     border.width: chosen || hovered ? Theme.focusWidth : 1
     border.color: chosen || hovered ? Theme.focusRing : Theme.bg1
     clip: true
-    opacity: dragging ? 0.4 : 1
+    opacity: dragging ? Theme.overviewDragFade : 1
 
     // The window, live: only while the overview is open and the window
     // has its Wayland side; else the card's plain fill
@@ -68,23 +68,23 @@ Rectangle {
     Rectangle {
         id: strip
         width: parent.width
-        height: 26
+        height: Theme.overviewTitleHeight
         color: Theme.bgHard
         radius: Theme.radius
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 8
-            anchors.rightMargin: 8
-            spacing: 6
+            anchors.leftMargin: Theme.overviewTitlePad
+            anchors.rightMargin: Theme.overviewTitlePad
+            spacing: Theme.overviewTitleGap
 
             Image {
                 visible: root.iconPath !== ""
                 source: root.iconPath
-                sourceSize.width: 16
-                sourceSize.height: 16
-                Layout.preferredWidth: 16
-                Layout.preferredHeight: 16
+                sourceSize.width: Theme.overviewIcon
+                sourceSize.height: Theme.overviewIcon
+                Layout.preferredWidth: Theme.overviewIcon
+                Layout.preferredHeight: Theme.overviewIcon
             }
             Text {
                 visible: root.iconPath === ""
@@ -148,7 +148,7 @@ Rectangle {
     Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 3
+        anchors.margins: Theme.overviewCloseInset
         width: Theme.overviewCloseSize
         height: Theme.overviewCloseSize
         radius: width / 2

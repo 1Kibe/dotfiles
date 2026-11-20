@@ -25,7 +25,6 @@ Item {
     property int emptyWs: 0
     // The middle shows the minimized windows instead (their card chosen)
     property bool showingMinimized: false
-    onVisibleChanged: showingMinimized = false
     Connections {
         target: OverviewState
         function onOpenChanged() {
@@ -46,11 +45,6 @@ Item {
             return ws > 0 && OverviewState.moveWindow(id, ws)
         }
         return false
-    }
-    // The minimized windows (ShellState.minimized, the minimize module's):
-    // through OverviewState, which checks the address and the state
-    function restoreMinimized(address) {
-        return OverviewState.restoreMinimized(address)
     }
     onMinimizedCountChanged: {
         if (minimizedCount === 0)
@@ -238,7 +232,11 @@ Item {
                 shown: modelData.shown && !root.showingMinimized
                 kind: "area"
                 ws: modelData.ws
+                // Passing over the strip while dragging a card never changes
+                // the middle (a drop outside a target puts it back in place)
                 onEntered: {
+                    if (root.dragId !== "")
+                        return
                     root.showingMinimized = false
                     OverviewState.showArea(root.screenName, modelData.ws)
                 }
@@ -261,7 +259,7 @@ Item {
             }
         }
         AreaCard {
-            width: Math.round(height * 10 / 10)
+            width: height
             height: strip.height
             label: "+"
             dashed: true
@@ -309,7 +307,7 @@ Item {
                 height: from.h + (place.h - from.h) * f
                 targetW: place.w
                 targetH: place.h
-                opacity: dragging ? 0.4 : Theme.reduceMotion ? root.progress : 1
+                opacity: dragging ? Theme.overviewDragFade : Theme.reduceMotion ? root.progress : 1
                 win: root.byId[cid] ?? ({ title: "", appClass: "" })
                 chosen: OverviewState.selected === cid
                 onPicked: OverviewState.goTo(cid)
@@ -353,7 +351,8 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.restoreMinimized(String(modelData.address || ""))
+                    // Through OverviewState, which checks the address and the state
+                    onClicked: OverviewState.restoreMinimized(String(modelData.address || ""))
                 }
             }
         }
@@ -380,7 +379,7 @@ Item {
         color: Theme.bg
         border.width: Theme.focusWidth
         border.color: Theme.focusRing
-        opacity: 0.85
+        opacity: Theme.overviewGhostOpacity
 
         Text {
             x: Theme.spacing

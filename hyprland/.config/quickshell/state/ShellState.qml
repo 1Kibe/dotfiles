@@ -156,8 +156,11 @@ Singleton {
     }
     // Never over the lock screen, nor while a "Manter?" strip waits for its
     // answer (it holds the keyboard: Esc and Enter would go to it)
+    // Not under the overview either (it closes the panels when it opens;
+    // a panel never opens beneath it)
     function controlAllowed() {
         return !LockState.locked && !LockState.wanted && !MonitorsApply.pending && !KeyboardLayout.pending
+            && !OverviewState.open
     }
     // Opens it on `monitor` with `section` open ("" = all folded); false when
     // it may not open or the section is not one of the list
@@ -199,7 +202,7 @@ Singleton {
             return
         }
         const id = panelId(panel)
-        if (id === "" || monitor === "")
+        if (id === "" || monitor === "" || OverviewState.open)
             return
         if (isOpen(id, monitor)) {
             close()
