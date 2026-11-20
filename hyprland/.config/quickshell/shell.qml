@@ -159,7 +159,7 @@ ShellRoot {
     BackgroundPicker {}
 
     // Super+V: clipboard history over the focused monitor
-    ClipboardOverlay {}
+    ClipboardDrawer {}
 
     IpcHandler {
         target: "clipboard"

@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Clipboard history for the Super+V overlay (clipboard/ClipboardOverlay): the
+// Clipboard history for the Super+V drawer (clipboard/ClipboardDrawer): the
 // newest cliphist entries (as many as the history keeps), their kind, image
 // previews, pinned items and the copy/delete/clear actions. Copied content
 // never goes to the log.
@@ -18,7 +18,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    // Read by ClipboardOverlay (shown, screen); set by toggle() and close()
+    // Read by ClipboardDrawer (shown, screen); set by toggle() and close()
     property bool open: false
     property string openOn: ""            // monitor name
     // { id, kind: text|link|code|color|image, text, mime, width, height }
@@ -55,6 +55,9 @@ Singleton {
             close()
             return
         }
+        // Never over the lock screen
+        if (LockState.locked || LockState.wanted)
+            return
         // One popup at a time: an open bar panel, or the overview, closes
         // first
         ShellState.close()
@@ -66,7 +69,7 @@ Singleton {
         refresh()
     }
 
-    // Also called by CaptureState when a capture starts, so the overlay
+    // Also called by CaptureState when a capture starts, so the drawer
     // never ends up in the picture
     function close() {
         open = false
@@ -454,4 +457,13 @@ Singleton {
     // The folder is shared with NotesStore and EmojiStore: private before
     // any of them writes there
     Component.onCompleted: Quickshell.execDetached(["sh", "-c", "mkdir -p \"$1\" && chmod 700 \"$1\"", "sh", dataDir])
+
+    // One thing open at a time: a bar panel opening closes the drawer
+    Connections {
+        target: ShellState
+        function onOpenPanelChanged() {
+            if (ShellState.openPanel !== "" && root.open)
+                root.close()
+        }
+    }
 }

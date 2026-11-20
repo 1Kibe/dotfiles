@@ -3,16 +3,18 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 
-// The strip at the bottom of the clipboard overlay: tabs, kind filters,
-// search and "Limpar" on top; pinned and recent cards in one row that
-// scrolls sideways; keyboard hints at the bottom. The Emoji tab swaps the
-// filters for emoji groups and the cards for an emoji grid. Keys: arrows
-// move, Enter copies, Ctrl+P pins, Del deletes, Tab switches tab, Esc
-// clears the search or closes; anything else types into the search.
+// The inside of the clipboard drawer (ClipboardDrawer): tabs (Clipboard,
+// Emoji, Anotações · N), kind filters, search and "Limpar" on top; pinned
+// and recent cards in one row that scrolls sideways, as tall as the drawer
+// leaves; keyboard hints at the bottom. The Emoji tab swaps the filters for
+// emoji groups and the cards for an emoji grid; the Anotações tab shows the
+// notes. Keys: arrows move, Enter copies, Ctrl+P pins, Del deletes, Tab
+// switches tab, Esc clears the search or closes; anything else types into
+// the search.
 Rectangle {
     id: root
 
-    property string tab: "history"       // "history" or "emoji"
+    property string tab: "history"       // "history", "emoji" or "notes"
     property string kind: "all"         // filter chip
     property string emojiCat: "faces"   // emoji group chip
     // Filters the cards (matches) and the emoji (EmojiStore.list)
@@ -79,7 +81,7 @@ Rectangle {
             row === 1 ? strip.positionViewAtBeginning() : strip.positionViewAtIndex(row, ListView.Contain)
     }
 
-    // Called by ClipboardOverlay on each opening
+    // Called by ClipboardDrawer on each opening
     function reset() {
         search.text = ""
         tab = "history"
@@ -97,21 +99,40 @@ Rectangle {
         tab = "emoji"
     }
 
-    // Called by ClipboardOverlay when a note gives up the keyboard
-    function focusSearch() {
-        search.forceActiveFocus()
+    // Esc: the first clears the search, the next one closes
+    function pressEscape() {
+        if (search.text !== "")
+            search.text = ""
+        else
+            ClipboardStore.close()
     }
+    // The search's text (the tests type through it)
+    function setSearch(text) {
+        search.text = text
+    }
+
 
     // The card that Enter, Ctrl+P and Del act on
     function current() {
         return cards.length > 0 ? cards[selected] : null
     }
 
-    implicitHeight: Theme.stripHeight
-    radius: Theme.stripRadius
-    color: Theme.stripFill
+    // The next tab, round (Tab), or the one before (Shift+Tab)
+    function nextTab(back) {
+        const order = ["history", "emoji", "notes"]
+        const t = order[(order.indexOf(tab) + (back ? 2 : 1)) % 3]
+        if (t === "emoji")
+            showEmoji()
+        else
+            tab = t
+    }
+    // The cards' size: the drawer's height decides (one height for all tabs)
+    readonly property real cardSize: Math.max(60, Math.min(Theme.cardSize, cardsArea.height))
 
-    // Clicks on the strip never reach the dark area behind it
+    // The drawer draws the fill and the line on top
+    color: Theme.clear
+
+    // Clicks on the strip stay in it
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.AllButtons
@@ -165,7 +186,7 @@ Rectangle {
             spacing: 6
 
             Chip {
-                label: "Histórico"
+                label: "Clipboard"
                 active: root.tab === "history"
                 onPressed: {
                     root.tab = "history"
@@ -180,7 +201,16 @@ Rectangle {
                     search.forceActiveFocus()
                 }
             }
+            Chip {
+                label: `Anotações · ${NotesStore.model.count}`
+                active: root.tab === "notes"
+                onPressed: {
+                    root.tab = "notes"
+                    search.forceActiveFocus()
+                }
+            }
             Rectangle {
+                visible: root.tab !== "notes"
                 implicitWidth: 1
                 implicitHeight: 18
                 Layout.leftMargin: 4
@@ -188,8 +218,9 @@ Rectangle {
                 color: Theme.bg2
             }
             Repeater {
-                // Kind filters on the history tab, emoji groups on the Emoji tab
-                model: root.tab === "history" ? root.chips : EmojiStore.categories
+                // Kind filters on the history tab, emoji groups on the Emoji
+                // tab, none on the Anotações tab
+                model: root.tab === "history" ? root.chips : root.tab === "emoji" ? EmojiStore.categories : []
 
                 Chip {
                     required property var modelData
@@ -246,7 +277,7 @@ Rectangle {
 
                     Text {
                         visible: search.text === ""
-                        text: "Buscar"
+                        text: root.tab === "notes" ? "Buscar nas anotações…" : "Buscar"
                         color: Theme.gray
                         font: search.font
                     }
@@ -256,16 +287,13 @@ Rectangle {
                     Keys.onPressed: event => {
                         const ctrl = event.modifiers & Qt.ControlModifier
                         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
-                            if (root.tab === "history")
-                                root.showEmoji()
-                            else
-                                root.tab = "history"
+                            root.nextTab(event.key === Qt.Key_Backtab)
                         } else if (event.key === Qt.Key_Escape) {
-                            // First Esc clears the search, the next one closes
-                            if (search.text !== "")
-                                search.text = ""
-                            else
-                                ClipboardStore.close()
+                            root.pressEscape()
+                        } else if (root.tab === "notes") {
+                            // The list's keys; other keys type into the search
+                            if (!notesTab.key(event))
+                                return
                         } else if (root.tab === "emoji") {
                             // Arrows and Enter go to the emoji grid; other keys type
                             if (!emojiGrid.key(event))
@@ -330,10 +358,22 @@ Rectangle {
             }
         }
 
-        // The cards
+        // The cards: the height the drawer leaves
         Item {
+            id: cardsArea
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.cardSize
+            Layout.fillHeight: true
+
+            // The notes (the Anotações tab)
+            NotesTab {
+                id: notesTab
+                anchors.fill: parent
+                visible: root.tab === "notes"
+                active: root.tab === "notes"
+                query: root.tab === "notes" ? root.query : ""
+                onLeave: search.forceActiveFocus()
+                onClearSearch: search.text = ""
+            }
 
             EmojiGrid {
                 id: emojiGrid
@@ -354,7 +394,7 @@ Rectangle {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 // Two cards past each edge stay created (with their previews)
-                cacheBuffer: Theme.cardSize * 2
+                cacheBuffer: root.cardSize * 2
                 model: root.model
 
                 delegate: Item {
@@ -364,8 +404,8 @@ Rectangle {
                     readonly property bool isHeader: modelData.header !== undefined
 
                     // A header is a narrow column with its title rotated
-                    width: isHeader ? 22 : Theme.cardSize
-                    height: Theme.cardSize
+                    width: isHeader ? 22 : root.cardSize
+                    height: root.cardSize
 
                     // Group title, written upwards
                     Text {
@@ -402,17 +442,15 @@ Rectangle {
             }
         }
 
-        Item {
-            Layout.fillHeight: true
-        }
-
         // Key hints; on the Emoji tab they start with the English name of the
         // selected emoji
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: root.tab === "history"
                   ? "← → navegar   ·   Enter copiar   ·   Ctrl+P fixar   ·   Del apagar   ·   Tab emoji   ·   digite para buscar   ·   Esc fechar"
-                  : `${emojiGrid.current && emojiGrid.current.name ? emojiGrid.current.name + "   ·   " : ""}setas navegar   ·   Enter copiar   ·   Tab histórico   ·   digite para buscar (em inglês)   ·   Esc fechar`
+                  : root.tab === "notes"
+                  ? "↑ ↓ escolher   ·   Enter escrever   ·   Ctrl+N nova   ·   Ctrl+P fixar   ·   Del apagar   ·   Tab clipboard   ·   digite para buscar   ·   Esc fechar"
+                  : `${emojiGrid.current && emojiGrid.current.name ? emojiGrid.current.name + "   ·   " : ""}setas navegar   ·   Enter copiar   ·   Tab anotações   ·   digite para buscar (em inglês)   ·   Esc fechar`
             color: Theme.gray
             font.family: Theme.font
             font.pointSize: Theme.fontSize - 2
