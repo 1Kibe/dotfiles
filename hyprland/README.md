@@ -292,6 +292,28 @@ Configurações esperando) ela não abre.
 **Falta conferir no notebook:** as miniaturas ao vivo e o desempenho com várias janelas, o voo, dois monitores, o gesto de
 verdade, e fechar e mover janelas pelo × e pelo arrasto.
 
+### Minimizar (Super+H)
+
+O Hyprland não tem minimizar; o shell faz: `Super+H` esconde a janela em foco numa área especial que nunca aparece, e ela
+continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz o mesmo. `Super+Shift+H` traz de volta a
+última, para a área atual da tela em foco.
+
+- **Na borda direita** de cada tela fica um fio fino com um pontinho por janela que saiu daquela tela (com mais de oito, sete
+  e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, ele abre um instante mostrando a janela.
+- **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes. Clicar traz a janela
+  para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N", que mostra a
+  lista inteira.
+- **Pedindo atenção:** o fio fica laranja até o mouse passar; aberto, o ícone da janela pulsa.
+- **Painéis:** o fio desce junto quando um painel da barra cobre a borda. Com o mouse no fio e a central aberta, a seção dela
+  fecha para dar espaço; se ainda faltar, a central fecha.
+- A visão geral (`Super+Tab`) também mostra as minimizadas, no cartão "Minimizadas".
+
+Janela fixada em todas as áreas não é minimizada. Com a tela travada nada é escondido nem trazido. Se o shell reiniciar, ele
+acha as janelas que já estavam escondidas, e nenhuma fica presa.
+
+**Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
+as escondidas, a janela em tela cheia e a fixada, e dois monitores.
+
 ### Clipboard (Super+V)
 
 `Super+V` escurece a tela e sobe uma faixa de baixo com os 100 itens mais recentes do histórico (o `cliphist` grava tudo o
