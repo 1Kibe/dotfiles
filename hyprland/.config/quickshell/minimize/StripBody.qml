@@ -79,7 +79,28 @@ Item {
     Timer {
         id: openTimer
         interval: Motion.OPEN_MS
-        onTriggered: root.send("timer150")
+        onTriggered: {
+            // A bar panel in the way: room first (the section folds; if
+            // still not enough for min(n, 4) rows, the panel closes and the
+            // strip opens in the middle). The panel never reopens by itself
+            if (root.topEdge > 0 || root.bottomEdge > 0) {
+                ShellState.requestRoom(root.screenName)
+                roomTimer.restart()
+            }
+            root.send("timer150")
+        }
+    }
+    Timer {
+        id: roomTimer
+        interval: Theme.dur(Theme.motionPanelClose) + 80
+        onTriggered: {
+            const g = Geom.place({
+                areaTop: root.areaTop, areaBottom: root.areaBottom, topEdge: root.topEdge, bottomEdge: root.bottomEdge,
+                gap: Theme.minimizeRadius, level: "icons", n: root.count
+            }, root.m)
+            if (!g.visible)
+                ShellState.closePanelOn(root.screenName)
+        }
     }
     Timer {
         id: closeTimer

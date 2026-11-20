@@ -175,9 +175,22 @@ Item {
             place()
     }
 
+    // The minimized windows' strip on the right edge slides out of this
+    // panel's way: while it shows and reaches the strip's band, its far
+    // edge (in the screen's y) goes to ShellState.rightPanelEdge, following
+    // the panel as it opens, folds and closes
+    readonly property bool reachesRightBand: visible && frame !== null
+        && x + shape.bodyX + bodyWidth > frame.width - (Theme.minimizeNames + Theme.minimizeRadius)
+    readonly property real stripEdge: reachesRightBand ? Math.round(y + bodyFarEdge) : 0
+    onStripEdgeChanged: {
+        if (shownOn !== "")
+            ShellState.setRightPanelEdge(shownOn, stripEdge)
+    }
+
     // The bar squares its end while a panel continues it
     function square() {
         shownOn = ShellState.openOn
+        ShellState.setRightPanelEdge(shownOn, stripEdge)
         if (atRightEnd)
             ShellState.attachedRight = shownOn
         if (atLeftEnd)
@@ -196,6 +209,8 @@ Item {
         visible = false
         if (edgeSide === "")
             progress = 0
+        if (shownOn !== "")
+            ShellState.setRightPanelEdge(shownOn, 0)
         unsquare()
         if (frame)
             frame.hidePanel(root)

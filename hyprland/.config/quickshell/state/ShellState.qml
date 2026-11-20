@@ -88,6 +88,16 @@ Singleton {
         m[monitor] = y
         rightPanelEdge = m
     }
+    // The minimized strip wants room on `monitor`: the control center folds
+    // its section (it listens to accordionCollapseRequested); the strip then
+    // closes the panel itself if that was not enough (closePanelOn)
+    function requestRoom(monitor) {
+        accordionCollapseRequested(monitor)
+    }
+    function closePanelOn(monitor) {
+        if (openPanel !== "" && openOn === monitor)
+            close()
+    }
     function setBottomPanelEdge(monitor, y) {
         if ((bottomPanelEdge[monitor] ?? 0) === y)
             return

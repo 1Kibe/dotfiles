@@ -42,8 +42,13 @@ Variants {
             entries: MinimizeState.forMonitor(win.name)
             areaTop: win.hasBar && !Theme.barAtBottom ? Theme.barHeight : 0
             areaBottom: height - (win.hasBar && Theme.barAtBottom ? Theme.barHeight : 0)
-            topEdge: ShellState.rightPanelEdge[win.name] ?? 0
-            bottomEdge: ShellState.bottomPanelEdge[win.name] ?? 0
+            // A bar panel comes from the top, or from the bottom with the
+            // bar there; the clipboard's drawer always from the bottom
+            readonly property real panelEdge: ShellState.rightPanelEdge[win.name] ?? 0
+            readonly property real drawerEdge: ShellState.bottomPanelEdge[win.name] ?? 0
+            topEdge: Theme.barAtBottom ? 0 : panelEdge
+            bottomEdge: Theme.barAtBottom && panelEdge > 0
+                        ? (drawerEdge > 0 ? Math.min(panelEdge, drawerEdge) : panelEdge) : drawerEdge
         }
     }
 }
