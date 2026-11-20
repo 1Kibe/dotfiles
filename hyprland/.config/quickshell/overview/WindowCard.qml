@@ -44,8 +44,11 @@ Rectangle {
     }
     z: dragging ? 10 : 0
 
-    readonly property string iconName: /^[A-Za-z0-9._-]{1,64}$/.test(String(win.appClass || "")) ? String(win.appClass).toLowerCase() : ""
-    readonly property string iconPath: iconName !== "" ? Quickshell.iconPath(iconName, true) : ""
+    // The theme's icon by the app's class as it is, else in lower case
+    // (classes like org.gnome.Nautilus); a name that is not plain, none
+    readonly property string iconName: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(win.appClass || "")) ? String(win.appClass) : ""
+    readonly property string iconPath: iconName === "" ? ""
+        : Quickshell.iconPath(iconName, true) || Quickshell.iconPath(iconName.toLowerCase(), true)
 
     radius: Theme.radius
     color: Theme.bg

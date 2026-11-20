@@ -107,6 +107,12 @@ Item {
             i = cards.indexOf(row[0])
         }
         OverviewState.select(cards[i].id)
+        // The chosen card on screen (the middle scrolls)
+        const s = cards[i]
+        if (s.y < middle.contentY)
+            middle.contentY = s.y
+        else if (s.y + s.h > middle.contentY + middle.height)
+            middle.contentY = s.y + s.h - middle.height
     }
     function key(event) {
         if (event.key === Qt.Key_Escape)
@@ -141,6 +147,10 @@ Item {
     }
 
     // ── The strip ──
+    // The strip's cards shrink so that all of them (and "+") fit the width
+    readonly property int stripCount: areas.length + (minimizedCount > 0 ? 1 : 0)
+    readonly property real stripCardWidth: Math.min(Math.round(Theme.overviewStripHeight * 16 / 10),
+        (width - 2 * Theme.overviewMargin - Theme.overviewStripHeight - stripCount * Theme.overviewGap / 2) / Math.max(1, stripCount))
     Row {
         id: strip
         anchors.horizontalCenter: parent.horizontalCenter
@@ -154,7 +164,7 @@ Item {
 
             AreaCard {
                 required property var modelData
-                width: Math.round(height * 16 / 10)
+                width: root.stripCardWidth
                 height: strip.height
                 label: modelData.label
                 rects: modelData.rects
@@ -174,7 +184,7 @@ Item {
         }
         AreaCard {
             visible: root.minimizedCount > 0
-            width: Math.round(height * 16 / 10)
+            width: root.stripCardWidth
             height: strip.height
             label: `Minimizadas · ${root.minimizedCount}`
             shown: root.showingMinimized
@@ -271,7 +281,9 @@ Item {
     }
     Text {
         anchors.centerIn: middle
-        visible: root.windows.length === 0 && !root.showingMinimized
+        // Also when the windows are there but not measured yet (a window
+        // just opened has no size): the cards are what counts
+        visible: root.arranged.cards.length === 0 && !root.showingMinimized
         text: "Nenhuma janela nesta área"
         textFormat: Text.PlainText
         color: Theme.fg4

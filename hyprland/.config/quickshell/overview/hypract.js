@@ -20,6 +20,15 @@ function isArea(n) {
 // A workspace id: an area's own (separate screens, 1 to MAX_AREAS) or N*10+k
 // (together, k 1 to 9: never a multiple of 10, which modules/areas.lua does
 // not take as an area and would make a stray workspace)
+// The area of a workspace id: together, N*10+k is area N; separate, the
+// id is the area; 0 when it is not an area (special, out of range)
+function areaOfWorkspace(id, together) {
+    if (typeof id !== "number" || !Number.isInteger(id))
+        return 0
+    if (together)
+        return id >= 11 && id <= MAX_AREAS * 10 + 9 && id % 10 !== 0 ? Math.floor(id / 10) : 0
+    return isArea(id) ? id : 0
+}
 function isWorkspace(n) {
     return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= MAX_AREAS * 10 + 9
         && (n <= MAX_AREAS || n % 10 !== 0)

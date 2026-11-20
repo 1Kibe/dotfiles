@@ -40,7 +40,9 @@ Variants {
             if (!mon)
                 return []
             return Lists.toList(Hyprland.toplevels.values)
-                .filter(t => t && t.workspace && t.workspace.id === id)
+                // Only this screen's: a workspace of another screen (areas
+                // separate) shows its windows there, not here
+                .filter(t => t && t.workspace && t.workspace.id === id && (!t.monitor || t.monitor === mon))
                 .map(t => {
                     const o = t.lastIpcObject || {}
                     const at = Array.isArray(o.at) ? o.at : [0, 0]
@@ -106,7 +108,11 @@ Variants {
         color: Theme.clear
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-overview"
-        WlrLayershell.keyboardFocus: OverviewState.open && Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === name
+        // The keyboard on the focused screen; with none known (right after a
+        // screen comes or goes), on the first one
+        WlrLayershell.keyboardFocus: OverviewState.open
+                                     && (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name === name
+                                                                 : modelData === Quickshell.screens[0])
                                      ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
         OverviewScreen {

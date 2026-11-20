@@ -99,10 +99,21 @@ Singleton {
         dispatch(text)
         return true
     }
-    // Go to a window (its workspace too) and close the overview
+    // Go to a window and close the overview. With the areas together, its
+    // area first, so every screen goes to that area (focusing the window
+    // alone would leave the other screens on the old one)
     function goTo(address) {
-        if (!open || windowOf(address) === null)
+        const w = windowOf(address)
+        if (!open || w === null)
             return false
+        if (AreasState.together) {
+            const ws = w.workspace ? w.workspace.id : 0
+            const area = Act.areaOfWorkspace(ws, true)
+            const here = Lists.toList(Hyprland.monitors.values).some(m => m && m.activeWorkspace
+                                                                    && Act.areaOfWorkspace(m.activeWorkspace.id, true) === area)
+            if (area > 0 && !here)
+                evalLua(Act.goToAreaTogether(area))
+        }
         const ok = send(Act.focusWindow(address))
         hide()
         return ok

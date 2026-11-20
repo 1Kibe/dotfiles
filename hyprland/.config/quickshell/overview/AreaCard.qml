@@ -31,8 +31,10 @@ Rectangle {
     Item {
         id: screenArea
         anchors.fill: parent
-        anchors.margins: 8
-        anchors.bottomMargin: 22
+        anchors.margins: Theme.spacing
+        anchors.bottomMargin: Theme.itemHeight
+        // A window partly off the screen stays inside the card
+        clip: true
 
         Repeater {
             model: root.rects
@@ -43,7 +45,7 @@ Rectangle {
                 y: modelData.y * screenArea.height
                 width: Math.max(2, modelData.w * screenArea.width)
                 height: Math.max(2, modelData.h * screenArea.height)
-                radius: 2
+                radius: Theme.radius / 4
                 color: Theme.bg2
                 border.width: 1
                 border.color: Theme.fg4
@@ -51,7 +53,11 @@ Rectangle {
         }
     }
     // The dashed border of "+"
+    // Painted again when the theme's color changes
+    readonly property color dashColor: Theme.fg4
+    onDashColorChanged: dash.requestPaint()
     Canvas {
+        id: dash
         anchors.fill: parent
         visible: root.dashed
         onWidthChanged: requestPaint()
@@ -59,7 +65,7 @@ Rectangle {
         onPaint: {
             const ctx = getContext("2d")
             ctx.reset()
-            ctx.strokeStyle = Theme.fg4
+            ctx.strokeStyle = root.dashColor
             ctx.lineWidth = 1
             ctx.setLineDash([4, 4])
             ctx.beginPath()
@@ -70,12 +76,12 @@ Rectangle {
     Text {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.dashed ? (root.height - height) / 2 : 4
+        anchors.bottomMargin: root.dashed ? (root.height - height) / 2 : Theme.spacing / 2
         text: root.label
         textFormat: Text.PlainText
         color: root.shown ? Theme.fg : Theme.fg4
         font.family: Theme.font
-        font.pointSize: root.dashed ? Theme.fontSize + 4 : Theme.fontSize - 1
+        font.pointSize: root.dashed ? Theme.overviewPlusSize : Theme.fontSize - 1
     }
 
     MouseArea {
