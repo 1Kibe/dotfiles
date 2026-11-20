@@ -28,6 +28,11 @@ Item {
     // when the writing takes it out of the search (set when the keyboard
     // goes in, cleared when it comes back to the list)
     property string held: ""
+    // Written after this round: the note shown changes while `rows` (which
+    // reads `held`) is being evaluated
+    function holdLater() {
+        Qt.callLater(() => root.held = editor.editing ? editor.nid : "")
+    }
     readonly property var rows: {
         NotesStore.revision
         return Notes.filtered(Notes.ordered(NotesStore.list()), query, held)
@@ -155,7 +160,7 @@ Item {
                 deleteArmed: root.note !== null && root.armed === root.note.nid
                 onLeave: root.leave()
                 onEditingChanged: root.held = editing ? nid : ""
-                onNidChanged: root.held = editing ? nid : ""
+                onNidChanged: root.holdLater()
                 onDeleteClicked: root.pressDelete()
                 onCreateRequested: root.create()
                 onPinRequested: {

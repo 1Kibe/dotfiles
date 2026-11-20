@@ -60,6 +60,13 @@ ShellRoot {
             SettingsZone {}
         }
     }
+    // The clipboard drawer's space on the bottom, only while it shows
+    Variants {
+        model: Quickshell.screens
+        delegate: Component {
+            ClipboardZone {}
+        }
+    }
 
     // Print: capture bar and frozen screen, countdown and notices
     CaptureOverlay {}

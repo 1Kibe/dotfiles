@@ -9,6 +9,9 @@ import qs.control
 // "Apagar" (the second click deletes). The text is loaded when the note
 // changes, never bound to the store while typing (the cursor stays put).
 // Esc in the text goes back to the list (leave). Shown as plain text.
+// Another note chosen: the title and the text fade in (the keyboard and
+// the text are there at once) and the fill goes to its color; nothing moves
+// while writing. "Copiar" says "Copiado" for a moment.
 Rectangle {
     id: root
 
@@ -40,6 +43,24 @@ Rectangle {
     onNidChanged: {
         titleField.text = note ? note.title : ""
         bodyField.text = note ? note.body : ""
+        copied = false
+        textFade.restart()
+    }
+    NumberAnimation {
+        id: textFade
+        targets: [titleField, bodyFlick]
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Theme.dur(Theme.animFast)
+    }
+
+    // "Copiado" on the button after a copy
+    property bool copied: false
+    Timer {
+        id: copiedTimer
+        interval: Theme.noteCopiedFlash
+        onTriggered: root.copied = false
     }
     function focusTitle() {
         titleField.forceActiveFocus()
@@ -51,6 +72,9 @@ Rectangle {
 
     radius: Theme.radius
     color: note ? Theme.alpha(Theme.noteColors[note.color % Theme.noteColors.length], 0.16) : Theme.bg
+    Behavior on color {
+        ColorAnimation { duration: Theme.dur(Theme.animNormal) }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -156,9 +180,12 @@ Rectangle {
             }
             ListButton {
                 compact: true
-                text: "Copiar"
+                text: root.copied ? "Copiado" : "Copiar"
+                fadeText: true
                 onClicked: {
                     NotesStore.copy(root.nid)
+                    root.copied = true
+                    copiedTimer.restart()
                     root.leave()
                 }
             }

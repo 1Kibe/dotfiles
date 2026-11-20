@@ -271,10 +271,11 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 ### Clipboard (Super+V)
 
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
-sem escurecer o resto. Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e **Anotações**. A aba Clipboard
-mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado; senhas marcadas como sensíveis pelo
-gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde quiser. A gaveta fecha ao travar a
-tela e ao abrir um painel da barra.
+sem escurecer o resto. Enquanto ela aparece, as janelas lado a lado daquela tela sobem para dar lugar a ela, como nas
+Configurações (as flutuantes ficam onde estão). Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e
+**Anotações**. A aba Clipboard mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado;
+senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde
+quiser. A gaveta fecha ao travar a tela e ao abrir um painel da barra.
 
 - **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
   prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.
