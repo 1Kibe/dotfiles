@@ -42,3 +42,10 @@ function goToArea(area) {
 function goToAreaTogether(area) {
     return isArea(area) ? "dotfiles_area.go(" + area + ")" : null
 }
+// A new empty area: on one screen (dispatch) or on every screen (eval)
+function emptyArea() {
+    return 'hl.dsp.focus({ workspace = "empty" })'
+}
+function emptyAreaTogether() {
+    return "dotfiles_area.empty()"
+}

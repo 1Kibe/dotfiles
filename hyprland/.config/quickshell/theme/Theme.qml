@@ -134,6 +134,14 @@ Singleton {
     readonly property int stripHeight: 330
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // The overview (Super+Tab): the veil over the screen, the margins, the
+    // gap between the window cards, the areas' strip on top and the
+    // smallest a window card gets before the middle scrolls
+    readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
+    readonly property int overviewMargin: 40
+    readonly property int overviewGap: 24
+    readonly property int overviewStripHeight: 110
+    readonly property int overviewCardMinHeight: 120
     property string monoFont: "Agave Nerd Font Mono"
 
     // Quick notes (post-its above the strip): the 5 colors a note cycles through

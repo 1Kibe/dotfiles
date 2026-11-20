@@ -9,6 +9,7 @@ import qs.lock
 import qs.wallpaper
 import qs.state
 import qs.settings
+import qs.overview
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -220,6 +221,9 @@ ShellRoot {
             return Updates.checkNow()
         }
     }
+
+    // The overview's windows, one per screen (shown while it is open)
+    Overview {}
 
     // Super+Tab and the 3-finger swipe up: the overview of the windows,
     // on every screen: qs ipc call overview toggle | open | close

@@ -113,4 +113,33 @@ Singleton {
     function moveWindow(address, workspace) {
         return open && windowOf(address) !== null && send(Act.moveToWorkspace(address, workspace))
     }
+
+    // Lua run by hyprctl eval (the areas together, modules/areas.lua); a
+    // test swaps it
+    property var evalLua: text => Quickshell.execDetached(["hyprctl", "eval", text])
+    // Go to an area (every screen with the areas together) and close
+    function goToArea(area) {
+        if (!open)
+            return false
+        const text = AreasState.together ? Act.goToAreaTogether(area) : Act.goToArea(area)
+        if (text === null)
+            return false
+        if (AreasState.together)
+            evalLua(text)
+        else
+            dispatch(text)
+        hide()
+        return true
+    }
+    // "+": a new empty area, and close
+    function newArea() {
+        if (!open)
+            return false
+        if (AreasState.together)
+            evalLua(Act.emptyAreaTogether())
+        else
+            dispatch(Act.emptyArea())
+        hide()
+        return true
+    }
 }
