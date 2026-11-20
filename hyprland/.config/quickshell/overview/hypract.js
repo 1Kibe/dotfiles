@@ -61,10 +61,19 @@ function goToAreaAndFocus(area, address) {
         ? "dotfiles_area.go(" + area + ') hl.dispatch(hl.dsp.focus({ window = "address:' + address + '" }))'
         : null
 }
-// A new empty area: on one screen (dispatch) or on every screen (eval)
-function emptyArea() {
-    return 'hl.dsp.focus({ workspace = "empty" })'
+// The "+" of the strip: the area after the last one the strip shows (its
+// numbers), never one already there; 0 past MAX_AREAS (no "+")
+function nextArea(shown) {
+    const ns = (Array.isArray(shown) ? shown : []).filter(isArea)
+    const n = (ns.length > 0 ? Math.max.apply(null, ns) : 0) + 1
+    return isArea(n) ? n : 0
 }
-function emptyAreaTogether() {
-    return "dotfiles_area.empty()"
+// An area's workspace on a screen: together, N*10+k on the screen in
+// position k (0 on a screen outside the areas); separate, N
+function areaWorkspace(area, together, k) {
+    if (!isArea(area))
+        return 0
+    if (!together)
+        return area
+    return Number.isInteger(k) && k >= 1 && k <= 9 ? area * 10 + k : 0
 }

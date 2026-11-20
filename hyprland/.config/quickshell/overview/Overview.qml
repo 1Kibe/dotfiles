@@ -6,6 +6,7 @@ import qs.theme
 import qs.state
 import "../control/lists.js" as Lists
 import "../settings/hyprland.js" as Hypr
+import "hypract.js" as Act
 
 // The overview (Super+Tab): one window per screen over everything (the
 // Overlay layer), shown while OverviewState.open, the keyboard only on the
@@ -79,23 +80,11 @@ Variants {
             })
         }
 
-        // The first empty area's workspace on this screen (modules/areas.lua
-        // empty(): together, the first area with no window on any screen;
-        // separate, the first workspace id with no window)
-        readonly property int emptyWs: {
-            if (!showing)
-                return 0
-            const busy = {}
-            for (const ws of Lists.toList(Hyprland.workspaces.values)) {
-                if (Lists.toList(ws.toplevels.values).length > 0)
-                    busy[together ? areaOf(ws.id) : ws.id] = true
-            }
-            for (let n = 1; n <= 20; n++) {
-                if (!busy[n])
-                    return together ? (k > 0 ? n * 10 + k : 0) : n
-            }
-            return 0
-        }
+        // The "+": the new area after the last one of the strip, and its
+        // workspace on this screen (0: no "+", past the last area or on a
+        // screen outside the areas)
+        readonly property int plusArea: Act.nextArea(stripAreas.map(a => a.area))
+        readonly property int plusWs: Act.areaWorkspace(plusArea, together, k)
 
         screen: modelData
         // Kept while the cards fly back
@@ -125,7 +114,8 @@ Variants {
             windows: win.shownWindows
             areas: win.stripAreas
             minimizedCount: Lists.toList(ShellState.minimized).length
-            emptyWs: win.emptyWs
+            plusArea: win.plusWs > 0 ? win.plusArea : 0
+            plusWs: win.plusWs
             focus: true
             Keys.onPressed: event => {
                 if (content.key(event))

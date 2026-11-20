@@ -21,8 +21,10 @@ Item {
     // The strip: [{ area, ws, label, shown, rects: [{ x, y, w, h } 0..1] }]
     property var areas: []
     property int minimizedCount: 0
-    // The workspace of the first empty area ("+"); 0 none
-    property int emptyWs: 0
+    // The "+": the new area after the strip's last one and its workspace
+    // here; 0 none (no "+")
+    property int plusArea: 0
+    property int plusWs: 0
     // The middle shows the minimized windows instead (their card chosen)
     property bool showingMinimized: false
     Connections {
@@ -33,7 +35,7 @@ Item {
     }
 
     // A window card dropped at a point of the scene: on an area, moved
-    // there; on "+", to the first empty area; anywhere else, back in place
+    // there; on "+", to the new area at the end; anywhere else, back in place
     function dropCard(id, at) {
         for (const c of strip.children) {
             if (c.kind === undefined || !c.visible || c.kind === "")
@@ -41,7 +43,7 @@ Item {
             const p = c.mapFromItem(null, at.x, at.y)
             if (p.x < 0 || p.y < 0 || p.x > c.width || p.y > c.height)
                 continue
-            const ws = c.kind === "plus" ? root.emptyWs : c.ws
+            const ws = c.kind === "plus" ? root.plusWs : c.ws
             return ws > 0 && OverviewState.moveWindow(id, ws)
         }
         return false
@@ -259,12 +261,14 @@ Item {
             }
         }
         AreaCard {
+            visible: root.plusArea > 0 && root.plusWs > 0
             width: height
             height: strip.height
             label: "+"
             dashed: true
             kind: "plus"
-            onClicked: OverviewState.newArea()
+            // The new area, empty, and close
+            onClicked: OverviewState.goToArea(root.plusArea)
         }
     }
 
