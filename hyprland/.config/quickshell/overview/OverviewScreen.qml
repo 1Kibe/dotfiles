@@ -2,6 +2,7 @@ import QtQuick
 import qs.theme
 import qs.state
 import "layout.js" as Layout
+import "../control/lists.js" as Lists
 
 // What the overview shows on one screen (inside Overview's window): the
 // areas' strip on top (AreaCard: the areas, "Minimizadas · N" when there
@@ -20,6 +21,37 @@ Item {
     // The strip: [{ area, ws, label, shown, rects: [{ x, y, w, h } 0..1] }]
     property var areas: []
     property int minimizedCount: 0
+    // The workspace of the first empty area ("+"); 0 none
+    property int emptyWs: 0
+    // The middle shows the minimized windows instead (their card chosen)
+    property bool showingMinimized: false
+    onVisibleChanged: showingMinimized = false
+    Connections {
+        target: OverviewState
+        function onOpenChanged() {
+            root.showingMinimized = false
+        }
+    }
+
+    // A window card dropped at a point of the scene: on an area, moved
+    // there; on "+", to the first empty area; anywhere else, back in place
+    function dropCard(id, at) {
+        for (const c of strip.children) {
+            if (c.kind === undefined || !c.visible || c.kind === "")
+                continue
+            const p = c.mapFromItem(null, at.x, at.y)
+            if (p.x < 0 || p.y < 0 || p.x > c.width || p.y > c.height)
+                continue
+            const ws = c.kind === "plus" ? root.emptyWs : c.ws
+            return ws > 0 && OverviewState.moveWindow(id, ws)
+        }
+        return false
+    }
+    // The minimized windows (ShellState.minimized, the minimize module's)
+    function restoreMinimized(address) {
+        ShellState.restoreMinimizedRequested(address)
+        OverviewState.hide()
+    }
 
     // The flight: 0 = each card where its window really is, 1 = in its
     // place; the strip and the veil fade with it. Reduce motion: no flight,
@@ -126,9 +158,17 @@ Item {
                 height: strip.height
                 label: modelData.label
                 rects: modelData.rects
-                shown: modelData.shown
-                onEntered: OverviewState.showArea(root.screenName, modelData.ws)
-                onClicked: OverviewState.showArea(root.screenName, modelData.ws)
+                shown: modelData.shown && !root.showingMinimized
+                kind: "area"
+                ws: modelData.ws
+                onEntered: {
+                    root.showingMinimized = false
+                    OverviewState.showArea(root.screenName, modelData.ws)
+                }
+                onClicked: {
+                    root.showingMinimized = false
+                    OverviewState.showArea(root.screenName, modelData.ws)
+                }
                 onDoubleClicked: OverviewState.goToArea(modelData.area)
             }
         }
@@ -137,12 +177,15 @@ Item {
             width: Math.round(height * 16 / 10)
             height: strip.height
             label: `Minimizadas · ${root.minimizedCount}`
+            shown: root.showingMinimized
+            onClicked: root.showingMinimized = true
         }
         AreaCard {
             width: Math.round(height * 10 / 10)
             height: strip.height
             label: "+"
             dashed: true
+            kind: "plus"
             onClicked: OverviewState.newArea()
         }
     }
@@ -168,7 +211,7 @@ Item {
             onClicked: OverviewState.hide()
         }
         Repeater {
-            model: root.arranged.cards
+            model: root.showingMinimized ? [] : root.arranged.cards
 
             WindowCard {
                 required property var modelData
@@ -183,12 +226,52 @@ Item {
                 win: root.byId[modelData.id] ?? ({ title: "", appClass: "" })
                 chosen: OverviewState.selected === modelData.id
                 onPicked: OverviewState.goTo(modelData.id)
+                onCloseClicked: OverviewState.closeWindow(modelData.id)
+                onDropped: at => root.dropCard(modelData.id, at)
+            }
+        }
+    }
+    // The minimized windows, as a list: a click brings one back here
+    Column {
+        anchors.centerIn: middle
+        visible: root.showingMinimized
+        spacing: 6
+
+        Repeater {
+            model: root.showingMinimized ? ShellState.minimized : []
+
+            Rectangle {
+                required property var modelData
+                width: 420
+                height: 34
+                radius: Theme.radius
+                color: minMouse.containsMouse ? Theme.bg1 : Theme.bg
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: 12
+                    width: parent.width - 24
+                    text: Lists.trim(String(modelData.title || ""))
+                    textFormat: Text.PlainText
+                    maximumLineCount: 1
+                    elide: Text.ElideRight
+                    color: Theme.fg
+                    font.family: Theme.font
+                    font.pointSize: Theme.fontSize
+                }
+                MouseArea {
+                    id: minMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.restoreMinimized(String(modelData.address || ""))
+                }
             }
         }
     }
     Text {
         anchors.centerIn: middle
-        visible: root.windows.length === 0
+        visible: root.windows.length === 0 && !root.showingMinimized
         text: "Nenhuma janela nesta área"
         textFormat: Text.PlainText
         color: Theme.fg4

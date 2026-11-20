@@ -74,6 +74,24 @@ Variants {
             })
         }
 
+        // The first empty area's workspace on this screen (modules/areas.lua
+        // empty(): together, the first area with no window on any screen;
+        // separate, the first workspace id with no window)
+        readonly property int emptyWs: {
+            if (!showing)
+                return 0
+            const busy = {}
+            for (const ws of Lists.toList(Hyprland.workspaces.values)) {
+                if (Lists.toList(ws.toplevels.values).length > 0)
+                    busy[together ? areaOf(ws.id) : ws.id] = true
+            }
+            for (let n = 1; n <= 20; n++) {
+                if (!busy[n])
+                    return together && k > 0 ? n * 10 + k : n
+            }
+            return 0
+        }
+
         screen: modelData
         // Kept while the cards fly back
         visible: OverviewState.open || content.progress > 0
@@ -98,6 +116,7 @@ Variants {
             windows: win.shownWindows
             areas: win.stripAreas
             minimizedCount: ShellState.minimized.length
+            emptyWs: win.emptyWs
             focus: true
             Keys.onPressed: event => {
                 if (content.key(event))

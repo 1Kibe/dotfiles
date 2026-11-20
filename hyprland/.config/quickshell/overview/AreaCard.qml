@@ -9,6 +9,10 @@ Rectangle {
 
     // The label: the area's number, "Minimizadas · N" or "+"
     property string label: ""
+    // What a dropped window card does here: "area" (moves it to ws), "plus"
+    // (to the first empty area), "" (nothing: "Minimizadas")
+    property string kind: ""
+    property int ws: 0
     // [{ x, y, w, h }], 0..1 of the screen
     property var rects: []
     property bool shown: false

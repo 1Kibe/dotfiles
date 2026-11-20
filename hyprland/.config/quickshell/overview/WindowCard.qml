@@ -18,8 +18,31 @@ Rectangle {
     // { id (address), title, appClass, ... }
     required property var win
     property bool chosen: false
-    readonly property bool hovered: mouse.containsMouse
+    readonly property bool hovered: mouse.containsMouse || closeMouse.containsMouse
     signal picked()
+    // The × (the window asked to close)
+    signal closeClicked()
+    // Dropped after a drag, at this point of the scene
+    signal dropped(point at)
+
+    // The drag: the card follows the mouse, and goes back to its place
+    // when dropped (bound x and y stay untouched)
+    property real dragX: 0
+    property real dragY: 0
+    property bool dragging: false
+    transform: Translate {
+        x: root.dragX
+        y: root.dragY
+    }
+    Behavior on dragX {
+        enabled: !root.dragging
+        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose); easing.type: Easing.OutCubic }
+    }
+    Behavior on dragY {
+        enabled: !root.dragging
+        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose); easing.type: Easing.OutCubic }
+    }
+    z: dragging ? 10 : 0
 
     readonly property string iconName: /^[A-Za-z0-9._-]{1,64}$/.test(String(win.appClass || "")) ? String(win.appClass).toLowerCase() : ""
     readonly property string iconPath: iconName !== "" ? Quickshell.iconPath(iconName, true) : ""
@@ -96,8 +119,65 @@ Rectangle {
         id: mouse
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton
-        onClicked: root.picked()
+        preventStealing: root.dragging
+        property point start
+        onPressed: event => start = Qt.point(event.x, event.y)
+        onPositionChanged: event => {
+            if (!pressed)
+                return
+            const dx = event.x - start.x, dy = event.y - start.y
+            if (!root.dragging && Math.hypot(dx, dy) > 10)
+                root.dragging = true
+            if (root.dragging) {
+                root.dragX = dx
+                root.dragY = dy
+            }
+        }
+        onReleased: event => {
+            if (root.dragging) {
+                root.dragging = false
+                root.dropped(mapToItem(null, event.x, event.y))
+            } else {
+                root.picked()
+            }
+            root.dragX = 0
+            root.dragY = 0
+        }
+        onCanceled: {
+            root.dragging = false
+            root.dragX = 0
+            root.dragY = 0
+        }
+    }
+
+    // The ×, with the mouse on the card: asks the window to close (the app
+    // may ask to save first, as always)
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 3
+        width: 20
+        height: 20
+        radius: width / 2
+        visible: root.hovered && !root.dragging
+        color: closeMouse.containsMouse ? Theme.danger : Theme.bg1
+
+        Text {
+            anchors.centerIn: parent
+            text: String.fromCodePoint(0xF0156)   // nf-md-close
+            textFormat: Text.PlainText
+            color: Theme.red
+            font.family: Theme.font
+            font.pointSize: Theme.fontSizeSmall
+        }
+        MouseArea {
+            id: closeMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.closeClicked()
+        }
     }
 }
