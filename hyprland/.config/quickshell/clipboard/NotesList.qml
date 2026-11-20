@@ -58,15 +58,32 @@ Rectangle {
                 shown.move(j, i, 1)
         }
         list.currentIndex = keys.indexOf(chosen)
+        // A note chosen before it reached the model (a new one, one just
+        // pinned): it is put on screen now
+        if (placeChosen && list.currentIndex >= 0) {
+            placeChosen = false
+            list.positionViewAtIndex(list.currentIndex, ListView.Contain)
+        }
     }
     onRowsChanged: sync()
     Component.onCompleted: sync()
 
     // The light goes to the chosen row, which stays on screen (the keyboard
-    // moves it)
+    // moves it). Its place is the model's: the rows may already have it while
+    // the model does not yet (sync runs after), and then sync puts it on
+    // screen
+    property bool placeChosen: false
+    function modelIndex(nid) {
+        for (let i = 0; i < shown.count; i++) {
+            if (shown.get(i).nid === nid)
+                return i
+        }
+        return -1
+    }
     onChosenChanged: {
-        const i = rows.findIndex(n => n.nid === chosen)
+        const i = modelIndex(chosen)
         list.currentIndex = i
+        placeChosen = i < 0 && chosen !== ""
         if (i >= 0)
             list.positionViewAtIndex(i, ListView.Contain)
     }
@@ -128,16 +145,14 @@ Rectangle {
             // it moves down: it lands after it)
             property int dragFrom: -1
             // Where the mark is: it slides from place to place, but shows up
-            // in place when a drag starts
+            // in place when a drag starts (markJump: that one move without
+            // the slide)
             property int markRow: -1
+            property bool markJump: false
             onDropAtChanged: {
-                if (dropAt >= 0 && markRow < 0) {
-                    markSlide.enabled = false
-                    markRow = dropAt
-                    markSlide.enabled = !Theme.reduceMotion
-                } else {
-                    markRow = dropAt
-                }
+                markJump = dropAt >= 0 && markRow < 0
+                markRow = dropAt
+                markJump = false
             }
 
             // The chosen row's light, sliding to the next one chosen
@@ -187,8 +202,10 @@ Rectangle {
                 NumberAnimation { properties: "opacity,scale"; to: 1; duration: Theme.dur(Theme.animFast) }
             }
 
-            // Where a dragged note would land
+            // Where a dragged note would land (in the content, so it scrolls
+            // with the rows)
             Rectangle {
+                parent: list.contentItem
                 z: 3
                 visible: list.dropAt >= 0
                 y: list.markRow * root.rowHeight
@@ -198,7 +215,7 @@ Rectangle {
                 color: Theme.accentLight
                 Behavior on y {
                     id: markSlide
-                    enabled: !Theme.reduceMotion
+                    enabled: !Theme.reduceMotion && !list.markJump
                     NumberAnimation {
                         duration: Theme.dur(Theme.animFast)
                         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
