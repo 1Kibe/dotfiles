@@ -137,6 +137,9 @@ Singleton {
     // The overview (Super+Tab): the veil over the screen, the margins, the
     // gap between the window cards, the areas' strip on top and the
     // smallest a window card gets before the middle scrolls
+    // Closing the overview, the other cards land this share of the flight
+    // before the chosen one (it goes back to its place last)
+    readonly property real overviewLead: 0.3
     readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
     readonly property int overviewMargin: 40
     readonly property int overviewGap: 24

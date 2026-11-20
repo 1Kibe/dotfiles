@@ -96,6 +96,10 @@ Item {
     }
     // The flight's step for the positions (1 at once with reduce motion)
     readonly property real fly: Theme.reduceMotion ? 1 : progress
+    // Flying back, the cards not chosen land first (Theme.overviewLead of
+    // the way earlier) and the chosen one last, over them
+    readonly property real flyOthers: Theme.reduceMotion ? 1 : OverviewState.open ? progress
+        : Math.max(0, (progress - Theme.overviewLead) / (1 - Theme.overviewLead))
 
     readonly property real stripTop: Theme.overviewMargin / 2
     readonly property var useful: ({
@@ -296,10 +300,13 @@ Item {
                 readonly property var from: root.byId[cid] ?? place
                 // From where the window is on the screen (in the middle's
                 // coordinates) to the card's place
-                x: from.x + (place.x - from.x) * root.fly
-                y: from.y - middle.y + middle.contentY + (place.y - (from.y - middle.y + middle.contentY)) * root.fly
-                width: from.w + (place.w - from.w) * root.fly
-                height: from.h + (place.h - from.h) * root.fly
+                readonly property bool landsLast: OverviewState.landing === cid
+                readonly property real f: landsLast ? root.fly : root.flyOthers
+                z: landsLast ? 1 : 0
+                x: from.x + (place.x - from.x) * f
+                y: from.y - middle.y + middle.contentY + (place.y - (from.y - middle.y + middle.contentY)) * f
+                width: from.w + (place.w - from.w) * f
+                height: from.h + (place.h - from.h) * f
                 targetW: place.w
                 targetH: place.h
                 opacity: dragging ? 0.4 : Theme.reduceMotion ? root.progress : 1

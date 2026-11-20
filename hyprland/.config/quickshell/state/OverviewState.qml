@@ -42,6 +42,7 @@ Singleton {
         Hyprland.refreshToplevels()
         shownArea = activeAreas()
         selected = ""
+        landing = ""
         open = true
         return "ok"
     }
@@ -102,6 +103,8 @@ Singleton {
     // Go to a window and close the overview. With the areas together, its
     // area first, so every screen goes to that area (focusing the window
     // alone would leave the other screens on the old one)
+    // The window gone to: its card flies back last (OverviewScreen)
+    property string landing: ""
     function goTo(address) {
         const w = windowOf(address)
         if (!open || w === null)
@@ -115,6 +118,7 @@ Singleton {
                 evalLua(Act.goToAreaTogether(area))
         }
         const ok = send(Act.focusWindow(address))
+        landing = address
         hide()
         return ok
     }
