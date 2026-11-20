@@ -68,13 +68,6 @@ Singleton {
         save()
     }
 
-    function cycleColor(nid) {
-        const i = indexOf(nid)
-        if (i >= 0) {
-            model.setProperty(i, "color", (model.get(i).color + 1) % colorCount)
-            save()
-        }
-    }
     function setColor(nid, c) {
         const i = indexOf(nid)
         if (i >= 0 && c >= 0 && c < colorCount && model.get(i).color !== c) {
@@ -121,14 +114,6 @@ Singleton {
         const i = indexOf(nid)
         if (i >= 0) {
             model.remove(i)
-            save()
-        }
-    }
-
-    // A ListModel move (by index)
-    function move(from, to) {
-        if (from !== to && from >= 0 && to >= 0 && from < model.count && to < model.count) {
-            model.move(from, to, 1)
             save()
         }
     }

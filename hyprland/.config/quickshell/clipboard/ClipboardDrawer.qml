@@ -36,8 +36,12 @@ PanelWindow {
         left: true
         right: true
     }
-    // With the bar on the bottom edge, the drawer sits on the bar
-    margins.bottom: Theme.barAtBottom ? Theme.barHeight : 0
+    // With the bar on the bottom edge, the drawer sits on the bar (on a
+    // screen that shows the bar: "Mostrar a barra em")
+    readonly property bool barHere: screen !== null && (ShellState.barScreens.length === 0
+                                                        || ShellState.barScreens.includes(screen.name))
+    readonly property real bottomGap: Theme.barAtBottom && barHere ? Theme.barHeight : 0
+    margins.bottom: bottomGap
     implicitHeight: Theme.clipboardHeight
     // Never pushes windows aside, and covers what is under it
     exclusionMode: ExclusionMode.Ignore

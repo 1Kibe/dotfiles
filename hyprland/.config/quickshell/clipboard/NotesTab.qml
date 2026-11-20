@@ -24,9 +24,13 @@ Item {
     // The search emptied (a new note must not be filtered out)
     signal clearSearch()
 
+    // The note being written in: listed while the keyboard is in it, even
+    // when the writing takes it out of the search (set when the keyboard
+    // goes in, cleared when it comes back to the list)
+    property string held: ""
     readonly property var rows: {
         NotesStore.revision
-        return Notes.filtered(Notes.ordered(NotesStore.list()), query)
+        return Notes.filtered(Notes.ordered(NotesStore.list()), query, held)
     }
     property string chosen: ""
     readonly property string shown: Notes.keepChosen(rows, chosen)
@@ -150,6 +154,8 @@ Item {
                 note: root.note
                 deleteArmed: root.note !== null && root.armed === root.note.nid
                 onLeave: root.leave()
+                onEditingChanged: root.held = editing ? nid : ""
+                onNidChanged: root.held = editing ? nid : ""
                 onDeleteClicked: root.pressDelete()
                 onCreateRequested: root.create()
                 onPinRequested: {

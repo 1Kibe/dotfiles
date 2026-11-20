@@ -111,10 +111,6 @@ Rectangle {
         search.text = text
     }
 
-    // Called when a note gives up the keyboard
-    function focusSearch() {
-        search.forceActiveFocus()
-    }
 
     // The card that Enter, Ctrl+P and Del act on
     function current() {
