@@ -147,6 +147,15 @@ Singleton {
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewPlusSize: Math.round(15 * textScale)
     readonly property int overviewCloseSize: 20
+    // A window card's title strip (its height, side margins, gap, icon),
+    // the ×'s inset, a card being dragged and the dragged copy
+    readonly property int overviewTitleHeight: 26
+    readonly property int overviewTitlePad: 8
+    readonly property int overviewTitleGap: 6
+    readonly property int overviewIcon: 16
+    readonly property int overviewCloseInset: 3
+    readonly property real overviewDragFade: 0.4
+    readonly property real overviewGhostOpacity: 0.85
     readonly property int overviewListWidth: 420
     property string monoFont: "Agave Nerd Font Mono"
 

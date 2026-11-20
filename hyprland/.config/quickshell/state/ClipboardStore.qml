@@ -55,8 +55,11 @@ Singleton {
             close()
             return
         }
-        // One popup at a time: an open bar panel closes first
+        // One popup at a time: an open bar panel, or the overview, closes
+        // first
         ShellState.close()
+        if (OverviewState.open)
+            OverviewState.hide()
         openOn = monitor
         previewDir = `${runDir}/${Date.now()}`
         open = true

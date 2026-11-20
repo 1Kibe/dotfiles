@@ -17,9 +17,6 @@ function isAddress(text) {
 function isArea(n) {
     return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= MAX_AREAS
 }
-// A workspace id: an area's own (separate screens, 1 to MAX_AREAS) or N*10+k
-// (together, k 1 to 9: never a multiple of 10, which modules/areas.lua does
-// not take as an area and would make a stray workspace)
 // The area of a workspace id: together, N*10+k is area N; separate, the
 // id is the area; 0 when it is not an area (special, out of range)
 function areaOfWorkspace(id, together) {
@@ -29,6 +26,9 @@ function areaOfWorkspace(id, together) {
         return id >= 11 && id <= MAX_AREAS * 10 + 9 && id % 10 !== 0 ? Math.floor(id / 10) : 0
     return isArea(id) ? id : 0
 }
+// A workspace id: an area's own (separate screens, 1 to MAX_AREAS) or N*10+k
+// (together, k 1 to 9: never a multiple of 10, which modules/areas.lua does
+// not take as an area and would make a stray workspace)
 function isWorkspace(n) {
     return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= MAX_AREAS * 10 + 9
         && (n <= MAX_AREAS || n % 10 !== 0)
@@ -53,6 +53,13 @@ function goToArea(area) {
 }
 function goToAreaTogether(area) {
     return isArea(area) ? "dotfiles_area.go(" + area + ")" : null
+}
+// Going to a window of another area with the areas together: the area on
+// every screen, then the window's focus, in one eval (in this order)
+function goToAreaAndFocus(area, address) {
+    return isArea(area) && isAddress(address)
+        ? "dotfiles_area.go(" + area + ') hl.dispatch(hl.dsp.focus({ window = "address:' + address + '" }))'
+        : null
 }
 // A new empty area: on one screen (dispatch) or on every screen (eval)
 function emptyArea() {
