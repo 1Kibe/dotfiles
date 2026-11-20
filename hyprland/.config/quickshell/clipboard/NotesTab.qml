@@ -19,7 +19,10 @@ Item {
 
     property string query: ""
     property bool active: false
+    // The keyboard back to the drawer's search (the list's keys)
     signal leave()
+    // The search emptied (a new note must not be filtered out)
+    signal clearSearch()
 
     readonly property var rows: {
         NotesStore.revision
@@ -54,7 +57,7 @@ Item {
     }
     Timer {
         id: disarmTimer
-        interval: 5000
+        interval: Theme.armTimeout
         onTriggered: root.armed = ""
     }
 
@@ -67,7 +70,11 @@ Item {
         const i = rows.findIndex(n => n.nid === shown)
         choose(rows[Math.max(0, Math.min(rows.length - 1, i + d))].nid)
     }
+    // A new note: the search is emptied first, so the note is listed and
+    // chosen, and its title takes the keyboard
     function create() {
+        if (query !== "")
+            clearSearch()
         NotesStore.add()
     }
     // A new note: chosen, the keyboard in its title
@@ -95,7 +102,7 @@ Item {
             create()
         else if (ctrl && event.key === Qt.Key_P && note)
             NotesStore.togglePin(note.nid)
-        else if (event.key === Qt.Key_Delete)
+        else if (event.key === Qt.Key_Delete && query === "")
             pressDelete()
         else
             return false
@@ -140,6 +147,11 @@ Item {
                 deleteArmed: root.note !== null && root.armed === root.note.nid
                 onLeave: root.leave()
                 onDeleteClicked: root.pressDelete()
+                onCreateRequested: root.create()
+                onPinRequested: {
+                    if (root.note)
+                        NotesStore.togglePin(root.note.nid)
+                }
             }
             Text {
                 anchors.centerIn: parent
@@ -156,7 +168,10 @@ Item {
             Layout.fillHeight: true
             rows: root.rows
             chosen: root.shown
-            onPicked: nid => root.choose(nid)
+            onPicked: nid => {
+                root.choose(nid)
+                root.leave()
+            }
             onCreated: root.create()
         }
     }

@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.theme
 import qs.state
 import "notes.js" as Notes
+import "../lock/text.js" as Clean
 
 // The Anotações tab's list, a column on the right: "+ Nova anotação" on
 // top, then each note (its color's dot, the title and the start of the
@@ -16,6 +17,15 @@ Rectangle {
     property string chosen: ""
     signal picked(string nid)
     signal created()
+
+    // The rows change at every keystroke in a note: the list keeps where it
+    // was scrolled to instead of jumping back to the top
+    onRowsChanged: {
+        const y = list.contentY
+        list.model = rows
+        list.contentY = Math.max(0, Math.min(y, list.contentHeight - list.height))
+    }
+    Component.onCompleted: list.model = rows
 
     // Keeps the chosen row on screen (the keyboard moves it)
     onChosenChanged: {
@@ -72,8 +82,8 @@ Rectangle {
             Layout.fillHeight: true
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: root.rows
-            // The place a dragged row would go (-1 none)
+            // The place a dragged row would go (-1 none): only inside the
+            // dragged note's group (pinned or not)
             property int dropAt: -1
 
             delegate: Item {
@@ -99,7 +109,7 @@ Rectangle {
                     y: 9
                     width: 8
                     height: 8
-                    radius: 4
+                    radius: width / 2
                     color: Theme.noteColors[row.modelData.color % Theme.noteColors.length]
                 }
                 Text {
@@ -120,7 +130,7 @@ Rectangle {
 
                     Text {
                         width: parent.width
-                        text: row.modelData.title !== "" ? row.modelData.title : "Sem título"
+                        text: row.modelData.title !== "" ? Clean.clean(row.modelData.title, 120) : "Sem título"
                         textFormat: Text.PlainText
                         maximumLineCount: 1
                         elide: Text.ElideRight
@@ -153,6 +163,8 @@ Rectangle {
                     cursorShape: Qt.PointingHandCursor
                     property real startY: 0
                     property bool dragging: false
+                    // A drag is the row's, not the list's scroll
+                    preventStealing: dragging
                     onPressed: event => {
                         startY = event.y
                         dragging = false
@@ -164,7 +176,8 @@ Rectangle {
                             dragging = true
                         if (dragging) {
                             const p = mapToItem(list.contentItem, event.x, event.y)
-                            list.dropAt = Math.max(0, Math.min(root.rows.length - 1, Math.floor(p.y / row.height)))
+                            const at = Math.max(0, Math.min(root.rows.length - 1, Math.floor(p.y / row.height)))
+                            list.dropAt = root.rows[at].pinned === row.modelData.pinned ? at : -1
                         }
                     }
                     onReleased: {
@@ -172,6 +185,10 @@ Rectangle {
                             NotesStore.reorder(row.modelData.nid, root.rows[list.dropAt].nid)
                         else if (!dragging)
                             root.picked(row.modelData.nid)
+                        dragging = false
+                        list.dropAt = -1
+                    }
+                    onCanceled: {
                         dragging = false
                         list.dropAt = -1
                     }

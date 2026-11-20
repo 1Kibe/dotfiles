@@ -281,7 +281,7 @@ gerenciador de senhas não entram). Escolher um item **só copia**: depois é co
 - **Limpar:** apaga o histórico inteiro, com um segundo clique para confirmar. Os fixados ficam.
 - **Anotações:** a anotação escolhida fica em destaque à esquerda, pronta para escrever (título e texto no lugar, salvam
   sozinhos), com as 5 cores, "Copiar", "Fixar" e "Apagar" (com segundo clique) embaixo. À direita, a lista de todas, com a
-  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem. "+ Nova anotação" cria uma no
+  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem dentro do grupo dela (as fixadas entre si, as outras entre si). "+ Nova anotação" cria uma no
   topo. As fixadas ficam no topo da lista, na ordem em que foram fixadas. A busca filtra pelo título e pelo texto.
 - **Emoji:** a aba Emoji (ou `Tab`) mostra os emoji por grupo, com os recentes; a busca é pelo nome em inglês ("heart",
   "cat"). Clicar copia.

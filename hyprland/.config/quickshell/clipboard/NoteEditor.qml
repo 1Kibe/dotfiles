@@ -18,6 +18,20 @@ Rectangle {
     property bool deleteArmed: false
     signal leave()
     signal deleteClicked()
+    // Ctrl+N and Ctrl+P also while writing
+    signal createRequested()
+    signal pinRequested()
+    function ctrlKey(event) {
+        if (!(event.modifiers & Qt.ControlModifier))
+            return
+        if (event.key === Qt.Key_N) {
+            root.createRequested()
+            event.accepted = true
+        } else if (event.key === Qt.Key_P) {
+            root.pinRequested()
+            event.accepted = true
+        }
+    }
 
     readonly property string nid: note ? note.nid : ""
     onNidChanged: {
@@ -52,6 +66,7 @@ Rectangle {
             clip: true
             onTextEdited: NotesStore.update(root.nid, "title", text)
             Keys.onEscapePressed: root.leave()
+            Keys.onPressed: event => root.ctrlKey(event)
             Keys.onReturnPressed: root.focusBody()
             Keys.onTabPressed: root.focusBody()
 
@@ -93,6 +108,7 @@ Rectangle {
                         bodyFlick.contentY = r.y + r.height - bodyFlick.height
                 }
                 Keys.onEscapePressed: root.leave()
+                Keys.onPressed: event => root.ctrlKey(event)
 
                 Text {
                     visible: bodyField.text === ""
@@ -116,7 +132,7 @@ Rectangle {
                     required property int index
                     implicitWidth: 12
                     implicitHeight: 12
-                    radius: 6
+                    radius: width / 2
                     color: Theme.noteColors[index]
                     border.width: root.note && root.note.color === index ? 2 : 0
                     border.color: Theme.fg
@@ -125,7 +141,10 @@ Rectangle {
                         anchors.fill: parent
                         anchors.margins: -3
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: NotesStore.setColor(root.nid, index)
+                        onClicked: {
+                            NotesStore.setColor(root.nid, index)
+                            root.leave()
+                        }
                     }
                 }
             }
@@ -135,12 +154,18 @@ Rectangle {
             ListButton {
                 compact: true
                 text: "Copiar"
-                onClicked: NotesStore.copy(root.nid)
+                onClicked: {
+                    NotesStore.copy(root.nid)
+                    root.leave()
+                }
             }
             ListButton {
                 compact: true
                 text: root.note && root.note.pinned ? "Desafixar" : "Fixar"
-                onClicked: NotesStore.togglePin(root.nid)
+                onClicked: {
+                    NotesStore.togglePin(root.nid)
+                    root.leave()
+                }
             }
             ListButton {
                 compact: true

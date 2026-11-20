@@ -47,9 +47,13 @@ PanelWindow {
     // Exclusive so every key reaches the search; dropped as soon as it
     // starts closing, so the keyboard goes back at once
     WlrLayershell.keyboardFocus: shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    // Only the part of the body on the screen takes clicks
+    // Only the part of the body on the screen takes clicks, and nothing
+    // while it closes (with reduce motion it stays in place while it fades)
     mask: Region {
-        item: drawer.hit
+        item: root.shown ? drawer.hit : nothing
+    }
+    Item {
+        id: nothing
     }
 
     onShownChanged: {

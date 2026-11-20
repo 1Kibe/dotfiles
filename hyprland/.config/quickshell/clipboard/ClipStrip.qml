@@ -376,6 +376,7 @@ Rectangle {
                 active: root.tab === "notes"
                 query: root.tab === "notes" ? root.query : ""
                 onLeave: search.forceActiveFocus()
+                onClearSearch: search.text = ""
             }
 
             EmojiGrid {

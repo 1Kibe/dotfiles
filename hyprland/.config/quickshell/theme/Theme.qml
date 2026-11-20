@@ -47,6 +47,8 @@ Singleton {
     readonly property color coverShade: root.alpha(bgHard, 0.55)  // over the blurred cover (island)
     readonly property color panelShade: root.alpha(bgHard, 0.6)   // over the blurred cover (music panel)
     readonly property color danger: root.alpha(red, 0.18)   // armed power action
+    // How long an action armed for its second click waits (ms)
+    readonly property int armTimeout: 5000
     readonly property color clear: root.alpha(bgHard, 0)
 
     // Workspace dots: empty, with windows, active (a longer dash)
