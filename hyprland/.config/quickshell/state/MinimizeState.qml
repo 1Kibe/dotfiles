@@ -51,7 +51,7 @@ Singleton {
     readonly property bool locked: LockState.locked || LockState.wanted
 
     // ── What talks to Hyprland: dispatch, clientsNow, monitorsNow,
-    // windowsNow and send are this file's own (and the tests', which swap
+    // send is this file's own (and the tests', which swap
     // the first four); nothing else in the shell calls them ──
     property var dispatch: text => Hyprland.dispatch(text)
     property var clientsNow: done => AreasState.clients(done)
@@ -62,10 +62,6 @@ Singleton {
         x: m.x, y: m.y, w: Math.round(m.width / (m.scale || 1)), h: Math.round(m.height / (m.scale || 1)),
         special: !!(m.lastIpcObject && m.lastIpcObject.specialWorkspace && m.lastIpcObject.specialWorkspace.id)
     }))
-    property var windowsNow: () => Lists.toList(Hyprland.toplevels.values)
-    function exists(address) {
-        return windowsNow().some(t => Hypr.windowAddress(String(t.address || "")) === address)
-    }
     function send(text) {
         if (text === null)
             return false
@@ -156,6 +152,11 @@ Singleton {
                 root.pending = root.pending.filter(x => x !== address)
                 return
             }
+            // Covered meanwhile (a window over it, a panel): no picture
+            if (file !== "" && !root.canShot(c, all)) {
+                Quickshell.execDetached(["rm", "-f", "--", file])
+                file = ""
+            }
             e.shot = file
             root.hideNow(address, c, e)
         })
@@ -187,8 +188,10 @@ Singleton {
             e.slid = true
             e.from = { x: plan.mon.x, y: plan.mon.y, w: plan.mon.w, h: plan.mon.h }
             e.size = plan.size
-            if (c.floating !== true)
+            if (c.floating !== true) {
+                send(Act.tagTiled(address, true))
                 send(Act.float(address, true))
+            }
             send(Act.resizeTo(address, plan.size[0], plan.size[1]))
             send(Act.moveTo(address, plan.at[0], plan.at[1]))
             send(Act.moveTo(address, plan.off[0], plan.off[1]))
@@ -240,25 +243,31 @@ Singleton {
         const back = retile
         retile = []
         retileTimer.stop()
-        for (const r of back)
+        for (const r of back) {
             send(Act.float(r.address, false))
+            send(Act.tagTiled(r.address, false))
+        }
     }
     // A slid window not hidden after all: back to its place and state
+    // (Locked: nothing is sent; the next reload brings it in)
     function slideBack(e) {
-        if (!e || !e.slid || !e.at)
+        if (!e || !e.slid || !e.at || locked)
             return
         send(Act.moveTo(e.address, Math.round(e.at.x), Math.round(e.at.y)))
-        if (e.floating !== true)
+        if (e.floating !== true) {
             send(Act.float(e.address, false))
+            send(Act.tagTiled(e.address, false))
+        }
     }
     function hideNowAfterSlide(address, e) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
-        if (locked) {
-            done()
-            return
-        }
+        // Locked meanwhile: one that slid out is hidden all the same (never
+        // left past the edge); one that did not is left in place
         if (!e.slid) {
-            hideSent(address, e)
+            if (locked)
+                done()
+            else
+                hideSent(address, e)
             return
         }
         // Closed while it slid: nothing to hide
@@ -269,8 +278,7 @@ Singleton {
                 done()
                 return
             }
-            if (!root.locked)
-                root.hideSent(address, e)
+            root.hideSent(address, e)
         })
     }
     function hideSent(address, e) {
@@ -380,15 +388,39 @@ Singleton {
                 const b = Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, [])
                 if (b)
                     root.send(Act.moveTo(a, b.to[0], b.to[1]))
-                if (e.floating !== true)
+                if (e.floating !== true) {
                     root.send(Act.float(a, false))
+                    root.send(Act.tagTiled(a, false))
+                }
             }
             root.send(Act.focus(a))
             root.dropShot(a)
             root.entries = List.remove(root.entries, a)
             root.restored(a)
+            // Checked as the hide is: still hidden (the move did not go
+            // through), it is listed again
+            root.restoreCheck = root.restoreCheck.concat([a])
+            restoreCheckTimer.restart()
         })
         return true
+    }
+    property var restoreCheck: []
+    Timer {
+        id: restoreCheckTimer
+        interval: root.confirmMs
+        onTriggered: {
+            // (one minimized again meanwhile is hidden on purpose)
+            const list = root.restoreCheck.filter(a => !root.entries.some(e => e.address === a) && !root.pending.includes(a))
+            root.restoreCheck = []
+            if (list.length === 0)
+                return
+            root.clientsNow(cl => {
+                const all = Lists.toList(cl)
+                if (all.some(c => list.includes(Hypr.windowAddress(String(c.address || "")))
+                                  && c.workspace && c.workspace.name === List.SPECIAL))
+                    root.reload()
+            })
+        }
     }
     // Slid in: tiled again once the slide ends
     property var retile: []
@@ -399,8 +431,10 @@ Singleton {
             const due = root.retile.filter(r => r.due <= now)
             root.retile = root.retile.filter(r => r.due > now)
             if (!root.locked)
-                for (const r of due)
+                for (const r of due) {
                     root.send(Act.float(r.address, false))
+                    root.send(Act.tagTiled(r.address, false))
+                }
             root.arm(retileTimer, root.retile)
         }
     }
@@ -653,6 +687,9 @@ Singleton {
     // ── A restart of the shell: the hidden windows, again ──
     // Tried again (a few times) while the screens are not known yet
     property int reloads: 0
+    function taggedTiled(c) {
+        return Lists.toList(c && c.tags).some(t => String(t).replace(/\*$/, "") === Act.TILED_TAG)
+    }
     function reload() {
         reloads++
         clientsNow(list => {
@@ -670,15 +707,19 @@ Singleton {
                     const b = Slide.back(null, c.size, null, Slide.monitorOf(c, mons), [])
                     if (b)
                         root.send(Act.moveTo(a, b.to[0], b.to[1]))
+                    if (root.taggedTiled(c)) {
+                        root.send(Act.float(a, false))
+                        root.send(Act.tagTiled(a, false))
+                    }
                 }
             }
             const found = List.fromClients(all, root.monitorNames(), AreasState.together).map(f => {
                 // Slid out in an earlier run (past its screen's edge): it
-                // slides back in to the middle, its tiling unknown (kept
-                // floating)
+                // slides back in to the middle; tiled again if its tag says
+                // it was tiled
                 const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === f.address)
                 if (c && Slide.wasSlid(c, mons))
-                    return Object.assign({}, f, { slid: true, floating: true, from: null, size: [f.at.w, f.at.h] })
+                    return Object.assign({}, f, { slid: true, floating: !root.taggedTiled(c), from: null, size: [f.at.w, f.at.h] })
                 return f
             })
             // Kept ones first (their order), then the found ones not listed

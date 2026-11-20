@@ -61,6 +61,14 @@ function resizeTo(address, w, h) {
         ? 'hl.dsp.window.resize({ window = "address:' + address + '", x = ' + w + ', y = ' + h + ' })'
         : null
 }
+// A tag on a window that slid out tiled: it is tiled again when it comes
+// back, even after a restart of the shell (Hyprland keeps the tag)
+var TILED_TAG = "qsmintiled"
+function tagTiled(address, on) {
+    return isAddress(address) && typeof on === "boolean"
+        ? 'hl.dsp.window.tag({ window = "address:' + address + '", tag = "' + (on ? "+" : "-") + TILED_TAG + '" })'
+        : null
+}
 // Out of fullscreen or maximized (mode "fullscreen" or "maximized")
 function unsetFullscreen(address, mode) {
     return isAddress(address) && (mode === "fullscreen" || mode === "maximized")

@@ -128,19 +128,25 @@ Singleton {
     readonly property int tempWarn: 75       // CPU temperature, °C
     readonly property int tempCrit: 90
 
-    // Clipboard overlay (Super+V): dimmed screen, strip at the bottom
+    // Strips, cards and popups over the screen (the clipboard's cards, the
+    // capture's toast and card, the background picker, the minimized
+    // strip): the dimming, the fill, a card's fill, a pin's border, the
+    // corners and a card's size
     readonly property color dim: Qt.rgba(0, 0, 0, 0.35)
     readonly property color stripFill: root.alpha(bgHard, 0.94)
     readonly property color cardFill: root.alpha(bg1, 0.55)
     readonly property color pinBorder: root.alpha(yellow, 0.75)
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // Clipboard drawer (Super+V): one height for its three tabs (the cards
+    // take what is left), its fill, and the Anotações' list column
+    readonly property int clipboardHeight: 220
+    readonly property color clipboardFill: bgHard
+    readonly property int notesListWidth: 210
     // The overview (Super+Tab): the veil over the screen, the margins, the
-    // gap between the window cards, the areas' strip on top and the
-    // smallest a window card gets before the middle scrolls
-    // Closing the overview, the other cards land this share of the flight
-    // before the chosen one (it goes back to its place last)
-    readonly property real overviewLead: 0.3
+    // gap between the window cards, the areas' strip on top, the smallest a
+    // window card gets before the middle scrolls, the "+" and the ×, and
+    // the minimized list's width
     readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
     readonly property int overviewMargin: 40
     readonly property int overviewGap: 24
@@ -148,10 +154,23 @@ Singleton {
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewPlusSize: Math.round(15 * textScale)
     readonly property int overviewCloseSize: 20
+    readonly property int overviewListWidth: 420
+    // A window card's title strip (its height, side margins, gap, icon),
+    // the ×'s inset, a card being dragged and the dragged copy
+    readonly property int overviewTitleHeight: 26
+    readonly property int overviewTitlePad: 8
+    readonly property int overviewTitleGap: 6
+    readonly property int overviewIcon: 16
+    readonly property int overviewCloseInset: 3
+    readonly property real overviewDragFade: 0.4
+    readonly property real overviewGhostOpacity: 0.85
+    // Closing the overview, the other cards land this share of the flight
+    // before the chosen one (it goes back to its place last)
+    readonly property real overviewLead: 0.3
     // The minimized windows' strip on the right edge: the wire, the icons'
     // and the names' widths, a row, the margin, the corners, the wire's
-    // least height, the dots, the invisible hit zone of the wire, and the
-    // rows shown at most
+    // least height, the dots, the invisible hit zone of the wire, the rows
+    // shown at most and a row's icon
     readonly property int wireWidth: 5
     readonly property int minimizeIcons: 30
     readonly property int minimizeNames: 190
@@ -170,26 +189,18 @@ Singleton {
     // animation, the "global" one of look.lua) before it is hidden, and in
     // when it comes back
     readonly property int minimizeSlide: 350
-    // The preview card next to the open strip
+    // The pulse of a window asking for attention: one step (8 a second)
+    readonly property int minimizePulseStep: 125
+    // The preview card next to the open strip: its size, the scale it grows
+    // from, the gap between the title and the picture, the app icon with no
+    // picture
     readonly property int previewWidth: 190
     readonly property int previewHeight: 128
+    readonly property real previewScale: 0.96
+    readonly property int previewGap: 4
+    readonly property int previewIcon: 48
     // Something asks for attention (the minimized strip's wire)
     readonly property color alert: orange
-    // A window card's title strip (its height, side margins, gap, icon),
-    // the ×'s inset, a card being dragged and the dragged copy
-    readonly property int overviewTitleHeight: 26
-    readonly property int overviewTitlePad: 8
-    readonly property int overviewTitleGap: 6
-    readonly property int overviewIcon: 16
-    readonly property int overviewCloseInset: 3
-    readonly property real overviewDragFade: 0.4
-    readonly property real overviewGhostOpacity: 0.85
-    readonly property int overviewListWidth: 420
-    // Clipboard drawer (Super+V): one height for its three tabs (the cards
-    // take what is left), its fill, and the Anotações' list column
-    readonly property int clipboardHeight: 220
-    readonly property color clipboardFill: bgHard
-    readonly property int notesListWidth: 210
     property string monoFont: "Agave Nerd Font Mono"
 
     // Anotações (the clipboard drawer's tab): the 5 colors of a note

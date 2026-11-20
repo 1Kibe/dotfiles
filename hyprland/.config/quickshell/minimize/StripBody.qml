@@ -119,7 +119,8 @@ Item {
             // (the section folds; if still not enough for min(n, 4) rows,
             // the panel closes and the strip opens in the middle). The
             // panel never reopens by itself
-            if (root.panelInTheWay) {
+            // (Room already there: open at once)
+            if (root.panelInTheWay && !root.fits("icons")) {
                 ShellState.requestRoom(root.screenName)
                 roomTimer.restart()
                 return
@@ -201,7 +202,7 @@ Item {
     property real pulse: 1
     Timer {
         id: pulseTimer
-        interval: 125
+        interval: Theme.minimizePulseStep
         repeat: true
         // Reduce motion: no pulse (only fading is allowed there)
         running: root.attention && (root.level === "icons" || root.level === "names") && root.pieceW > 0
@@ -245,14 +246,30 @@ Item {
     readonly property real wantTop: all ? Math.min(Math.max(freeTop, (areaTop + areaBottom) / 2 - allHeight / 2), freeBottom - allHeight)
                                         : g.top
     readonly property real wantH: all ? allHeight : g.visible ? g.height : 0
+    // Following a panel or the drawer: in the same movement as theirs (no
+    // animation of its own); changing level or count: animated
+    property bool edgeMoving: false
+    onTopEdgeChanged: {
+        edgeMoving = true
+        edgeTimer.restart()
+    }
+    onBottomEdgeChanged: {
+        edgeMoving = true
+        edgeTimer.restart()
+    }
+    Timer {
+        id: edgeTimer
+        interval: Theme.dur(Theme.animFast)
+        onTriggered: root.edgeMoving = false
+    }
     property real pieceTop: wantTop
     Behavior on pieceTop {
-        enabled: !Theme.reduceMotion
+        enabled: !Theme.reduceMotion && !root.edgeMoving
         NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     property real pieceH: wantH
     Behavior on pieceH {
-        enabled: !Theme.reduceMotion
+        enabled: !Theme.reduceMotion && !root.edgeMoving
         NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     opacity: Theme.reduceMotion ? fade : 1
@@ -403,7 +420,7 @@ Item {
                             root.hoveredY = row.mapToItem(root, 0, row.height / 2).y
                         }
                         onExited: {
-                            if (root.hoveredEntry === row.modelData)
+                            if (root.hoveredEntry && root.hoveredEntry.address === row.modelData.address)
                                 root.hoveredEntry = null
                         }
                         onClicked: event => {

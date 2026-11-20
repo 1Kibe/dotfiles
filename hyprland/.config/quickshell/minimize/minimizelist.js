@@ -81,10 +81,6 @@ function forMonitor(entries, name, onNames, first) {
     return entries.filter(e => e.monitor === name || (name === first && !on.includes(e.monitor)))
 }
 
-// The wire's dots: one per window up to 8; with more, 7 and a dash
-function dots(n) {
-    return n <= 8 ? { count: Math.max(0, n), more: false } : { count: 7, more: true }
-}
 
 // The most recent entry of an app (ids: class, desktop id, StartupWMClass;
 // compared without case), or null

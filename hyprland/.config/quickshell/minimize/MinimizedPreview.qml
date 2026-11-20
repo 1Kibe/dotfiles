@@ -22,7 +22,7 @@ Rectangle {
     color: Theme.stripFill
     clip: true
     opacity: entry ? 1 : 0
-    scale: entry || Theme.reduceMotion ? 1 : 0.96
+    scale: entry || Theme.reduceMotion ? 1 : Theme.previewScale
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation { duration: Theme.dur(Theme.animFast) }
@@ -34,7 +34,7 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.minimizeMargin
-        spacing: 4
+        spacing: Theme.previewGap
 
         Text {
             Layout.fillWidth: true
@@ -72,14 +72,14 @@ Rectangle {
                 textFormat: Text.PlainText
                 color: Theme.accentLight
                 font.family: Theme.font
-                font.pointSize: Theme.fontSize * 3
+                font.pointSize: Theme.previewIcon * 0.75
             }
             Image {
                 anchors.centerIn: parent
                 visible: root.entry !== null && root.entry.shot === "" && root.iconPath !== ""
                 source: root.iconPath
-                sourceSize.width: 48
-                sourceSize.height: 48
+                sourceSize.width: Theme.previewIcon
+                sourceSize.height: Theme.previewIcon
             }
         }
     }

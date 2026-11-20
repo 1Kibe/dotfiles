@@ -19,7 +19,7 @@ Variants {
         readonly property bool hasBar: ShellState.barScreens.length === 0 || ShellState.barScreens.includes(name)
 
         screen: modelData
-        visible: MinimizeState.entries.length > 0 || body.pieceW > 0
+        visible: MinimizeState.forMonitor(name).length > 0 || body.pieceW > 0
         anchors {
             top: true
             bottom: true

@@ -43,10 +43,14 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
 | `state/NotesStore.qml` | As anotações da gaveta do clipboard |
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
+| `state/OverviewState.qml` | A visão geral: aberta ou não, a área mostrada em cada tela e as ações (ir, fechar, mover) |
+| `state/MinimizeState.qml` | As janelas minimizadas: esconder, trazer, fechar, a foto da prévia e a lista depois de reiniciar |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
+| `overview/` | A visão geral do `Super+Tab`: a faixa das áreas, os cartões das janelas e o voo |
+| `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o deslize das janelas |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
@@ -300,16 +304,20 @@ continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz
 
 - **Na borda direita** de cada tela fica um fio fino com um pontinho por janela que saiu daquela tela (com mais de oito, sete
   e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, ele abre um instante mostrando a janela.
-- **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes. Clicar traz a janela
-  para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N", que mostra a
-  lista inteira.
+- **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes, e a linha sob o mouse
+  mostra a prévia ao lado: o nome do app, o título e a foto da janela tirada ao minimizar (sem foto, o ícone do app). Clicar
+  traz a janela para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N",
+  que mostra a lista inteira.
 - **Pedindo atenção:** o fio fica laranja até o mouse passar; aberto, o ícone da janela pulsa.
-- **Painéis:** o fio desce junto quando um painel da barra cobre a borda. Com o mouse no fio e a central aberta, a seção dela
-  fecha para dar espaço; se ainda faltar, o painel fecha.
+- **Painéis:** o fio desce junto quando um painel da barra cobre a borda, e sobe junto com a gaveta do clipboard. Com o mouse
+  no fio e a central aberta, a seção dela fecha para dar espaço; se ainda faltar, o painel fecha.
 - A visão geral (`Super+Tab`) também mostra as minimizadas, no cartão "Minimizadas".
 
-Janela fixada em todas as áreas não é minimizada. Com a tela travada nada é escondido nem trazido. Se o shell reiniciar, ele
-acha as janelas que já estavam escondidas, e nenhuma fica presa.
+Janela fixada em todas as áreas não é minimizada (desafixe antes). Com a tela travada nada é escondido nem trazido. Se o
+shell reiniciar, ele acha as janelas que já estavam escondidas, e nenhuma fica presa.
+
+A foto da prévia fica em `$XDG_RUNTIME_DIR/qs-minimizar` (memória; pasta `700`, arquivo `600`) e é apagada quando a janela
+volta ou fecha, e a pasta inteira quando o shell sobe. Ela só é tirada com a janela inteira à vista e nada por cima.
 
 **Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
 as escondidas, a janela em tela cheia e a fixada, e dois monitores.

@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.theme
 
 // Shared state of the shell's popups: one panel open at a time, on one
 // monitor. Panels: "control" (control/ControlCenter, the button with the
@@ -80,14 +81,16 @@ Singleton {
     // bottom up) and where a drawer from the bottom begins (bottomPanelEdge);
     // 0 or missing = nothing there. Replaced whole at each change.
     // Each panel publishes its own (owner): two panels of one screen
-    // changing over never overwrite each other; the strip reads the
-    // lowest-reaching one (the largest y)
+    // changing over never overwrite each other; the strip reads the one
+    // reaching furthest into the screen (the largest y with the bar on top,
+    // the smallest with the bar on the bottom)
     property var rightPanelEdges: ({})
     readonly property var rightPanelEdge: {
         const m = {}
         for (const key in rightPanelEdges) {
             const monitor = key.slice(0, key.indexOf("|"))
-            m[monitor] = Math.max(m[monitor] ?? 0, rightPanelEdges[key])
+            const y = rightPanelEdges[key]
+            m[monitor] = !(m[monitor] > 0) ? y : Theme.barAtBottom ? Math.min(m[monitor], y) : Math.max(m[monitor], y)
         }
         return m
     }
@@ -114,9 +117,6 @@ Singleton {
             delete m[key]
         rightPanelEdges = m
     }
-    // The minimized strip wants room on `monitor`: the control center folds
-    // its section (it listens to accordionCollapseRequested); the strip then
-    // closes the panel itself if that was not enough (closePanelOn)
     // Overlay pieces with no state of their own (the capture's toast and
     // card) say when they show: the minimize picture is not taken then
     property var overlays: ({})
@@ -131,6 +131,9 @@ Singleton {
             delete m[name]
         overlays = m
     }
+    // The minimized strip wants room on `monitor`: the control center folds
+    // its section (it listens to accordionCollapseRequested); the strip then
+    // closes the panel itself if that was not enough (closePanelOn)
     function requestRoom(monitor) {
         accordionCollapseRequested(monitor)
     }
