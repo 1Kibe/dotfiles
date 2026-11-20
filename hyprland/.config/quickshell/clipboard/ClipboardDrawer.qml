@@ -11,7 +11,8 @@ import qs.state
 // top), and goes back down to close. With the bar on the bottom edge it
 // rises from the bar's top. The screen is not dimmed: a click outside the
 // drawer, Esc with the search empty, or Super+V again close it. It takes the
-// keyboard while open. Locked, it never opens, and closes if open.
+// keyboard while open. The windows on its monitor make room for it
+// (ClipboardZone), as for the settings. Locked, it never opens, and closes if open.
 // The tabs (Clipboard, Emoji, Anotações) are ClipStrip's, one height for
 // all of them (Theme.clipboardHeight).
 PanelWindow {
@@ -43,7 +44,8 @@ PanelWindow {
     readonly property real bottomGap: Theme.barAtBottom && barHere ? Theme.barHeight : 0
     margins.bottom: bottomGap
     implicitHeight: Theme.clipboardHeight
-    // Never pushes windows aside, and covers what is under it
+    // Placed on the screen's edge (or the bar) whatever the zones; the
+    // windows are pushed up by ClipboardZone, not by the drawer itself
     exclusionMode: ExclusionMode.Ignore
     color: Theme.clear
     WlrLayershell.layer: WlrLayer.Overlay
@@ -63,6 +65,14 @@ PanelWindow {
     onShownChanged: {
         if (shown)
             drawer.strip.reset()
+    }
+    // The monitor where the drawer shows (opening, open or closing), for
+    // ClipboardZone: the windows there make room for it
+    readonly property string zoneOn: visible && screen ? screen.name : ""
+    onZoneOnChanged: ShellState.clipboardOn = zoneOn
+    Component.onDestruction: {
+        if (ShellState.clipboardOn === zoneOn)
+            ShellState.clipboardOn = ""
     }
     // Locked while open: closed (the store too, so Super+V starts clean)
     onLockedChanged: {
