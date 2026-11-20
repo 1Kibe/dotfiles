@@ -99,8 +99,6 @@ Singleton {
     }
     function hideFound(address, list) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
-        // A picture is only ever the one taken for this hide
-        lastShot = ""
         if (locked || Lists.toList(list).length === 0) {
             done()
             return
@@ -141,13 +139,40 @@ Singleton {
         // The preview's picture first (when the window can be seen whole),
         // then hidden
         if (canShot(c, Lists.toList(list))) {
-            shoot(address, c, () => root.hideNow(address, c, e))
+            shoot(address, c, file => root.afterShot(address, e, file))
             return
         }
         hideNow(address, c, e)
     }
+    // After grim (up to its deadline): the window as it is now (it may have
+    // moved or closed); the picture goes to this entry only
+    function afterShot(address, e, file) {
+        clientsNow(list => {
+            const all = Lists.toList(list)
+            const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === address)
+            if (root.locked || !c || all.length === 0) {
+                if (file !== "")
+                    Quickshell.execDetached(["rm", "-f", "--", file])
+                root.pending = root.pending.filter(x => x !== address)
+                return
+            }
+            e.shot = file
+            root.hideNow(address, c, e)
+        })
+    }
     function hideNow(address, c, e) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
+        if (locked) {
+            dropShot(address)
+            done()
+            return
+        }
+        // Coming back a moment ago and minimized again: it was going to be
+        // tiled again, so it is a tiled one
+        if (retile.some(r => r.address === address)) {
+            retile = retile.filter(r => r.address !== address)
+            e.floating = false
+        }
         // Out of fullscreen or maximized first (it does not come back so)
         const fs = Number(c.fullscreen) || 0
         if (fs & 2)
@@ -157,7 +182,7 @@ Singleton {
         // Seen on its screen: it slides out past the right edge first
         // (floating where it is, so it does not jump), then is hidden;
         // reduce motion, fullscreen or a screen to the right: at once
-        const plan = Theme.reduceMotion ? null : Slide.out(c, monitorsNow())
+        const plan = slides ? Slide.out(c, monitorsNow()) : null
         if (plan) {
             e.slid = true
             e.from = { x: plan.mon.x, y: plan.mon.y, w: plan.mon.w, h: plan.mon.h }
@@ -168,29 +193,55 @@ Singleton {
             send(Act.moveTo(address, plan.at[0], plan.at[1]))
             send(Act.moveTo(address, plan.off[0], plan.off[1]))
             sliding = sliding.concat([{ address: address, entry: e, due: Date.now() + Theme.dur(Theme.minimizeSlide) }])
-            slideTimer.restart()
+            arm(slideTimer, sliding)
             return
         }
         hideNowAfterSlide(address, e)
     }
     // ── The slide: windows on their way out, hidden when it ends ──
+    // Reduce motion or no animation time: no slide at all
+    readonly property bool slides: !Theme.reduceMotion && Theme.dur(Theme.minimizeSlide) > 0
     property var sliding: []
+    // A timer set for the earliest item due (a later one never delays it)
+    function arm(timer, items) {
+        if (items.length === 0) {
+            timer.stop()
+            return
+        }
+        timer.interval = Math.max(20, Math.min(...items.map(w => w.due)) - Date.now())
+        timer.restart()
+    }
     Timer {
         id: slideTimer
-        interval: Theme.dur(Theme.minimizeSlide)
         onTriggered: {
-            const now = Date.now()
-            const due = root.sliding.filter(w => w.due <= now + 20)
-            root.sliding = root.sliding.filter(w => w.due > now + 20)
+            const now = Date.now() + 20
+            const due = root.sliding.filter(w => w.due <= now)
+            root.sliding = root.sliding.filter(w => w.due > now)
             for (const w of due)
                 root.hideNowAfterSlide(w.address, w.entry)
-            if (root.sliding.length > 0) {
-                interval = Math.max(20, Math.min(...root.sliding.map(w => w.due)) - now)
-                restart()
-            } else {
-                interval = Theme.dur(Theme.minimizeSlide)
+            root.arm(slideTimer, root.sliding)
+        }
+    }
+    // Locking while windows slide: what is under way ends now (the ones
+    // leaving are hidden, the ones coming back are tiled again); nothing
+    // is sent after that until it unlocks
+    onLockedChanged: {
+        if (!locked)
+            return
+        const out = sliding
+        sliding = []
+        slideTimer.stop()
+        for (const w of out) {
+            if (send(Act.hide(w.address))) {
+                confirm.push({ address: w.address, entry: w.entry })
+                confirmTimer.restart()
             }
         }
+        const back = retile
+        retile = []
+        retileTimer.stop()
+        for (const r of back)
+            send(Act.float(r.address, false))
     }
     // A slid window not hidden after all: back to its place and state
     function slideBack(e) {
@@ -202,17 +253,33 @@ Singleton {
     }
     function hideNowAfterSlide(address, e) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
-        if (!send(Act.hide(address))) {
-            dropShot(address)
-            lastShot = ""
-            slideBack(e)
+        if (locked) {
             done()
             return
         }
-        // The picture, when one was taken for this window
-        if (lastShot === shotPath(address)) {
-            e.shot = lastShot
-            lastShot = ""
+        if (!e.slid) {
+            hideSent(address, e)
+            return
+        }
+        // Closed while it slid: nothing to hide
+        clientsNow(list => {
+            const all = Lists.toList(list)
+            if (all.length > 0 && !all.some(x => Hypr.windowAddress(String(x.address || "")) === address)) {
+                root.dropShot(address)
+                done()
+                return
+            }
+            if (!root.locked)
+                root.hideSent(address, e)
+        })
+    }
+    function hideSent(address, e) {
+        const done = () => root.pending = root.pending.filter(x => x !== address)
+        if (!send(Act.hide(address))) {
+            dropShot(address)
+            slideBack(e)
+            done()
+            return
         }
         // Listed only once Hyprland shows it in the hidden workspace
         confirm.push({ address: address, entry: e })
@@ -298,14 +365,16 @@ Singleton {
             // It slid out: it slides in from the right edge of this screen
             // to its place (moved to this screen), and is tiled again after
             const e = root.entries.find(x => x.address === a)
-            const plan = e && e.slid && !Theme.reduceMotion
+            const plan = e && e.slid && root.slides
                 ? Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, mons) : null
             if (plan) {
                 root.send(Act.moveTo(a, plan.off[0], plan.off[1]))
                 root.send(Act.moveTo(a, plan.to[0], plan.to[1]))
-                if (e.floating !== true)
-                    root.retile.push(a)
-                retileTimer.restart()
+                if (e.floating !== true) {
+                    root.retile = root.retile.filter(r => r.address !== a)
+                        .concat([{ address: a, due: Date.now() + Theme.dur(Theme.minimizeSlide) }])
+                    root.arm(retileTimer, root.retile)
+                }
             } else if (e && e.slid) {
                 // Reduce motion: straight to its place
                 const b = Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, [])
@@ -325,12 +394,14 @@ Singleton {
     property var retile: []
     Timer {
         id: retileTimer
-        interval: Theme.dur(Theme.minimizeSlide)
         onTriggered: {
-            const list = root.retile
-            root.retile = []
-            for (const a of list)
-                root.send(Act.float(a, false))
+            const now = Date.now() + 20
+            const due = root.retile.filter(r => r.due <= now)
+            root.retile = root.retile.filter(r => r.due > now)
+            if (!root.locked)
+                for (const r of due)
+                    root.send(Act.float(r.address, false))
+            root.arm(retileTimer, root.retile)
         }
     }
     function restoreLast(monitorName) {
@@ -394,6 +465,12 @@ Singleton {
                 minimize(addr)
         } else if (name === "closewindow") {
             const a = Hypr.windowAddress(d)
+            retile = retile.filter(r => r.address !== a)
+            if (sliding.some(w => w.address === a)) {
+                sliding = sliding.filter(w => w.address !== a)
+                pending = pending.filter(x => x !== a)
+                dropShot(a)
+            }
             if (entries.some(e => e.address === a)) {
                 dropShot(a)
                 entries = List.remove(entries, a)
@@ -467,7 +544,8 @@ Singleton {
     // monitors' numbers, the background picker, this strip open
     property var screenBusy: () => ShellState.openPanel !== "" || CaptureState.open || ClipboardStore.open
         || OverviewState.open || LockState.dimmed || MonitorsApply.pending || MonitorsApply.identifying
-        || KeyboardLayout.pending || BackgroundStore.pickerOpen || ShellState.overlayShown || stripsOpen.length > 0
+        || KeyboardLayout.pending || BackgroundStore.pickerOpen || ShellState.overlayShown
+        || stripsOpen.some(n => monitorsNow().some(m => m.name === n))
     // The screens whose strip is open in icons or names (the strip says)
     property var stripsOpen: []
     function setStripOpen(screen, on) {
@@ -483,7 +561,7 @@ Singleton {
         const mons = monitorsNow()
         const mon = mons.find(m => m.id === c.monitor)
         const ws = c.workspace && typeof c.workspace === "object" ? c.workspace : {}
-        if (!mon || mon.active !== ws.id || mon.w === undefined)
+        if (!mon || mon.active !== ws.id || ![mon.x, mon.y, mon.w, mon.h].every(Number.isFinite))
             return false
         const g = shotGeom(c)
         if (!g)
@@ -497,11 +575,16 @@ Singleton {
         // Whole inside its screen
         if (at[0] < mon.x || at[1] < mon.y || at[0] + size[0] > mon.x + mon.w || at[1] + size[1] > mon.y + mon.h)
             return false
-        // No floating window of the same workspace over it
-        const over = list.some(o => o !== c && o.floating === true && o.workspace && o.workspace.id === ws.id
-            && Array.isArray(o.at) && Array.isArray(o.size)
-            && o.at[0] < at[0] + size[0] && at[0] < o.at[0] + o.size[0]
-            && o.at[1] < at[1] + size[1] && at[1] < o.at[1] + o.size[1])
+        // No floating window of the same workspace, nor a pinned one of this
+        // screen, over it (one with no sane place counts as over it)
+        const over = list.some(o => {
+            if (o === c || !(o.floating === true && o.workspace && o.workspace.id === ws.id
+                             || o.pinned === true && o.monitor === c.monitor))
+                return false
+            const og = shotGeom(o)
+            return !og || og.at[0] < at[0] + size[0] && at[0] < og.at[0] + og.size[0]
+                       && og.at[1] < at[1] + size[1] && at[1] < og.at[1] + og.size[1]
+        })
         return !over
     }
     // The window's place and size as whole numbers, or null
@@ -517,9 +600,8 @@ Singleton {
     function shoot(address, c, then) {
         const file = shotPath(address)
         const g = shotGeom(c)
-        lastShot = ""
         if (file === "" || !g || shotJob.running) {
-            then()
+            then("")
             return
         }
         const at = g.at, size = g.size
@@ -553,12 +635,9 @@ Singleton {
             w.ok = code === 0 && !root.locked && !root.screenBusy()
             if (!w.ok)
                 Quickshell.execDetached(["rm", "-f", "--", w.file])
-            root.lastShot = w.ok ? w.file : ""
-            w.then()
+            w.then(w.ok ? w.file : "")
         }
     }
-    // The file of the last picture taken, picked up by the entry made next
-    property string lastShot: ""
     readonly property int shotMs: 2000
     Timer {
         id: shotTimeout
@@ -579,6 +658,20 @@ Singleton {
         clientsNow(list => {
             const all = Lists.toList(list)
             const mons = root.monitorsNow()
+            // Caught by a restart while sliding (out of the hidden workspace,
+            // past its screen's edge): back to the middle of its screen; if
+            // it was tiled is not known, it stays floating
+            if (!root.locked) {
+                for (const c of all) {
+                    const a = Hypr.windowAddress(String(c.address || ""))
+                    if (!Act.isAddress(a) || !c.workspace || c.workspace.name === List.SPECIAL || !Slide.wasSlid(c, mons)
+                        || root.sliding.some(w => w.address === a))
+                        continue
+                    const b = Slide.back(null, c.size, null, Slide.monitorOf(c, mons), [])
+                    if (b)
+                        root.send(Act.moveTo(a, b.to[0], b.to[1]))
+                }
+            }
             const found = List.fromClients(all, root.monitorNames(), AreasState.together).map(f => {
                 // Slid out in an earlier run (past its screen's edge): it
                 // slides back in to the middle, its tiling unknown (kept
