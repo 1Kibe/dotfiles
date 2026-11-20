@@ -12,7 +12,8 @@ import qs.state
 // rises from the bar's top. The screen is not dimmed: a click outside the
 // drawer, Esc with the search empty, or Super+V again close it. It takes the
 // keyboard while open. The windows on its monitor make room for it
-// (ClipboardZone), as for the settings. Locked, it never opens, and closes if open.
+// (ClipboardZone), as for the settings. Locked, it never opens, and closes
+// if open.
 // The tabs (Clipboard, Emoji, Anotações) are ClipStrip's, one height for
 // all of them (Theme.clipboardHeight).
 PanelWindow {
