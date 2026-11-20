@@ -41,12 +41,12 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/MediaState.qml` | Player escolhido, música, capa (baixada para o cache) e a cor dela |
 | `state/SystemStats.qml` | CPU, memória, temperatura e a lista de processos, lidos do `/proc` e do `/sys` |
 | `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
-| `state/NotesStore.qml` | Notas rápidas (post-its) |
+| `state/NotesStore.qml` | As anotações da gaveta do clipboard |
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
-| `clipboard/` | O clipboard do `Super+V`: tela escura, faixa com os cartões, notas e emoji |
+| `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
@@ -270,17 +270,19 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 
 ### Clipboard (Super+V)
 
-`Super+V` escurece a tela e sobe uma faixa de baixo com os 100 itens mais recentes do histórico (o `cliphist` grava tudo o
-que é copiado; senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois
-é colar onde quiser.
+`Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
+sem escurecer o resto. Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e **Anotações**. A aba Clipboard
+mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado; senhas marcadas como sensíveis pelo
+gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde quiser.
 
 - **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
   prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.
 - **Fixados:** ficam no começo, com borda amarela, e sobrevivem ao "Limpar". O pino no canto (ou `Ctrl+P`) fixa e desafixa.
 - **Limpar:** apaga o histórico inteiro, com um segundo clique para confirmar. Os fixados ficam.
-- **Notas:** post-its acima da faixa, numa grade de 6 por linha que rola para baixo. "+ Nova nota" cria uma; título e texto
-  se editam no lugar e salvam sozinhos; os botões trocam a cor (5 cores), copiam o texto e apagam (com segundo clique).
-  Arraste pela alça do topo para mudar a ordem.
+- **Anotações:** a anotação escolhida fica em destaque à esquerda, pronta para escrever (título e texto no lugar, salvam
+  sozinhos), com as 5 cores, "Copiar", "Fixar" e "Apagar" (com segundo clique) embaixo. À direita, a lista de todas, com a
+  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem. "+ Nova anotação" cria uma no
+  topo. As fixadas ficam no topo da lista, na ordem em que foram fixadas. A busca filtra pelo título e pelo texto.
 - **Emoji:** a aba Emoji (ou `Tab`) mostra os emoji por grupo, com os recentes; a busca é pelo nome em inglês ("heart",
   "cat"). Clicar copia.
 
@@ -290,11 +292,14 @@ que é copiado; senhas marcadas como sensíveis pelo gerenciador de senhas não 
 | `Enter` | Copia e fecha |
 | `Ctrl+P` | Fixa ou desafixa |
 | `Del` | Apaga do histórico |
-| `Tab` | Troca entre Histórico e Emoji |
+| `Tab` / `Shift+Tab` | Troca de aba (Clipboard, Emoji, Anotações) |
 | Digitar | Busca |
-| `Esc` | Limpa a busca; de novo, fecha (dentro de uma nota, volta para a busca) |
+| `Esc` | Limpa a busca; de novo, fecha (escrevendo numa anotação, volta para a lista) |
 
-Clicar na área escura ou `Super+V` de novo também fecha.
+Nas Anotações: `↑` `↓` escolhem na lista, `Enter` vai para o texto, `Ctrl+N` cria, `Ctrl+P` fixa e desafixa, `Del` arma o
+apagar e o segundo `Del` apaga.
+
+Clicar fora da gaveta ou `Super+V` de novo também fecha. Com a tela travada ela não abre.
 
 Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `600`):
 
@@ -302,11 +307,11 @@ Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `60
 |---|---|
 | Histórico | `~/.cache/cliphist/db` (do `cliphist`) |
 | Fixados | `~/.local/share/quickshell/clipboard/pins.json` e as imagens fixadas na mesma pasta |
-| Notas | `~/.local/share/quickshell/clipboard/notes.json` |
+| Anotações | `~/.local/share/quickshell/clipboard/notes.json` |
 | Emoji recentes | `~/.local/share/quickshell/clipboard/emoji-recent.json` |
 | Prévias de imagem | `$XDG_RUNTIME_DIR/quickshell-clip` (memória; apagadas ao fechar) |
 
-**Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as notas. Um arquivo que não dá para ler vira `.bak` e o
+**Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as anotações. Um arquivo que não dá para ler vira `.bak` e o
 clipboard começa vazio, sem perder o original.
 
 ### Captura de tela (Print)
