@@ -206,6 +206,15 @@ Item {
     }
     readonly property Item hitItem: hitArea
 
+    // ── The preview of the row under the mouse (names only) ──
+    property var hoveredEntry: null
+    property real hoveredY: 0
+    MinimizedPreview {
+        entry: root.level === "names" ? root.hoveredEntry : null
+        x: root.width - root.pieceW - width - Theme.spacing
+        y: Geom.cardTop(root.hoveredY, root.areaTop, root.areaBottom, height)
+    }
+
     StripShape {
         anchors.fill: parent
         bodyWidth: root.pieceW
@@ -290,7 +299,15 @@ Item {
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
                         cursorShape: Qt.PointingHandCursor
-                        onEntered: MinimizeState.clearAttention(row.modelData.address)
+                        onEntered: {
+                            MinimizeState.clearAttention(row.modelData.address)
+                            root.hoveredEntry = row.modelData
+                            root.hoveredY = row.mapToItem(root, 0, row.height / 2).y
+                        }
+                        onExited: {
+                            if (root.hoveredEntry === row.modelData)
+                                root.hoveredEntry = null
+                        }
                         onClicked: event => {
                             if (event.button === Qt.MiddleButton)
                                 MinimizeState.close(row.modelData.address)

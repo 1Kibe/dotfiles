@@ -161,6 +161,9 @@ Singleton {
     readonly property int minimizeMaxRows: 12
     // How long the strip stays open in icons after a window is minimized
     readonly property int minimizeFlash: 1500
+    // The preview card next to the open strip
+    readonly property int previewWidth: 190
+    readonly property int previewHeight: 128
     // Something asks for attention (the minimized strip's wire)
     readonly property color alert: orange
     readonly property int overviewListWidth: 420

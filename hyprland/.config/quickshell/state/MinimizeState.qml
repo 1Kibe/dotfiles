@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs.state
 import "../minimize/minimizelist.js" as List
 import "../minimize/minact.js" as Act
@@ -54,7 +55,8 @@ Singleton {
     property var clientsNow: done => AreasState.clients(done)
     // monitor id -> name, and name -> active workspace id
     property var monitorsNow: () => Lists.toList(Hyprland.monitors.values).map(m => ({
-        id: m.id, name: m.name, active: m.activeWorkspace ? m.activeWorkspace.id : 0
+        id: m.id, name: m.name, active: m.activeWorkspace ? m.activeWorkspace.id : 0,
+        x: m.x, y: m.y, w: m.width, h: m.height
     }))
     property var windowsNow: () => Lists.toList(Hyprland.toplevels.values)
     function exists(address) {
@@ -126,6 +128,16 @@ Singleton {
             refused("Uma janela fixada em todas as áreas não pode ser minimizada")
             return
         }
+        // The preview's picture first (when the window can be seen whole),
+        // then hidden
+        if (canShot(c, Lists.toList(list))) {
+            shoot(address, c, () => root.hideNow(address, c, e))
+            return
+        }
+        hideNow(address, c, e)
+    }
+    function hideNow(address, c, e) {
+        const done = () => root.pending = root.pending.filter(x => x !== address)
         // Out of fullscreen or maximized first (it does not come back so)
         const fs = Number(c.fullscreen) || 0
         if (fs & 2)
@@ -135,6 +147,11 @@ Singleton {
         if (!send(Act.hide(address))) {
             done()
             return
+        }
+        // The picture, when one was taken for this window
+        if (lastShot === shotPath(address)) {
+            e.shot = lastShot
+            lastShot = ""
         }
         // Listed only once Hyprland shows it in the hidden workspace
         confirm.push({ address: address, entry: e })
@@ -182,6 +199,7 @@ Singleton {
             if (!c || !c.workspace || c.workspace.name !== List.SPECIAL) {
                 // Gone or moved elsewhere: out of the list, nothing sent;
                 // Super+Shift+H tries the one before
+                root.dropShot(a)
                 root.entries = List.remove(root.entries, a)
                 if (fallback)
                     root.restoreLast(monitorName)
@@ -190,6 +208,7 @@ Singleton {
             if (!root.send(Act.bringTo(a, mon.active)))
                 return
             root.send(Act.focus(a))
+            root.dropShot(a)
             root.entries = List.remove(root.entries, a)
             root.restored(a)
         })
@@ -252,6 +271,7 @@ Singleton {
         } else if (name === "closewindow") {
             const a = Hypr.windowAddress(d)
             if (entries.some(e => e.address === a)) {
+                dropShot(a)
                 entries = List.remove(entries, a)
                 closed(a)
             }
@@ -280,6 +300,96 @@ Singleton {
         }
     }
 
+    // ── The preview's picture ──
+    // Taken with grim on the window's place right before hiding it, small,
+    // in a folder of the session's runtime directory (memory, 0700, checked
+    // to be a real folder of this user), named by the checked address, 0600.
+    // Only when the window can be seen whole: on its screen's active
+    // workspace, inside the screen, no floating window over it, and no bar
+    // panel, capture or clipboard drawer open (grim takes the composed
+    // screen), never while locked. Deleted when the window comes back or
+    // closes, and the whole folder when the shell starts.
+    readonly property string shotDir: {
+        const r = Quickshell.env("XDG_RUNTIME_DIR") || ""
+        return /^\/[A-Za-z0-9._\/-]{1,200}$/.test(r) && !r.includes("..") ? r + "/qs-minimizar" : ""
+    }
+    function shotPath(address) {
+        return shotDir !== "" && Act.isAddress(address) ? `${shotDir}/${address}.png` : ""
+    }
+    // Swapped by the tests (the panels and the windows "covering")
+    property var screenBusy: () => ShellState.openPanel !== "" || CaptureState.open || ClipboardStore.open
+    function canShot(c, list) {
+        if (locked || shotDir === "" || screenBusy())
+            return false
+        const mons = monitorsNow()
+        const mon = mons.find(m => m.id === c.monitor)
+        const ws = c.workspace && typeof c.workspace === "object" ? c.workspace : {}
+        if (!mon || mon.active !== ws.id || mon.w === undefined)
+            return false
+        const at = Array.isArray(c.at) ? c.at.map(List.whole) : [0, 0]
+        const size = Array.isArray(c.size) ? c.size.map(List.whole) : [0, 0]
+        if (size[0] <= 0 || size[1] <= 0)
+            return false
+        // Whole inside its screen
+        if (at[0] < mon.x || at[1] < mon.y || at[0] + size[0] > mon.x + mon.w || at[1] + size[1] > mon.y + mon.h)
+            return false
+        // No floating window of the same workspace over it
+        const over = list.some(o => o !== c && o.floating === true && o.workspace && o.workspace.id === ws.id
+            && Array.isArray(o.at) && Array.isArray(o.size)
+            && o.at[0] < at[0] + size[0] && at[0] < o.at[0] + o.size[0]
+            && o.at[1] < at[1] + size[1] && at[1] < o.at[1] + o.size[1])
+        return !over
+    }
+    property var shotWaiting: null
+    function shoot(address, c, then) {
+        const file = shotPath(address)
+        const at = c.at.map(List.whole), size = c.size.map(List.whole)
+        if (file === "" || shotJob.running) {
+            then()
+            return
+        }
+        const scale = Math.min(1, 400 / size[0]).toFixed(3)
+        shotWaiting = { address: address, file: file, then: then }
+        shotJob.command = ["bash", "-c", root.shotScript, "bash", shotDir, file, `${at[0]},${at[1]} ${size[0]}x${size[1]}`, scale]
+        shotTimeout.restart()
+        shotJob.running = true
+    }
+    // The folder made and checked (a real folder, this user's, 0700), grim
+    // with fixed options (no cursor), the file 0600
+    readonly property string shotScript: [
+        'umask 077',
+        '[ -e "$1" ] || mkdir -m 700 -- "$1" || exit 3',
+        '[ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ] || exit 3',
+        '[ "$(stat -c %a -- "$1")" = 700 ] || exit 3',
+        'grim -g "$3" -s "$4" "$2" || exit 4',
+        'chmod 600 -- "$2"'
+    ].join("\n")
+    Process {
+        id: shotJob
+        onExited: code => {
+            shotTimeout.stop()
+            const w = root.shotWaiting
+            root.shotWaiting = null
+            if (!w)
+                return
+            w.ok = code === 0
+            root.lastShot = w.ok ? w.file : ""
+            w.then()
+        }
+    }
+    // The file of the last picture taken, picked up by the entry made next
+    property string lastShot: ""
+    Timer {
+        id: shotTimeout
+        interval: 2000
+        onTriggered: shotJob.running = false
+    }
+    function dropShot(address) {
+        const f = shotPath(address)
+        if (f !== "")
+            Quickshell.execDetached(["rm", "-f", "--", f])
+    }
+
     // ── A restart of the shell: the hidden windows, again ──
     // Tried again (a few times) while the screens are not known yet
     property int reloads: 0
@@ -300,5 +410,10 @@ Singleton {
         interval: 2000
         onTriggered: root.reload()
     }
-    Component.onCompleted: Qt.callLater(reload)
+    Component.onCompleted: {
+        // Pictures of an earlier run never survive
+        if (shotDir !== "")
+            Quickshell.execDetached(["rm", "-rf", "--", shotDir])
+        Qt.callLater(reload)
+    }
 }

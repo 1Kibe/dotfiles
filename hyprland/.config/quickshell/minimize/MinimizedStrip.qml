@@ -25,7 +25,8 @@ Variants {
             bottom: true
             right: true
         }
-        implicitWidth: Theme.minimizeNames + Theme.minimizeRadius + Theme.spacing
+        // Room for the open piece and the preview card beside it
+        implicitWidth: Theme.minimizeNames + Theme.previewWidth + Theme.minimizeRadius + 2 * Theme.spacing
         exclusionMode: ExclusionMode.Ignore
         color: Theme.clear
         WlrLayershell.layer: WlrLayer.Top
