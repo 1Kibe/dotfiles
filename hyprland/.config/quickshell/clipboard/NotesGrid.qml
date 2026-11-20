@@ -33,7 +33,7 @@ Rectangle {
         spacing: 8
 
         Text {
-            text: `Notas · ${NotesStore.model.count}`
+            text: `Anotações · ${NotesStore.model.count}`
             color: Theme.text
             font.family: Theme.font
             font.pointSize: Theme.fontSize
@@ -54,7 +54,7 @@ Rectangle {
             Text {
                 id: addText
                 anchors.centerIn: parent
-                text: "+ Nova nota"
+                text: "+ Nova anotação"
                 color: Theme.text
                 font.family: Theme.font
                 font.pointSize: Theme.fontSize - 1
@@ -73,7 +73,7 @@ Rectangle {
     Text {
         visible: NotesStore.ready && NotesStore.model.count === 0
         anchors.centerIn: grid
-        text: "Nenhuma nota ainda"
+        text: "Nenhuma anotação"
         color: Theme.gray
         font.family: Theme.font
         font.pointSize: Theme.fontSize

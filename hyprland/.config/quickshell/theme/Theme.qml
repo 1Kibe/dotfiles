@@ -134,6 +134,11 @@ Singleton {
     readonly property int stripHeight: 330
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // Clipboard drawer (Super+V): one height for its three tabs (the cards
+    // take what is left), its fill, and the Anotações' list column
+    readonly property int clipboardHeight: 220
+    readonly property color clipboardFill: bgHard
+    readonly property int notesListWidth: 210
     property string monoFont: "Agave Nerd Font Mono"
 
     // Quick notes (post-its above the strip): the 5 colors a note cycles through
