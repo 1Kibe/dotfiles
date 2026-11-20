@@ -91,7 +91,18 @@ Singleton {
         }
         return m
     }
-    property var bottomPanelEdge: ({})
+    // From the bottom (the clipboard drawer; any other, by its owner): the
+    // strip reads the highest-reaching one (the smallest y)
+    property var bottomPanelEdges: ({})
+    readonly property var bottomPanelEdge: {
+        const m = {}
+        for (const key in bottomPanelEdges) {
+            const monitor = key.slice(0, key.indexOf("|"))
+            const y = bottomPanelEdges[key]
+            m[monitor] = m[monitor] > 0 ? Math.min(m[monitor], y) : y
+        }
+        return m
+    }
     function setRightPanelEdge(monitor, y, owner) {
         const key = `${monitor}|${owner || "panel"}`
         if ((rightPanelEdges[key] ?? 0) === y)
@@ -127,12 +138,16 @@ Singleton {
         if (openPanel !== "" && openOn === monitor)
             close()
     }
-    function setBottomPanelEdge(monitor, y) {
-        if ((bottomPanelEdge[monitor] ?? 0) === y)
+    function setBottomPanelEdge(monitor, y, owner) {
+        const key = `${monitor}|${owner || "drawer"}`
+        if ((bottomPanelEdges[key] ?? 0) === y)
             return
-        const m = Object.assign({}, bottomPanelEdge)
-        m[monitor] = y
-        bottomPanelEdge = m
+        const m = Object.assign({}, bottomPanelEdges)
+        if (y > 0)
+            m[key] = y
+        else
+            delete m[key]
+        bottomPanelEdges = m
     }
     // The monitor whose control center is open ("" = closed)
     readonly property string controlOn: openPanel === "control" ? openOn : ""

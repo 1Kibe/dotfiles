@@ -77,6 +77,28 @@ PanelWindow {
         }
     }
 
+    // The minimized windows' strip on the right edge slides up out of the
+    // drawer's way: while it shows, the y of its top edge on the screen
+    // (following the rise and the way down) goes to
+    // ShellState.bottomPanelEdge, as this drawer's own; zero once hidden
+    readonly property string edgeOn: screen ? screen.name : ""
+    readonly property real stripEdge: visible && screen && drawer.hit.height > 0
+        ? Math.round(screen.height - (Theme.barAtBottom ? Theme.barHeight : 0) - drawer.hit.height) : 0
+    property string publishedOn: ""
+    function publishEdge() {
+        if (publishedOn !== "" && publishedOn !== edgeOn)
+            ShellState.setBottomPanelEdge(publishedOn, 0, "clipboard")
+        publishedOn = stripEdge > 0 ? edgeOn : ""
+        if (edgeOn !== "")
+            ShellState.setBottomPanelEdge(edgeOn, stripEdge, "clipboard")
+    }
+    onStripEdgeChanged: publishEdge()
+    onEdgeOnChanged: publishEdge()
+    Component.onDestruction: {
+        if (publishedOn !== "")
+            ShellState.setBottomPanelEdge(publishedOn, 0, "clipboard")
+    }
+
     DrawerBody {
         id: drawer
         anchors.fill: parent
