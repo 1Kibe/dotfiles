@@ -126,6 +126,8 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Super+↑` | Maximizar |
 | `Super+↓` | Restaurar |
 | `Super+F` | Flutuar menor e centralizada / voltar ao mosaico |
+| `Super+H` | Minimizar |
+| `Super+Shift+H` | Trazer a última minimizada |
 | `Super+Shift+F` | Tela cheia |
 | `Super+J` | Alternar divisão horizontal/vertical |
 | `Alt+Tab` | Próxima janela |
@@ -385,6 +387,7 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `controlcenter` | `toggle` | `Super+I` (F9), `Super+A` |
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (a central já na energia) |
 | `overview` | `toggle` (também `open` e `close`) | `Super+Tab`, 3 dedos ↑ |
+| `minimize` | `focused` / `restoreLast` | `Super+H` / `Super+Shift+H` |
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |

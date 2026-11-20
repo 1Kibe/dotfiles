@@ -242,6 +242,25 @@ ShellRoot {
         }
     }
 
+    // Super+H and Super+Shift+H: minimize the focused window, bring the
+    // last one back (state/MinimizeState): qs ipc call minimize focused |
+    // restoreLast. No free argument: the window and the screen are the
+    // focused ones
+    IpcHandler {
+        target: "minimize"
+        // Keeps the minimize state alive from the start (its events)
+        readonly property var state: MinimizeState
+
+        function focused(): string {
+            const t = Hyprland.activeToplevel
+            return t && MinimizeState.minimize(String(t.address || "")) ? "ok" : "nada"
+        }
+        function restoreLast(): string {
+            const m = Hyprland.focusedMonitor
+            return MinimizeState.restoreLast(m ? m.name : "") ? "ok" : "nada"
+        }
+    }
+
     // Super+X and Ctrl+Alt+Del: the control center on its power section
     IpcHandler {
         target: "powermenu"
