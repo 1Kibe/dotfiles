@@ -38,7 +38,9 @@ Singleton {
             return "travada"
         if (busy)
             return "ocupada"
+        // One thing open at a time: the bar's panels and the clipboard close
         ShellState.close()
+        ClipboardStore.close()
         Hyprland.refreshToplevels()
         shownArea = activeAreas()
         selected = ""
