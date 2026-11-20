@@ -87,7 +87,7 @@ PanelWindow {
     // ShellState.bottomPanelEdge, as this drawer's own; zero once hidden
     readonly property string edgeOn: screen ? screen.name : ""
     readonly property real stripEdge: visible && screen && drawer.hit.height > 0
-        ? Math.round(screen.height - (Theme.barAtBottom ? Theme.barHeight : 0) - drawer.hit.height) : 0
+        ? Math.round(screen.height - bottomGap - drawer.hit.height) : 0
     property string publishedOn: ""
     function publishEdge() {
         if (publishedOn !== "" && publishedOn !== edgeOn)
