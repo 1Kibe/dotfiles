@@ -148,6 +148,19 @@ Singleton {
         hide()
         return true
     }
+    // A minimized window asked back (the minimize module answers the
+    // signal): only open and unlocked, a checked address that is on the
+    // minimized list now; then it closes
+    function restoreMinimized(address) {
+        if (!open || locked || !Act.isAddress(address))
+            return false
+        if (!Lists.toList(ShellState.minimized).some(m => m && m.address === address))
+            return false
+        ShellState.restoreMinimizedRequested(address)
+        hide()
+        return true
+    }
+
     // "+": a new empty area, and close
     function newArea() {
         if (!open)

@@ -143,6 +143,8 @@ Singleton {
     readonly property int overviewStripHeight: 110
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewPlusSize: Math.round(15 * textScale)
+    readonly property int overviewCloseSize: 20
+    readonly property int overviewListWidth: 420
     property string monoFont: "Agave Nerd Font Mono"
 
     // Quick notes (post-its above the strip): the 5 colors a note cycles through

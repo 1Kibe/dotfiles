@@ -96,7 +96,7 @@ Variants {
 
         screen: modelData
         // Kept while the cards fly back
-        visible: OverviewState.open || content.progress > 0
+        visible: OverviewState.open || (content.progress > 0 && !OverviewState.locked)
         anchors {
             top: true
             bottom: true

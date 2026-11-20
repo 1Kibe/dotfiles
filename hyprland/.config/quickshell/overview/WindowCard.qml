@@ -24,28 +24,17 @@ Rectangle {
     signal closeClicked()
     // Dropped after a drag, at this point of the scene
     signal dropped(point at)
+    signal dragMoved(point at)
 
-    // The drag: the card follows the mouse, and goes back to its place
-    // when dropped (bound x and y stay untouched)
-    property real dragX: 0
-    property real dragY: 0
+    // The drag: reported in scene coordinates (the screen draws a copy
+    // above the middle, which clips); the card itself stays and dims
     property bool dragging: false
-    transform: Translate {
-        x: root.dragX
-        y: root.dragY
-    }
-    Behavior on dragX {
-        enabled: !root.dragging
-        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose); easing.type: Easing.OutCubic }
-    }
-    Behavior on dragY {
-        enabled: !root.dragging
-        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose); easing.type: Easing.OutCubic }
-    }
-    z: dragging ? 10 : 0
+    signal dragStarted(point at)
+    // The window's final size in the middle (the capture is sized to it,
+    // not to every step of the flight)
+    property real targetW: width
+    property real targetH: height
 
-    // The theme's icon by the app's class as it is, else in lower case
-    // (classes like org.gnome.Nautilus); a name that is not plain, none
     readonly property string iconName: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(win.appClass || "")) ? String(win.appClass) : ""
     readonly property string iconPath: iconName === "" ? ""
         : Quickshell.iconPath(iconName, true) || Quickshell.iconPath(iconName.toLowerCase(), true)
@@ -55,6 +44,7 @@ Rectangle {
     border.width: chosen || hovered ? Theme.focusWidth : 1
     border.color: chosen || hovered ? Theme.focusRing : Theme.bg1
     clip: true
+    opacity: dragging ? 0.4 : 1
 
     // The window, live: only while the overview is open and the window
     // has its Wayland side; else the card's plain fill
@@ -64,13 +54,12 @@ Rectangle {
         y: strip.height
         width: parent.width - 2
         height: parent.height - strip.height - 1
-        active: OverviewState.open && root.win.toplevel !== undefined && root.win.toplevel !== null
-                && root.win.toplevel.wayland !== null && root.win.toplevel.wayland !== undefined
+        active: OverviewState.open && (root.win.toplevel?.wayland ?? null) !== null
         sourceComponent: Component {
             ScreencopyView {
-                captureSource: root.win.toplevel.wayland
+                captureSource: root.win.toplevel?.wayland ?? null
                 live: OverviewState.open
-                constraintSize: Qt.size(shot.width, shot.height)
+                constraintSize: Qt.size(root.targetW, root.targetH)
             }
         }
     }
@@ -126,17 +115,17 @@ Rectangle {
         acceptedButtons: Qt.LeftButton
         preventStealing: root.dragging
         property point start
-        onPressed: event => start = Qt.point(event.x, event.y)
+        onPressed: event => start = mapToItem(null, event.x, event.y)
         onPositionChanged: event => {
             if (!pressed)
                 return
-            const dx = event.x - start.x, dy = event.y - start.y
-            if (!root.dragging && Math.hypot(dx, dy) > 10)
+            const p = mapToItem(null, event.x, event.y)
+            if (!root.dragging && Math.hypot(p.x - start.x, p.y - start.y) > 10) {
                 root.dragging = true
-            if (root.dragging) {
-                root.dragX = dx
-                root.dragY = dy
+                root.dragStarted(start)
             }
+            if (root.dragging)
+                root.dragMoved(p)
         }
         onReleased: event => {
             if (root.dragging) {
@@ -145,13 +134,12 @@ Rectangle {
             } else {
                 root.picked()
             }
-            root.dragX = 0
-            root.dragY = 0
         }
         onCanceled: {
-            root.dragging = false
-            root.dragX = 0
-            root.dragY = 0
+            if (root.dragging) {
+                root.dragging = false
+                root.dropped(Qt.point(-1, -1))
+            }
         }
     }
 
@@ -161,8 +149,8 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 3
-        width: 20
-        height: 20
+        width: Theme.overviewCloseSize
+        height: Theme.overviewCloseSize
         radius: width / 2
         visible: root.hovered && !root.dragging
         color: closeMouse.containsMouse ? Theme.danger : Theme.bg1

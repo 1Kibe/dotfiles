@@ -47,10 +47,38 @@ Item {
         }
         return false
     }
-    // The minimized windows (ShellState.minimized, the minimize module's)
+    // The minimized windows (ShellState.minimized, the minimize module's):
+    // through OverviewState, which checks the address and the state
     function restoreMinimized(address) {
-        ShellState.restoreMinimizedRequested(address)
-        OverviewState.hide()
+        return OverviewState.restoreMinimized(address)
+    }
+    onMinimizedCountChanged: {
+        if (minimizedCount === 0)
+            showingMinimized = false
+    }
+
+    // The dragged card's copy, above the middle (which clips)
+    property point dragGrab
+    function startDrag(id, at, card) {
+        frozen = windows
+        dragId = id
+        const local = card.mapFromItem(null, at.x, at.y)
+        dragGrab = Qt.point(local.x, local.y)
+        ghost.width = card.width
+        ghost.height = card.height
+        ghost.title = card.win.title || ""
+        moveDrag(at)
+    }
+    function moveDrag(at) {
+        const p = root.mapFromItem(null, at.x, at.y)
+        ghost.x = p.x - dragGrab.x
+        ghost.y = p.y - dragGrab.y
+    }
+    function endDrag(id, at) {
+        dragId = ""
+        frozen = []
+        if (at.x >= 0)
+            dropCard(id, at)
     }
 
     // The flight: 0 = each card where its window really is, 1 = in its
@@ -58,6 +86,8 @@ Item {
     // only the fade.
     property real progress: OverviewState.open ? 1 : 0
     Behavior on progress {
+        // Locking: no flight back, it goes at once
+        enabled: !OverviewState.locked
         NumberAnimation {
             duration: Theme.dur(OverviewState.open ? Theme.motionPanelOpen : Theme.motionPanelClose)
             easing.type: Easing.BezierSpline
@@ -74,13 +104,46 @@ Item {
         w: Math.max(0, width - 2 * Theme.overviewMargin),
         h: Math.max(0, height - stripTop - Theme.overviewStripHeight - 2 * Theme.overviewMargin)
     })
-    readonly property var arranged: Layout.arrange(windows, useful, Theme.overviewGap, Theme.overviewCardMinHeight)
+    // While a card is dragged the windows hold still (a title or focus
+    // change would rebuild the middle under the mouse)
+    property string dragId: ""
+    property var frozen: []
+    readonly property var liveWindows: dragId !== "" ? frozen : windows
+    readonly property var arranged: Layout.arrange(liveWindows, useful, Theme.overviewGap, Theme.overviewCardMinHeight)
     readonly property var byId: {
         const m = {}
-        for (const w of windows)
+        for (const w of liveWindows)
             m[w.id] = w
         return m
     }
+    readonly property var cardOf: {
+        const m = {}
+        for (const c of arranged.cards)
+            m[c.id] = c
+        return m
+    }
+    // The cards' model, by id: a card (and its capture) lives as long as
+    // its window, whatever else changes
+    ListModel {
+        id: cardModel
+    }
+    function syncCards() {
+        const want = showingMinimized ? [] : arranged.cards.map(c => c.id)
+        for (let i = cardModel.count - 1; i >= 0; i--) {
+            if (!want.includes(cardModel.get(i).cid))
+                cardModel.remove(i)
+        }
+        const have = []
+        for (let i = 0; i < cardModel.count; i++)
+            have.push(cardModel.get(i).cid)
+        for (const id of want) {
+            if (!have.includes(id))
+                cardModel.append({ cid: id })
+        }
+    }
+    onArrangedChanged: syncCards()
+    onShowingMinimizedChanged: syncCards()
+    Component.onCompleted: syncCards()
 
     // ── The keyboard ──
     function moveChoice(dx, dy) {
@@ -188,7 +251,10 @@ Item {
             height: strip.height
             label: `Minimizadas · ${root.minimizedCount}`
             shown: root.showingMinimized
-            onClicked: root.showingMinimized = true
+            onClicked: {
+                if (OverviewState.open)
+                    root.showingMinimized = true
+            }
         }
         AreaCard {
             width: Math.round(height * 10 / 10)
@@ -221,23 +287,29 @@ Item {
             onClicked: OverviewState.hide()
         }
         Repeater {
-            model: root.showingMinimized ? [] : root.arranged.cards
+            model: cardModel
 
             WindowCard {
-                required property var modelData
-                readonly property var real: root.byId[modelData.id] ?? ({ x: modelData.x, y: modelData.y, w: modelData.w, h: modelData.h })
+                id: wc
+                required property string cid
+                readonly property var place: root.cardOf[cid] ?? ({ x: 0, y: 0, w: 0, h: 0 })
+                readonly property var from: root.byId[cid] ?? place
                 // From where the window is on the screen (in the middle's
                 // coordinates) to the card's place
-                x: real.x + (modelData.x - real.x) * root.fly
-                y: real.y - middle.y + middle.contentY + (modelData.y - (real.y - middle.y + middle.contentY)) * root.fly
-                width: real.w + (modelData.w - real.w) * root.fly
-                height: real.h + (modelData.h - real.h) * root.fly
-                opacity: Theme.reduceMotion ? root.progress : 1
-                win: root.byId[modelData.id] ?? ({ title: "", appClass: "" })
-                chosen: OverviewState.selected === modelData.id
-                onPicked: OverviewState.goTo(modelData.id)
-                onCloseClicked: OverviewState.closeWindow(modelData.id)
-                onDropped: at => root.dropCard(modelData.id, at)
+                x: from.x + (place.x - from.x) * root.fly
+                y: from.y - middle.y + middle.contentY + (place.y - (from.y - middle.y + middle.contentY)) * root.fly
+                width: from.w + (place.w - from.w) * root.fly
+                height: from.h + (place.h - from.h) * root.fly
+                targetW: place.w
+                targetH: place.h
+                opacity: dragging ? 0.4 : Theme.reduceMotion ? root.progress : 1
+                win: root.byId[cid] ?? ({ title: "", appClass: "" })
+                chosen: OverviewState.selected === cid
+                onPicked: OverviewState.goTo(cid)
+                onCloseClicked: OverviewState.closeWindow(cid)
+                onDragStarted: at => root.startDrag(cid, at, wc)
+                onDragMoved: at => root.moveDrag(at)
+                onDropped: at => root.endDrag(cid, at)
             }
         }
     }
@@ -252,15 +324,15 @@ Item {
 
             Rectangle {
                 required property var modelData
-                width: 420
-                height: 34
+                width: Theme.overviewListWidth
+                height: Theme.listRowHeight + Theme.spacing / 2
                 radius: Theme.radius
                 color: minMouse.containsMouse ? Theme.bg1 : Theme.bg
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    x: 12
-                    width: parent.width - 24
+                    x: Theme.spacing
+                    width: parent.width - 2 * Theme.spacing
                     text: Lists.trim(String(modelData.title || ""))
                     textFormat: Text.PlainText
                     maximumLineCount: 1
@@ -289,5 +361,31 @@ Item {
         color: Theme.fg4
         font.family: Theme.font
         font.pointSize: Theme.fontSize + 1
+    }
+
+    // A dragged card's copy: above the middle and the strip, unclipped
+    Rectangle {
+        id: ghost
+        property string title: ""
+        visible: root.dragId !== ""
+        z: 20
+        radius: Theme.radius
+        color: Theme.bg
+        border.width: Theme.focusWidth
+        border.color: Theme.focusRing
+        opacity: 0.85
+
+        Text {
+            x: Theme.spacing
+            y: Theme.spacing / 2
+            width: parent.width - 2 * Theme.spacing
+            text: Lists.trim(ghost.title)
+            textFormat: Text.PlainText
+            maximumLineCount: 1
+            elide: Text.ElideRight
+            color: Theme.fg
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+        }
     }
 }
