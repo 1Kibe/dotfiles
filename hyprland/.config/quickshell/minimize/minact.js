@@ -35,6 +35,11 @@ function focus(address) {
 function close(address) {
     return isAddress(address) ? 'hl.dsp.window.close({ window = "address:' + address + '" })' : null
 }
+// The hidden workspace shown by Hyprland (a window there asked for the
+// focus): hidden again. The exact Lua is still to be checked on screen
+function hideSpecial() {
+    return 'hl.dsp.workspace.toggle_special({ name = "minimizadas" })'
+}
 // Out of fullscreen or maximized (mode "fullscreen" or "maximized")
 function unsetFullscreen(address, mode) {
     return isAddress(address) && (mode === "fullscreen" || mode === "maximized")

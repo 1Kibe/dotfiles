@@ -43,7 +43,13 @@ Singleton {
         }
     }
 
-    // ── What talks to Hyprland (the tests swap these) ──
+    // Nothing runs while the session is locked (the app's own minimize
+    // event, the IPC, the overview)
+    readonly property bool locked: LockState.locked || LockState.wanted
+
+    // ── What talks to Hyprland: dispatch, clientsNow, monitorsNow,
+    // windowsNow and send are this file's own (and the tests', which swap
+    // the first four); nothing else in the shell calls them ──
     property var dispatch: text => Hyprland.dispatch(text)
     property var clientsNow: done => AreasState.clients(done)
     // monitor id -> name, and name -> active workspace id
@@ -68,72 +74,149 @@ Singleton {
     }
 
     // ── Minimize ──
-    // True when asked (the window is looked up and hidden right after);
-    // false with refused(reason) when the address is not valid
+    // True when asked (the window is looked up, hidden and confirmed right
+    // after); false with refused(reason) when it cannot be
+    property var pending: []
     function minimize(address) {
+        if (locked)
+            return false
         const a = Hypr.windowAddress(String(address || ""))
         if (a === "" || !Act.isAddress(a)) {
             refused("Essa janela não pode ser minimizada")
             return false
         }
-        if (entries.some(e => e.address === a))
+        if (entries.some(e => e.address === a) || pending.includes(a))
             return true
+        pending = pending.concat([a])
         clientsNow(list => root.hideFound(a, list))
         return true
     }
     function hideFound(address, list) {
+        const done = () => root.pending = root.pending.filter(x => x !== address)
+        if (entries.some(e => e.address === address)) {
+            done()
+            return
+        }
         const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === address)
         if (!c) {
+            done()
             refused("A janela não está mais aberta")
             return
         }
         const ws = c.workspace && typeof c.workspace === "object" ? c.workspace : {}
-        if (typeof ws.name === "string" && ws.name.startsWith("special:")) {
-            if (ws.name !== List.SPECIAL)
-                refused("Essa janela está numa área escondida e não pode ser minimizada")
+        const e = List.entryOf(c, monitorNames(), AreasState.together)
+        if (e === null) {
+            done()
             return
         }
-        const e = List.entryOf(c, monitorNames())
-        if (e === null)
+        // Already hidden with no entry (a restart): adopted
+        if (ws.name === List.SPECIAL) {
+            done()
+            entries = List.push(entries, e)
             return
+        }
+        if (typeof ws.name === "string" && ws.name.startsWith("special:")) {
+            done()
+            refused("Essa janela está numa área escondida e não pode ser minimizada")
+            return
+        }
+        // Pinned on every area: Hyprland may not move it; refused
+        if (c.pinned === true) {
+            done()
+            refused("Uma janela fixada em todas as áreas não pode ser minimizada")
+            return
+        }
         // Out of fullscreen or maximized first (it does not come back so)
-        if (c.fullscreen === 2 || c.fullscreen === true)
+        const fs = Number(c.fullscreen) || 0
+        if (fs & 2)
             send(Act.unsetFullscreen(address, "fullscreen"))
-        else if (c.fullscreen === 1)
+        else if (fs & 1)
             send(Act.unsetFullscreen(address, "maximized"))
-        if (!send(Act.hide(address)))
+        if (!send(Act.hide(address))) {
+            done()
             return
-        entries = List.push(entries, e)
-        minimized(address)
+        }
+        // Listed only once Hyprland shows it in the hidden workspace
+        confirm.push({ address: address, entry: e })
+        confirmTimer.restart()
+    }
+    property var confirm: []
+    Timer {
+        id: confirmTimer
+        interval: 200
+        onTriggered: {
+            const waiting = root.confirm
+            root.confirm = []
+            root.clientsNow(list => {
+                const all = Lists.toList(list)
+                for (const w of waiting) {
+                    root.pending = root.pending.filter(x => x !== w.address)
+                    const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === w.address)
+                    if (c && c.workspace && c.workspace.name === List.SPECIAL) {
+                        root.entries = List.push(root.entries, w.entry)
+                        root.minimized(w.address)
+                    } else {
+                        root.refused("A janela não foi minimizada")
+                    }
+                }
+            })
+        }
     }
 
     // ── Bring back ──
     // To the active workspace of the screen `monitorName` (the focused one
-    // when not known), with the focus
-    function restore(address, monitorName) {
+    // when not known), with the focus; only a window that is still in the
+    // hidden workspace (one taken elsewhere leaves the list, untouched)
+    function restore(address, monitorName, fallback) {
+        if (locked)
+            return false
         const a = Hypr.windowAddress(String(address || ""))
-        if (a === "" || !entries.some(e => e.address === a) || !exists(a))
+        if (a === "" || !entries.some(e => e.address === a))
             return false
         const mons = monitorsNow()
         const mon = mons.find(m => m.name === monitorName) ?? mons.find(m => Hyprland.focusedMonitor && m.name === Hyprland.focusedMonitor.name) ?? mons[0]
         if (!mon || !Act.isWorkspace(mon.active))
             return false
-        if (!send(Act.bringTo(a, mon.active)))
-            return false
-        send(Act.focus(a))
-        entries = List.remove(entries, a)
-        restored(a)
+        clientsNow(list => {
+            const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === a)
+            if (!c || !c.workspace || c.workspace.name !== List.SPECIAL) {
+                // Gone or moved elsewhere: out of the list, nothing sent;
+                // Super+Shift+H tries the one before
+                root.entries = List.remove(root.entries, a)
+                if (fallback)
+                    root.restoreLast(monitorName)
+                return
+            }
+            if (!root.send(Act.bringTo(a, mon.active)))
+                return
+            root.send(Act.focus(a))
+            root.entries = List.remove(root.entries, a)
+            root.restored(a)
+        })
         return true
     }
     function restoreLast(monitorName) {
+        if (locked)
+            return false
         const e = List.last(entries)
-        return e !== null && restore(e.address, monitorName)
+        return e !== null && restore(e.address, monitorName, true)
     }
     // Close a hidden window without bringing it back (it leaves the list
-    // on its "closewindow" event)
+    // on its "closewindow" event); only one still in the hidden workspace
     function close(address) {
+        if (locked)
+            return false
         const a = Hypr.windowAddress(String(address || ""))
-        return a !== "" && entries.some(e => e.address === a) && exists(a) && send(Act.close(a))
+        if (a === "" || !entries.some(e => e.address === a))
+            return false
+        clientsNow(list => {
+            const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === a)
+            if (c && c.workspace && c.workspace.name === List.SPECIAL)
+                root.send(Act.close(a))
+            else
+                root.entries = List.remove(root.entries, a)
+        })
+        return true
     }
 
     // ── For the strip and other modules ──
@@ -174,6 +257,15 @@ Singleton {
             }
         } else if (name === "urgent") {
             flag(d)
+        } else if (name === "activespecial") {
+            // "NAME,MONITOR": the hidden workspace shown (a hidden window
+            // asked for the focus): hidden again; the window wants attention
+            if (d.split(",")[0] === List.SPECIAL) {
+                send(Act.hideSpecial())
+                const t = Hyprland.activeToplevel
+                if (t)
+                    flag(String(t.address || ""))
+            }
         } else if (name === "windowtitlev2") {
             const i = d.indexOf(",")
             const a = Hypr.windowAddress(d.slice(0, Math.max(0, i)))
@@ -189,13 +281,24 @@ Singleton {
     }
 
     // ── A restart of the shell: the hidden windows, again ──
+    // Tried again (a few times) while the screens are not known yet
+    property int reloads: 0
     function reload() {
+        reloads++
         clientsNow(list => {
-            const found = List.fromClients(Lists.toList(list), root.monitorNames())
+            const all = Lists.toList(list)
+            const found = List.fromClients(all, root.monitorNames(), AreasState.together)
             // Kept ones first (their order), then the found ones not listed
             const kept = root.entries.filter(e => found.some(f => f.address === e.address))
             root.entries = kept.concat(found.filter(f => !kept.some(e => e.address === f.address)))
+            if ((root.monitorsNow().length === 0 || all.length === 0) && root.reloads < 5)
+                reloadTimer.restart()
         })
+    }
+    Timer {
+        id: reloadTimer
+        interval: 2000
+        onTriggered: root.reload()
     }
     Component.onCompleted: Qt.callLater(reload)
 }

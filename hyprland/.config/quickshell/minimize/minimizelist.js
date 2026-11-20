@@ -1,5 +1,6 @@
 .pragma library
 .import "../settings/hyprland.js" as Hypr
+.import "../control/lists.js" as Lists
 
 // The minimized windows' list, for state/MinimizeState and the strip.
 // Plain JS: read by the shell and by the tests. Each entry: { address
@@ -17,18 +18,20 @@ function cut(text, max) {
 function whole(v) {
     return typeof v === "number" && isFinite(v) ? Math.round(v) : 0
 }
-// The area of a workspace id: N*10+k is N; 1 to MAX_AREAS is itself
-function areaOf(id) {
+// The area of a workspace id, the overview's rule: with the areas together
+// N*10+k is N (never a multiple of 10); separate, the id is the area
+// (1 to MAX_AREAS); 0 for anything else
+function areaOf(id, together) {
     if (!Number.isInteger(id))
         return 0
-    if (id >= 11 && id <= MAX_AREAS * 10 + 9 && id % 10 !== 0)
-        return Math.floor(id / 10)
+    if (together)
+        return id >= 11 && id <= MAX_AREAS * 10 + 9 && id % 10 !== 0 ? Math.floor(id / 10) : 0
     return id >= 1 && id <= MAX_AREAS ? id : 0
 }
 
 // An entry from a client of "hyprctl -j clients"; monitors: { id: name };
 // null when the address is not valid
-function entryOf(c, monitors) {
+function entryOf(c, monitors, together) {
     if (!c || typeof c !== "object")
         return null
     const address = Hypr.windowAddress(String(c.address || ""))
@@ -43,7 +46,7 @@ function entryOf(c, monitors) {
         cls: cut(String(c.class || ""), TEXT_MAX),
         title: cut(String(c.title || ""), TEXT_MAX),
         monitor: cut(mon, 64),
-        area: areaOf(whole(ws.id)),
+        area: areaOf(whole(ws.id), together === true),
         floating: c.floating === true,
         at: { x: whole(at[0]), y: whole(at[1]), w: Math.max(0, whole(size[0])), h: Math.max(0, whole(size[1])) },
         shot: "",
@@ -52,11 +55,9 @@ function entryOf(c, monitors) {
 }
 
 // The list after a restart of the shell: the clients already hidden
-function fromClients(list, monitors) {
-    if (!Array.isArray(list))
-        return []
-    return list.filter(c => c && c.workspace && c.workspace.name === SPECIAL)
-        .map(c => entryOf(c, monitors)).filter(e => e !== null)
+function fromClients(list, monitors, together) {
+    return Lists.toList(list).filter(c => c && c.workspace && c.workspace.name === SPECIAL)
+        .map(c => entryOf(c, monitors, together)).filter(e => e !== null)
 }
 
 // A new list each time (the bindings follow)
@@ -76,7 +77,7 @@ function update(entries, address, fields) {
 // The entries a screen shows: its own, and on the first screen the ones of
 // a screen that is not on now
 function forMonitor(entries, name, onNames, first) {
-    const on = Array.isArray(onNames) ? onNames : []
+    const on = Lists.toList(onNames)
     return entries.filter(e => e.monitor === name || (name === first && !on.includes(e.monitor)))
 }
 
@@ -88,7 +89,7 @@ function dots(n) {
 // The most recent entry of an app (ids: class, desktop id, StartupWMClass;
 // compared without case), or null
 function matchApp(entries, ids) {
-    const want = (Array.isArray(ids) ? ids : []).filter(i => typeof i === "string" && i !== "").map(i => i.toLowerCase())
+    const want = Lists.toList(ids).filter(i => typeof i === "string" && i !== "").map(i => i.toLowerCase())
     for (let i = entries.length - 1; i >= 0; i--) {
         if (want.includes(entries[i].cls.toLowerCase()))
             return entries[i]
