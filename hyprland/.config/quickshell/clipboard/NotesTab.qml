@@ -31,9 +31,13 @@ Item {
     property string chosen: ""
     readonly property string shown: Notes.keepChosen(rows, chosen)
     readonly property var note: rows.find(n => n.nid === shown) ?? null
+    // The note shown becomes the chosen one after this round (written at
+    // once, it would feed back into `shown` in the same evaluation)
     onShownChanged: {
-        if (shown !== "" && shown !== chosen)
-            chosen = shown
+        Qt.callLater(() => {
+            if (root.shown !== "" && root.shown !== root.chosen)
+                root.chosen = root.shown
+        })
         disarm()
     }
     onActiveChanged: disarm()
