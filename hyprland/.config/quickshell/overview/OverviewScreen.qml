@@ -21,6 +21,20 @@ Item {
     property var areas: []
     property int minimizedCount: 0
 
+    // The flight: 0 = each card where its window really is, 1 = in its
+    // place; the strip and the veil fade with it. Reduce motion: no flight,
+    // only the fade.
+    property real progress: OverviewState.open ? 1 : 0
+    Behavior on progress {
+        NumberAnimation {
+            duration: Theme.dur(OverviewState.open ? Theme.motionPanelOpen : Theme.motionPanelClose)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: OverviewState.open ? Theme.curveDecel : Theme.curveAccel
+        }
+    }
+    // The flight's step for the positions (1 at once with reduce motion)
+    readonly property real fly: Theme.reduceMotion ? 1 : progress
+
     readonly property real stripTop: Theme.overviewMargin / 2
     readonly property var useful: ({
         x: Theme.overviewMargin,
@@ -80,6 +94,13 @@ Item {
         return true
     }
 
+    // The veil over the screen
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.overviewVeil
+        opacity: root.progress
+    }
+
     // An empty spot: closes
     MouseArea {
         anchors.fill: parent
@@ -92,6 +113,7 @@ Item {
         id: strip
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.stripTop
+        opacity: root.progress
         height: Theme.overviewStripHeight
         spacing: Theme.overviewGap / 2
 
@@ -150,10 +172,14 @@ Item {
 
             WindowCard {
                 required property var modelData
-                x: modelData.x
-                y: modelData.y
-                width: modelData.w
-                height: modelData.h
+                readonly property var real: root.byId[modelData.id] ?? ({ x: modelData.x, y: modelData.y, w: modelData.w, h: modelData.h })
+                // From where the window is on the screen (in the middle's
+                // coordinates) to the card's place
+                x: real.x + (modelData.x - real.x) * root.fly
+                y: real.y - middle.y + middle.contentY + (modelData.y - (real.y - middle.y + middle.contentY)) * root.fly
+                width: real.w + (modelData.w - real.w) * root.fly
+                height: real.h + (modelData.h - real.h) * root.fly
+                opacity: Theme.reduceMotion ? root.progress : 1
                 win: root.byId[modelData.id] ?? ({ title: "", appClass: "" })
                 chosen: OverviewState.selected === modelData.id
                 onPicked: OverviewState.goTo(modelData.id)

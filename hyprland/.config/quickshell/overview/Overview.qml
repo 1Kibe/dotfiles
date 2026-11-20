@@ -50,10 +50,12 @@ Variants {
                 })
                 .filter(w => w.id !== "")
         }
-        readonly property var shownWindows: OverviewState.open ? windowsOf(shownWs) : []
+        // Read while open and while the cards fly back
+        readonly property bool showing: OverviewState.open || content.progress > 0
+        readonly property var shownWindows: showing ? windowsOf(shownWs) : []
         // The strip's areas, as the bar's
         readonly property var stripAreas: {
-            if (!OverviewState.open || !mon)
+            if (!showing || !mon)
                 return []
             const ids = [1, 2, 3, 4, 5]
             for (const ws of Lists.toList(Hyprland.workspaces.values)) {
@@ -73,7 +75,8 @@ Variants {
         }
 
         screen: modelData
-        visible: OverviewState.open
+        // Kept while the cards fly back
+        visible: OverviewState.open || content.progress > 0
         anchors {
             top: true
             bottom: true
@@ -81,7 +84,8 @@ Variants {
             right: true
         }
         exclusionMode: ExclusionMode.Ignore
-        color: Theme.overviewVeil
+        // The veil is the content's, fading with the flight
+        color: Theme.clear
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-overview"
         WlrLayershell.keyboardFocus: OverviewState.open && Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === name

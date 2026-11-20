@@ -1,12 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 import qs.theme
+import qs.state
 import "../control/lists.js" as Lists
 
 // A window in the overview's middle: a strip on top with the app's icon
 // (by the icon theme's name; none, the generic one) and the title, and the
-// window under it. The mouse on it, or the keyboard: the accent border.
+// window under it, live (ScreencopyView), made only while the overview is
+// open: closed, no capture runs. The mouse on it, or the keyboard: the
+// accent border.
 // Title and app name are text from outside: plain text, one line, cleaned.
 Rectangle {
     id: root
@@ -25,6 +29,25 @@ Rectangle {
     border.width: chosen || hovered ? Theme.focusWidth : 1
     border.color: chosen || hovered ? Theme.focusRing : Theme.bg1
     clip: true
+
+    // The window, live: only while the overview is open and the window
+    // has its Wayland side; else the card's plain fill
+    Loader {
+        id: shot
+        x: 1
+        y: strip.height
+        width: parent.width - 2
+        height: parent.height - strip.height - 1
+        active: OverviewState.open && root.win.toplevel !== undefined && root.win.toplevel !== null
+                && root.win.toplevel.wayland !== null && root.win.toplevel.wayland !== undefined
+        sourceComponent: Component {
+            ScreencopyView {
+                captureSource: root.win.toplevel.wayland
+                live: OverviewState.open
+                constraintSize: Qt.size(shot.width, shot.height)
+            }
+        }
+    }
 
     // The title strip
     Rectangle {
