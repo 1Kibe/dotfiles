@@ -159,6 +159,7 @@ Singleton {
     readonly property int minimizeDotGap: 4
     readonly property int minimizeHit: 22
     readonly property int minimizeMaxRows: 12
+    readonly property int minimizeIcon: 16
     // How long the strip stays open in icons after a window is minimized
     readonly property int minimizeFlash: 1500
     // The preview card next to the open strip

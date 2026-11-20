@@ -14,25 +14,27 @@ var CLOSE_MS = 300
 function step(level, event) {
     const none = { level: level, timer: null, cancel: [] }
     if (event === "empty")
-        return { level: "hidden", timer: null, cancel: ["open", "close", "hold", "flash"] }
+        return { level: "hidden", timer: null, cancel: ["open", "close", "hold", "flash", "room"] }
     if (event === "filled")
         return level === "hidden" ? { level: "wire", timer: null, cancel: [] } : none
     if (level === "hidden")
         return none
     if (event === "enter")
-        return level === "wire" ? { level: "wire", timer: { name: "open", ms: OPEN_MS }, cancel: ["close"] }
-                                : { level: level, timer: null, cancel: ["close"] }
+        return level === "wire" ? { level: "wire", timer: { name: "open", ms: OPEN_MS }, cancel: ["close", "flash"] }
+                                : { level: level, timer: null, cancel: ["close", "flash"] }
     if (event === "leave")
-        return level === "wire" ? { level: "wire", timer: null, cancel: ["open", "hold"] }
-                                : { level: level, timer: { name: "close", ms: CLOSE_MS }, cancel: ["open", "hold"] }
+        return level === "wire" ? { level: "wire", timer: null, cancel: ["open", "hold", "room"] }
+                                : { level: level, timer: { name: "close", ms: CLOSE_MS }, cancel: ["open", "hold", "room", "flash"] }
     if (event === "timer150")
         return level === "wire" ? { level: "icons", timer: null, cancel: [] } : none
     if (event === "hold")
         return level === "icons" ? { level: "names", timer: null, cancel: [] } : none
     if (event === "timer300")
         return { level: "wire", timer: null, cancel: ["hold"] }
+    // A window minimized: open in icons a moment; another one while it is
+    // open from a flash makes the moment longer
     if (event === "flash")
-        return level === "wire" ? { level: "icons", timer: { name: "flash", ms: 0 }, cancel: [] } : none
+        return level === "wire" || level === "icons" ? { level: "icons", timer: { name: "flash", ms: 0 }, cancel: [] } : none
     if (event === "flashEnd")
         return level === "icons" ? { level: "wire", timer: null, cancel: [] } : none
     return none

@@ -79,14 +79,29 @@ Singleton {
     // (rightPanelEdge, from the top; with the bar at the bottom, from the
     // bottom up) and where a drawer from the bottom begins (bottomPanelEdge);
     // 0 or missing = nothing there. Replaced whole at each change.
-    property var rightPanelEdge: ({})
+    // Each panel publishes its own (owner): two panels of one screen
+    // changing over never overwrite each other; the strip reads the
+    // lowest-reaching one (the largest y)
+    property var rightPanelEdges: ({})
+    readonly property var rightPanelEdge: {
+        const m = {}
+        for (const key in rightPanelEdges) {
+            const monitor = key.slice(0, key.indexOf("|"))
+            m[monitor] = Math.max(m[monitor] ?? 0, rightPanelEdges[key])
+        }
+        return m
+    }
     property var bottomPanelEdge: ({})
-    function setRightPanelEdge(monitor, y) {
-        if ((rightPanelEdge[monitor] ?? 0) === y)
+    function setRightPanelEdge(monitor, y, owner) {
+        const key = `${monitor}|${owner || "panel"}`
+        if ((rightPanelEdges[key] ?? 0) === y)
             return
-        const m = Object.assign({}, rightPanelEdge)
-        m[monitor] = y
-        rightPanelEdge = m
+        const m = Object.assign({}, rightPanelEdges)
+        if (y > 0)
+            m[key] = y
+        else
+            delete m[key]
+        rightPanelEdges = m
     }
     // The minimized strip wants room on `monitor`: the control center folds
     // its section (it listens to accordionCollapseRequested); the strip then

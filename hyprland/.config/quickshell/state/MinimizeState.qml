@@ -95,6 +95,10 @@ Singleton {
     }
     function hideFound(address, list) {
         const done = () => root.pending = root.pending.filter(x => x !== address)
+        if (locked || Lists.toList(list).length === 0) {
+            done()
+            return
+        }
         if (entries.some(e => e.address === address)) {
             done()
             return
@@ -157,22 +161,38 @@ Singleton {
         confirm.push({ address: address, entry: e })
         confirmTimer.restart()
     }
+    // Waits between the hide and its check (and between the two checks)
+    readonly property int confirmMs: 200
     property var confirm: []
     Timer {
         id: confirmTimer
-        interval: 200
+        interval: root.confirmMs
         onTriggered: {
             const waiting = root.confirm
             root.confirm = []
             root.clientsNow(list => {
                 const all = Lists.toList(list)
+                // No answer from Hyprland: not known yet, asked again
+                if (all.length === 0) {
+                    root.confirm = root.confirm.concat(waiting)
+                    confirmTimer.restart()
+                    return
+                }
                 for (const w of waiting) {
-                    root.pending = root.pending.filter(x => x !== w.address)
                     const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === w.address)
                     if (c && c.workspace && c.workspace.name === List.SPECIAL) {
+                        root.pending = root.pending.filter(x => x !== w.address)
                         root.entries = List.push(root.entries, w.entry)
                         root.minimized(w.address)
+                    } else if (!c) {
+                        // Closed meanwhile: nothing to say
+                        root.pending = root.pending.filter(x => x !== w.address)
+                    } else if ((w.tries ?? 0) < 1) {
+                        // Late: one more look before giving up
+                        root.confirm = root.confirm.concat([Object.assign({}, w, { tries: 1 })])
+                        confirmTimer.restart()
                     } else {
+                        root.pending = root.pending.filter(x => x !== w.address)
                         root.refused("A janela não foi minimizada")
                     }
                 }
@@ -184,18 +204,26 @@ Singleton {
     // To the active workspace of the screen `monitorName` (the focused one
     // when not known), with the focus; only a window that is still in the
     // hidden workspace (one taken elsewhere leaves the list, untouched)
+    // Being brought back (a double click brings it once)
+    property var restoring: []
     function restore(address, monitorName, fallback) {
         if (locked)
             return false
         const a = Hypr.windowAddress(String(address || ""))
-        if (a === "" || !entries.some(e => e.address === a))
+        if (a === "" || !entries.some(e => e.address === a) || restoring.includes(a))
             return false
         const mons = monitorsNow()
         const mon = mons.find(m => m.name === monitorName) ?? mons.find(m => Hyprland.focusedMonitor && m.name === Hyprland.focusedMonitor.name) ?? mons[0]
         if (!mon || !Act.isWorkspace(mon.active))
             return false
+        restoring = restoring.concat([a])
         clientsNow(list => {
-            const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === a)
+            root.restoring = root.restoring.filter(x => x !== a)
+            const all = Lists.toList(list)
+            // No answer, or locked meanwhile: the entry stays
+            if (all.length === 0 || root.locked)
+                return
+            const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === a)
             if (!c || !c.workspace || c.workspace.name !== List.SPECIAL) {
                 // Gone or moved elsewhere: out of the list, nothing sent;
                 // Super+Shift+H tries the one before
@@ -217,7 +245,7 @@ Singleton {
     function restoreLast(monitorName) {
         if (locked)
             return false
-        const e = List.last(entries)
+        const e = List.last(entries.filter(x => !restoring.includes(x.address)))
         return e !== null && restore(e.address, monitorName, true)
     }
     // Close a hidden window without bringing it back (it leaves the list
@@ -229,7 +257,10 @@ Singleton {
         if (a === "" || !entries.some(e => e.address === a))
             return false
         clientsNow(list => {
-            const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === a)
+            const all = Lists.toList(list)
+            if (all.length === 0 || root.locked)
+                return
+            const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === a)
             if (c && c.workspace && c.workspace.name === List.SPECIAL)
                 root.send(Act.close(a))
             else
@@ -279,18 +310,38 @@ Singleton {
             flag(d)
         } else if (name === "activespecial") {
             // "NAME,MONITOR": the hidden workspace shown (a hidden window
-            // asked for the focus): hidden again; the window wants attention
-            if (d.split(",")[0] === List.SPECIAL) {
+            // asked for the focus): hidden again, once (it is a toggle); the
+            // window that takes the focus next wants attention
+            const shown = d.split(",")[0]
+            if (shown === List.SPECIAL && !hidingSpecial) {
+                hidingSpecial = true
+                awaitFocus = true
                 send(Act.hideSpecial())
-                const t = Hyprland.activeToplevel
-                if (t)
-                    flag(String(t.address || ""))
+                hidingTimer.restart()
+            } else if (shown !== List.SPECIAL) {
+                hidingSpecial = false
+            }
+        } else if (name === "activewindowv2") {
+            if (awaitFocus) {
+                awaitFocus = false
+                flag(d)
             }
         } else if (name === "windowtitlev2") {
             const i = d.indexOf(",")
             const a = Hypr.windowAddress(d.slice(0, Math.max(0, i)))
             if (i > 0 && entries.some(e => e.address === a))
                 entries = List.update(entries, a, { title: List.cut(d.slice(i + 1), List.TEXT_MAX) })
+        }
+    }
+    property bool hidingSpecial: false
+    property bool awaitFocus: false
+    readonly property int hidingMs: 500
+    Timer {
+        id: hidingTimer
+        interval: root.hidingMs
+        onTriggered: {
+            root.hidingSpecial = false
+            root.awaitFocus = false
         }
     }
     Connections {
@@ -379,9 +430,10 @@ Singleton {
     }
     // The file of the last picture taken, picked up by the entry made next
     property string lastShot: ""
+    readonly property int shotMs: 2000
     Timer {
         id: shotTimeout
-        interval: 2000
+        interval: root.shotMs
         onTriggered: shotJob.running = false
     }
     function dropShot(address) {
@@ -405,9 +457,10 @@ Singleton {
                 reloadTimer.restart()
         })
     }
+    readonly property int reloadMs: 2000
     Timer {
         id: reloadTimer
-        interval: 2000
+        interval: root.reloadMs
         onTriggered: root.reload()
     }
     Component.onCompleted: {

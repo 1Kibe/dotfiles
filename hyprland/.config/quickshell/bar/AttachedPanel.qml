@@ -182,15 +182,16 @@ Item {
     readonly property bool reachesRightBand: visible && frame !== null
         && x + shape.bodyX + bodyWidth > frame.width - (Theme.minimizeNames + Theme.minimizeRadius)
     readonly property real stripEdge: reachesRightBand ? Math.round(y + bodyFarEdge) : 0
+    // Its own key in ShellState (two panels of a screen changing over)
+    readonly property string edgeOwner: String(root)
     onStripEdgeChanged: {
         if (shownOn !== "")
-            ShellState.setRightPanelEdge(shownOn, stripEdge)
+            ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
     }
 
     // The bar squares its end while a panel continues it
     function square() {
         shownOn = ShellState.openOn
-        ShellState.setRightPanelEdge(shownOn, stripEdge)
         if (atRightEnd)
             ShellState.attachedRight = shownOn
         if (atLeftEnd)
@@ -210,7 +211,7 @@ Item {
         if (edgeSide === "")
             progress = 0
         if (shownOn !== "")
-            ShellState.setRightPanelEdge(shownOn, 0)
+            ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
         unsquare()
         if (frame)
             frame.hidePanel(root)

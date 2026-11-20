@@ -32,6 +32,9 @@ Item {
     // A panel reaching the edge from the top / a drawer from the bottom (0 none)
     property real topEdge: 0
     property real bottomEdge: 0
+    // A bar panel is one of those edges (a drawer from the bottom never
+    // makes the strip close anything)
+    property bool panelInTheWay: topEdge > 0
 
     readonly property var m: ({
         wire: Theme.wireWidth, icons: Theme.minimizeIcons, names: Theme.minimizeNames,
@@ -49,6 +52,10 @@ Item {
             else if (t === "close") closeTimer.stop()
             else if (t === "hold") holdTimer.stop()
             else if (t === "flash") flashTimer.stop()
+            else if (t === "room") {
+                roomTimer.stop()
+                afterCloseTimer.stop()
+            }
         }
         if (r.timer) {
             if (r.timer.name === "open") openTimer.restart()
@@ -61,15 +68,39 @@ Item {
         if (level === "icons" && hovered)
             holdTimer.restart()
     }
+    // The mouse on the edge, as the events said (the room's wait checks it)
+    property bool pointerIn: false
     function send(event) {
-        apply(Motion.step(level, event))
+        if (event === "enter" || event === "leave")
+            pointerIn = event === "enter"
+        const r = Motion.step(level, event)
+        // Open only where the rows fit; else it stays the wire (no flash)
+        if ((r.level === "icons" || r.level === "names") && level === "wire" && !fits("icons"))
+            return
+        apply(r)
+    }
+    function fits(lvl) {
+        return Geom.place({
+            areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
+            gap: Theme.minimizeRadius, level: lvl, n: count
+        }, m).visible
     }
     readonly property int count: entries.length
-    onCountChanged: send(count > 0 ? "filled" : "empty")
+    onCountChanged: {
+        if (count === 0) {
+            roomTimer.stop()
+            afterCloseTimer.stop()
+        }
+        send(count > 0 ? "filled" : "empty")
+    }
     Component.onCompleted: send(count > 0 ? "filled" : "empty")
 
     readonly property bool hovered: hit.hovered
     onHoveredChanged: {
+        if (!hovered) {
+            roomTimer.stop()
+            afterCloseTimer.stop()
+        }
         send(hovered ? "enter" : "leave")
         if (hovered)
             for (const e of entries)
@@ -80,26 +111,45 @@ Item {
         id: openTimer
         interval: Motion.OPEN_MS
         onTriggered: {
-            // A bar panel in the way: room first (the section folds; if
-            // still not enough for min(n, 4) rows, the panel closes and the
-            // strip opens in the middle). The panel never reopens by itself
-            if (root.topEdge > 0 || root.bottomEdge > 0) {
+            // A bar panel in the way: room first, and the icons wait for it
+            // (the section folds; if still not enough for min(n, 4) rows,
+            // the panel closes and the strip opens in the middle). The
+            // panel never reopens by itself
+            if (root.panelInTheWay) {
                 ShellState.requestRoom(root.screenName)
                 roomTimer.restart()
+                return
             }
             root.send("timer150")
         }
     }
     Timer {
         id: roomTimer
-        interval: Theme.dur(Theme.motionPanelClose) + 80
+        // The section folds (its height and the panel's body, one after
+        // the other) before the room is measured
+        interval: Theme.dur(Theme.animNormal) + Theme.dur(Theme.motionPanelClose) + 120
         onTriggered: {
+            if (!root.pointerIn || root.level !== "wire")
+                return
             const g = Geom.place({
                 areaTop: root.areaTop, areaBottom: root.areaBottom, topEdge: root.topEdge, bottomEdge: root.bottomEdge,
                 gap: Theme.minimizeRadius, level: "icons", n: root.count
             }, root.m)
-            if (!g.visible)
+            if (!g.visible && root.panelInTheWay) {
+                // The panel closes: the strip opens once it is out of the way
                 ShellState.closePanelOn(root.screenName)
+                afterCloseTimer.restart()
+                return
+            }
+            root.send("timer150")
+        }
+    }
+    Timer {
+        id: afterCloseTimer
+        interval: Theme.dur(Theme.motionPanelClose) + 120
+        onTriggered: {
+            if (root.pointerIn && root.level === "wire")
+                root.send("timer150")
         }
     }
     Timer {
@@ -149,7 +199,9 @@ Item {
         id: pulseTimer
         interval: 125
         repeat: true
-        running: root.attention && (root.level === "icons" || root.level === "names")
+        // Reduce motion: no pulse (only fading is allowed there)
+        running: root.attention && (root.level === "icons" || root.level === "names") && root.pieceW > 0
+                 && !Theme.reduceMotion
         property int phase: 0
         onTriggered: {
             phase = (phase + 1) % 8
@@ -161,9 +213,20 @@ Item {
         }
     }
 
-    // Animated (the drawer and the growing); reduce motion: at once, faded
-    property real pieceW: wantW
-    Behavior on pieceW {
+    // Animated (the drawer and the growing); reduce motion: the width at
+    // once, and kept while the piece fades out
+    property real keptW: 0
+    onWantWChanged: {
+        if (wantW > 0)
+            keptW = wantW
+    }
+    property real fade: wantW > 0 ? 1 : 0
+    Behavior on fade {
+        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose) }
+    }
+    readonly property real pieceW: Theme.reduceMotion ? (wantW > 0 ? wantW : fade > 0 ? keptW : 0) : animW
+    property real animW: wantW
+    Behavior on animW {
         enabled: !Theme.reduceMotion
         NumberAnimation {
             duration: Theme.dur(root.wantW > root.pieceW ? Theme.motionPanelOpen : Theme.motionPanelClose)
@@ -172,9 +235,11 @@ Item {
         }
     }
     // The whole list after "+N": as tall as it needs, inside the free part
-    readonly property real allHeight: Math.min(areaBottom - areaTop - 2 * Theme.minimizeRadius,
-                                                2 * Theme.minimizeMargin + count * Theme.minimizeRow)
-    readonly property real wantTop: all ? Math.max(areaTop + Theme.minimizeRadius, (areaTop + areaBottom) / 2 - allHeight / 2) : g.top
+    readonly property real freeTop: Math.max(areaTop, topEdge > 0 ? topEdge + Theme.minimizeRadius : areaTop)
+    readonly property real freeBottom: Math.min(areaBottom, bottomEdge > 0 ? bottomEdge - Theme.minimizeRadius : areaBottom)
+    readonly property real allHeight: Math.max(0, Math.min(freeBottom - freeTop, 2 * Theme.minimizeMargin + count * Theme.minimizeRow))
+    readonly property real wantTop: all ? Math.min(Math.max(freeTop, (areaTop + areaBottom) / 2 - allHeight / 2), freeBottom - allHeight)
+                                        : g.top
     readonly property real wantH: all ? allHeight : g.visible ? g.height : 0
     property real pieceTop: wantTop
     Behavior on pieceTop {
@@ -186,10 +251,7 @@ Item {
         enabled: !Theme.reduceMotion
         NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
-    opacity: Theme.reduceMotion ? (wantW > 0 ? 1 : 0) : 1
-    Behavior on opacity {
-        NumberAnimation { duration: Theme.dur(Theme.motionPanelClose) }
-    }
+    opacity: Theme.reduceMotion ? fade : 1
 
     // The part that takes the mouse: the piece, and with the wire a wider
     // invisible zone on the edge
@@ -205,6 +267,36 @@ Item {
         }
     }
     readonly property Item hitItem: hitArea
+
+    // The rows: kept while the open piece fades back to the wire, and one
+    // per window (by address), so a title change does not rebuild the row
+    // under the mouse
+    property int keptRows: 0
+    readonly property int rowsNow: level === "icons" || level === "names" ? g.rows.shown : keptRows
+    readonly property var byAddress: {
+        const m = {}
+        for (const e of entries)
+            m[e.address] = e
+        return m
+    }
+    ListModel {
+        id: rowModel
+    }
+    function syncRows() {
+        const want = (all ? entries : entries.slice(0, rowsNow)).map(e => e.address)
+        for (let i = rowModel.count - 1; i >= 0; i--) {
+            if (want[i] !== rowModel.get(i).addr)
+                rowModel.remove(i)
+        }
+        for (let i = rowModel.count; i < want.length; i++)
+            rowModel.append({ addr: want[i] })
+    }
+    onEntriesChanged: syncRows()
+    onRowsNowChanged: {
+        keptRows = rowsNow
+        syncRows()
+    }
+    onAllChanged: syncRows()
 
     // ── The preview of the row under the mouse (names only) ──
     property var hoveredEntry: null
@@ -252,7 +344,8 @@ Item {
             width: Theme.minimizeDot
             height: Theme.minimizeDot * 3
             radius: width / 2
-            color: Theme.alert
+            // The whole wire is in the alert color with attention
+            color: root.attention ? Theme.fg : Theme.alert
         }
     }
 
@@ -279,11 +372,12 @@ Item {
             width: rowsView.width
 
             Repeater {
-                model: root.all ? root.entries : root.entries.slice(0, root.g.rows.shown)
+                model: rowModel
 
                 Item {
                     id: row
-                    required property var modelData
+                    required property string addr
+                    readonly property var modelData: root.byAddress[addr] ?? ({ address: addr, cls: "", title: "", attention: false })
                     readonly property string iconPath: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(modelData.cls)
                         ? (Quickshell.iconPath(modelData.cls, true) || Quickshell.iconPath(modelData.cls.toLowerCase(), true)) : ""
                     width: rowsColumn.width
@@ -323,15 +417,15 @@ Item {
                         layoutDirection: Qt.RightToLeft
 
                         Item {
-                            Layout.preferredWidth: 16
-                            Layout.preferredHeight: 16
+                            Layout.preferredWidth: Theme.minimizeIcon
+                            Layout.preferredHeight: Theme.minimizeIcon
                             opacity: row.modelData.attention ? root.pulse : 1
                             Image {
                                 anchors.fill: parent
                                 visible: row.iconPath !== ""
                                 source: row.iconPath
-                                sourceSize.width: 16
-                                sourceSize.height: 16
+                                sourceSize.width: Theme.minimizeIcon
+                                sourceSize.height: Theme.minimizeIcon
                             }
                             Text {
                                 anchors.centerIn: parent
@@ -366,7 +460,7 @@ Item {
                             MouseArea {
                                 id: xMouse
                                 anchors.fill: parent
-                                anchors.margins: -4
+                                anchors.margins: -Theme.spacing / 2
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: MinimizeState.close(row.modelData.address)

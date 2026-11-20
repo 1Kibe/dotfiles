@@ -305,7 +305,7 @@ continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz
   lista inteira.
 - **Pedindo atenção:** o fio fica laranja até o mouse passar; aberto, o ícone da janela pulsa.
 - **Painéis:** o fio desce junto quando um painel da barra cobre a borda. Com o mouse no fio e a central aberta, a seção dela
-  fecha para dar espaço; se ainda faltar, a central fecha.
+  fecha para dar espaço; se ainda faltar, o painel fecha.
 - A visão geral (`Super+Tab`) também mostra as minimizadas, no cartão "Minimizadas".
 
 Janela fixada em todas as áreas não é minimizada. Com a tela travada nada é escondido nem trazido. Se o shell reiniciar, ele

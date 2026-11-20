@@ -48,6 +48,8 @@ Variants {
             readonly property real panelEdge: ShellState.rightPanelEdge[win.name] ?? 0
             readonly property real drawerEdge: ShellState.bottomPanelEdge[win.name] ?? 0
             topEdge: Theme.barAtBottom ? 0 : panelEdge
+            // Only a bar panel is closed for room, never for the drawer
+            panelInTheWay: panelEdge > 0
             bottomEdge: Theme.barAtBottom && panelEdge > 0
                         ? (drawerEdge > 0 ? Math.min(panelEdge, drawerEdge) : panelEdge) : drawerEdge
         }

@@ -36,7 +36,7 @@ function close(address) {
     return isAddress(address) ? 'hl.dsp.window.close({ window = "address:' + address + '" })' : null
 }
 // The hidden workspace shown by Hyprland (a window there asked for the
-// focus): hidden again. The exact Lua is still to be checked on screen
+// focus): hidden again (it toggles the special workspace)
 function hideSpecial() {
     return 'hl.dsp.workspace.toggle_special({ name = "minimizadas" })'
 }
