@@ -142,6 +142,24 @@ Item {
     }, m)
     readonly property real wantW: level === "hidden" || !g.visible ? 0 : Geom.widthFor(level, m)
     readonly property bool attention: entries.some(e => e.attention)
+    // Open with a window wanting attention: its icon pulses (about 1 s, 8
+    // steps a second); the timer runs only then
+    property real pulse: 1
+    Timer {
+        id: pulseTimer
+        interval: 125
+        repeat: true
+        running: root.attention && (root.level === "icons" || root.level === "names")
+        property int phase: 0
+        onTriggered: {
+            phase = (phase + 1) % 8
+            root.pulse = 0.4 + 0.6 * Math.abs(Math.cos(phase * Math.PI / 8))
+        }
+        onRunningChanged: {
+            if (!running)
+                root.pulse = 1
+        }
+    }
 
     // Animated (the drawer and the growing); reduce motion: at once, faded
     property real pieceW: wantW
@@ -290,6 +308,7 @@ Item {
                         Item {
                             Layout.preferredWidth: 16
                             Layout.preferredHeight: 16
+                            opacity: row.modelData.attention ? root.pulse : 1
                             Image {
                                 anchors.fill: parent
                                 visible: row.iconPath !== ""
