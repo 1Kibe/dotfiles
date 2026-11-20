@@ -67,6 +67,10 @@ Singleton {
     // ── Minimized windows (filled and answered by the minimize module) ──
     // [{ address, title, appId }]; empty until that module exists. The
     // overview only reads it and asks for a window back with the signal.
+    // Whoever answers restoreMinimizedRequested(address) checks the address
+    // (settings/hyprland.js windowAddress and ^0x[0-9a-f]{1,16}$) and that
+    // the window is in Hyprland's list now, and only then builds the Lua;
+    // title and appId never go into Lua, a command line or a log.
     property var minimized: []
     signal restoreMinimizedRequested(string address)
     // The monitor whose control center is open ("" = closed)

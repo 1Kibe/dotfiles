@@ -17,9 +17,12 @@ function isAddress(text) {
 function isArea(n) {
     return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= MAX_AREAS
 }
-// A workspace id: an area's own (separate screens) or N*10+k (together)
+// A workspace id: an area's own (separate screens, 1 to MAX_AREAS) or N*10+k
+// (together, k 1 to 9: never a multiple of 10, which modules/areas.lua does
+// not take as an area and would make a stray workspace)
 function isWorkspace(n) {
     return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= MAX_AREAS * 10 + 9
+        && (n <= MAX_AREAS || n % 10 !== 0)
 }
 
 function focusWindow(address) {

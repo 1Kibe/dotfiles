@@ -75,7 +75,9 @@ Singleton {
         shownArea = m
     }
 
-    // The windows Hyprland has now; a test swaps it
+    // The windows Hyprland has now. windowsNow, dispatch, evalLua and send
+    // are this file's own (and the tests', which swap the first three):
+    // nothing else in the shell calls them
     property var windowsNow: () => Lists.toList(Hyprland.toplevels.values)
     // A window of that list (its address as "0x…"), or null
     function windowOf(address) {
@@ -105,12 +107,16 @@ Singleton {
         hide()
         return ok
     }
-    // Close a window; the overview stays open
+    // Close a window; the overview stays open. The list is asked again
+    // first (the refresh may still be on its way: the address is then
+    // checked against the list as it was, a residual race)
     function closeWindow(address) {
+        Hyprland.refreshToplevels()
         return open && windowOf(address) !== null && send(Act.closeWindow(address))
     }
     // Move a window to a workspace without following it
     function moveWindow(address, workspace) {
+        Hyprland.refreshToplevels()
         return open && windowOf(address) !== null && send(Act.moveToWorkspace(address, workspace))
     }
 
