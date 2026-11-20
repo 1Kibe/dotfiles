@@ -162,6 +162,10 @@ Singleton {
     readonly property int minimizeIcon: 16
     // How long the strip stays open in icons after a window is minimized
     readonly property int minimizeFlash: 1500
+    // A minimized window sliding out past the right edge (Hyprland's move
+    // animation, the "global" one of look.lua) before it is hidden, and in
+    // when it comes back
+    readonly property int minimizeSlide: 350
     // The preview card next to the open strip
     readonly property int previewWidth: 190
     readonly property int previewHeight: 128

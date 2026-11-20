@@ -7,6 +7,8 @@ import Quickshell.Io
 import qs.state
 import "../minimize/minimizelist.js" as List
 import "../minimize/minact.js" as Act
+import "../minimize/slide.js" as Slide
+import qs.theme
 import "../settings/hyprland.js" as Hypr
 import "../control/lists.js" as Lists
 
@@ -55,8 +57,9 @@ Singleton {
     property var clientsNow: done => AreasState.clients(done)
     // monitor id -> name, and name -> active workspace id
     property var monitorsNow: () => Lists.toList(Hyprland.monitors.values).map(m => ({
+        // The size in layout units (the windows' at and size use them)
         id: m.id, name: m.name, active: m.activeWorkspace ? m.activeWorkspace.id : 0,
-        x: m.x, y: m.y, w: m.width, h: m.height
+        x: m.x, y: m.y, w: Math.round(m.width / (m.scale || 1)), h: Math.round(m.height / (m.scale || 1))
     }))
     property var windowsNow: () => Lists.toList(Hyprland.toplevels.values)
     function exists(address) {
@@ -148,7 +151,56 @@ Singleton {
             send(Act.unsetFullscreen(address, "fullscreen"))
         else if (fs & 1)
             send(Act.unsetFullscreen(address, "maximized"))
+        // Seen on its screen: it slides out past the right edge first
+        // (floating where it is, so it does not jump), then is hidden;
+        // reduce motion, fullscreen or a screen to the right: at once
+        const plan = Theme.reduceMotion ? null : Slide.out(c, monitorsNow())
+        if (plan) {
+            e.slid = true
+            e.from = { x: plan.mon.x, y: plan.mon.y, w: plan.mon.w, h: plan.mon.h }
+            e.size = plan.size
+            if (c.floating !== true)
+                send(Act.float(address, true))
+            send(Act.resizeTo(address, plan.size[0], plan.size[1]))
+            send(Act.moveTo(address, plan.at[0], plan.at[1]))
+            send(Act.moveTo(address, plan.off[0], plan.off[1]))
+            sliding = sliding.concat([{ address: address, entry: e, due: Date.now() + Theme.dur(Theme.minimizeSlide) }])
+            slideTimer.restart()
+            return
+        }
+        hideNowAfterSlide(address, e)
+    }
+    // ── The slide: windows on their way out, hidden when it ends ──
+    property var sliding: []
+    Timer {
+        id: slideTimer
+        interval: Theme.dur(Theme.minimizeSlide)
+        onTriggered: {
+            const now = Date.now()
+            const due = root.sliding.filter(w => w.due <= now + 20)
+            root.sliding = root.sliding.filter(w => w.due > now + 20)
+            for (const w of due)
+                root.hideNowAfterSlide(w.address, w.entry)
+            if (root.sliding.length > 0) {
+                interval = Math.max(20, Math.min(...root.sliding.map(w => w.due)) - now)
+                restart()
+            } else {
+                interval = Theme.dur(Theme.minimizeSlide)
+            }
+        }
+    }
+    // A slid window not hidden after all: back to its place and state
+    function slideBack(e) {
+        if (!e || !e.slid || !e.at)
+            return
+        send(Act.moveTo(e.address, Math.round(e.at.x), Math.round(e.at.y)))
+        if (e.floating !== true)
+            send(Act.float(e.address, false))
+    }
+    function hideNowAfterSlide(address, e) {
+        const done = () => root.pending = root.pending.filter(x => x !== address)
         if (!send(Act.hide(address))) {
+            slideBack(e)
             done()
             return
         }
@@ -193,6 +245,7 @@ Singleton {
                         confirmTimer.restart()
                     } else {
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.slideBack(w.entry)
                         root.refused("A janela não foi minimizada")
                     }
                 }
@@ -235,12 +288,43 @@ Singleton {
             }
             if (!root.send(Act.bringTo(a, mon.active)))
                 return
+            // It slid out: it slides in from the right edge of this screen
+            // to its place (moved to this screen), and is tiled again after
+            const e = root.entries.find(x => x.address === a)
+            const plan = e && e.slid && !Theme.reduceMotion
+                ? Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, mons) : null
+            if (plan) {
+                root.send(Act.moveTo(a, plan.off[0], plan.off[1]))
+                root.send(Act.moveTo(a, plan.to[0], plan.to[1]))
+                if (e.floating !== true)
+                    root.retile.push(a)
+                retileTimer.restart()
+            } else if (e && e.slid) {
+                // Reduce motion: straight to its place
+                const b = Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, [])
+                if (b)
+                    root.send(Act.moveTo(a, b.to[0], b.to[1]))
+                if (e.floating !== true)
+                    root.send(Act.float(a, false))
+            }
             root.send(Act.focus(a))
             root.dropShot(a)
             root.entries = List.remove(root.entries, a)
             root.restored(a)
         })
         return true
+    }
+    // Slid in: tiled again once the slide ends
+    property var retile: []
+    Timer {
+        id: retileTimer
+        interval: Theme.dur(Theme.minimizeSlide)
+        onTriggered: {
+            const list = root.retile
+            root.retile = []
+            for (const a of list)
+                root.send(Act.float(a, false))
+        }
     }
     function restoreLast(monitorName) {
         if (locked)
@@ -449,7 +533,16 @@ Singleton {
         reloads++
         clientsNow(list => {
             const all = Lists.toList(list)
-            const found = List.fromClients(all, root.monitorNames(), AreasState.together)
+            const mons = root.monitorsNow()
+            const found = List.fromClients(all, root.monitorNames(), AreasState.together).map(f => {
+                // Slid out in an earlier run (past its screen's edge): it
+                // slides back in to the middle, its tiling unknown (kept
+                // floating)
+                const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === f.address)
+                if (c && Slide.wasSlid(c, mons))
+                    return Object.assign({}, f, { slid: true, floating: true, from: null, size: [f.at.w, f.at.h] })
+                return f
+            })
             // Kept ones first (their order), then the found ones not listed
             const kept = root.entries.filter(e => found.some(f => f.address === e.address))
             root.entries = kept.concat(found.filter(f => !kept.some(e => e.address === f.address)))

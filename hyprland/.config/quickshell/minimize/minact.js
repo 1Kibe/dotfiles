@@ -40,6 +40,27 @@ function close(address) {
 function hideSpecial() {
     return 'hl.dsp.workspace.toggle_special({ name = "minimizadas" })'
 }
+// A coordinate or size for the slide: whole numbers in a sane range
+function isCoord(n) {
+    return typeof n === "number" && Number.isInteger(n) && Math.abs(n) <= 100000
+}
+// Floating on ("set") or off ("unset")
+function float(address, on) {
+    return isAddress(address) && typeof on === "boolean"
+        ? 'hl.dsp.window.float({ window = "address:' + address + '", action = "' + (on ? "set" : "unset") + '" })'
+        : null
+}
+// To a place on the layout (a floating window)
+function moveTo(address, x, y) {
+    return isAddress(address) && isCoord(x) && isCoord(y)
+        ? 'hl.dsp.window.move({ window = "address:' + address + '", x = ' + x + ', y = ' + y + ' })'
+        : null
+}
+function resizeTo(address, w, h) {
+    return isAddress(address) && isCoord(w) && isCoord(h) && w > 0 && h > 0
+        ? 'hl.dsp.window.resize({ window = "address:' + address + '", x = ' + w + ', y = ' + h + ' })'
+        : null
+}
 // Out of fullscreen or maximized (mode "fullscreen" or "maximized")
 function unsetFullscreen(address, mode) {
     return isAddress(address) && (mode === "fullscreen" || mode === "maximized")
