@@ -8,9 +8,11 @@ import "../control/lists.js" as Lists
 
 // A window in the overview's middle: a strip on top with the app's icon
 // (by the icon theme's name; none, the generic one) and the title, and the
-// window under it, live (ScreencopyView), made only while the overview is
-// open: closed, no capture runs. The mouse on it, or the keyboard: the
-// accent border.
+// window under it: one photo (ScreencopyView), taken when the card appears
+// (the overview opening, or another area shown in the middle) and never
+// updated, as a capture running all the time cost a lot. Made only while
+// the overview is open: closed, no capture exists. The mouse on it, or the
+// keyboard: the accent border.
 // Title and app name are text from outside: plain text, one line, cleaned.
 Rectangle {
     id: root
@@ -46,7 +48,7 @@ Rectangle {
     clip: true
     opacity: dragging ? Theme.overviewDragFade : 1
 
-    // The window, live: only while the overview is open and the window
+    // The window's photo: only while the overview is open and the window
     // has its Wayland side; else the card's plain fill
     Loader {
         id: shot
@@ -58,7 +60,14 @@ Rectangle {
         sourceComponent: Component {
             ScreencopyView {
                 captureSource: root.win.toplevel?.wayland ?? null
-                live: OverviewState.open
+                // Running only until the first frame comes: then it stays
+                // still, that frame kept
+                property bool taken: false
+                live: !taken
+                onHasContentChanged: {
+                    if (hasContent)
+                        taken = true
+                }
                 constraintSize: Qt.size(root.targetW, root.targetH)
             }
         }

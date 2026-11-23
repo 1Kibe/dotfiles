@@ -271,8 +271,9 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 ### Visão geral das janelas (Super+Tab)
 
 `Super+Tab` (ou três dedos para cima no touchpad) cobre as telas com um véu e mostra, em cada uma, as janelas da área atual
-dela lado a lado, sem se cobrir, cada uma ao vivo dentro de um cartão com o ícone e o título. Ao abrir, as janelas voam do
-lugar delas até o cartão; ao fechar, voltam (com "reduzir movimento", só esmaece).
+dela lado a lado, sem se cobrir, cada uma num cartão com o ícone, o título e uma foto dela, tirada ao abrir (não atualiza:
+uma captura rodando o tempo todo pesava muito). Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar, voltam (com
+"reduzir movimento", só esmaece).
 
 - **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
   destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
@@ -284,10 +285,10 @@ lugar delas até o cartão; ao fechar, voltam (com "reduzir movimento", só esma
 - **Teclado:** as setas escolhem a janela, `Enter` vai até ela, `Esc` fecha. Digitar não faz nada. Um clique num espaço vazio
   também fecha.
 
-As miniaturas só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
+As fotos só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
 Configurações esperando) ela não abre.
 
-**Falta conferir no notebook:** as miniaturas ao vivo e o desempenho com várias janelas, o voo, dois monitores, o gesto de
+**Falta conferir no notebook:** as fotos e o desempenho com várias janelas, o voo, dois monitores, o gesto de
 verdade, e fechar e mover janelas pelo × e pelo arrasto.
 
 ### Clipboard (Super+V)
