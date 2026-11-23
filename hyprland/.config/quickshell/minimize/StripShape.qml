@@ -1,18 +1,15 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.theme
-import "../theme/corners.js" as Corners
+import "stripcurve.js" as Curve
 
 // The minimized strip's outline on the right edge: a body bodyWidth wide
-// from bodyTop to bodyTop + bodyHeight, its outer (left) corners round, and
-// two concave corners flaring out along the screen's edge above and below
-// it, with the same continuous corners as the bar's attached panels
-// (theme/corners.js, Theme.cornerSmoothing). While it grows out of the edge
-// (the drawer) the flares grow as the panels' do: radius × min(1,
-// progress / 0.3), the progress being the width over the wire's. The flare
-// and the outer corner share the body's width along its top and bottom
-// (each reaches (1 + s) × its radius): on a body narrower than both the
-// outline turned back on itself, a hook above and below.
+// from bodyTop to bodyTop + bodyHeight (minimize/stripcurve.js). On the
+// wire, a long curve above and below, concave then convex, from the
+// screen's edge across the whole width; open (icons, names), the bar's
+// panels' corners (the concave one and the outer one with the Theme's
+// radius); in between, the one going into the other with the width, with
+// no jump. Coming out of the edge (the drawer) the curve grows with it.
 Shape {
     id: root
 
@@ -20,14 +17,15 @@ Shape {
     property real bodyTop: 0
     property real bodyHeight: 0
     property color fillColor: Theme.stripFill
-    readonly property real s: Theme.cornerSmoothing
     readonly property real edge: width
-    readonly property real progress: Math.min(1, bodyWidth / Theme.wireWidth)
-    readonly property real rf: Math.max(0, Math.min(Theme.minimizeRadius * Math.min(1, progress / 0.3),
-                                                     bodyHeight / (2 * (1 + s)), bodyWidth / (1 + s) - ro))
-    // The outer corners never reach past half the body's width or height
-    readonly property real ro: Math.max(0, Math.min(Theme.minimizeRadius, bodyWidth / (2 * (1 + s)),
-                                                     bodyHeight / (2 * (1 + s))))
+    readonly property var m: ({
+        wire: Theme.wireWidth, icons: Theme.minimizeIcons, reach: Theme.minimizeWireReach, depth: Theme.minimizeWireDepth,
+        radius: Theme.minimizeRadius, s: Theme.cornerSmoothing
+    })
+    // From the wire (0) to open (1), and the open corners' radii (tests)
+    readonly property real open: Curve.openShare(bodyWidth, m)
+    readonly property var radii: Curve.radii(bodyWidth, bodyHeight, Theme.minimizeRadius, Theme.cornerSmoothing,
+                                             Math.min(1, bodyWidth / Theme.wireWidth / 0.3))
 
     visible: bodyWidth > 0 && bodyHeight > 0
     preferredRendererType: Shape.CurveRenderer
@@ -37,16 +35,7 @@ Shape {
         strokeColor: "transparent"
         fillColor: root.fillColor
         PathSvg {
-            path: {
-                const E = root.edge, t = root.bodyTop, b = root.bodyTop + root.bodyHeight
-                const x = E - root.bodyWidth, s = root.s, rf = root.rf, ro = root.ro
-                return `M ${E} ${t - Corners.reach(rf, s)} `
-                     + Corners.corner(E, t, 0, 1, -1, 0, rf, s)
-                     + Corners.corner(x, t, -1, 0, 0, 1, ro, s)
-                     + Corners.corner(x, b, 0, 1, 1, 0, ro, s)
-                     + Corners.corner(E, b, 1, 0, 0, 1, rf, s)
-                     + "Z"
-            }
+            path: Curve.path(root.edge, root.bodyTop, root.bodyHeight, root.bodyWidth, root.m)
         }
     }
 }

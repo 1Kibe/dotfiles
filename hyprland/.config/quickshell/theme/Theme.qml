@@ -176,6 +176,10 @@ Singleton {
     readonly property int minimizeRow: 32
     readonly property int minimizeMargin: 7
     readonly property int minimizeRadius: 9
+    // The wire's long curve from the edge: how far along the edge it runs,
+    // and how far into the body it ends
+    readonly property int minimizeWireReach: 24
+    readonly property int minimizeWireDepth: 4
     readonly property int minimizeWireMin: 64
     readonly property int minimizeDot: 7
     readonly property int minimizeDotGap: 9
