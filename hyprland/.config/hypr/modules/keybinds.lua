@@ -81,6 +81,8 @@ bind("SUPER + right", hl.dsp.window.swap({ direction = "right" }), "Janelas: Tro
 bind("SUPER + up", hl.dsp.window.fullscreen({ action = "set", mode = "maximized" }), "Janelas: Maximizar")
 bind("SUPER + down", hl.dsp.window.fullscreen({ action = "unset", mode = "maximized" }), "Janelas: Restaurar")
 run("SUPER + F", "float", "Janelas: Flutuar menor e centralizada / voltar ao mosaico")
+run("SUPER + H", "minimize", "Janelas: Minimizar")
+run("SUPER + SHIFT + H", "restore_last", "Janelas: Trazer a última minimizada")
 bind("SUPER + SHIFT + F", hl.dsp.window.fullscreen({ action = "toggle", mode = "fullscreen" }), "Janelas: Tela cheia")
 bind("SUPER + J", hl.dsp.layout("togglesplit"), "Janelas: Alternar divisão horizontal/vertical") -- dwindle only
 bind("ALT + Tab", cycle(false), "Janelas: Próxima janela")

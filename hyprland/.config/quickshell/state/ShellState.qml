@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import qs.theme
 
 // Shared state of the shell's popups: one panel open at a time, on one
 // monitor. Panels: "control" (control/ControlCenter, the button with the
@@ -29,6 +30,9 @@ Singleton {
     // The monitor whose settings panel shows (opening, open or closing), for
     // bar/SettingsZone
     property string settingsOn: ""
+    // The monitor whose clipboard drawer shows (opening, open or closing),
+    // for clipboard/ClipboardZone
+    property string clipboardOn: ""
     // The screens that have a bar ("Mostrar a barra em"; set by shell.qml).
     // The panels live in the bar: on a screen without one, a keybind opens
     // them on the first screen that has it
@@ -63,6 +67,94 @@ Singleton {
     // The minimize strip asks the control center of `monitor` to fold its
     // section when it needs the room (it never reopens by itself)
     signal accordionCollapseRequested(string monitor)
+
+    // ── Minimized windows (filled and answered by the minimize module) ──
+    // [{ address, title, appId }]; empty until that module exists. The
+    // overview only reads it and asks for a window back with the signal.
+    // Whoever answers restoreMinimizedRequested(address) checks the address
+    // (settings/hyprland.js windowAddress and ^0x[0-9a-f]{1,16}$) and that
+    // the window is in Hyprland's list now, and only then builds the Lua;
+    // title and appId never go into Lua, a command line or a log.
+    property var minimized: []
+    signal restoreMinimizedRequested(string address)
+
+    // ── What reaches the screen's right edge, for the minimized strip ──
+    // Per screen, the y where a bar panel reaching the right edge ends
+    // (rightPanelEdge, from the top; with the bar at the bottom, from the
+    // bottom up) and where a drawer from the bottom begins (bottomPanelEdge);
+    // 0 or missing = nothing there. Replaced whole at each change.
+    // Each panel publishes its own (owner): two panels of one screen
+    // changing over never overwrite each other; the strip reads the one
+    // reaching furthest into the screen (the largest y with the bar on top,
+    // the smallest with the bar on the bottom)
+    property var rightPanelEdges: ({})
+    readonly property var rightPanelEdge: {
+        const m = {}
+        for (const key in rightPanelEdges) {
+            const monitor = key.slice(0, key.indexOf("|"))
+            const y = rightPanelEdges[key]
+            m[monitor] = !(m[monitor] > 0) ? y : Theme.barAtBottom ? Math.min(m[monitor], y) : Math.max(m[monitor], y)
+        }
+        return m
+    }
+    // From the bottom (the clipboard drawer; any other, by its owner): the
+    // strip reads the highest-reaching one (the smallest y)
+    property var bottomPanelEdges: ({})
+    readonly property var bottomPanelEdge: {
+        const m = {}
+        for (const key in bottomPanelEdges) {
+            const monitor = key.slice(0, key.indexOf("|"))
+            const y = bottomPanelEdges[key]
+            m[monitor] = m[monitor] > 0 ? Math.min(m[monitor], y) : y
+        }
+        return m
+    }
+    function setRightPanelEdge(monitor, y, owner) {
+        const key = `${monitor}|${owner || "panel"}`
+        if ((rightPanelEdges[key] ?? 0) === y)
+            return
+        const m = Object.assign({}, rightPanelEdges)
+        if (y > 0)
+            m[key] = y
+        else
+            delete m[key]
+        rightPanelEdges = m
+    }
+    // Overlay pieces with no state of their own (the capture's toast and
+    // card) say when they show: the minimize picture is not taken then
+    property var overlays: ({})
+    readonly property bool overlayShown: Object.keys(overlays).length > 0
+    function setOverlay(name, on) {
+        if (!!overlays[name] === on)
+            return
+        const m = Object.assign({}, overlays)
+        if (on)
+            m[name] = true
+        else
+            delete m[name]
+        overlays = m
+    }
+    // The minimized strip wants room on `monitor`: the control center folds
+    // its section (it listens to accordionCollapseRequested); the strip then
+    // closes the panel itself if that was not enough (closePanelOn)
+    function requestRoom(monitor) {
+        accordionCollapseRequested(monitor)
+    }
+    function closePanelOn(monitor) {
+        if (openPanel !== "" && openOn === monitor)
+            close()
+    }
+    function setBottomPanelEdge(monitor, y, owner) {
+        const key = `${monitor}|${owner || "drawer"}`
+        if ((bottomPanelEdges[key] ?? 0) === y)
+            return
+        const m = Object.assign({}, bottomPanelEdges)
+        if (y > 0)
+            m[key] = y
+        else
+            delete m[key]
+        bottomPanelEdges = m
+    }
     // The monitor whose control center is open ("" = closed)
     readonly property string controlOn: openPanel === "control" ? openOn : ""
     function controlOpen(monitor) {
@@ -70,8 +162,11 @@ Singleton {
     }
     // Never over the lock screen, nor while a "Manter?" strip waits for its
     // answer (it holds the keyboard: Esc and Enter would go to it)
+    // Not under the overview either (it closes the panels when it opens;
+    // a panel never opens beneath it)
     function controlAllowed() {
         return !LockState.locked && !LockState.wanted && !MonitorsApply.pending && !KeyboardLayout.pending
+            && !OverviewState.open
     }
     // Opens it on `monitor` with `section` open ("" = all folded); false when
     // it may not open or the section is not one of the list
@@ -113,7 +208,7 @@ Singleton {
             return
         }
         const id = panelId(panel)
-        if (id === "" || monitor === "")
+        if (id === "" || monitor === "" || OverviewState.open)
             return
         if (isOpen(id, monitor)) {
             close()

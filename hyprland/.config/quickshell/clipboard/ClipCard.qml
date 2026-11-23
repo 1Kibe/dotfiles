@@ -19,7 +19,7 @@ Rectangle {
     // A pin reads its own file; a history image waits for ClipboardStore.previews
     readonly property string preview: entry.kind === "image" ? (pinned ? `file://${entry.file}` : (ClipboardStore.previews[entry.id] || "")) : ""
 
-    // ClipStrip copies the entry (and the overlay closes)
+    // ClipStrip copies the entry (and the drawer closes)
     signal activated()
 
     implicitWidth: Theme.cardSize

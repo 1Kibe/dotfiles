@@ -18,6 +18,7 @@ PanelWindow {
 
     screen: Quickshell.screens.find(s => s.name === CaptureState.focusName) ?? Quickshell.screens[0]
     visible: shown || fade.running
+    onVisibleChanged: ShellState.setOverlay("captureToast", visible)
     anchors.top: true
     // Just under the bar, or at the top with the bar on the bottom edge
     margins.top: Theme.barAtBottom ? Theme.gap : Theme.barHeight + Theme.gap

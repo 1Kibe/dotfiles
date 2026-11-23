@@ -6,7 +6,8 @@ import qs.theme
 // (primary: the light fill, dark text, as "Atualizar tudo no terminal")
 // and the others (the dark fill, as "Verificar agora"); compact for the
 // small ones inside a row ("Esquecer", "Desconectar"). `danger` is an
-// armed action waiting for its second click.
+// armed action waiting for its second click. fadeText: a new text fades in
+// ("Copiar" → "Copiado").
 Rectangle {
     id: root
 
@@ -15,9 +16,22 @@ Rectangle {
     property bool primary: false
     property bool compact: false
     property bool danger: false
+    property bool fadeText: false
     // The keyboard is on it (a ring of the Theme)
     property bool keyFocus: false
     signal clicked()
+    onTextChanged: {
+        if (fadeText)
+            labelFade.restart()
+    }
+    NumberAnimation {
+        id: labelFade
+        target: row
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Theme.dur(Theme.animFast)
+    }
 
     implicitWidth: row.implicitWidth + (compact ? 16 : 24)
     implicitHeight: compact ? Theme.itemHeight : 32
@@ -49,6 +63,9 @@ Rectangle {
             text: root.text
             textFormat: Text.PlainText
             color: root.primary ? Theme.bgHard : root.danger ? Theme.red : Theme.fg2
+            Behavior on color {
+                ColorAnimation { duration: Theme.dur(Theme.animFast) }
+            }
             font.family: Theme.font
             font.pointSize: root.compact ? Theme.fontSizeSmall : Theme.fontSize - 1
             font.weight: Font.Medium

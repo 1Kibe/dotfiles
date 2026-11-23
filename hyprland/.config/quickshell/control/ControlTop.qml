@@ -23,6 +23,7 @@ RowLayout {
     readonly property bool present: device !== null && device.ready && device.isLaptopBattery && device.isPresent
     readonly property int percent: present ? Math.round(device.percentage * 100) : 0
     readonly property bool charging: present && device.state === UPowerDeviceState.Charging
+    readonly property bool known: present && Battery.known(device.percentage, device.energy, charging)
 
     Layout.fillWidth: true
     Layout.leftMargin: 8
@@ -31,7 +32,7 @@ RowLayout {
 
     Text {
         visible: root.present
-        text: `${Battery.icon(root.percent, root.charging)} ${root.percent}%`
+        text: root.known ? `${Battery.icon(root.percent, root.charging)} ${root.percent}%` : `${Battery.UNKNOWN} Carga desconhecida`
         textFormat: Text.PlainText
         color: Theme.text
         font.family: Theme.font

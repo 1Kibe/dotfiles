@@ -356,7 +356,10 @@ AttachedPanel {
     }
 
     // Hyprland ignores a player's own raise() for a window on another
-    // workspace, so focus the window here (this also switches workspace)
+    // workspace, so focus the window here (this also switches workspace).
+    // Minimized (its window in the hidden workspace, where a focus does not
+    // bring it): brought back instead, the app's most recent one, as the
+    // launcher and the notifications do
     PanelRow {
         visible: root.playerWindow !== null
         icon: "󰁔"
@@ -365,8 +368,14 @@ AttachedPanel {
             // Checked first (settings/hyprland.js): it goes into Lua that
             // Hyprland runs; one that is not hex does nothing
             const hex = Hypr.windowAddress(root.playerWindow.address)
+            // The window found is a minimized one: the app's most recent
+            // minimized window comes back (one in view is just focused)
+            const hidden = hex !== "" && MinimizeState.entries.some(e => e.address === hex)
+                ? MinimizeState.matchApp([root.player.desktopEntry, root.player.identity]) : null
             ShellState.close()
-            if (hex !== "")
+            if (hidden !== null)
+                ShellState.restoreMinimizedRequested(hidden.address)
+            else if (hex !== "")
                 Hyprland.dispatch(`hl.dsp.focus({ window = "address:${hex}" })`)
         }
     }

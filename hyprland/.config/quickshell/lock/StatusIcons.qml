@@ -33,6 +33,10 @@ Rectangle {
     readonly property bool hasBattery: battery !== null && battery.ready && battery.isLaptopBattery && battery.isPresent
     readonly property int percent: hasBattery ? Math.round(battery.percentage * 100) : 0
     readonly property bool charging: hasBattery && battery.state === UPowerDeviceState.Charging
+    // No charge reported at all (a VM's battery): unknown, not an empty red
+    // one; the rule of bar/battery.js, here inline (the login screen gets
+    // only lock/ and theme/)
+    readonly property bool known: hasBattery && (charging || battery.percentage > 0 || battery.energy > 0)
     readonly property var batteryIcons: ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
 
     implicitWidth: row.implicitWidth + 28
@@ -66,8 +70,9 @@ Rectangle {
 
         Text {
             visible: root.hasBattery
-            text: `${root.charging ? "󰂄" : root.batteryIcons[Math.min(9, Math.floor(root.percent / 10))]} ${root.percent}%`
-            color: root.charging ? Theme.aqua : root.percent <= 15 ? Theme.red : root.percent <= 30 ? Theme.yellow : Theme.text
+            text: root.known ? `${root.charging ? "󰂄" : root.batteryIcons[Math.min(9, Math.floor(root.percent / 10))]} ${root.percent}%`
+                             : "󰂑"
+            color: !root.known ? Theme.gray : root.charging ? Theme.aqua : root.percent <= 15 ? Theme.red : root.percent <= 30 ? Theme.yellow : Theme.text
             font.family: Theme.font
             font.pixelSize: 14
         }

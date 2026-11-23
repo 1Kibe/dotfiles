@@ -17,14 +17,18 @@ BarItem {
     // as charged too
     readonly property bool full: present && (device.state === UPowerDeviceState.FullyCharged
                                              || device.state === UPowerDeviceState.PendingCharge)
+    // No charge reported at all: an unknown battery, not an empty red one
+    readonly property bool known: present && Battery.known(device.percentage, device.energy, charging)
 
     visible: present
     clickable: false
-    text: `${Battery.icon(percent, charging)} ${percent}%`
-    textColor: charging ? Theme.aqua : percent <= 15 ? Theme.red : percent <= 30 ? Theme.yellow : Theme.green
+    text: known ? `${Battery.icon(percent, charging)} ${percent}%` : Battery.UNKNOWN
+    textColor: !known ? Theme.gray : charging ? Theme.aqua : percent <= 15 ? Theme.red : percent <= 30 ? Theme.yellow : Theme.green
     tooltip: {
         if (!present)
             return ""
+        if (!known)
+            return "Carga desconhecida"
         if (full)
             return "Carregada"
         // UPower reports 0 while it is still estimating the time

@@ -41,12 +41,16 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/MediaState.qml` | Player escolhido, música, capa (baixada para o cache) e a cor dela |
 | `state/SystemStats.qml` | CPU, memória, temperatura e a lista de processos, lidos do `/proc` e do `/sys` |
 | `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
-| `state/NotesStore.qml` | Notas rápidas (post-its) |
+| `state/NotesStore.qml` | As anotações da gaveta do clipboard |
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
+| `state/OverviewState.qml` | A visão geral: aberta ou não, a área mostrada em cada tela e as ações (ir, fechar, mover) |
+| `state/MinimizeState.qml` | As janelas minimizadas: esconder, trazer, fechar, a foto da prévia e a lista depois de reiniciar |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
-| `clipboard/` | O clipboard do `Super+V`: tela escura, faixa com os cartões, notas e emoji |
+| `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
+| `overview/` | A visão geral do `Super+Tab`: a faixa das áreas, os cartões das janelas e o voo |
+| `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o voo da foto da janela até o fio |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
@@ -126,6 +130,8 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Super+↑` | Maximizar |
 | `Super+↓` | Restaurar |
 | `Super+F` | Flutuar menor e centralizada / voltar ao mosaico |
+| `Super+H` | Minimizar |
+| `Super+Shift+H` | Trazer a última minimizada |
 | `Super+Shift+F` | Tela cheia |
 | `Super+J` | Alternar divisão horizontal/vertical |
 | `Alt+Tab` | Próxima janela |
@@ -268,19 +274,76 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 - As atualizações com o paru compilando (na VM com 4 GB o Rust ficou sem memória; com 6 GB foi).
 - O segundo plano com os apps de bandeja reais (Spotify, Steam, Discord…): os ícones, o menu de cada um e o × pelo "Sair".
 
+### Visão geral das janelas (Super+Tab)
+
+`Super+Tab` (ou três dedos para cima no touchpad) cobre as telas com um véu e mostra, em cada uma, as janelas da área atual
+dela lado a lado, sem se cobrir: cada cartão é uma foto da janela, tirada ao abrir (não atualiza: uma captura rodando o tempo
+todo pesava muito), com o ícone e "app · título" embaixo. Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar,
+voltam (com "reduzir movimento", só esmaece).
+
+- **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
+  destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
+  "Minimizadas · N" aparece quando houver janela minimizada. Da área 6 em diante, a faixa mostra as que têm janela ou estão
+  na tela, como a barra: uma área nova sai pelos atalhos (`Super+Ctrl+D`, `Super+1` a `9`).
+- **Clicar numa janela** vai até ela (trocando de área se precisar) e fecha a visão geral.
+- **O ×** (com o mouse no cartão) pede para a janela fechar; a visão geral continua aberta.
+- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar fora devolve o cartão.
+- **Teclado:** as setas escolhem a janela, `Enter` vai até ela, `Esc` fecha. Digitar não faz nada. Um clique num espaço vazio
+  também fecha.
+
+As fotos só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
+Configurações esperando) ela não abre.
+
+**Falta conferir no notebook:** as fotos e o desempenho com várias janelas, o voo, dois monitores, o gesto de
+verdade, e fechar e mover janelas pelo × e pelo arrasto.
+
+### Minimizar (Super+H)
+
+O Hyprland não tem minimizar; o shell faz: `Super+H` esconde a janela em foco numa área especial que nunca aparece, e ela
+continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz o mesmo. `Super+Shift+H` traz de volta a
+última, para a área atual da tela em foco.
+
+- **Na borda direita** de cada tela fica um fio fino com um pontinho por janela que saiu daquela tela (com mais de oito, sete
+  e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, a janela some na hora e uma foto dela
+  voa encolhendo até o fio, que abre um instante mostrando a janela; ao trazer, a foto faz o caminho de volta e a janela
+  aparece quando ela chega (com "reduzir movimento", só esmaece).
+- **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes, e a linha sob o mouse
+  mostra a prévia ao lado: o nome do app, o título e a foto da janela tirada ao minimizar (sem foto, o ícone do app). Clicar
+  traz a janela para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N",
+  que mostra a lista inteira.
+- **Pedindo atenção:** o fio fica laranja até o mouse passar; aberto, o ícone da janela pulsa.
+- **Painéis:** o fio desce junto quando um painel da barra cobre a borda, e sobe junto com a gaveta do clipboard. Com o mouse
+  no fio e a central aberta, a seção dela fecha para dar espaço; se ainda faltar, o painel fecha.
+- A visão geral (`Super+Tab`) também mostra as minimizadas, no cartão "Minimizadas".
+
+Janela fixada em todas as áreas não é minimizada (desafixe antes). Com a tela travada nada é escondido nem trazido. Se o
+shell reiniciar, ele acha as janelas que já estavam escondidas, e nenhuma fica presa.
+
+A foto da prévia fica em `$XDG_RUNTIME_DIR/qs-minimizar` (memória; pasta `700`, arquivo `600`) e é apagada quando a janela
+volta ou fecha, e a pasta inteira quando o shell sobe. Ela só é tirada com a janela inteira à vista e nada por cima.
+
+**Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
+as escondidas, a janela em tela cheia e a fixada, e dois monitores.
+
 ### Clipboard (Super+V)
 
-`Super+V` escurece a tela e sobe uma faixa de baixo com os 100 itens mais recentes do histórico (o `cliphist` grava tudo o
-que é copiado; senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois
-é colar onde quiser.
+`Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
+sem escurecer o resto. Enquanto ela aparece, as janelas lado a lado daquela tela sobem para dar lugar a ela, como nas
+Configurações (as flutuantes ficam onde estão). Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e
+**Anotações**. A aba Clipboard mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado;
+senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde
+quiser. A gaveta fecha ao travar a tela e ao abrir um painel da barra.
 
 - **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
   prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.
 - **Fixados:** ficam no começo, com borda amarela, e sobrevivem ao "Limpar". O pino no canto (ou `Ctrl+P`) fixa e desafixa.
 - **Limpar:** apaga o histórico inteiro, com um segundo clique para confirmar. Os fixados ficam.
-- **Notas:** post-its acima da faixa, numa grade de 6 por linha que rola para baixo. "+ Nova nota" cria uma; título e texto
-  se editam no lugar e salvam sozinhos; os botões trocam a cor (5 cores), copiam o texto e apagam (com segundo clique).
-  Arraste pela alça do topo para mudar a ordem.
+- **Anotações:** a anotação escolhida fica em destaque à esquerda, pronta para escrever (título e texto no lugar, salvam
+  sozinhos), com as 5 cores, "Copiar", "Fixar" e "Apagar" (com segundo clique) embaixo. À direita, a lista de todas, com a
+  cor, o título e o começo do texto; clicar troca o destaque e arrastar uma linha muda a ordem dentro do grupo dela (as
+  fixadas entre si, as outras entre si). "+ Nova anotação" cria uma no topo. As fixadas ficam no topo da lista, na ordem em
+  que foram fixadas. A busca filtra pelo título e pelo texto; a anotação em que se está escrevendo fica na lista mesmo que
+  deixe de combinar com a busca.
 - **Emoji:** a aba Emoji (ou `Tab`) mostra os emoji por grupo, com os recentes; a busca é pelo nome em inglês ("heart",
   "cat"). Clicar copia.
 
@@ -290,11 +353,14 @@ que é copiado; senhas marcadas como sensíveis pelo gerenciador de senhas não 
 | `Enter` | Copia e fecha |
 | `Ctrl+P` | Fixa ou desafixa |
 | `Del` | Apaga do histórico |
-| `Tab` | Troca entre Histórico e Emoji |
+| `Tab` / `Shift+Tab` | Troca de aba (Clipboard, Emoji, Anotações) |
 | Digitar | Busca |
-| `Esc` | Limpa a busca; de novo, fecha (dentro de uma nota, volta para a busca) |
+| `Esc` | Limpa a busca; de novo, fecha (escrevendo numa anotação, volta para a lista) |
 
-Clicar na área escura ou `Super+V` de novo também fecha.
+Nas Anotações: `↑` `↓` escolhem na lista, `Enter` vai para o texto, `Ctrl+N` cria, `Ctrl+P` fixa e desafixa, `Del` arma o
+apagar e o segundo `Del` apaga.
+
+Clicar fora da gaveta ou `Super+V` de novo também fecha. Com a tela travada ela não abre.
 
 Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `600`):
 
@@ -302,11 +368,11 @@ Onde ficam os dados (fora do repo, só nesta máquina; pasta `700`, arquivos `60
 |---|---|
 | Histórico | `~/.cache/cliphist/db` (do `cliphist`) |
 | Fixados | `~/.local/share/quickshell/clipboard/pins.json` e as imagens fixadas na mesma pasta |
-| Notas | `~/.local/share/quickshell/clipboard/notes.json` |
+| Anotações | `~/.local/share/quickshell/clipboard/notes.json` |
 | Emoji recentes | `~/.local/share/quickshell/clipboard/emoji-recent.json` |
 | Prévias de imagem | `$XDG_RUNTIME_DIR/quickshell-clip` (memória; apagadas ao fechar) |
 
-**Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as notas. Um arquivo que não dá para ler vira `.bak` e o
+**Atenção:** apagar `~/.local/share/quickshell` apaga os fixados e as anotações. Um arquivo que não dá para ler vira `.bak` e o
 clipboard começa vazio, sem perder o original.
 
 ### Captura de tela (Print)
@@ -362,7 +428,8 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `notifications` | `toggle` | `Super+N` |
 | `controlcenter` | `toggle` | `Super+I` (F9), `Super+A` |
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (a central já na energia) |
-| `overview` | `toggle` | `Super+Tab`, 3 dedos ↑ |
+| `overview` | `toggle` (também `open` e `close`) | `Super+Tab`, 3 dedos ↑ |
+| `minimize` | `focused` / `restoreLast` | `Super+H` / `Super+Shift+H` |
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |

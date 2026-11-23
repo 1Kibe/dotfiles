@@ -7,6 +7,13 @@
 // uses the full one; charging has its own
 var ICONS = ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
 var CHARGING = "󰂄"
+// The charge is not known (a battery that reports only its full capacity,
+// like a virtual machine's): neither a percent nor any energy, and not
+// charging. A real battery near empty still reports some energy.
+var UNKNOWN = "󰂑"
+function known(percentage, energy, charging) {
+    return charging === true || Number(percentage) > 0 || Number(energy) > 0
+}
 
 function icon(percent, charging) {
     if (charging)
