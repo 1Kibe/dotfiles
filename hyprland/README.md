@@ -268,6 +268,29 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 - As atualizações com o paru compilando (na VM com 4 GB o Rust ficou sem memória; com 6 GB foi).
 - O segundo plano com os apps de bandeja reais (Spotify, Steam, Discord…): os ícones, o menu de cada um e o × pelo "Sair".
 
+### Visão geral das janelas (Super+Tab)
+
+`Super+Tab` (ou três dedos para cima no touchpad) cobre as telas com um véu e mostra, em cada uma, as janelas da área atual
+dela lado a lado, sem se cobrir: cada cartão é uma foto da janela, tirada ao abrir (não atualiza: uma captura rodando o tempo
+todo pesava muito), com o ícone e "app · título" embaixo. Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar,
+voltam (com "reduzir movimento", só esmaece).
+
+- **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
+  destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
+  "Minimizadas · N" aparece quando houver janela minimizada. Da área 6 em diante, a faixa mostra as que têm janela ou estão
+  na tela, como a barra: uma área nova sai pelos atalhos (`Super+Ctrl+D`, `Super+1` a `9`).
+- **Clicar numa janela** vai até ela (trocando de área se precisar) e fecha a visão geral.
+- **O ×** (com o mouse no cartão) pede para a janela fechar; a visão geral continua aberta.
+- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar fora devolve o cartão.
+- **Teclado:** as setas escolhem a janela, `Enter` vai até ela, `Esc` fecha. Digitar não faz nada. Um clique num espaço vazio
+  também fecha.
+
+As fotos só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
+Configurações esperando) ela não abre.
+
+**Falta conferir no notebook:** as fotos e o desempenho com várias janelas, o voo, dois monitores, o gesto de
+verdade, e fechar e mover janelas pelo × e pelo arrasto.
+
 ### Clipboard (Super+V)
 
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
@@ -371,7 +394,7 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `notifications` | `toggle` | `Super+N` |
 | `controlcenter` | `toggle` | `Super+I` (F9), `Super+A` |
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (a central já na energia) |
-| `overview` | `toggle` | `Super+Tab`, 3 dedos ↑ |
+| `overview` | `toggle` (também `open` e `close`) | `Super+Tab`, 3 dedos ↑ |
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |

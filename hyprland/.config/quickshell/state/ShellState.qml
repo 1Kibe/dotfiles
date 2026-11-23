@@ -66,6 +66,16 @@ Singleton {
     // The minimize strip asks the control center of `monitor` to fold its
     // section when it needs the room (it never reopens by itself)
     signal accordionCollapseRequested(string monitor)
+
+    // ── Minimized windows (filled and answered by the minimize module) ──
+    // [{ address, title, appId }]; empty until that module exists. The
+    // overview only reads it and asks for a window back with the signal.
+    // Whoever answers restoreMinimizedRequested(address) checks the address
+    // (settings/hyprland.js windowAddress and ^0x[0-9a-f]{1,16}$) and that
+    // the window is in Hyprland's list now, and only then builds the Lua;
+    // title and appId never go into Lua, a command line or a log.
+    property var minimized: []
+    signal restoreMinimizedRequested(string address)
     // The monitor whose control center is open ("" = closed)
     readonly property string controlOn: openPanel === "control" ? openOn : ""
     function controlOpen(monitor) {
@@ -73,8 +83,11 @@ Singleton {
     }
     // Never over the lock screen, nor while a "Manter?" strip waits for its
     // answer (it holds the keyboard: Esc and Enter would go to it)
+    // Not under the overview either (it closes the panels when it opens;
+    // a panel never opens beneath it)
     function controlAllowed() {
         return !LockState.locked && !LockState.wanted && !MonitorsApply.pending && !KeyboardLayout.pending
+            && !OverviewState.open
     }
     // Opens it on `monitor` with `section` open ("" = all folded); false when
     // it may not open or the section is not one of the list
@@ -116,7 +129,7 @@ Singleton {
             return
         }
         const id = panelId(panel)
-        if (id === "" || monitor === "")
+        if (id === "" || monitor === "" || OverviewState.open)
             return
         if (isOpen(id, monitor)) {
             close()

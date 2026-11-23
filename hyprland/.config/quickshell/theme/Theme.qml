@@ -135,6 +135,28 @@ Singleton {
     readonly property color pinBorder: root.alpha(yellow, 0.75)
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // The overview (Super+Tab): the veil over the screen, the margins, the
+    // gap between the window cards, the areas' strip on top and the
+    // smallest a window card gets before the middle scrolls
+    // Closing the overview, the other cards land this share of the flight
+    // before the chosen one (it goes back to its place last)
+    readonly property real overviewLead: 0.3
+    readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
+    readonly property int overviewMargin: 40
+    readonly property int overviewGap: 24
+    readonly property int overviewStripHeight: 110
+    readonly property int overviewCardMinHeight: 120
+    readonly property int overviewCloseSize: 20
+    // A window card's label under it (its height, the gap between icon and
+    // text, the icon), the ×'s inset, a card being dragged and the dragged
+    // copy
+    readonly property int overviewLabelHeight: Math.round(22 * textScale)
+    readonly property int overviewLabelGap: 6
+    readonly property int overviewIcon: 16
+    readonly property int overviewCloseInset: 3
+    readonly property real overviewDragFade: 0.4
+    readonly property real overviewGhostOpacity: 0.85
+    readonly property int overviewListWidth: 420
     // Clipboard drawer (Super+V): one height for its three tabs (the cards
     // take what is left), its fill, and the Anotações' list column
     readonly property int clipboardHeight: 220
