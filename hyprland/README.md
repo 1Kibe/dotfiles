@@ -43,10 +43,14 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/ClipboardStore.qml` | Histórico do cliphist, tipos, prévias de imagem, fixados, copiar, apagar e limpar |
 | `state/NotesStore.qml` | As anotações da gaveta do clipboard |
 | `state/EmojiStore.qml` | Lista de emoji do Unicode e os recentes |
+| `state/OverviewState.qml` | A visão geral: aberta ou não, a área mostrada em cada tela e as ações (ir, fechar, mover) |
+| `state/MinimizeState.qml` | As janelas minimizadas: esconder, trazer, fechar, a foto da prévia e a lista depois de reiniciar |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
+| `overview/` | A visão geral do `Super+Tab`: a faixa das áreas, os cartões das janelas e o voo |
+| `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o voo da foto da janela até o fio |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
@@ -126,6 +130,8 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Super+↑` | Maximizar |
 | `Super+↓` | Restaurar |
 | `Super+F` | Flutuar menor e centralizada / voltar ao mosaico |
+| `Super+H` | Minimizar |
+| `Super+Shift+H` | Trazer a última minimizada |
 | `Super+Shift+F` | Tela cheia |
 | `Super+J` | Alternar divisão horizontal/vertical |
 | `Alt+Tab` | Próxima janela |
@@ -291,6 +297,34 @@ Configurações esperando) ela não abre.
 **Falta conferir no notebook:** as fotos e o desempenho com várias janelas, o voo, dois monitores, o gesto de
 verdade, e fechar e mover janelas pelo × e pelo arrasto.
 
+### Minimizar (Super+H)
+
+O Hyprland não tem minimizar; o shell faz: `Super+H` esconde a janela em foco numa área especial que nunca aparece, e ela
+continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz o mesmo. `Super+Shift+H` traz de volta a
+última, para a área atual da tela em foco.
+
+- **Na borda direita** de cada tela fica um fio fino com um pontinho por janela que saiu daquela tela (com mais de oito, sete
+  e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, a janela some na hora e uma foto dela
+  voa encolhendo até o fio, que abre um instante mostrando a janela; ao trazer, a foto faz o caminho de volta e a janela
+  aparece quando ela chega (com "reduzir movimento", só esmaece).
+- **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes, e a linha sob o mouse
+  mostra a prévia ao lado: o nome do app, o título e a foto da janela tirada ao minimizar (sem foto, o ícone do app). Clicar
+  traz a janela para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N",
+  que mostra a lista inteira.
+- **Pedindo atenção:** o fio fica laranja até o mouse passar; aberto, o ícone da janela pulsa.
+- **Painéis:** o fio desce junto quando um painel da barra cobre a borda, e sobe junto com a gaveta do clipboard. Com o mouse
+  no fio e a central aberta, a seção dela fecha para dar espaço; se ainda faltar, o painel fecha.
+- A visão geral (`Super+Tab`) também mostra as minimizadas, no cartão "Minimizadas".
+
+Janela fixada em todas as áreas não é minimizada (desafixe antes). Com a tela travada nada é escondido nem trazido. Se o
+shell reiniciar, ele acha as janelas que já estavam escondidas, e nenhuma fica presa.
+
+A foto da prévia fica em `$XDG_RUNTIME_DIR/qs-minimizar` (memória; pasta `700`, arquivo `600`) e é apagada quando a janela
+volta ou fecha, e a pasta inteira quando o shell sobe. Ela só é tirada com a janela inteira à vista e nada por cima.
+
+**Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
+as escondidas, a janela em tela cheia e a fixada, e dois monitores.
+
 ### Clipboard (Super+V)
 
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
@@ -395,6 +429,7 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `controlcenter` | `toggle` | `Super+I` (F9), `Super+A` |
 | `powermenu` | `toggle` | `Super+X`, `Ctrl+Alt+Del` (a central já na energia) |
 | `overview` | `toggle` (também `open` e `close`) | `Super+Tab`, 3 dedos ↑ |
+| `minimize` | `focused` / `restoreLast` | `Super+H` / `Super+Shift+H` |
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |

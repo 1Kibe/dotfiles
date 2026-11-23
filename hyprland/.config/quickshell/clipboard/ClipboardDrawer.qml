@@ -71,10 +71,6 @@ PanelWindow {
     // ClipboardZone: the windows there make room for it
     readonly property string zoneOn: visible && screen ? screen.name : ""
     onZoneOnChanged: ShellState.clipboardOn = zoneOn
-    Component.onDestruction: {
-        if (ShellState.clipboardOn === zoneOn)
-            ShellState.clipboardOn = ""
-    }
     // Locked while open: closed (the store too, so Super+V starts clean)
     onLockedChanged: {
         if (locked && ClipboardStore.open)
@@ -90,6 +86,32 @@ PanelWindow {
             if (ClipboardStore.open)
                 ClipboardStore.close()
         }
+    }
+
+    // The minimized windows' strip on the right edge slides up out of the
+    // drawer's way: while it shows, the y of its top edge on the screen
+    // (following the rise and the way down) goes to
+    // ShellState.bottomPanelEdge, as this drawer's own; zero once hidden
+    readonly property string edgeOn: screen ? screen.name : ""
+    readonly property real stripEdge: visible && screen && drawer.hit.height > 0
+        ? Math.round(screen.height - bottomGap - drawer.hit.height) : 0
+    property string publishedOn: ""
+    function publishEdge() {
+        if (publishedOn !== "" && publishedOn !== edgeOn)
+            ShellState.setBottomPanelEdge(publishedOn, 0, "clipboard")
+        publishedOn = stripEdge > 0 ? edgeOn : ""
+        if (edgeOn !== "")
+            ShellState.setBottomPanelEdge(edgeOn, stripEdge, "clipboard")
+    }
+    onStripEdgeChanged: publishEdge()
+    onEdgeOnChanged: publishEdge()
+    // Gone (a reload, the screen removed): neither the zone nor the edge
+    // stays behind
+    Component.onDestruction: {
+        if (ShellState.clipboardOn === zoneOn)
+            ShellState.clipboardOn = ""
+        if (publishedOn !== "")
+            ShellState.setBottomPanelEdge(publishedOn, 0, "clipboard")
     }
 
     DrawerBody {

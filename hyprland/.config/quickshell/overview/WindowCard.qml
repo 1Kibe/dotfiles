@@ -46,9 +46,7 @@ Rectangle {
     property real labelY: height
     property real labelOpacity: 1
 
-    readonly property string iconName: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(String(win.appClass || "")) ? String(win.appClass) : ""
-    readonly property string iconPath: iconName === "" ? ""
-        : Quickshell.iconPath(iconName, true) || Quickshell.iconPath(iconName.toLowerCase(), true)
+    readonly property string iconPath: AppIcons.icon(win.appClass)
 
     readonly property bool lit: chosen || hovered
     radius: Theme.radius

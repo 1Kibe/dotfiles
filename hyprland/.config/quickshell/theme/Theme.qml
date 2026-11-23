@@ -128,25 +128,32 @@ Singleton {
     readonly property int tempWarn: 75       // CPU temperature, °C
     readonly property int tempCrit: 90
 
-    // Clipboard overlay (Super+V): dimmed screen, strip at the bottom
+    // Strips, cards and popups over the screen (the clipboard's cards, the
+    // capture's toast and card, the background picker, the minimized
+    // strip): the dimming, the fill, a card's fill, a pin's border, the
+    // corners and a card's size
     readonly property color dim: Qt.rgba(0, 0, 0, 0.35)
     readonly property color stripFill: root.alpha(bgHard, 0.94)
     readonly property color cardFill: root.alpha(bg1, 0.55)
     readonly property color pinBorder: root.alpha(yellow, 0.75)
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // Clipboard drawer (Super+V): one height for its three tabs (the cards
+    // take what is left), its fill, and the Anotações' list column
+    readonly property int clipboardHeight: 220
+    readonly property color clipboardFill: bgHard
+    readonly property int notesListWidth: 210
     // The overview (Super+Tab): the veil over the screen, the margins, the
-    // gap between the window cards, the areas' strip on top and the
-    // smallest a window card gets before the middle scrolls
-    // Closing the overview, the other cards land this share of the flight
-    // before the chosen one (it goes back to its place last)
-    readonly property real overviewLead: 0.3
+    // gap between the window cards, the areas' strip on top, the smallest a
+    // window card gets before the middle scrolls, the ×, and
+    // the minimized list's width
     readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
     readonly property int overviewMargin: 40
     readonly property int overviewGap: 24
     readonly property int overviewStripHeight: 110
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewCloseSize: 20
+    readonly property int overviewListWidth: 420
     // A window card's label under it (its height, the gap between icon and
     // text, the icon), the ×'s inset, a card being dragged and the dragged
     // copy
@@ -156,12 +163,47 @@ Singleton {
     readonly property int overviewCloseInset: 3
     readonly property real overviewDragFade: 0.4
     readonly property real overviewGhostOpacity: 0.85
-    readonly property int overviewListWidth: 420
-    // Clipboard drawer (Super+V): one height for its three tabs (the cards
-    // take what is left), its fill, and the Anotações' list column
-    readonly property int clipboardHeight: 220
-    readonly property color clipboardFill: bgHard
-    readonly property int notesListWidth: 210
+    // Closing the overview, the other cards land this share of the flight
+    // before the chosen one (it goes back to its place last)
+    readonly property real overviewLead: 0.3
+    // The minimized windows' strip on the right edge: the wire, the icons'
+    // and the names' widths, a row, the margin, the corners, the wire's
+    // least height, the dots, the invisible hit zone of the wire, the rows
+    // shown at most and a row's icon
+    readonly property int wireWidth: 13
+    readonly property int minimizeIcons: 30
+    readonly property int minimizeNames: 190
+    readonly property int minimizeRow: 32
+    readonly property int minimizeMargin: 7
+    readonly property int minimizeRadius: 9
+    // The wire's long curve from the edge: how far along the edge it runs,
+    // and how far into the body it ends
+    readonly property int minimizeWireReach: 24
+    readonly property int minimizeWireDepth: 4
+    readonly property int minimizeWireMin: 64
+    readonly property int minimizeDot: 7
+    readonly property int minimizeDotGap: 9
+    readonly property int minimizeHit: 22
+    readonly property int minimizeMaxRows: 12
+    readonly property int minimizeIcon: 16
+    // How long the strip stays open in icons after a window is minimized
+    readonly property int minimizeFlash: 1500
+    // A minimized window's picture flying from its place to the wire,
+    // shrinking to this share of its size, and back when it comes back
+    readonly property int minimizeFly: 320
+    readonly property real minimizeFlyScale: 0.06
+    // The pulse of a window asking for attention: one step (8 a second)
+    readonly property int minimizePulseStep: 125
+    // The preview card next to the open strip: its size, the scale it grows
+    // from, the gap between the title and the picture, the app icon with no
+    // picture
+    readonly property int previewWidth: 190
+    readonly property int previewHeight: 128
+    readonly property real previewScale: 0.96
+    readonly property int previewGap: 4
+    readonly property int previewIcon: 48
+    // Something asks for attention (the minimized strip's wire)
+    readonly property color alert: orange
     property string monoFont: "Agave Nerd Font Mono"
 
     // Anotações (the clipboard drawer's tab): the 5 colors of a note

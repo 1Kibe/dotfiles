@@ -87,6 +87,8 @@ return {
   capture_ocr   = qs("capture", "ocr"),    -- text of an area to the clipboard
   capture_record = qs("capture", "record"), -- record the screen / stop
   overview      = qs("overview"),
+  minimize      = qs("minimize", "focused"),       -- hide the focused window
+  restore_last  = qs("minimize", "restoreLast"),   -- bring the last one back
   -- Waits for the compositor to confirm the lock (also used by hypridle)
   lock          = "hypr-travar",
 
