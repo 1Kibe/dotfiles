@@ -183,23 +183,55 @@ Singleton {
             send(Act.unsetFullscreen(address, "fullscreen"))
         else if (fs & 1)
             send(Act.unsetFullscreen(address, "maximized"))
-        if (!send(Act.hide(address))) {
-            dropFlights(address)
-            unquiet(address)
-            dropShot(address)
-            done()
-            return
-        }
         const mon = monitorsNow().find(m => m.id === c.monitor)
         const g = shotGeom(c)
         // Its screen, so its place can be moved to another one coming back
         if (mon)
             e.from = { x: mon.x, y: mon.y, w: mon.w, h: mon.h }
-        if (mon && g)
-            fly("out", address, e, { x: g.at[0] - mon.x, y: g.at[1] - mon.y, w: g.size[0], h: g.size[1] }, mon)
+        // The picture first, over the window: the window is hidden once the
+        // flight's layer has drawn it (flightShown), or after hideWaitMs
+        if (mon && g) {
+            const id = fly("out", address, e, { x: g.at[0] - mon.x, y: g.at[1] - mon.y, w: g.size[0], h: g.size[1] }, mon)
+            hideWait = hideWait.concat([{ id: id, address: address, entry: e, due: Date.now() + hideWaitMs }])
+            arm(hideWaitTimer, hideWait)
+            return
+        }
+        hideSend(address, e)
+    }
+    function hideSend(address, e) {
+        if (!send(Act.hide(address))) {
+            dropFlights(address)
+            unquiet(address)
+            dropShot(address)
+            root.pending = root.pending.filter(x => x !== address)
+            return
+        }
         // Listed only once Hyprland shows it in the hidden workspace
         confirm.push({ address: address, entry: e })
         confirmTimer.restart()
+    }
+    // Windows waiting for their picture to be on screen before hiding
+    readonly property int hideWaitMs: 100
+    property var hideWait: []
+    // The layer drew a flight's picture (its first frame): its window hides now
+    function flightShown(id) {
+        const w = hideWait.find(x => x.id === id)
+        if (!w)
+            return
+        hideWait = hideWait.filter(x => x !== w)
+        arm(hideWaitTimer, hideWait)
+        hideSend(w.address, w.entry)
+    }
+    Timer {
+        id: hideWaitTimer
+        onTriggered: {
+            const now = Date.now() + 20
+            const due = root.hideWait.filter(w => w.due <= now)
+            root.hideWait = root.hideWait.filter(w => w.due > now)
+            for (const w of due)
+                root.hideSend(w.address, w.entry)
+            root.arm(hideWaitTimer, root.hideWait)
+        }
     }
 
     // ── The window's props while its picture flies ──
@@ -249,13 +281,15 @@ Singleton {
         // Reduce motion: no flight, the picture only fades where the window is
         const far = Theme.reduceMotion ? rect : wire
         flightSeq++
+        const id = flightSeq
         flights = flights.concat([{
-            id: flightSeq, dir: dir, address: address, screen: mon.name,
+            id: id, dir: dir, address: address, screen: mon.name,
             from: dir === "out" ? rect : far, to: dir === "out" ? far : rect,
             shot: e && e.shot ? e.shot : "", cls: e ? e.cls : "",
             due: Date.now() + Theme.dur(Theme.minimizeFly) + root.flightSpareMs
         }])
         arm(flightTimer, flights)
+        return id
     }
     readonly property int flightSpareMs: 500
     // A window's flights and its wait for a place, ended with nothing put
@@ -263,8 +297,10 @@ Singleton {
     function dropFlights(address) {
         flights = flights.filter(f => f.address !== address)
         landWait = landWait.filter(w => w.address !== address)
+        hideWait = hideWait.filter(w => w.address !== address)
         arm(flightTimer, flights)
         arm(landTimer, landWait)
+        arm(hideWaitTimer, hideWait)
     }
     function flightDone(id) {
         const f = flights.find(x => x.id === id)
@@ -301,6 +337,12 @@ Singleton {
     onLockedChanged: {
         if (!locked)
             return
+        // Waiting for their picture: hidden now (never left in view)
+        const toHide = hideWait
+        hideWait = []
+        hideWaitTimer.stop()
+        for (const w of toHide)
+            hideSend(w.address, w.entry)
         for (const f of flights)
             flightDone(f.id)
         const waiting = landWait
@@ -578,9 +620,10 @@ Singleton {
             const a = Hypr.windowAddress(d)
             // Closed while its picture flies or while it lands: nothing to
             // put back (the window is gone)
-            if (flights.some(f => f.address === a) || landWait.some(w => w.address === a)) {
+            if (flights.some(f => f.address === a) || landWait.some(w => w.address === a) || hideWait.some(w => w.address === a)) {
                 dropFlights(a)
                 dropShot(a)
+                pending = pending.filter(x => x !== a)
             }
             if (entries.some(e => e.address === a)) {
                 dropShot(a)
@@ -657,6 +700,8 @@ Singleton {
         || OverviewState.open || LockState.dimmed || MonitorsApply.pending || MonitorsApply.identifying
         || KeyboardLayout.pending || BackgroundStore.pickerOpen || ShellState.overlayShown
         || stripsOpen.some(n => monitorsNow().some(m => m.name === n))
+        // A picture flying over the screen would be in the photo
+        || flights.length > 0
     // The screens whose strip is open in icons or names (the strip says)
     property var stripsOpen: []
     function setStripOpen(screen, on) {

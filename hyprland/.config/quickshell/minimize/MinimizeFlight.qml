@@ -9,9 +9,14 @@ import qs.state
 // Theme.minimizeFlyScale and fading in the last third, and back the other
 // way, growing and appearing, while the window itself is hidden or still
 // invisible (Hyprland moves it at once). One window per screen over
-// everything, only while a picture flies on it, taking neither the mouse
-// nor the keyboard. Reduce motion: the picture only fades where the window
-// is. With no picture (it could not be taken), the app's icon on a card.
+// everything, always there (mapping it for each flight took longer than
+// the flight on a slow screen) but empty and fully transparent with no
+// flight, taking neither the mouse nor the keyboard, and gone while the
+// session is locked. A picture's flight starts at the first frame that
+// draws it, which also tells MinimizeState to hide the window then (the
+// picture is on screen before the window goes). Reduce motion: the
+// picture only fades where the window is. With no picture (it could not be
+// taken), the app's icon on a card.
 Variants {
     model: Quickshell.screens
 
@@ -23,7 +28,7 @@ Variants {
         readonly property var mine: MinimizeState.flights.filter(f => f.screen === win.name)
 
         screen: modelData
-        visible: mine.length > 0
+        visible: !(LockState.locked || LockState.wanted)
         anchors {
             top: true
             bottom: true
@@ -78,7 +83,21 @@ Variants {
                 opacity: !f ? 0 : Theme.reduceMotion ? (f.dir === "out" ? 1 - t : t)
                     : f.dir === "out" ? Math.min(1, 3 * (1 - t)) : Math.min(1, 3 * t)
 
-                NumberAnimation on t {
+                // The clock starts with the first frame showing this picture
+                property bool started: false
+                Connections {
+                    target: pic.Window.window
+                    enabled: !pic.started
+                    function onFrameSwapped() {
+                        pic.started = true
+                        MinimizeState.flightShown(pic.fid)
+                        fly.start()
+                    }
+                }
+                NumberAnimation {
+                    id: fly
+                    target: pic
+                    property: "t"
                     from: 0
                     to: 1
                     duration: Theme.dur(Theme.minimizeFly)
