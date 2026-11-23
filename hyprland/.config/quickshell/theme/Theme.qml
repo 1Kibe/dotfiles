@@ -145,21 +145,20 @@ Singleton {
     readonly property int notesListWidth: 210
     // The overview (Super+Tab): the veil over the screen, the margins, the
     // gap between the window cards, the areas' strip on top, the smallest a
-    // window card gets before the middle scrolls, the "+" and the ×, and
+    // window card gets before the middle scrolls, the ×, and
     // the minimized list's width
     readonly property color overviewVeil: root.alpha(bgDeep, 0.9)
     readonly property int overviewMargin: 40
     readonly property int overviewGap: 24
     readonly property int overviewStripHeight: 110
     readonly property int overviewCardMinHeight: 120
-    readonly property int overviewPlusSize: Math.round(15 * textScale)
     readonly property int overviewCloseSize: 20
     readonly property int overviewListWidth: 420
-    // A window card's title strip (its height, side margins, gap, icon),
-    // the ×'s inset, a card being dragged and the dragged copy
-    readonly property int overviewTitleHeight: 26
-    readonly property int overviewTitlePad: 8
-    readonly property int overviewTitleGap: 6
+    // A window card's label under it (its height, the gap between icon and
+    // text, the icon), the ×'s inset, a card being dragged and the dragged
+    // copy
+    readonly property int overviewLabelHeight: Math.round(22 * textScale)
+    readonly property int overviewLabelGap: 6
     readonly property int overviewIcon: 16
     readonly property int overviewCloseInset: 3
     readonly property real overviewDragFade: 0.4
@@ -205,6 +204,12 @@ Singleton {
 
     // Anotações (the clipboard drawer's tab): the 5 colors of a note
     readonly property var noteColors: [yellow, green, blue, orange, purple]
+    // Their motion: a row coming in grows from noteEnterScale (and leaves
+    // shrinking to it), a dragged row is lifted to noteLift; "Copiado" stays
+    // on the button for noteCopiedFlash
+    readonly property real noteEnterScale: 0.92
+    readonly property real noteLift: 1.03
+    readonly property int noteCopiedFlash: 1000
     readonly property int emojiCell: 48     // emoji tab of the strip
     readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 

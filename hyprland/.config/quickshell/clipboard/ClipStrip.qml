@@ -15,6 +15,16 @@ Rectangle {
     id: root
 
     property string tab: "history"       // "history", "emoji" or "notes"
+    // Another tab: its content fades in (the keyboard is there at once)
+    onTabChanged: tabFade.restart()
+    NumberAnimation {
+        id: tabFade
+        target: cardsArea
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Theme.dur(Theme.animFast)
+    }
     property string kind: "all"         // filter chip
     property string emojiCat: "faces"   // emoji group chip
     // Filters the cards (matches) and the emoji (EmojiStore.list)

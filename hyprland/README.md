@@ -277,23 +277,24 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 ### Visão geral das janelas (Super+Tab)
 
 `Super+Tab` (ou três dedos para cima no touchpad) cobre as telas com um véu e mostra, em cada uma, as janelas da área atual
-dela lado a lado, sem se cobrir, cada uma ao vivo dentro de um cartão com o ícone e o título. Ao abrir, as janelas voam do
-lugar delas até o cartão; ao fechar, voltam (com "reduzir movimento", só esmaece).
+dela lado a lado, sem se cobrir: cada cartão é uma foto da janela, tirada ao abrir (não atualiza: uma captura rodando o tempo
+todo pesava muito), com o ícone e "app · título" embaixo. Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar,
+voltam (com "reduzir movimento", só esmaece).
 
 - **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
   destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
-  "Minimizadas · N" aparece quando houver janela minimizada; "+" cria uma área vazia.
+  "Minimizadas · N" aparece quando houver janela minimizada. Da área 6 em diante, a faixa mostra as que têm janela ou estão
+  na tela, como a barra: uma área nova sai pelos atalhos (`Super+Ctrl+D`, `Super+1` a `9`).
 - **Clicar numa janela** vai até ela (trocando de área se precisar) e fecha a visão geral.
 - **O ×** (com o mouse no cartão) pede para a janela fechar; a visão geral continua aberta.
-- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar no "+" manda para a primeira
-  área vazia; soltar fora devolve o cartão.
+- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar fora devolve o cartão.
 - **Teclado:** as setas escolhem a janela, `Enter` vai até ela, `Esc` fecha. Digitar não faz nada. Um clique num espaço vazio
   também fecha.
 
-As miniaturas só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
+As fotos só existem com a visão geral aberta: fechada, nada é capturado. Com a tela travada (ou com a faixa "Manter?" das
 Configurações esperando) ela não abre.
 
-**Falta conferir no notebook:** as miniaturas ao vivo e o desempenho com várias janelas, o voo, dois monitores, o gesto de
+**Falta conferir no notebook:** as fotos e o desempenho com várias janelas, o voo, dois monitores, o gesto de
 verdade, e fechar e mover janelas pelo × e pelo arrasto.
 
 ### Minimizar (Super+H)
@@ -325,10 +326,11 @@ as escondidas, a janela em tela cheia e a fixada, e dois monitores.
 ### Clipboard (Super+V)
 
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
-sem escurecer o resto. Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e **Anotações**. A aba Clipboard
-mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado; senhas marcadas como sensíveis pelo
-gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde quiser. A gaveta fecha ao travar a
-tela e ao abrir um painel da barra.
+sem escurecer o resto. Enquanto ela aparece, as janelas lado a lado daquela tela sobem para dar lugar a ela, como nas
+Configurações (as flutuantes ficam onde estão). Ela tem três abas, todas com a mesma altura: **Clipboard**, **Emoji** e
+**Anotações**. A aba Clipboard mostra os 100 itens mais recentes do histórico (o `cliphist` grava tudo o que é copiado;
+senhas marcadas como sensíveis pelo gerenciador de senhas não entram). Escolher um item **só copia**: depois é colar onde
+quiser. A gaveta fecha ao travar a tela e ao abrir um painel da barra.
 
 - **Cartões:** o tipo no topo; texto até 5 linhas com "…"; link em azul; código em verde; cor com a amostra; imagem com a
   prévia (o tamanho no topo). Os chips filtram por tipo e digitar já busca.

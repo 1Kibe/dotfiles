@@ -61,10 +61,3 @@ function goToAreaAndFocus(area, address) {
         ? "dotfiles_area.go(" + area + ') hl.dispatch(hl.dsp.focus({ window = "address:' + address + '" }))'
         : null
 }
-// A new empty area: on one screen (dispatch) or on every screen (eval)
-function emptyArea() {
-    return 'hl.dsp.focus({ workspace = "empty" })'
-}
-function emptyAreaTogether() {
-    return "dotfiles_area.empty()"
-}

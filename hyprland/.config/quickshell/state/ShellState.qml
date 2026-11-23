@@ -30,6 +30,9 @@ Singleton {
     // The monitor whose settings panel shows (opening, open or closing), for
     // bar/SettingsZone
     property string settingsOn: ""
+    // The monitor whose clipboard drawer shows (opening, open or closing),
+    // for clipboard/ClipboardZone
+    property string clipboardOn: ""
     // The screens that have a bar ("Mostrar a barra em"; set by shell.qml).
     // The panels live in the bar: on a screen without one, a keybind opens
     // them on the first screen that has it

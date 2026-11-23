@@ -174,15 +174,4 @@ Singleton {
         return true
     }
 
-    // "+": a new empty area, and close
-    function newArea() {
-        if (!open)
-            return false
-        if (AreasState.together)
-            evalLua(Act.emptyAreaTogether())
-        else
-            dispatch(Act.emptyArea())
-        hide()
-        return true
-    }
 }
