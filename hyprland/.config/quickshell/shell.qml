@@ -23,6 +23,9 @@ ShellRoot {
     readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
     // The night light keeps its hours with the panel closed too
     readonly property bool nightLightOn: NightLight.wanted
+    // The minimize state from the start: it follows Hyprland's events (a
+    // window asking to be minimized) before Super+H is ever pressed
+    readonly property int minimizedNow: MinimizeState.entries.length
 
     // Desktop wallpaper, below every window
     Wallpaper {}
@@ -259,8 +262,6 @@ ShellRoot {
     // focused ones
     IpcHandler {
         target: "minimize"
-        // Keeps the minimize state alive from the start (its events)
-        readonly property var state: MinimizeState
 
         function focused(): string {
             const t = Hyprland.activeToplevel
