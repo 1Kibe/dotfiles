@@ -167,6 +167,12 @@ Singleton {
 
     // Anotações (the clipboard drawer's tab): the 5 colors of a note
     readonly property var noteColors: [yellow, green, blue, orange, purple]
+    // Their motion: a row coming in grows from noteEnterScale (and leaves
+    // shrinking to it), a dragged row is lifted to noteLift; "Copiado" stays
+    // on the button for noteCopiedFlash
+    readonly property real noteEnterScale: 0.92
+    readonly property real noteLift: 1.03
+    readonly property int noteCopiedFlash: 1000
     readonly property int emojiCell: 48     // emoji tab of the strip
     readonly property string emojiFont: "Noto Color Emoji"   // package noto-fonts-emoji
 
