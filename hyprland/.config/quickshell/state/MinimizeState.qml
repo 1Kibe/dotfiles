@@ -184,6 +184,7 @@ Singleton {
         else if (fs & 1)
             send(Act.unsetFullscreen(address, "maximized"))
         if (!send(Act.hide(address))) {
+            dropFlights(address)
             unquiet(address)
             dropShot(address)
             done()
@@ -204,7 +205,12 @@ Singleton {
     // ── The window's props while its picture flies ──
     // No animation of Hyprland's (and, coming back, invisible), with a tag
     // saying so: put back when it is hidden, when it has landed, on any
-    // failure, and by a restart of the shell for a window left so
+    // failure, and by a restart of the shell for a window left so. Hyprland
+    // 0.57 cannot take an override back ("unset" is not a value of
+    // set_prop): putting back sets opacity 1 (a multiplier: the decoration's
+    // active and inactive opacity still apply) and no_anim off, which is what
+    // every window has here (no window rule of this config sets either; a
+    // rule added for one later would be overridden after a minimize)
     function quiet(address, invisible) {
         send(Act.tagProps(address, true))
         send(Act.noAnim(address, true))
@@ -306,21 +312,49 @@ Singleton {
         }
     }
 
-    // Waits between the hide and its check (and between the two checks)
+    // Waits between the hide and its check (and between the two checks);
+    // Hyprland not answering (an empty list, or hyprctl timing out): asked
+    // again up to confirmTries times, then the window is given back
     readonly property int confirmMs: 200
+    readonly property int confirmTries: 10
     property var confirm: []
+    property bool confirmAsking: false
+    // Not known to be hidden after all: back in view, its props back, refused
+    function giveBack(w) {
+        root.pending = root.pending.filter(x => x !== w.address)
+        dropFlights(w.address)
+        const mons = monitorsNow()
+        const mon = mons.find(m => w.entry && m.name === w.entry.monitor) ?? mons[0]
+        if (mon && Act.isWorkspace(mon.active) && !locked)
+            send(Act.bringTo(w.address, mon.active))
+        unquiet(w.address)
+        dropShot(w.address)
+        refused("A janela não foi minimizada")
+    }
     Timer {
         id: confirmTimer
         interval: root.confirmMs
         onTriggered: {
-            const waiting = root.confirm
-            root.confirm = []
+            // One question at a time; the list is emptied only by its answer
+            if (root.confirmAsking || root.confirm.length === 0)
+                return
+            const waiting = root.confirm.slice()
+            root.confirmAsking = true
             root.clientsNow(list => {
+                root.confirmAsking = false
+                root.confirm = root.confirm.filter(w => !waiting.includes(w))
                 const all = Lists.toList(list)
-                // No answer from Hyprland: not known yet, asked again
+                // No answer from Hyprland: asked again, a few times
                 if (all.length === 0) {
-                    root.confirm = root.confirm.concat(waiting)
-                    confirmTimer.restart()
+                    for (const w of waiting) {
+                        const n = (w.empties ?? 0) + 1
+                        if (n >= root.confirmTries)
+                            root.giveBack(w)
+                        else
+                            root.confirm = root.confirm.concat([Object.assign({}, w, { empties: n })])
+                    }
+                    if (root.confirm.length > 0)
+                        confirmTimer.restart()
                     return
                 }
                 for (const w of waiting) {
@@ -333,18 +367,23 @@ Singleton {
                     } else if (!c) {
                         // Closed meanwhile: nothing to say
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.dropFlights(w.address)
                         root.dropShot(w.address)
                     } else if ((w.tries ?? 0) < 1) {
                         // Late: one more look before giving up
                         root.confirm = root.confirm.concat([Object.assign({}, w, { tries: 1 })])
-                        confirmTimer.restart()
                     } else {
+                        // Not hidden (it is still on its workspace): its props
+                        // back, its picture no longer flying, refused
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.dropFlights(w.address)
                         root.unquiet(w.address)
                         root.dropShot(w.address)
                         root.refused("A janela não foi minimizada")
                     }
                 }
+                if (root.confirm.length > 0)
+                    confirmTimer.restart()
             })
         }
     }
@@ -629,6 +668,10 @@ Singleton {
     }
     function canShot(c, list) {
         if (locked || shotDir === "" || screenBusy())
+            return false
+        // Coming back (invisible until its picture lands): no picture of it
+        const a = Hypr.windowAddress(String(c && c.address || ""))
+        if (flights.some(f => f.address === a) || landWait.some(w => w.address === a))
             return false
         const mons = monitorsNow()
         const mon = mons.find(m => m.id === c.monitor)

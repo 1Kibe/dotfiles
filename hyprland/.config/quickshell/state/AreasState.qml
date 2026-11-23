@@ -319,8 +319,40 @@ Singleton {
         id: jobComponent
         Job {}
     }
+    // A command that never ends (hyprctl stuck) answers anyway after
+    // jobTimeoutMs, with code -1 and no output: whoever waits on it (the
+    // minimize module's hide, bring back and landing) is never left hanging
+    property int jobTimeoutMs: 4000
+    property var jobsDue: []
     function run(command, done) {
-        const job = jobComponent.createObject(root, { command: command, done: done || null })
-        job.running = true
+        // `over` is set by the answer (the job destroys itself after it)
+        const entry = { job: null, over: false, due: Date.now() + jobTimeoutMs }
+        entry.job = jobComponent.createObject(root, { command: command, done: (code, text) => {
+            entry.over = true
+            if (done)
+                done(code, text)
+        } })
+        jobsDue = jobsDue.concat([entry])
+        entry.job.running = true
+        if (!jobGuard.running)
+            jobGuard.start()
+    }
+    Timer {
+        id: jobGuard
+        interval: 250
+        repeat: true
+        onTriggered: {
+            const now = Date.now()
+            const ended = root.jobsDue.filter(j => j.over || j.due <= now)
+            root.jobsDue = root.jobsDue.filter(j => !ended.includes(j))
+            for (const j of ended) {
+                if (!j.over) {
+                    j.job.running = false
+                    j.job.finish(-1, "")
+                }
+            }
+            if (root.jobsDue.length === 0)
+                jobGuard.stop()
+        }
     }
 }
