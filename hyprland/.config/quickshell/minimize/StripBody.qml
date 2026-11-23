@@ -333,8 +333,12 @@ Item {
     ListModel {
         id: rowModel
     }
+    // The rows shown, by address; the model follows it (from its own
+    // change: a handler of entries could read it before it is worked out)
+    readonly property var rowAddrs: (all ? entries : entries.slice(0, rowsNow)).map(e => e.address)
+    onRowAddrsChanged: syncRows()
     function syncRows() {
-        const want = (all ? entries : entries.slice(0, rowsNow)).map(e => e.address)
+        const want = rowAddrs
         for (let i = rowModel.count - 1; i >= 0; i--) {
             if (want[i] !== rowModel.get(i).addr)
                 rowModel.remove(i)
@@ -342,18 +346,33 @@ Item {
         for (let i = rowModel.count; i < want.length; i++)
             rowModel.append({ addr: want[i] })
     }
-    onEntriesChanged: syncRows()
-    onRowsNowChanged: {
-        keptRows = rowsNow
-        syncRows()
-    }
-    onAllChanged: syncRows()
+    onRowsNowChanged: keptRows = rowsNow
 
     // ── The preview of the row under the mouse (names only) ──
     property var hoveredEntry: null
     property real hoveredY: 0
+    readonly property int hoverIndex: hoveredEntry ? rowAddrs.indexOf(hoveredEntry.address) : -1
+    // Each entering is a turn; leaving a row clears it only a turn later if
+    // no other row was entered since (from one row to the next, the preview
+    // and the light never go through "none")
+    property int hoverTurn: 0
+    function enterRow(entry, y) {
+        hoverTurn++
+        hoveredY = y
+        hoveredEntry = entry
+    }
+    function leaveRow(address) {
+        const turn = hoverTurn
+        Qt.callLater(() => {
+            if (root.hoverTurn === turn && root.hoveredEntry && root.hoveredEntry.address === address)
+                root.hoveredEntry = null
+        })
+    }
+    readonly property Item previewItem: preview
+    readonly property Item lightItem: rowLight
     MinimizedPreview {
-        entry: root.level === "names" ? root.hoveredEntry : null
+        id: preview
+        entry: root.level === "names" && root.hoverIndex >= 0 ? root.hoveredEntry : null
         x: root.width - root.pieceW - width - Theme.spacing
         y: Geom.cardTop(root.hoveredY, root.areaTop, root.areaBottom, height)
     }
@@ -418,6 +437,32 @@ Item {
             NumberAnimation { duration: Theme.dur(Theme.animFast) }
         }
 
+        // The light under the row with the mouse: one, sliding from row to
+        // row (reduce motion: it moves at once), fading in and out
+        Rectangle {
+            id: rowLight
+            readonly property int at: root.hoverIndex
+            // Already lit: a new row is a slide (a first one, a jump)
+            property bool slide: false
+            onAtChanged: {
+                if (at < 0)
+                    return
+                slide = visible
+                y = at * Theme.minimizeRow
+            }
+            width: rowsColumn.width
+            height: Theme.minimizeRow
+            color: Theme.veil
+            opacity: at >= 0 ? 1 : 0
+            visible: opacity > 0
+            Behavior on opacity {
+                NumberAnimation { duration: Theme.dur(Theme.animFast) }
+            }
+            Behavior on y {
+                enabled: rowLight.slide && !Theme.reduceMotion
+                NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
+            }
+        }
         Column {
             id: rowsColumn
             width: rowsView.width
@@ -432,11 +477,10 @@ Item {
                     readonly property string iconPath: AppIcons.icon(modelData.cls)
                     width: rowsColumn.width
                     height: Theme.minimizeRow
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: rowMouse.containsMouse || xMouse.containsMouse ? Theme.veil : Theme.clear
+                    function enter() {
+                        root.enterRow(modelData, mapToItem(root, 0, height / 2).y)
                     }
+
                     MouseArea {
                         id: rowMouse
                         anchors.fill: parent
@@ -445,13 +489,9 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onEntered: {
                             MinimizeState.clearAttention(row.modelData.address)
-                            root.hoveredEntry = row.modelData
-                            root.hoveredY = row.mapToItem(root, 0, row.height / 2).y
+                            row.enter()
                         }
-                        onExited: {
-                            if (root.hoveredEntry && root.hoveredEntry.address === row.modelData.address)
-                                root.hoveredEntry = null
-                        }
+                        onExited: root.leaveRow(row.modelData.address)
                         onClicked: event => {
                             if (event.button === Qt.MiddleButton)
                                 MinimizeState.close(row.modelData.address)
@@ -513,6 +553,9 @@ Item {
                                 anchors.margins: -Theme.spacing / 2
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                // It takes the hover from the row: still that row
+                                onEntered: row.enter()
+                                onExited: root.leaveRow(row.modelData.address)
                                 onClicked: MinimizeState.close(row.modelData.address)
                             }
                         }
