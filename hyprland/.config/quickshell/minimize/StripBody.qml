@@ -90,14 +90,16 @@ Item {
     onOpenNowChanged: MinimizeState.setStripOpen(screenName, openNow)
     Component.onDestruction: MinimizeState.setStripOpen(screenName, false)
     readonly property int count: entries.length
+    // The level after this round: the count changes while the piece's
+    // geometry (g, which reads the level) is being worked out
     onCountChanged: {
         if (count === 0) {
             roomTimer.stop()
             afterCloseTimer.stop()
         }
-        send(count > 0 ? "filled" : "empty")
+        Qt.callLater(() => root.send(root.count > 0 ? "filled" : "empty"))
     }
-    Component.onCompleted: send(count > 0 ? "filled" : "empty")
+    Component.onCompleted: Qt.callLater(() => root.send(root.count > 0 ? "filled" : "empty"))
 
     readonly property bool hovered: hit.hovered
     onHoveredChanged: {
@@ -274,11 +276,13 @@ Item {
     }
     opacity: Theme.reduceMotion ? fade : 1
 
-    // The part that takes the mouse: the piece, and with the wire a wider
-    // invisible zone on the edge
+    // The part that takes the mouse: the piece, never narrower than a wider
+    // invisible zone on the edge. Opening, the piece starts at the wire's
+    // width: the zone must not shrink under a mouse holding still (it would
+    // leave, close, come back and open again, without end)
     Item {
         id: hitArea
-        readonly property real zone: root.level === "wire" ? Math.max(root.pieceW, Theme.minimizeHit) : root.pieceW
+        readonly property real zone: Math.max(root.pieceW, Theme.minimizeHit)
         x: root.width - zone
         y: root.pieceTop
         width: root.pieceW > 0 ? zone : 0
