@@ -101,7 +101,20 @@ Item {
     }
     Component.onCompleted: Qt.callLater(() => root.send(root.count > 0 ? "filled" : "empty"))
 
-    readonly property bool hovered: hit.hovered
+    // The mouse on the piece: on the whole strip, the rows included (a
+    // handler on a sibling item lost the hover to a row's MouseArea as soon
+    // as the rows showed, and the strip closed and opened without end). The
+    // window takes the mouse only on the hit zone (its mask), so on the strip
+    // means on the piece (checked here too: the pointer inside the zone)
+    HoverHandler {
+        id: hit
+    }
+    readonly property bool hovered: {
+        if (!hit.hovered || hitArea.width <= 0)
+            return false
+        const p = hit.point.position
+        return p.x >= hitArea.x && p.x < hitArea.x + hitArea.width && p.y >= hitArea.y && p.y < hitArea.y + hitArea.height
+    }
     onHoveredChanged: {
         if (!hovered) {
             roomTimer.stop()
@@ -286,16 +299,23 @@ Item {
     // invisible zone on the edge. Opening, the piece starts at the wire's
     // width: the zone must not shrink under a mouse holding still (it would
     // leave, close, come back and open again, without end)
+    // Nor shorter than the wire: opening, the piece can get shorter than
+    // the wire (one window: 64 px of wire, 46 of icons), and a mouse still
+    // near its end would be left outside
+    readonly property var gw: Geom.place({
+        areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
+        gap: Theme.minimizeRadius, level: "wire", n: count
+    }, m)
     Item {
         id: hitArea
         readonly property real zone: Math.max(root.pieceW, Theme.minimizeHit)
+        readonly property real zoneTop: root.gw.visible ? Math.min(root.pieceTop, root.gw.top) : root.pieceTop
+        readonly property real zoneBottom: root.gw.visible ? Math.max(root.pieceTop + root.pieceH, root.gw.top + root.gw.height)
+                                                            : root.pieceTop + root.pieceH
         x: root.width - zone
-        y: root.pieceTop
+        y: zoneTop
         width: root.pieceW > 0 ? zone : 0
-        height: root.pieceH
-        HoverHandler {
-            id: hit
-        }
+        height: Math.max(0, zoneBottom - zoneTop)
     }
     readonly property Item hitItem: hitArea
 
