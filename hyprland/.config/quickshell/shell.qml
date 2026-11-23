@@ -9,6 +9,8 @@ import qs.lock
 import qs.wallpaper
 import qs.state
 import qs.settings
+import qs.overview
+import qs.minimize
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -21,6 +23,9 @@ ShellRoot {
     readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
     // The night light keeps its hours with the panel closed too
     readonly property bool nightLightOn: NightLight.wanted
+    // The minimize state from the start: it follows Hyprland's events (a
+    // window asking to be minimized) before Super+H is ever pressed
+    readonly property int minimizedNow: MinimizeState.entries.length
 
     // Desktop wallpaper, below every window
     Wallpaper {}
@@ -58,6 +63,13 @@ ShellRoot {
         model: Quickshell.screens
         delegate: Component {
             SettingsZone {}
+        }
+    }
+    // The clipboard drawer's space on the bottom, only while it shows
+    Variants {
+        model: Quickshell.screens
+        delegate: Component {
+            ClipboardZone {}
         }
     }
 
@@ -158,7 +170,7 @@ ShellRoot {
     BackgroundPicker {}
 
     // Super+V: clipboard history over the focused monitor
-    ClipboardOverlay {}
+    ClipboardDrawer {}
 
     IpcHandler {
         target: "clipboard"
@@ -218,6 +230,48 @@ ShellRoot {
 
         function check(): string {
             return Updates.checkNow()
+        }
+    }
+
+    // The overview's windows, one per screen (shown while it is open)
+    Overview {}
+
+    // The minimized windows' strip on each screen's right edge
+    MinimizedStrip {}
+    // A minimized window's picture flying between its place and the wire
+    MinimizeFlight {}
+
+    // Super+Tab and the 3-finger swipe up: the overview of the windows,
+    // on every screen: qs ipc call overview toggle | open | close
+    IpcHandler {
+        target: "overview"
+
+        function toggle(): string {
+            return OverviewState.toggle()
+        }
+        function open(): string {
+            return OverviewState.open ? "ok" : OverviewState.show()
+        }
+        function close(): string {
+            OverviewState.hide()
+            return "ok"
+        }
+    }
+
+    // Super+H and Super+Shift+H: minimize the focused window, bring the
+    // last one back (state/MinimizeState): qs ipc call minimize focused |
+    // restoreLast. No free argument: the window and the screen are the
+    // focused ones
+    IpcHandler {
+        target: "minimize"
+
+        function focused(): string {
+            const t = Hyprland.activeToplevel
+            return t && MinimizeState.minimize(String(t.address || "")) ? "ok" : "nada"
+        }
+        function restoreLast(): string {
+            const m = Hyprland.focusedMonitor
+            return MinimizeState.restoreLast(m ? m.name : "") ? "ok" : "nada"
         }
     }
 

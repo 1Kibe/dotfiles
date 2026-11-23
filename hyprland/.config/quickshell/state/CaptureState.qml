@@ -249,6 +249,8 @@ Singleton {
         barReady = false
         ShellState.close()
         ClipboardStore.close()
+        if (OverviewState.open)
+            OverviewState.hide()
         if (!layout.running)
             layout.running = true
     }
@@ -285,6 +287,8 @@ Singleton {
         barReady = false
         ShellState.close()
         ClipboardStore.close()
+        if (OverviewState.open)
+            OverviewState.hide()
         if (!layout.running)
             layout.running = true   // monitors and windows, then begin()
     }
