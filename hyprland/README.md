@@ -50,7 +50,7 @@ E o Quickshell, em `.config/quickshell/`:
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
 | `overview/` | A visão geral do `Super+Tab`: a faixa das áreas, os cartões das janelas e o voo |
-| `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o deslize das janelas |
+| `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o voo da foto da janela até o fio |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
 | `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
 
@@ -304,7 +304,9 @@ continua rodando. O botão de minimizar do próprio app (Spotify, navegador) faz
 última, para a área atual da tela em foco.
 
 - **Na borda direita** de cada tela fica um fio fino com um pontinho por janela que saiu daquela tela (com mais de oito, sete
-  e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, ele abre um instante mostrando a janela.
+  e um traço). Sem nenhuma minimizada, o fio some para dentro da borda. Ao minimizar, a janela some na hora e uma foto dela
+  voa encolhendo até o fio, que abre um instante mostrando a janela; ao trazer, a foto faz o caminho de volta e a janela
+  aparece quando ela chega (com "reduzir movimento", só esmaece).
 - **Mouse na borda:** depois de um instante o fio cresce e mostra os ícones; parado em cima, os nomes, e a linha sob o mouse
   mostra a prévia ao lado: o nome do app, o título e a foto da janela tirada ao minimizar (sem foto, o ícone do app). Clicar
   traz a janela para esta tela; o × ou o botão do meio fecham sem trazer. Quando não cabem todas, a última linha vira "+N",

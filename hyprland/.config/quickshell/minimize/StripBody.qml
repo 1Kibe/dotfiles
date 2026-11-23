@@ -248,6 +248,12 @@ Item {
     readonly property real wantTop: all ? Math.min(Math.max(freeTop, (areaTop + areaBottom) / 2 - allHeight / 2), freeBottom - allHeight)
                                         : g.top
     readonly property real wantH: all ? allHeight : g.visible ? g.height : 0
+    // Where a minimized window's picture flies to (MinimizeFlight)
+    readonly property real wireMid: wantTop + wantH / 2
+    onWireMidChanged: {
+        if (wantH > 0)
+            MinimizeState.setWireAt(screenName, wireMid)
+    }
     // Following a panel or the drawer: in the same movement as theirs (no
     // animation of its own); changing level or count: animated
     property bool edgeMoving: false

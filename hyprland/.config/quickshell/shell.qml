@@ -238,6 +238,8 @@ ShellRoot {
 
     // The minimized windows' strip on each screen's right edge
     MinimizedStrip {}
+    // A minimized window's picture flying between its place and the wire
+    MinimizeFlight {}
 
     // Super+Tab and the 3-finger swipe up: the overview of the windows,
     // on every screen: qs ipc call overview toggle | open | close

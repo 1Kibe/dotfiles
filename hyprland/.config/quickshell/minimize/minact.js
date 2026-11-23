@@ -69,6 +69,26 @@ function tagTiled(address, on) {
         ? 'hl.dsp.window.tag({ window = "address:' + address + '", tag = "' + (on ? "+" : "-") + TILED_TAG + '" })'
         : null
 }
+// The flight (the 7d animation): the window hidden and brought back with no
+// animation of Hyprland's own, invisible while its picture flies, and a tag
+// saying so, so a restart of the shell puts both back on any window left
+// with them. Fixed values only: on or off, invisible or seen.
+var PROPS_TAG = "qsminprops"
+function noAnim(address, on) {
+    return isAddress(address) && typeof on === "boolean"
+        ? 'hl.dsp.window.set_prop({ window = "address:' + address + '", prop = "no_anim", value = "' + (on ? "1" : "0") + '" })'
+        : null
+}
+function seen(address, on) {
+    return isAddress(address) && typeof on === "boolean"
+        ? 'hl.dsp.window.set_prop({ window = "address:' + address + '", prop = "opacity", value = "' + (on ? "1" : "0") + '" })'
+        : null
+}
+function tagProps(address, on) {
+    return isAddress(address) && typeof on === "boolean"
+        ? 'hl.dsp.window.tag({ window = "address:' + address + '", tag = "' + (on ? "+" : "-") + PROPS_TAG + '" })'
+        : null
+}
 // Out of fullscreen or maximized (mode "fullscreen" or "maximized")
 function unsetFullscreen(address, mode) {
     return isAddress(address) && (mode === "fullscreen" || mode === "maximized")

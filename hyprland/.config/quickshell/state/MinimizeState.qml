@@ -21,7 +21,10 @@ import "../control/lists.js" as Lists
 // restoreByApp). A window in fullscreen or maximized leaves that state
 // first; one already in another special workspace is refused. After a
 // restart of the shell the list is made again from the hidden windows,
-// so a window never stays stuck there.
+// so a window never stays stuck there. Hiding and bringing back, the
+// window does not move on the screen: Hyprland hides it and brings it at
+// once, and its picture flies between its place and the wire
+// (minimize/MinimizeFlight); coming back it is seen when the picture lands.
 //
 // Every Lua sent comes from minimize/minact.js: a checked address and
 // whole numbers only. Every address (from a click, an event or another
@@ -168,43 +171,107 @@ Singleton {
             done()
             return
         }
-        // Coming back a moment ago and minimized again: it was going to be
-        // tiled again, so it is a tiled one
-        if (retile.some(r => r.address === address)) {
-            retile = retile.filter(r => r.address !== address)
-            e.floating = false
-        }
+        // Hidden at once, with no animation of Hyprland's own: its picture
+        // flies from its place to the wire instead (the window's props are
+        // put back once Hyprland shows it hidden). One still coming back
+        // stops its flight (its landing would show it again)
+        dropFlights(address)
+        quiet(address, false)
         // Out of fullscreen or maximized first (it does not come back so)
         const fs = Number(c.fullscreen) || 0
         if (fs & 2)
             send(Act.unsetFullscreen(address, "fullscreen"))
         else if (fs & 1)
             send(Act.unsetFullscreen(address, "maximized"))
-        // Seen on its screen: it slides out past the right edge first
-        // (floating where it is, so it does not jump), then is hidden;
-        // reduce motion, fullscreen or a screen to the right: at once
-        const plan = slides ? Slide.out(c, monitorsNow()) : null
-        if (plan) {
-            e.slid = true
-            e.from = { x: plan.mon.x, y: plan.mon.y, w: plan.mon.w, h: plan.mon.h }
-            e.size = plan.size
-            if (c.floating !== true) {
-                send(Act.tagTiled(address, true))
-                send(Act.float(address, true))
-            }
-            send(Act.resizeTo(address, plan.size[0], plan.size[1]))
-            send(Act.moveTo(address, plan.at[0], plan.at[1]))
-            send(Act.moveTo(address, plan.off[0], plan.off[1]))
-            sliding = sliding.concat([{ address: address, entry: e, due: Date.now() + Theme.dur(Theme.minimizeSlide) }])
-            arm(slideTimer, sliding)
+        if (!send(Act.hide(address))) {
+            unquiet(address)
+            dropShot(address)
+            done()
             return
         }
-        hideNowAfterSlide(address, e)
+        const mon = monitorsNow().find(m => m.id === c.monitor)
+        const g = shotGeom(c)
+        // Its screen, so its place can be moved to another one coming back
+        if (mon)
+            e.from = { x: mon.x, y: mon.y, w: mon.w, h: mon.h }
+        if (mon && g)
+            fly("out", address, e, { x: g.at[0] - mon.x, y: g.at[1] - mon.y, w: g.size[0], h: g.size[1] }, mon)
+        // Listed only once Hyprland shows it in the hidden workspace
+        confirm.push({ address: address, entry: e })
+        confirmTimer.restart()
     }
-    // ── The slide: windows on their way out, hidden when it ends ──
-    // Reduce motion or no animation time: no slide at all
-    readonly property bool slides: !Theme.reduceMotion && Theme.dur(Theme.minimizeSlide) > 0
-    property var sliding: []
+
+    // ── The window's props while its picture flies ──
+    // No animation of Hyprland's (and, coming back, invisible), with a tag
+    // saying so: put back when it is hidden, when it has landed, on any
+    // failure, and by a restart of the shell for a window left so
+    function quiet(address, invisible) {
+        send(Act.tagProps(address, true))
+        send(Act.noAnim(address, true))
+        if (invisible)
+            send(Act.seen(address, false))
+    }
+    function unquiet(address) {
+        send(Act.seen(address, true))
+        send(Act.noAnim(address, false))
+        send(Act.tagProps(address, false))
+    }
+    function taggedProps(c) {
+        return Lists.toList(c && c.tags).some(t => String(t).replace(/\*$/, "") === Act.PROPS_TAG)
+    }
+
+    // ── The flight (minimize/MinimizeFlight draws it) ──
+    // { id, dir ("out" to the wire, "in" back), address, screen, from, to
+    // ({ x, y, w, h } on that screen), shot, cls, due }. The layer reports
+    // the end (flightDone); past `due` it ends all the same
+    property var flights: []
+    property int flightSeq: 0
+    // The middle of each screen's wire (StripBody says; the screen's middle
+    // when it is not out yet)
+    property var wireAt: ({})
+    function setWireAt(screen, y) {
+        if (wireAt[screen] === y)
+            return
+        const m = Object.assign({}, wireAt)
+        m[screen] = y
+        wireAt = m
+    }
+    function fly(dir, address, e, rect, mon) {
+        const s = Theme.minimizeFlyScale
+        const wy = wireAt[mon.name] ?? mon.h / 2
+        const wire = { x: mon.w - Theme.wireWidth / 2 - rect.w * s / 2, y: wy - rect.h * s / 2, w: rect.w * s, h: rect.h * s }
+        // Reduce motion: no flight, the picture only fades where the window is
+        const far = Theme.reduceMotion ? rect : wire
+        flightSeq++
+        flights = flights.concat([{
+            id: flightSeq, dir: dir, address: address, screen: mon.name,
+            from: dir === "out" ? rect : far, to: dir === "out" ? far : rect,
+            shot: e && e.shot ? e.shot : "", cls: e ? e.cls : "",
+            due: Date.now() + Theme.dur(Theme.minimizeFly) + root.flightSpareMs
+        }])
+        arm(flightTimer, flights)
+    }
+    readonly property int flightSpareMs: 500
+    // A window's flights and its wait for a place, ended with nothing put
+    // back (the caller sets its props)
+    function dropFlights(address) {
+        flights = flights.filter(f => f.address !== address)
+        landWait = landWait.filter(w => w.address !== address)
+        arm(flightTimer, flights)
+        arm(landTimer, landWait)
+    }
+    function flightDone(id) {
+        const f = flights.find(x => x.id === id)
+        if (!f)
+            return
+        flights = flights.filter(x => x.id !== id)
+        arm(flightTimer, flights)
+        // Landed: the window seen again, its picture no longer needed
+        if (f.dir === "in") {
+            unquiet(f.address)
+            dropShot(f.address)
+        }
+    }
     // A timer set for the earliest item due (a later one never delays it)
     function arm(timer, items) {
         if (items.length === 0) {
@@ -215,84 +282,30 @@ Singleton {
         timer.restart()
     }
     Timer {
-        id: slideTimer
+        id: flightTimer
         onTriggered: {
             const now = Date.now() + 20
-            const due = root.sliding.filter(w => w.due <= now)
-            root.sliding = root.sliding.filter(w => w.due > now)
-            for (const w of due)
-                root.hideNowAfterSlide(w.address, w.entry)
-            root.arm(slideTimer, root.sliding)
+            for (const f of root.flights.filter(x => x.due <= now))
+                root.flightDone(f.id)
+            root.arm(flightTimer, root.flights)
         }
     }
-    // Locking while windows slide: what is under way ends now (the ones
-    // leaving are hidden, the ones coming back are tiled again); nothing
-    // is sent after that until it unlocks
+    // Locking with pictures flying: they end now, and a window coming back
+    // is seen at once (under the lock)
     onLockedChanged: {
         if (!locked)
             return
-        const out = sliding
-        sliding = []
-        slideTimer.stop()
-        for (const w of out) {
-            if (send(Act.hide(w.address))) {
-                confirm.push({ address: w.address, entry: w.entry })
-                confirmTimer.restart()
-            }
-        }
-        const back = retile
-        retile = []
-        retileTimer.stop()
-        for (const r of back) {
-            send(Act.float(r.address, false))
-            send(Act.tagTiled(r.address, false))
+        for (const f of flights)
+            flightDone(f.id)
+        const waiting = landWait
+        landWait = []
+        landTimer.stop()
+        for (const w of waiting) {
+            unquiet(w.address)
+            dropShot(w.address)
         }
     }
-    // A slid window not hidden after all: back to its place and state
-    // (Locked: nothing is sent; the next reload brings it in)
-    function slideBack(e) {
-        if (!e || !e.slid || !e.at || locked)
-            return
-        send(Act.moveTo(e.address, Math.round(e.at.x), Math.round(e.at.y)))
-        if (e.floating !== true) {
-            send(Act.float(e.address, false))
-            send(Act.tagTiled(e.address, false))
-        }
-    }
-    function hideNowAfterSlide(address, e) {
-        const done = () => root.pending = root.pending.filter(x => x !== address)
-        // Locked meanwhile: one that slid out is hidden all the same (never
-        // left past the edge); one that did not is left in place
-        if (!e.slid) {
-            if (locked)
-                done()
-            else
-                hideSent(address, e)
-            return
-        }
-        // Closed while it slid: nothing to hide
-        clientsNow(list => {
-            const all = Lists.toList(list)
-            if (all.length > 0 && !all.some(x => Hypr.windowAddress(String(x.address || "")) === address)) {
-                root.dropShot(address)
-                done()
-                return
-            }
-            root.hideSent(address, e)
-        })
-    }
-    function hideSent(address, e) {
-        const done = () => root.pending = root.pending.filter(x => x !== address)
-        if (!send(Act.hide(address))) {
-            dropShot(address)
-            slideBack(e)
-            done()
-            return
-        }
-        // Listed only once Hyprland shows it in the hidden workspace
-        confirm.push({ address: address, entry: e })
-        confirmTimer.restart()
-    }
+
     // Waits between the hide and its check (and between the two checks)
     readonly property int confirmMs: 200
     property var confirm: []
@@ -314,6 +327,7 @@ Singleton {
                     const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === w.address)
                     if (c && c.workspace && c.workspace.name === List.SPECIAL) {
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.unquiet(w.address)
                         root.entries = List.push(root.entries, w.entry)
                         root.minimized(w.address)
                     } else if (!c) {
@@ -326,8 +340,8 @@ Singleton {
                         confirmTimer.restart()
                     } else {
                         root.pending = root.pending.filter(x => x !== w.address)
+                        root.unquiet(w.address)
                         root.dropShot(w.address)
-                        root.slideBack(w.entry)
                         root.refused("A janela não foi minimizada")
                     }
                 }
@@ -338,7 +352,10 @@ Singleton {
     // ── Bring back ──
     // To the active workspace of the screen `monitorName` (the focused one
     // when not known), with the focus; only a window that is still in the
-    // hidden workspace (one taken elsewhere leaves the list, untouched)
+    // hidden workspace (one taken elsewhere leaves the list, untouched).
+    // It comes back invisible and with no animation of Hyprland's; once
+    // Hyprland has placed it, its picture flies from the wire to that place
+    // and the window is seen when it lands
     // Being brought back (a double click brings it once)
     property var restoring: []
     function restore(address, monitorName, fallback) {
@@ -368,23 +385,17 @@ Singleton {
                     root.restoreLast(monitorName)
                 return
             }
-            if (!root.send(Act.bringTo(a, mon.active)))
+            // Its picture still flying to the wire: it turns back from here
+            root.dropFlights(a)
+            root.quiet(a, true)
+            if (!root.send(Act.bringTo(a, mon.active))) {
+                root.unquiet(a)
                 return
-            // It slid out: it slides in from the right edge of this screen
-            // to its place (moved to this screen), and is tiled again after
+            }
             const e = root.entries.find(x => x.address === a)
-            const plan = e && e.slid && root.slides
-                ? Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, mons) : null
-            if (plan) {
-                root.send(Act.moveTo(a, plan.off[0], plan.off[1]))
-                root.send(Act.moveTo(a, plan.to[0], plan.to[1]))
-                if (e.floating !== true) {
-                    root.retile = root.retile.filter(r => r.address !== a)
-                        .concat([{ address: a, due: Date.now() + Theme.dur(Theme.minimizeSlide) }])
-                    root.arm(retileTimer, root.retile)
-                }
-            } else if (e && e.slid) {
-                // Reduce motion: straight to its place
+            // Hidden by an earlier version that slid it past the edge: to
+            // its place (moved to this screen), tiled again if it was
+            if (e && e.slid) {
                 const b = Slide.back(e.at, e.size ?? (e.at ? [e.at.w, e.at.h] : null), e.from ?? null, mon, [])
                 if (b)
                     root.send(Act.moveTo(a, b.to[0], b.to[1]))
@@ -394,15 +405,58 @@ Singleton {
                 }
             }
             root.send(Act.focus(a))
-            root.dropShot(a)
             root.entries = List.remove(root.entries, a)
             root.restored(a)
+            root.landing(a, e, mon)
             // Checked as the hide is: still hidden (the move did not go
             // through), it is listed again
             root.restoreCheck = root.restoreCheck.concat([a])
             restoreCheckTimer.restart()
         })
         return true
+    }
+    // Where it lands, asked once Hyprland has placed it; no answer in
+    // landMs: the place it had (moved to this screen)
+    readonly property int landMs: 150
+    property var landWait: []
+    function landing(a, e, mon) {
+        landWait = landWait.filter(w => w.address !== a).concat([{ address: a, entry: e, mon: mon, due: Date.now() + landMs }])
+        arm(landTimer, landWait)
+        clientsNow(list => {
+            const w = root.landWait.find(x => x.address === a)
+            if (!w)
+                return
+            root.landWait = root.landWait.filter(x => x !== w)
+            root.arm(landTimer, root.landWait)
+            const c = Lists.toList(list).find(x => Hypr.windowAddress(String(x.address || "")) === a)
+            const g = c && c.workspace && c.workspace.name !== List.SPECIAL ? root.shotGeom(c) : null
+            const at = g ? { x: g.at[0] - mon.x, y: g.at[1] - mon.y, w: g.size[0], h: g.size[1] } : root.keptPlace(e, mon)
+            root.land(a, e, mon, at)
+        })
+    }
+    function keptPlace(e, mon) {
+        const size = e && e.at ? [e.at.w, e.at.h] : null
+        const b = size ? Slide.back(e.at, size, e.from ?? null, mon, []) : null
+        return b ? { x: b.to[0] - mon.x, y: b.to[1] - mon.y, w: size[0], h: size[1] } : null
+    }
+    function land(a, e, mon, at) {
+        if (at && !root.locked) {
+            root.fly("in", a, e, at, mon)
+        } else {
+            root.unquiet(a)
+            root.dropShot(a)
+        }
+    }
+    Timer {
+        id: landTimer
+        onTriggered: {
+            const now = Date.now() + 20
+            const due = root.landWait.filter(w => w.due <= now)
+            root.landWait = root.landWait.filter(w => w.due > now)
+            for (const w of due)
+                root.land(w.address, w.entry, w.mon, root.keptPlace(w.entry, w.mon))
+            root.arm(landTimer, root.landWait)
+        }
     }
     property var restoreCheck: []
     Timer {
@@ -420,22 +474,6 @@ Singleton {
                                   && c.workspace && c.workspace.name === List.SPECIAL))
                     root.reload()
             })
-        }
-    }
-    // Slid in: tiled again once the slide ends
-    property var retile: []
-    Timer {
-        id: retileTimer
-        onTriggered: {
-            const now = Date.now() + 20
-            const due = root.retile.filter(r => r.due <= now)
-            root.retile = root.retile.filter(r => r.due > now)
-            if (!root.locked)
-                for (const r of due) {
-                    root.send(Act.float(r.address, false))
-                    root.send(Act.tagTiled(r.address, false))
-                }
-            root.arm(retileTimer, root.retile)
         }
     }
     function restoreLast(monitorName) {
@@ -499,10 +537,10 @@ Singleton {
                 minimize(addr)
         } else if (name === "closewindow") {
             const a = Hypr.windowAddress(d)
-            retile = retile.filter(r => r.address !== a)
-            if (sliding.some(w => w.address === a)) {
-                sliding = sliding.filter(w => w.address !== a)
-                pending = pending.filter(x => x !== a)
+            // Closed while its picture flies or while it lands: nothing to
+            // put back (the window is gone)
+            if (flights.some(f => f.address === a) || landWait.some(w => w.address === a)) {
+                dropFlights(a)
                 dropShot(a)
             }
             if (entries.some(e => e.address === a)) {
@@ -695,14 +733,23 @@ Singleton {
         clientsNow(list => {
             const all = Lists.toList(list)
             const mons = root.monitorsNow()
-            // Caught by a restart while sliding (out of the hidden workspace,
-            // past its screen's edge): back to the middle of its screen; if
-            // it was tiled is not known, it stays floating
+            // Left with the flight's props by a restart (or anything else):
+            // seen and animated again, whether hidden or not (one flying now
+            // is left to its flight)
+            for (const c of all) {
+                const a = Hypr.windowAddress(String(c.address || ""))
+                if (Act.isAddress(a) && root.taggedProps(c) && !root.flights.some(f => f.address === a)
+                    && !root.landWait.some(w => w.address === a) && !root.pending.includes(a))
+                    root.unquiet(a)
+            }
+            // Caught by a restart of an earlier version while sliding (out
+            // of the hidden workspace, past its screen's edge): back to the
+            // middle of its screen; if it was tiled is not known, it stays
+            // floating
             if (!root.locked) {
                 for (const c of all) {
                     const a = Hypr.windowAddress(String(c.address || ""))
-                    if (!Act.isAddress(a) || !c.workspace || c.workspace.name === List.SPECIAL || !Slide.wasSlid(c, mons)
-                        || root.sliding.some(w => w.address === a))
+                    if (!Act.isAddress(a) || !c.workspace || c.workspace.name === List.SPECIAL || !Slide.wasSlid(c, mons))
                         continue
                     const b = Slide.back(null, c.size, null, Slide.monitorOf(c, mons), [])
                     if (b)
@@ -714,9 +761,9 @@ Singleton {
                 }
             }
             const found = List.fromClients(all, root.monitorNames(), AreasState.together).map(f => {
-                // Slid out in an earlier run (past its screen's edge): it
-                // slides back in to the middle; tiled again if its tag says
-                // it was tiled
+                // Slid out by an earlier version (past its screen's edge): it
+                // comes back to the middle; tiled again if its tag says it
+                // was tiled
                 const c = all.find(x => Hypr.windowAddress(String(x.address || "")) === f.address)
                 if (c && Slide.wasSlid(c, mons))
                     return Object.assign({}, f, { slid: true, floating: !root.taggedTiled(c), from: null, size: [f.at.w, f.at.h] })
