@@ -2,7 +2,9 @@
 // Window cards for the overview: rows, each card keeps its window's aspect
 // ratio, never grows past the real size, never overlaps another card and
 // never leaves the area horizontally. Too many windows: rows keep a minimum
-// height and the result is taller than the area (the middle scrolls).
+// height and the result is taller than the area (the middle scrolls). Each
+// row also keeps labelH under its cards for their labels (the card is the
+// window's photo; the app and title go under it).
 
 function order(a, b) {
     if (a.y !== b.y) return a.y - b.y
@@ -19,9 +21,10 @@ function evenRows(list, count) {
     return rows
 }
 
-// Height every row could have for these rows to fit the area
-function fitHeight(rows, area, gap) {
-    var h = (area.h - gap * (rows.length - 1)) / rows.length
+// Height every row could have for these rows to fit the area (the cards,
+// each row's label under them apart)
+function fitHeight(rows, area, gap, labelH) {
+    var h = (area.h - gap * (rows.length - 1) - labelH * rows.length) / rows.length
     for (var r = 0; r < rows.length; r++) {
         var sum = 0
         for (var i = 0; i < rows[r].length; i++) sum += ratio(rows[r][i])
@@ -43,13 +46,14 @@ function greedyRows(list, area, gap, h) {
     return rows
 }
 
-function arrange(wins, area, gap, minH) {
+function arrange(wins, area, gap, minH, labelH) {
+    labelH = labelH > 0 ? labelH : 0
     var list = wins.filter(function (v) { return v.w > 0 && v.h > 0 }).slice().sort(order)
     if (list.length === 0 || area.w <= 0 || area.h <= 0) return { cards: [], height: 0 }
 
     var bestRows = null, bestH = -1
     for (var n = 1; n <= list.length; n++) {
-        var rows = evenRows(list, n), h = fitHeight(rows, area, gap)
+        var rows = evenRows(list, n), h = fitHeight(rows, area, gap, labelH)
         if (h > bestH) { bestH = h; bestRows = rows }
     }
     var rowH = bestH
@@ -69,7 +73,7 @@ function arrange(wins, area, gap, minH) {
             tallest = Math.max(tallest, ch)
         }
         placed.push({ cards: cards, width: width, height: tallest })
-        total += (r > 0 ? gap : 0) + tallest
+        total += (r > 0 ? gap : 0) + tallest + labelH
     }
 
     var y = area.y + (total < area.h ? (area.h - total) / 2 : 0), out = []
@@ -81,7 +85,18 @@ function arrange(wins, area, gap, minH) {
                        w: Math.round(c.w), h: Math.round(c.h) })
             x += c.w + gap
         }
-        y += placed[k].height + gap
+        y += placed[k].height + labelH + gap
     }
     return { cards: out, height: Math.round(total) }
+}
+
+// A card's label: "app · title", or the app alone when the title is empty
+// or the same; the title alone with no app. Both already cleaned.
+function label(app, title) {
+    var a = String(app || ""), t = String(title || "")
+    if (a === "")
+        return t
+    if (t === "" || t.toLowerCase() === a.toLowerCase())
+        return a
+    return a + " · " + t
 }

@@ -147,11 +147,11 @@ Singleton {
     readonly property int overviewStripHeight: 110
     readonly property int overviewCardMinHeight: 120
     readonly property int overviewCloseSize: 20
-    // A window card's title strip (its height, side margins, gap, icon),
-    // the ×'s inset, a card being dragged and the dragged copy
-    readonly property int overviewTitleHeight: 26
-    readonly property int overviewTitlePad: 8
-    readonly property int overviewTitleGap: 6
+    // A window card's label under it (its height, the gap between icon and
+    // text, the icon), the ×'s inset, a card being dragged and the dragged
+    // copy
+    readonly property int overviewLabelHeight: Math.round(22 * textScale)
+    readonly property int overviewLabelGap: 6
     readonly property int overviewIcon: 16
     readonly property int overviewCloseInset: 3
     readonly property real overviewDragFade: 0.4

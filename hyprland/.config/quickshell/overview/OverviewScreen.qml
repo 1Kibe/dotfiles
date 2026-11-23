@@ -105,7 +105,8 @@ Item {
     property string dragId: ""
     property var frozen: []
     readonly property var liveWindows: dragId !== "" ? frozen : windows
-    readonly property var arranged: Layout.arrange(liveWindows, useful, Theme.overviewGap, Theme.overviewCardMinHeight)
+    readonly property var arranged: Layout.arrange(liveWindows, useful, Theme.overviewGap, Theme.overviewCardMinHeight,
+                                                    Theme.overviewLabelHeight)
     readonly property var byId: {
         const m = {}
         for (const w of liveWindows)
@@ -170,8 +171,8 @@ Item {
         const s = cards[i]
         if (s.y < middle.contentY)
             middle.contentY = s.y
-        else if (s.y + s.h > middle.contentY + middle.height)
-            middle.contentY = s.y + s.h - middle.height
+        else if (s.y + s.h + Theme.overviewLabelHeight > middle.contentY + middle.height)
+            middle.contentY = s.y + s.h + Theme.overviewLabelHeight - middle.height
     }
     function key(event) {
         if (event.key === Qt.Key_Escape)
@@ -297,6 +298,10 @@ Item {
                 height: from.h + (place.h - from.h) * f
                 targetW: place.w
                 targetH: place.h
+                // The label stays under the final place, fading with the veil
+                labelX: place.x - x
+                labelY: place.y + place.h - y
+                labelOpacity: root.progress
                 opacity: dragging ? Theme.overviewDragFade : Theme.reduceMotion ? root.progress : 1
                 win: root.byId[cid] ?? ({ title: "", appClass: "" })
                 chosen: OverviewState.selected === cid

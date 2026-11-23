@@ -271,9 +271,9 @@ grupo, Enter aperta. Aberta por atalho, o anel aparece já no primeiro botão.
 ### Visão geral das janelas (Super+Tab)
 
 `Super+Tab` (ou três dedos para cima no touchpad) cobre as telas com um véu e mostra, em cada uma, as janelas da área atual
-dela lado a lado, sem se cobrir, cada uma num cartão com o ícone, o título e uma foto dela, tirada ao abrir (não atualiza:
-uma captura rodando o tempo todo pesava muito). Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar, voltam (com
-"reduzir movimento", só esmaece).
+dela lado a lado, sem se cobrir: cada cartão é uma foto da janela, tirada ao abrir (não atualiza: uma captura rodando o tempo
+todo pesava muito), com o ícone e "app · título" embaixo. Ao abrir, as janelas voam do lugar delas até o cartão; ao fechar,
+voltam (com "reduzir movimento", só esmaece).
 
 - **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
   destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
