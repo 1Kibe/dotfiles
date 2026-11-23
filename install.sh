@@ -45,11 +45,13 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-log()  { echo -e "${GREEN}[✓]${NC} $*"; }
-warn() { echo -e "${YELLOW}[!]${NC} $*"; }
-err()  { echo -e "${RED}[✗]${NC} $*"; }
-info() { echo -e "${CYAN}[i]${NC} $*"; }
-step() { echo -e "${BLUE}[→]${NC} $*"; }
+# Only the colors are escapes; the message is printed as is (a unit name
+# such as app-nm\x2dapplet@autostart.service keeps its backslash)
+log()  { printf '%b[✓]%b %s\n' "$GREEN" "$NC" "$*"; }
+warn() { printf '%b[!]%b %s\n' "$YELLOW" "$NC" "$*"; }
+err()  { printf '%b[✗]%b %s\n' "$RED" "$NC" "$*"; }
+info() { printf '%b[i]%b %s\n' "$CYAN" "$NC" "$*"; }
+step() { printf '%b[→]%b %s\n' "$BLUE" "$NC" "$*"; }
 
 # Asks a question and prints the answer; an empty answer gives the default.
 # With --yes (or no input, e.g. < /dev/null) the default is used without
