@@ -6,7 +6,6 @@ import qs.theme
 import qs.state
 import "../control/lists.js" as Lists
 import "../settings/hyprland.js" as Hypr
-import "hypract.js" as Act
 
 // The overview (Super+Tab): one window per screen over everything (the
 // Overlay layer), shown while OverviewState.open, the keyboard only on the
@@ -80,12 +79,6 @@ Variants {
             })
         }
 
-        // The "+": the new area after the last one of the strip, and its
-        // workspace on this screen (0: no "+", past the last area or on a
-        // screen outside the areas)
-        readonly property int plusArea: Act.nextArea(stripAreas.map(a => a.area))
-        readonly property int plusWs: Act.areaWorkspace(plusArea, together, k)
-
         screen: modelData
         // Kept while the cards fly back
         visible: OverviewState.open || (content.progress > 0 && !OverviewState.locked)
@@ -114,8 +107,6 @@ Variants {
             windows: win.shownWindows
             areas: win.stripAreas
             minimizedCount: Lists.toList(ShellState.minimized).length
-            plusArea: win.plusWs > 0 ? win.plusArea : 0
-            plusWs: win.plusWs
             focus: true
             Keys.onPressed: event => {
                 if (content.key(event))

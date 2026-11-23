@@ -276,12 +276,11 @@ lugar delas até o cartão; ao fechar, voltam (com "reduzir movimento", só esma
 
 - **Faixa no topo:** as mesmas áreas da barra, cada uma com um retângulo por janela; a área mostrada no meio tem a borda de
   destaque. Passar o mouse ou clicar numa área mostra as janelas dela no meio (sem trocar de área); clique duplo vai até ela.
-  "Minimizadas · N" aparece quando houver janela minimizada; "+" é uma área nova, depois da última da faixa: clicar vai
-  até ela (vazia) e fecha a visão geral. Na área 20, a última, o "+" some.
+  "Minimizadas · N" aparece quando houver janela minimizada. Da área 6 em diante, a faixa mostra as que têm janela ou estão
+  na tela, como a barra: uma área nova sai pelos atalhos (`Super+Ctrl+D`, `Super+1` a `9`).
 - **Clicar numa janela** vai até ela (trocando de área se precisar) e fecha a visão geral.
 - **O ×** (com o mouse no cartão) pede para a janela fechar; a visão geral continua aberta.
-- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar no "+" manda para a área
-  nova do fim (que passa a aparecer na faixa e na barra); soltar fora devolve o cartão.
+- **Arrastar** um cartão até uma área da faixa manda a janela para lá sem trocar de área; soltar fora devolve o cartão.
 - **Teclado:** as setas escolhem a janela, `Enter` vai até ela, `Esc` fecha. Digitar não faz nada. Um clique num espaço vazio
   também fecha.
 

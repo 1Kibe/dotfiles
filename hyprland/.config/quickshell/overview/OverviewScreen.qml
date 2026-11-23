@@ -5,8 +5,8 @@ import "layout.js" as Layout
 import "../control/lists.js" as Lists
 
 // What the overview shows on one screen (inside Overview's window): the
-// areas' strip on top (AreaCard: the areas, "Minimizadas · N" when there
-// is any, "+"), and in the middle the windows of the area shown, arranged
+// areas' strip on top (AreaCard: the areas, and "Minimizadas · N" when
+// there is any), and in the middle the windows of the area shown, arranged
 // by layout.js (WindowCard), scrolling when there are many. A click on an
 // empty spot closes; a window goes to it; the mouse or a click on an area
 // shows its windows; a double click goes to that area. Keys: arrows choose
@@ -21,10 +21,6 @@ Item {
     // The strip: [{ area, ws, label, shown, rects: [{ x, y, w, h } 0..1] }]
     property var areas: []
     property int minimizedCount: 0
-    // The "+": the new area after the strip's last one and its workspace
-    // here; 0 none (no "+")
-    property int plusArea: 0
-    property int plusWs: 0
     // The middle shows the minimized windows instead (their card chosen)
     property bool showingMinimized: false
     Connections {
@@ -35,7 +31,7 @@ Item {
     }
 
     // A window card dropped at a point of the scene: on an area, moved
-    // there; on "+", to the new area at the end; anywhere else, back in place
+    // there; anywhere else, back in place
     function dropCard(id, at) {
         for (const c of strip.children) {
             if (c.kind === undefined || !c.visible || c.kind === "")
@@ -43,7 +39,7 @@ Item {
             const p = c.mapFromItem(null, at.x, at.y)
             if (p.x < 0 || p.y < 0 || p.x > c.width || p.y > c.height)
                 continue
-            const ws = c.kind === "plus" ? root.plusWs : c.ws
+            const ws = c.ws
             return ws > 0 && OverviewState.moveWindow(id, ws)
         }
         return false
@@ -210,10 +206,10 @@ Item {
     }
 
     // ── The strip ──
-    // The strip's cards shrink so that all of them (and "+") fit the width
+    // The strip's cards shrink so that all of them fit the width
     readonly property int stripCount: areas.length + (minimizedCount > 0 ? 1 : 0)
     readonly property real stripCardWidth: Math.min(Math.round(Theme.overviewStripHeight * 16 / 10),
-        (width - 2 * Theme.overviewMargin - Theme.overviewStripHeight - stripCount * Theme.overviewGap / 2) / Math.max(1, stripCount))
+        (width - 2 * Theme.overviewMargin - stripCount * Theme.overviewGap / 2) / Math.max(1, stripCount))
     Row {
         id: strip
         anchors.horizontalCenter: parent.horizontalCenter
@@ -259,16 +255,6 @@ Item {
                 if (OverviewState.open)
                     root.showingMinimized = true
             }
-        }
-        AreaCard {
-            visible: root.plusArea > 0 && root.plusWs > 0
-            width: height
-            height: strip.height
-            label: "+"
-            dashed: true
-            kind: "plus"
-            // The new area, empty, and close
-            onClicked: OverviewState.goToArea(root.plusArea)
         }
     }
 
