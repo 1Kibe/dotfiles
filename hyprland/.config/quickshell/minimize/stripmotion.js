@@ -1,13 +1,13 @@
 .pragma library
 
-// The minimized strip's levels: "hidden" (no window), "wire" (5 px with
-// dots), "icons", "names". Plain JS: the QML only starts the timers and
-// animates. step(level, event, n) -> { level, timer: { name, ms } | null,
-// cancel: [names] }. Events: "filled" (the first window came), "empty" (the
-// last one left), "enter" / "leave" (the mouse), "timer150" (still on the
-// edge: open in icons), "timer300" (out for a while: back to the wire),
-// "hold" (still on the open strip: names), "flash" (a window just came:
-// icons for a moment), "flashEnd".
+// The minimized strip's levels: "hidden" (no window), "wire"
+// (Theme.wireWidth, with dots), "icons", "names". Plain JS: the QML only
+// starts the timers and animates. step(level, event, n) -> { level, timer: {
+// name, ms } | null, cancel: [names] }. Events: "filled" (the first window
+// came), "empty" (the last one left), "enter" / "leave" (the mouse),
+// "timer150" (still on the edge: open in icons), "timer300" (out for a
+// while: back to the wire), "hold" (still on the open strip: names), "flash"
+// (a window just came: icons for a moment), "flashEnd".
 var OPEN_MS = 150
 var CLOSE_MS = 300
 

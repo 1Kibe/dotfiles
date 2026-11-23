@@ -9,7 +9,10 @@ import "../theme/corners.js" as Corners
 // it, with the same continuous corners as the bar's attached panels
 // (theme/corners.js, Theme.cornerSmoothing). While it grows out of the edge
 // (the drawer) the flares grow as the panels' do: radius × min(1,
-// progress / 0.3), the progress being the width over the wire's.
+// progress / 0.3), the progress being the width over the wire's. The flare
+// and the outer corner share the body's width along its top and bottom
+// (each reaches (1 + s) × its radius): on a body narrower than both the
+// outline turned back on itself, a hook above and below.
 Shape {
     id: root
 
@@ -21,7 +24,7 @@ Shape {
     readonly property real edge: width
     readonly property real progress: Math.min(1, bodyWidth / Theme.wireWidth)
     readonly property real rf: Math.max(0, Math.min(Theme.minimizeRadius * Math.min(1, progress / 0.3),
-                                                     bodyHeight / (2 * (1 + s))))
+                                                     bodyHeight / (2 * (1 + s)), bodyWidth / (1 + s) - ro))
     // The outer corners never reach past half the body's width or height
     readonly property real ro: Math.max(0, Math.min(Theme.minimizeRadius, bodyWidth / (2 * (1 + s)),
                                                      bodyHeight / (2 * (1 + s))))

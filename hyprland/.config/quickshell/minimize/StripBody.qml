@@ -9,16 +9,16 @@ import "../control/lists.js" as Lists
 
 // The minimized windows of one screen, on its right edge (inside the
 // MinimizedStrip window, the screen's height). One piece that grows to the
-// left: hidden (no window), the 5 px wire with a dot per window (7 and a
-// dash past 8), the icons after 150 ms with the mouse on the edge, the
-// names (with the ×) when the mouse holds on it; 300 ms after the mouse
-// leaves it is the wire again. The first window makes the wire come out of
-// the edge, the last one makes it go back in, as a drawer; reduce motion
-// fades instead. A window just minimized opens it in icons for a moment.
-// Wanting attention: the wire in the alert color. A click on a row brings
-// the window back here; the middle button or the × closes it. Past the
-// rows that fit, the last one is "+N", which opens the whole list.
-// It slides below a bar panel reaching the edge and above a drawer from the
+// left: hidden (no window), the thin wire (Theme.wireWidth) with a dot per
+// window (7 and a dash past 8), the icons after 150 ms with the mouse on the
+// edge, the names (with the ×) when the mouse holds on it; 300 ms after the
+// mouse leaves it is the wire again. The first window makes the wire come
+// out of the edge, the last one makes it go back in, as a drawer; reduce
+// motion fades instead. A window just minimized opens it in icons for a
+// moment. Wanting attention: the wire in the alert color. A click on a row
+// brings the window back here; the middle button or the × closes it. Past
+// the rows that fit, the last one is "+N", which opens the whole list. It
+// slides below a bar panel reaching the edge and above a drawer from the
 // bottom, shrinks, and hides when not even the least fits.
 Item {
     id: root

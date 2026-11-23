@@ -170,15 +170,15 @@ Singleton {
     // and the names' widths, a row, the margin, the corners, the wire's
     // least height, the dots, the invisible hit zone of the wire, the rows
     // shown at most and a row's icon
-    readonly property int wireWidth: 5
+    readonly property int wireWidth: 13
     readonly property int minimizeIcons: 30
     readonly property int minimizeNames: 190
     readonly property int minimizeRow: 32
     readonly property int minimizeMargin: 7
     readonly property int minimizeRadius: 9
     readonly property int minimizeWireMin: 64
-    readonly property int minimizeDot: 3
-    readonly property int minimizeDotGap: 4
+    readonly property int minimizeDot: 7
+    readonly property int minimizeDotGap: 9
     readonly property int minimizeHit: 22
     readonly property int minimizeMaxRows: 12
     readonly property int minimizeIcon: 16
