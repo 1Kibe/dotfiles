@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import qs.theme
+import qs.state
 import "../control/lists.js" as Lists
 
 // The preview of a minimized window, next to the open strip: "App ·
@@ -13,8 +14,7 @@ Rectangle {
 
     // The entry ({ cls, title, shot, ... }); null: hidden
     property var entry: null
-    readonly property string iconPath: entry && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(entry.cls)
-        ? (Quickshell.iconPath(entry.cls, true) || Quickshell.iconPath(entry.cls.toLowerCase(), true)) : ""
+    readonly property string iconPath: entry ? AppIcons.icon(entry.cls) : ""
 
     width: Theme.previewWidth
     height: Theme.previewHeight

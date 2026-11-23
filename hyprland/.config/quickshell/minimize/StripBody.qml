@@ -403,8 +403,7 @@ Item {
                     id: row
                     required property string addr
                     readonly property var modelData: root.byAddress[addr] ?? ({ address: addr, cls: "", title: "", attention: false })
-                    readonly property string iconPath: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(modelData.cls)
-                        ? (Quickshell.iconPath(modelData.cls, true) || Quickshell.iconPath(modelData.cls.toLowerCase(), true)) : ""
+                    readonly property string iconPath: AppIcons.icon(modelData.cls)
                     width: rowsColumn.width
                     height: Theme.minimizeRow
 
