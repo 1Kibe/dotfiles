@@ -12,7 +12,9 @@ var MAX_USERS = 8
 // Longer output is not an account list: nothing is read from it
 var MAX_TEXT = 65536
 
-var HOST_RE = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/
+// Labels of letters, digits and inner hyphens, one dot between them, at
+// least one dot, 253 at most
+var HOST_RE = /^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/
 var LOGIN_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 
 function validHost(s) {
@@ -39,9 +41,17 @@ function add(model, host, login, active) {
         entry = { host: host, users: [] }
         model.push(entry)
     }
-    if (entry.users.length >= MAX_USERS || entry.users.some(u => u.login === login))
+    if (entry.users.some(u => u.login === login))
         return
     const on = active === true && !entry.users.some(u => u.active)
+    if (entry.users.length >= MAX_USERS) {
+        // Full: the active one still gets in, in the place of the last of
+        // the others (without it, every account would look switchable)
+        if (!on)
+            return
+        entry.users[entry.users.length - 1] = { login: login, active: true }
+        return
+    }
     entry.users.push({ login: login, active: on })
 }
 
@@ -58,11 +68,6 @@ function parseJson(text) {
     } catch (e) {
         return null
     }
-}
-
-// The terminal's color codes, if any came through
-function plain(text) {
-    return text.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "")
 }
 
 // gh auth status --json hosts: { hosts: { <host>: [{ host, login, active, ... }] } }
@@ -85,15 +90,18 @@ function parseGhJson(text) {
 }
 
 // gh auth status as text: a line per account ("Logged in to <host> account
-// <login>", or one of the failure lines), then "- Active account: true"
-var GH_ACCOUNT = /(?:Logged in to|Failed to log in to|Timeout trying to log in to|Token for|Refresh token for) (\S+) account (\S+)/
+// <login>", or one of the failure lines), then "- Active account: true".
+// Read from the line as it came (the Job asks for no colors): only at the
+// start of the line, after gh's mark at most, and a host or login with a
+// color code or a control character inside is not kept
+var GH_ACCOUNT = /^\s*(?:\S{1,3}\s+)?(?:Logged in to|Failed to log in to|Timeout trying to log in to|Token for|Refresh token for) (\S+) account (\S+)(?:\s|$)/
 var GH_ACTIVE = /^\s*- Active account: (true|false)\s*$/
 function parseGhText(text) {
     const model = []
     if (typeof text !== "string" || text.length > MAX_TEXT)
         return model
     const accounts = []
-    for (const line of plain(text).split("\n")) {
+    for (const line of text.split("\n")) {
         const a = GH_ACCOUNT.exec(line)
         if (a !== null) {
             accounts.push({ host: a[1], login: a[2], active: false })
@@ -111,7 +119,7 @@ function parseGhText(text) {
 // glab auth status: --output json ({ hosts: [{ host, state, user, ... }] })
 // or the text ("Logged in to <host> as <user>"); one account per site,
 // the active one
-var GLAB_ACCOUNT = /Logged in to (\S+) as (\S+)/
+var GLAB_ACCOUNT = /^\s*(?:\S{1,3}\s+)?Logged in to (\S+) as (\S+)(?:\s|$)/
 function parseGlab(text) {
     const model = []
     if (typeof text !== "string" || text.length > MAX_TEXT)
@@ -126,7 +134,7 @@ function parseGlab(text) {
         }
         return done(model)
     }
-    for (const line of plain(text).split("\n")) {
+    for (const line of text.split("\n")) {
         const a = GLAB_ACCOUNT.exec(line)
         if (a !== null && !model.some(m => m.host === a[1]))
             add(model, a[1], a[2], true)
