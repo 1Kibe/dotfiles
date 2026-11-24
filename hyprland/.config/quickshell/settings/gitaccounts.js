@@ -166,3 +166,57 @@ function profileConf(profile, home) {
 function emptyConf() {
     return HEADER
 }
+
+// ── The two keys of the settings (codeProfiles, codeFolders): JSON text ──
+// The text as kept: the list again in the same order, with only the known
+// fields; null when the text is not a list of valid entries within the
+// limits (the key then goes back to its default)
+var LIST_TEXT_MAX = 16384
+
+function readList(text, max) {
+    if (typeof text !== "string" || text.length > LIST_TEXT_MAX)
+        return null
+    let list
+    try {
+        list = JSON.parse(text)
+    } catch (e) {
+        return null
+    }
+    return Array.isArray(list) && list.length <= max ? list : null
+}
+
+function profilesText(text) {
+    const list = readList(text, PROFILE_MAX)
+    if (list === null)
+        return null
+    const out = []
+    const ids = {}
+    for (const p of list) {
+        const q = p !== null && typeof p === "object" && !Array.isArray(p)
+            ? { id: p.id, label: p.label, name: p.name, email: p.email, key: p.key, ghAccount: p.ghAccount === undefined ? "" : p.ghAccount }
+            : null
+        if (q === null || !validProfile(q) || ids[q.id])
+            return null
+        ids[q.id] = true
+        out.push(q)
+    }
+    return JSON.stringify(out)
+}
+
+// A folder's profile is only an id here (p1..p8): one that is gone just
+// gives no includeIf (the profiles are another key)
+function foldersText(text, home) {
+    const list = readList(text, FOLDER_MAX)
+    if (list === null)
+        return null
+    const out = []
+    const seen = {}
+    for (const f of list) {
+        if (f === null || typeof f !== "object" || Array.isArray(f) || typeof f.profile !== "string" || !ID_RE.test(f.profile)
+                || normalFolder(f.path, home) !== f.path || seen[f.path])
+            return null
+        seen[f.path] = true
+        out.push({ path: f.path, profile: f.profile })
+    }
+    return JSON.stringify(out)
+}
