@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.theme
+import "../bar/cover.js" as Cover
 
 // The music the shell shows: the player picked in the music panel (or the
 // one playing, or the first one), its track and cover, and a bright color
@@ -55,10 +56,16 @@ Singleton {
     property string coverFile: ""
     property int coverSlot: 0
 
-    // The URL comes from any MPRIS player: only http(s) is downloaded, with a
-    // size and time limit, no redirect to another scheme, into a fixed name in
-    // Quickshell's cache. Anything else, or a failure: no cover color.
+    // The URL comes from any MPRIS player: only https is downloaded, by the
+    // fixed script of bar/cover.js (https on every redirect, a real size
+    // limit, a PNG or a JPEG only, the URL never an argument), into a fixed
+    // name in Quickshell's cache. Anything else, or a failure: no cover color.
+    // Each change of track is a new request: a download still running for an
+    // older one is stopped, and its result is never used
+    property int coverRequest: 0
     onArtUrlChanged: {
+        coverRequest++
+        fetch.running = false
         if (artUrl === "")
             return
         // Local covers go to the quantizer as they are, no copy needed
@@ -66,19 +73,18 @@ Singleton {
             coverFile = artUrl
             return
         }
-        const scheme = artUrl.startsWith("https://") ? "https" : artUrl.startsWith("http://") ? "http" : ""
-        if (scheme === "") {
+        if (!Cover.validUrl(artUrl)) {
             coverFile = ""
             return
         }
         // Into the other slot, after stopping any download still running for
         // the previous track
         coverSlot = 1 - coverSlot
-        fetch.running = false
+        fetch.request = coverRequest
         fetch.target = Quickshell.cachePath(`cover-${coverSlot}`)
-        fetch.command = ["curl", "-fsSL", "--max-time", "10", "--max-filesize", "5M",
-                         "--proto", `=${scheme}`, "--proto-redir", "=https",
-                         "--create-dirs", "-o", fetch.target, "--", artUrl]
+        fetch.input = Cover.config(artUrl)
+        fetch.command = ["bash", "-c", Cover.SCRIPT, "bash", fetch.target]
+        fetch.stdinEnabled = true
         fetch.running = true
     }
 
@@ -86,7 +92,19 @@ Singleton {
         id: fetch
         // Kept on the Process so the exit handler knows which file finished
         property string target
-        onExited: code => root.coverFile = code === 0 ? `file://${target}` : ""
+        property string input
+        property int request: -1
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (running) {
+                write(input)
+                stdinEnabled = false
+            }
+        }
+        onExited: code => {
+            if (request === root.coverRequest)
+                root.coverFile = code === 0 ? `file://${target}` : ""
+        }
     }
 
     // The quantizer only exists while there is a cover; without one, tint
