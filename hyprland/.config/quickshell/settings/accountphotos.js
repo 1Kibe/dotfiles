@@ -20,7 +20,9 @@
 // inside the clone; each photo 600, named by the sha256 of
 // "github.com|<login in lower case>", replaced in one rename; renewed after
 // 7 days (or when its time is in the future). It prints one fixed word:
-// "ok <hex>", "cached <hex>", "none" (no such account), "fail", "nocurl".
+// "ok <hex>", "cached <hex>", "stale <hex>" (the network failed, an older
+// photo is there), "none" (no such account), "bad" (not an image to keep),
+// "fail", "nocurl".
 // Nothing else: no id, address, login or HTTP code goes back.
 
 var SCRIPT = 'set -u\n'
@@ -45,6 +47,10 @@ var SCRIPT = 'set -u\n'
     + 'key=$(printf "github.com|%s" "${login,,}" | sha256sum | cut -c1-64)\n'
     + '[[ $key =~ ^[0-9a-f]{64}$ ]] || { echo fail; exit 0; }\n'
     + 'f=$dir/$key\n'
+    // A network failure with an older photo there: that one stays shown
+    + 'net() { if [ -f "$f" ] && [ ! -L "$f" ]; then echo "stale $key"; else echo fail; fi; exit 0; }\n'
+    // Not an image to keep (format, size, sides): not a network failure
+    + 'bad() { echo bad; exit 0; }\n'
     + 'if [ -L "$f" ] || { [ -e "$f" ] && [ ! -f "$f" ]; }; then echo fail; exit 0; fi\n'
     + 'if [ -f "$f" ]; then\n'
     + '  m=$(stat -c %Y -- "$f"); now=$(date +%s)\n'
@@ -55,28 +61,32 @@ var SCRIPT = 'set -u\n'
     + '    timeout -k 2 8 setpriv --pdeathsig TERM -- curl -q -K - -s --proto =https --tlsv1.2 -m 8 --connect-timeout 5 --max-redirs 0 "$@"\n'
     + '}\n'
     // Step 1: the id, from the redirect's Location only
-    + 'res=$(printf "url = \\"https://github.com/%s.png\\"\\n" "$login" | get -o /dev/null -w "%{http_code} %{redirect_url}") || { echo fail; exit 0; }\n'
+    + 'res=$(printf "url = \\"https://github.com/%s.png\\"\\n" "$login" | get -o /dev/null -w "%{http_code} %{redirect_url}") || net\n'
     + 'if [[ $res =~ ^404\\ ?$ ]]; then echo none; exit 0; fi\n'
-    + '[[ $res =~ ^302\\ https://avatars\\.githubusercontent\\.com/u/([0-9]{1,12})([?][^[:space:]]*)?$ ]] || { echo fail; exit 0; }\n'
+    + '[[ $res =~ ^302\\ https://avatars\\.githubusercontent\\.com/u/([0-9]{1,12})([?][^[:space:]]*)?$ ]] || net\n'
     + 'id=${BASH_REMATCH[1]}\n'
     // Step 2: the photo, from an address made again
     + 'tmp=$(mktemp -- "$dir/.t.XXXXXXXX") || { echo fail; exit 0; }\n'
     + 'trap \'rm -f -- "$tmp"\' EXIT\n'
     + 'printf "url = \\"https://avatars.githubusercontent.com/u/%s?s=64\\"\\n" "$id" | get -f --max-filesize 262144 -o - | head -c 262145 > "$tmp"\n'
-    + '[ "${PIPESTATUS[1]}" = 0 ] || { echo fail; exit 0; }\n'
+    + '[ "${PIPESTATUS[1]}" = 0 ] || net\n'
     + 'size=$(stat -c %s -- "$tmp")\n'
-    + '(( size >= 64 && size <= 262144 )) || { echo fail; exit 0; }\n'
+    + '(( size >= 64 && size <= 262144 )) || bad\n'
     + 'hex=$(od -An -v -tx1 -- "$tmp" | tr -d " \\n")\n'
     + 'w=0; h=0\n'
     + 'if [[ ${hex:0:16} == 89504e470d0a1a0a && ${hex:24:8} == 49484452 ]]; then\n'
     + '  w=$((16#${hex:32:8})); h=$((16#${hex:40:8}))\n'
     + 'elif [[ ${hex:0:6} == ffd8ff ]]; then\n'
     // The markers up to the first SOFn (its height then width)
-    + '  p=2; n=${#hex}\n'
+    + '  p=2; n=${#hex}; it=0\n'
     + '  while (( 2*p + 8 <= n )); do\n'
+    // A bounded walk: a run of fill bytes or of markers is not a photo
+    + '    (( ++it <= 64 )) || bad\n'
     + '    [[ ${hex:2*p:2} == ff ]] || break\n'
     + '    mk=${hex:2*p+2:2}\n'
     + '    if [[ $mk == ff ]]; then p=$((p+1)); continue; fi\n'
+    // Markers with no length before the frame: not read as if they had one
+    + '    [[ $mk =~ ^(d[0-7]|01)$ ]] && bad\n'
     + '    if [[ $mk =~ ^c[0-35-79a-bd-f]$ ]]; then\n'
     + '      (( 2*p + 18 <= n )) || break\n'
     + '      h=$((16#${hex:2*p+10:4})); w=$((16#${hex:2*p+14:4})); break\n'
@@ -86,7 +96,7 @@ var SCRIPT = 'set -u\n'
     + '    p=$((p + 2 + len))\n'
     + '  done\n'
     + 'fi\n'
-    + '(( w >= 8 && w <= 512 && h >= 8 && h <= 512 )) || { echo fail; exit 0; }\n'
+    + '(( w >= 8 && w <= 512 && h >= 8 && h <= 512 )) || bad\n'
     + 'chmod 600 -- "$tmp" && mv -f -T -- "$tmp" "$f" || { echo fail; exit 0; }\n'
     + 'trap - EXIT\n'
     + 'echo "ok $key"\n'
@@ -96,6 +106,6 @@ var SCRIPT = 'set -u\n'
 function source(cacheDir, word) {
     if (typeof cacheDir !== "string" || !/^\/[A-Za-z0-9._\/-]{1,250}$/.test(cacheDir) || cacheDir.includes(".."))
         return ""
-    const m = typeof word === "string" ? /^(?:ok|cached) ([0-9a-f]{64})$/.exec(word.trim()) : null
+    const m = typeof word === "string" ? /^(?:ok|cached|stale) ([0-9a-f]{64})$/.exec(word.trim()) : null
     return m === null ? "" : "file://" + cacheDir + "/" + m[1]
 }

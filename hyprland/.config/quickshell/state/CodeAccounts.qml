@@ -28,6 +28,9 @@ Singleton {
     readonly property bool loading: ghReader.running || glabReader.running
     readonly property bool switching: switcher.running
     property string error: ""
+    // A failed switch, kept through the reading after it (until the next
+    // switch or clear())
+    property string switchError: ""
     readonly property bool locked: LockState.locked || LockState.wanted
     readonly property int folderCount: {
         try {
@@ -48,24 +51,39 @@ Singleton {
         'command -v "$1" >/dev/null 2>&1 || exit 90\n'
         + 'exec 2>/dev/null\n'
         + 'export LC_ALL=C NO_COLOR=1 GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 GH_NO_EXTENSION_UPDATE_NOTIFIER=1\n'
-        + 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GITLAB_TOKEN GL_TOKEN GH_HOST GITLAB_HOST\n'
+        + 'export NO_PROMPT=true GLAB_SEND_TELEMETRY=false GLAB_CHECK_UPDATE=false\n'
+        + 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST\n'
+        + 'unset GITLAB_TOKEN GITLAB_ACCESS_TOKEN OAUTH_TOKEN GL_TOKEN GITLAB_HOST GL_HOST GITLAB_URI GITLAB_API_HOST\n'
         + 'run() { timeout -k 2 8 setpriv --pdeathsig TERM -- "$@" | head -c 65536; return "${PIPESTATUS[0]}"; }\n'
         + 'if [ "$1" = glab ]; then\n'
         // glab's JSON (stdout) first; an older glab without it: its text,
         // which it writes to the error output
         + '  out=$(run "$@" --all --output json); code=$?\n'
-        + '  [ "$code" = 124 ] && exit 124\n'
-        + '  if [ -n "$out" ]; then printf "%s" "$out"; exit 0; fi\n'
+        + '  case "$code" in 124|137) exit 124;; esac\n'
+        + '  if [ -n "$out" ]; then printf "%s\\n" "$out"; exit 0; fi\n'
         + '  timeout -k 2 8 setpriv --pdeathsig TERM -- "$@" 2>&1 | head -c 65536; exit 0\n'
+        + 'fi\n'
+        // An older gh without --json: its text (on the error output)
+        + 'if [ "$1 $2 $3 ${4:-}" = "gh auth status --json" ]; then\n'
+        + '  out=$(run "$@"); code=$?\n'
+        + '  case "$code" in 124|137) exit 124;; esac\n'
+        + '  if [ -n "$out" ]; then printf "%s\\n" "$out"; exit "$code"; fi\n'
+        + '  timeout -k 2 8 setpriv --pdeathsig TERM -- gh auth status 2>&1 | head -c 65536; exit 0\n'
         + 'fi\n'
         + 'run "$@"\n'
 
     // Two reads: gh and glab, each one at a time
     property string ghText: ""
     property string glabText: ""
+    // A reading asked while another one or a switch runs: again at their end
+    property bool refreshAgain: false
     function refresh() {
-        if (locked || ghReader.running || glabReader.running)
+        if (locked)
             return
+        if (ghReader.running || glabReader.running || switcher.running) {
+            refreshAgain = true
+            return
+        }
         error = ""
         ghText = ""
         glabText = ""
@@ -78,17 +96,18 @@ Singleton {
         stdout: SplitParser {
             onRead: line => root.ghText += line + "\n"
         }
-        onExited: code => {
+        onExited: (code, status) => {
             const text = root.ghText
             root.ghText = ""
+            root.readDone()
             root.ghAvailable = code !== 90
             if (code === 90) {
                 root.hosts = []
                 return
             }
             const model = text.trim().startsWith("{") ? Accounts.parseGhJson(text.trim()) : Accounts.parseGhText(text)
-            // gh says nothing at all on a timeout or a failure
-            if (code !== 0 && model.length === 0)
+            // gh says nothing at all on a timeout, a failure or a crash
+            if ((code !== 0 || status !== 0) && model.length === 0)
                 root.error = "Não consegui ler as contas"
             root.hosts = model
         }
@@ -99,12 +118,29 @@ Singleton {
         stdout: SplitParser {
             onRead: line => root.glabText += line + "\n"
         }
-        onExited: code => {
+        onExited: (code, status) => {
             const text = root.glabText
             root.glabText = ""
+            root.readDone()
             root.glabAvailable = code !== 90
-            root.glabHosts = code === 90 || code === 124 ? [] : Accounts.parseGlab(text)
+            root.glabHosts = code === 90 || code === 124 || status !== 0 ? [] : Accounts.parseGlab(text)
         }
+    }
+
+    function readDone() {
+        if (refreshAgain && !ghReader.running && !glabReader.running && !switcher.running) {
+            refreshAgain = false
+            Qt.callLater(refresh)
+        }
+    }
+    // The section closed: the reading is let go (a switch only ever comes
+    // from the reading of the same opening)
+    function clear() {
+        hosts = []
+        glabHosts = []
+        error = ""
+        switchError = ""
+        refreshAgain = false
     }
 
     // gh's active account of host becomes login: only a pair of the reading
@@ -117,7 +153,7 @@ Singleton {
         if (argv === null || locked || switcher.running || Date.now() - lastSwitch < 3000)
             return false
         lastSwitch = Date.now()
-        error = ""
+        switchError = ""
         switcher.command = ["bash", "-c", runScript, "bash"].concat(argv)
         switcher.running = true
         return true
@@ -190,7 +226,6 @@ Singleton {
         const q = photoQueue.slice()
         photoLogin = q.shift()
         photoQueue = q
-        photoBudget--
         photoJob.stdinEnabled = true
         photoJob.running = true
     }
@@ -219,12 +254,21 @@ Singleton {
                 const m = Object.assign({}, root.photos)
                 m[key] = src
                 root.photos = m
-            } else if (word !== "none") {
+            }
+            // Only downloads count against the 4 of an opening
+            if (word.startsWith("ok "))
+                root.photoBudget--
+            // No account or not an image: remembered for an hour, the queue
+            // goes on; the network failed ("stale" keeps the older photo
+            // shown): the queue stops too
+            if (word === "none" || word === "bad" || src === "" || word.startsWith("stale ")) {
                 const b = Object.assign({}, root.photoBlocked)
                 b[key] = Date.now() + 3600 * 1000
                 root.photoBlocked = b
-                root.photoQueue = []
-                return
+                if (word !== "none" && word !== "bad") {
+                    root.photoQueue = []
+                    return
+                }
             }
             root.nextPhoto()
         }
@@ -232,9 +276,10 @@ Singleton {
 
     Process {
         id: switcher
-        onExited: code => {
-            if (code !== 0)
-                root.error = "Não consegui trocar de conta"
+        onExited: (code, status) => {
+            if (code !== 0 || status !== 0)
+                root.switchError = "Não consegui trocar de conta"
+            root.refreshAgain = false
             root.refresh()
         }
     }
