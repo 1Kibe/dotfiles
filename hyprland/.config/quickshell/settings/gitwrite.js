@@ -59,7 +59,9 @@ var SCRIPT = 'set -u\n'
     + '    if [ -L "$k" ] || [ ! -f "$k" ] || [ ! -O "$k" ] || [ -n "$(find "$k" -maxdepth 0 -perm /077 2>/dev/null)" ]; then status=fail; continue; fi\n'
     + '  fi\n'
     + '  if [ -L "$tmp" ] || [ -e "$tmp" ]; then rm -f -- "$tmp" || { status=fail; continue; }; fi\n'
-    + '  printf "%s" "$data" | base64 -d 2>/dev/null | { set -C; cat > "$tmp"; } 2>/dev/null || { rm -f -- "$tmp"; status=fail; continue; }\n'
+    // pipefail here: a text that does not decode is a failure, not an
+    // empty file
+    + '  ( set -o pipefail; printf "%s" "$data" | base64 -d 2>/dev/null | { set -C; cat > "$tmp"; } ) 2>/dev/null || { rm -f -- "$tmp"; status=fail; continue; }\n'
     + '  names=$(git config --file "$tmp" --list --name-only 2>/dev/null) || { rm -f -- "$tmp"; status=fail; continue; }\n'
     + '  if [ "$name" = contas.conf ]; then\n'
     + '    allow="^(includeif\\.gitdir:~/[A-Za-z0-9._@+/-]+/\\.path|credential\\.https://(github|gitlab)\\.com\\.helper)$"\n'
