@@ -51,7 +51,7 @@ Singleton {
         'command -v "$1" >/dev/null 2>&1 || exit 90\n'
         + 'exec 2>/dev/null\n'
         + 'export LC_ALL=C NO_COLOR=1 GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 GH_NO_EXTENSION_UPDATE_NOTIFIER=1\n'
-        + 'export NO_PROMPT=true GLAB_SEND_TELEMETRY=false GLAB_CHECK_UPDATE=false\n'
+        + 'export GLAB_NO_PROMPT=true GLAB_SEND_TELEMETRY=false GLAB_CHECK_UPDATE=false\n'
         + 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST\n'
         + 'unset GITLAB_TOKEN GITLAB_ACCESS_TOKEN OAUTH_TOKEN GL_TOKEN GITLAB_HOST GL_HOST GITLAB_URI GITLAB_API_HOST\n'
         + 'run() { timeout -k 2 8 setpriv --pdeathsig TERM -- "$@" | head -c 65536; return "${PIPESTATUS[0]}"; }\n'
