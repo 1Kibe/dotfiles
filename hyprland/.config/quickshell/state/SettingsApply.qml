@@ -13,6 +13,7 @@ import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
 import "../settings/gestures.js" as Gestures
 import "../settings/validate.js" as Validate
+import "../settings/gitwrite.js" as GitWrite
 
 // Takes each new choice of SettingsStore where it goes: inside the shell,
 // the Theme's motion; out of it, later, the generated Hyprland files
@@ -53,6 +54,7 @@ Singleton {
             root.applyMotion()
             root.applyAppearance()
             root.applyClipboard()
+            root.applyGit()
         }
         function onValuesChanged() {
             root.applyMotion()
@@ -64,6 +66,8 @@ Singleton {
         function onChanged(key) {
             if (key === "cursorTheme" || key === "cursorSize")
                 root.applyCursor()
+            if (key === "codeProfiles" || key === "codeFolders")
+                root.applyGit()
         }
     }
     // The machine's lists, once read (each list comes before its flag)
@@ -77,6 +81,9 @@ Singleton {
     Component.onCompleted: {
         applyMotion()
         applyAppearance()
+        // The git files follow the settings even with the page closed (and
+        // when the store was ready before this singleton)
+        applyGit()
         // Configurações → Energia lives in its own singleton: load it
         EnergyApply.applyIdle()
         // So do Apps padrão and Iniciar com o sistema (their data files follow
@@ -376,6 +383,57 @@ Singleton {
         }
         onSaved: Quickshell.execDetached(["hyprctl", "reload"])
         onSaveFailed: root.failed("gestures3", "Não deu para salvar os gestos")
+    }
+
+    // ── Code accounts (settings/gitaccounts.js, gitwrite.js) ──
+    // ~/.config/git/contas.conf and contas/p1.conf … p8.conf, which the
+    // ~/.gitconfig's block (install.sh) includes: written by a fixed script
+    // that checks the folders and the profiles' keys, has git read each new
+    // text and replaces a file only when it changed. The texts go by its
+    // input, so no name or e-mail is ever an argument; its error output is
+    // kept here and dropped, never left for the log
+    readonly property string gitDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/git`
+    property string gitInput: ""
+    property bool gitAgain: false
+    function applyGit() {
+        if (!SettingsStore.ready)
+            return
+        if (gitWrite.running) {
+            gitAgain = true
+            return
+        }
+        try {
+            gitInput = GitWrite.input(JSON.parse(SettingsStore.get("codeProfiles")), JSON.parse(SettingsStore.get("codeFolders")),
+                                      Quickshell.env("HOME"))
+        } catch (e) {
+            failed("codeProfiles", "Não deu para montar os arquivos do git")
+            return
+        }
+        gitWrite.stdinEnabled = true
+        gitWrite.running = true
+    }
+    Process {
+        id: gitWrite
+        command: ["bash", "-c", GitWrite.SCRIPT, "bash", root.gitDir, Quickshell.shellPath(".")]
+        stdout: StdioCollector {
+            id: gitWriteOut
+        }
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (running) {
+                write(root.gitInput)
+                stdinEnabled = false
+            }
+        }
+        onExited: code => {
+            root.gitInput = ""
+            if (code !== 0 || gitWriteOut.text.trim() !== "ok")
+                root.failed("codeProfiles", "Não deu para gravar os arquivos do git: os de antes ficaram")
+            if (root.gitAgain) {
+                root.gitAgain = false
+                root.applyGit()
+            }
+        }
     }
 
     // ── Kitty's colors (settings/kitty.js) ──

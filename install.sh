@@ -685,6 +685,52 @@ setup_bashrc() {
   log "~/.bashrc loads ~/.config/bash/dotfiles.bash"
 }
 
+# The code accounts (Configurações → Contas de código): the real
+# ~/.gitconfig includes the file the shell writes (~/.config/git/contas.conf),
+# in a marked block kept as the last thing in it, since a [user] that
+# git config --global adds later lands after an earlier include and wins.
+# Never a link to the repo (git config --global would write into it): a
+# ~/.gitconfig that is a link, or not a plain file, is left alone with a
+# warning. Outside the block the file stays as it was.
+GITCONFIG_BEGIN="# >>> dotfiles: code accounts (written by install.sh) >>>"
+GITCONFIG_END="# <<< dotfiles: code accounts <<<"
+setup_gitconfig() {
+  local gc="${HOME}/.gitconfig" block tmp
+  block="$(printf '%s\n[include]\n\tpath = ~/.config/git/contas.conf\n%s' "$GITCONFIG_BEGIN" "$GITCONFIG_END")"
+  if [[ -L "$gc" ]]; then
+    warn "~/.gitconfig is a link: not adding the code accounts' include (see hyprland/README.md)"
+    return 0
+  fi
+  if [[ -e "$gc" && ! -f "$gc" ]]; then
+    warn "~/.gitconfig is not a plain file: not adding the code accounts' include"
+    return 0
+  fi
+  if [[ -f "$gc" ]]; then
+    if [[ "$(tail -n 4 "$gc")" == "$block" ]]; then return 0; fi
+    # A begin with no end: someone edited the block by hand; never guess
+    if grep -qxF "$GITCONFIG_BEGIN" "$gc" && ! grep -qxF "$GITCONFIG_END" "$gc"; then
+      warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+      return 0
+    fi
+  fi
+  tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
+  local ok=1
+  {
+    if [[ -f "$gc" ]]; then
+      awk -v b="$GITCONFIG_BEGIN" -v e="$GITCONFIG_END" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip' "$gc"
+    fi
+    printf '%s\n' "$block"
+  } > "$tmp" || ok=0
+  if (( ok )) && [[ -f "$gc" ]]; then chmod --reference="$gc" "$tmp" || ok=0; fi
+  if (( ok )); then mv -f -- "$tmp" "$gc" || ok=0; fi
+  if (( ! ok )); then
+    rm -f -- "$tmp"
+    warn "could not write ~/.gitconfig"
+    return 0
+  fi
+  log "~/.gitconfig includes the code accounts' file (~/.config/git/contas.conf)"
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -711,6 +757,7 @@ link_configs() {
   log "Linked: ${pkgs[*]}"
   report_bak_files
   setup_bashrc
+  setup_gitconfig
 }
 
 # Without arguments removes the links of every package

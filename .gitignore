@@ -74,3 +74,8 @@ common/.config/btop/themes/
 # with the temporary files of their atomic writes ──
 common/.config/lazygit/tema.yml*
 common/.config/lazygit/delta.gitconfig*
+
+# ── git: the code accounts' files (written by the shell under
+# ~/.config/git, never in the repo), and the temporary files of their writes ──
+common/.config/git/contas.conf*
+common/.config/git/contas/
