@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs.theme
+import "../bar/cover.js" as Cover
 
 // The music the shell shows: the player picked in the music panel (or the
 // one playing, or the first one), its track and cover, and a bright color
@@ -55,9 +56,10 @@ Singleton {
     property string coverFile: ""
     property int coverSlot: 0
 
-    // The URL comes from any MPRIS player: only http(s) is downloaded, with a
-    // size and time limit, no redirect to another scheme, into a fixed name in
-    // Quickshell's cache. Anything else, or a failure: no cover color.
+    // The URL comes from any MPRIS player: only https is downloaded, by the
+    // fixed script of bar/cover.js (https on every redirect, a real size
+    // limit, a PNG or a JPEG only, the URL never an argument), into a fixed
+    // name in Quickshell's cache. Anything else, or a failure: no cover color.
     onArtUrlChanged: {
         if (artUrl === "")
             return
@@ -66,8 +68,7 @@ Singleton {
             coverFile = artUrl
             return
         }
-        const scheme = artUrl.startsWith("https://") ? "https" : artUrl.startsWith("http://") ? "http" : ""
-        if (scheme === "") {
+        if (!Cover.validUrl(artUrl)) {
             coverFile = ""
             return
         }
@@ -76,9 +77,9 @@ Singleton {
         coverSlot = 1 - coverSlot
         fetch.running = false
         fetch.target = Quickshell.cachePath(`cover-${coverSlot}`)
-        fetch.command = ["curl", "-fsSL", "--max-time", "10", "--max-filesize", "5M",
-                         "--proto", `=${scheme}`, "--proto-redir", "=https",
-                         "--create-dirs", "-o", fetch.target, "--", artUrl]
+        fetch.input = Cover.config(artUrl)
+        fetch.command = ["bash", "-c", Cover.SCRIPT, "bash", fetch.target]
+        fetch.stdinEnabled = true
         fetch.running = true
     }
 
@@ -86,6 +87,14 @@ Singleton {
         id: fetch
         // Kept on the Process so the exit handler knows which file finished
         property string target
+        property string input
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (running) {
+                write(input)
+                stdinEnabled = false
+            }
+        }
         onExited: code => root.coverFile = code === 0 ? `file://${target}` : ""
     }
 
