@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../settings/codeaccounts.js" as Accounts
+import "../settings/accountphotos.js" as Photos
 
 // The code accounts gh and glab know (settings/codeaccounts.js keeps only
 // site, login and which is active) and the switch of gh's active account.
@@ -121,6 +122,114 @@ Singleton {
         switcher.running = true
         return true
     }
+    // ── Photos (settings/accountphotos.js) ──
+    // Fetched one at a time (one queue for the Central and the page), only
+    // while one of them shows accounts (watchPhotos), with the photos on
+    // in the settings and the screen unlocked; at most 4 an opening. Any
+    // failure stops the queue and leaves that account alone for an hour
+    // (in memory only). Nothing of an account goes to the log.
+    property int photoWatchers: 0
+    // One hidden state for the Central and the page, never kept
+    property bool photosHidden: false
+    readonly property bool photosOn: SettingsStore.get("codePhotos") === true
+    property var photos: ({})
+    property var photoQueue: []
+    property var photoBlocked: ({})
+    property int photoBudget: 0
+    property string photoLogin: ""
+    readonly property string photoDir: {
+        const x = Quickshell.env("XDG_CACHE_HOME") || ""
+        const base = /^\/[A-Za-z0-9._\/-]{1,200}$/.test(x) && !x.includes("..") ? x : Quickshell.env("HOME") + "/.cache"
+        return base + "/dotfiles/contas-fotos"
+    }
+    function watchPhotos(on) {
+        photoWatchers = Math.max(0, photoWatchers + (on ? 1 : -1))
+        if (photoWatchers > 0) {
+            photoBudget = 4
+            queuePhotos()
+        } else {
+            stopPhotos()
+            photosHidden = false
+        }
+    }
+    function stopPhotos() {
+        photoQueue = []
+        if (photoJob.running)
+            photoJob.running = false
+    }
+    onLockedChanged: {
+        if (locked)
+            stopPhotos()
+    }
+    onHostsChanged: queuePhotos()
+    // The image of an account ("" for none: the initials show)
+    function photoSource(host, login) {
+        if (photosHidden || locked || !photosOn)
+            return ""
+        return photos[Accounts.cacheKeyText(host, login)] ?? ""
+    }
+    function queuePhotos() {
+        if (photoWatchers === 0 || locked || !photosOn)
+            return
+        const q = photoQueue.slice()
+        const now = Date.now()
+        for (const e of hosts) {
+            for (const u of e.users) {
+                const key = Accounts.cacheKeyText(e.host, u.login)
+                if (key !== "" && photos[key] === undefined && !q.includes(u.login) && u.login !== photoLogin
+                        && !((photoBlocked[key] ?? 0) > now))
+                    q.push(u.login)
+            }
+        }
+        photoQueue = q
+        nextPhoto()
+    }
+    function nextPhoto() {
+        if (photoJob.running || photoQueue.length === 0 || photoBudget <= 0 || photoWatchers === 0 || locked || !photosOn)
+            return
+        const q = photoQueue.slice()
+        photoLogin = q.shift()
+        photoQueue = q
+        photoBudget--
+        photoJob.stdinEnabled = true
+        photoJob.running = true
+    }
+    Process {
+        id: photoJob
+        command: ["timeout", "-k", "2", "20", "bash", "-c", Photos.SCRIPT, "bash", Quickshell.shellPath(".")]
+        stdout: StdioCollector {
+            id: photoOut
+        }
+        stderr: StdioCollector {}
+        onRunningChanged: {
+            if (running) {
+                write(root.photoLogin + "\n")
+                stdinEnabled = false
+            }
+        }
+        onExited: code => {
+            const key = Accounts.cacheKeyText("github.com", root.photoLogin)
+            const word = photoOut.text.trim()
+            root.photoLogin = ""
+            // Closed or locked meanwhile: the cache keeps it, the screen not
+            if (root.photoWatchers === 0 || root.locked)
+                return
+            const src = Photos.source(root.photoDir, word)
+            if (src !== "") {
+                const m = Object.assign({}, root.photos)
+                m[key] = src
+                root.photos = m
+            } else if (word !== "none") {
+                const b = Object.assign({}, root.photoBlocked)
+                b[key] = Date.now() + 3600 * 1000
+                root.photoBlocked = b
+                root.photoQueue = []
+                return
+            }
+            root.nextPhoto()
+        }
+    }
+
     Process {
         id: switcher
         onExited: code => {
