@@ -60,7 +60,12 @@ Singleton {
     // fixed script of bar/cover.js (https on every redirect, a real size
     // limit, a PNG or a JPEG only, the URL never an argument), into a fixed
     // name in Quickshell's cache. Anything else, or a failure: no cover color.
+    // Each change of track is a new request: a download still running for an
+    // older one is stopped, and its result is never used
+    property int coverRequest: 0
     onArtUrlChanged: {
+        coverRequest++
+        fetch.running = false
         if (artUrl === "")
             return
         // Local covers go to the quantizer as they are, no copy needed
@@ -75,7 +80,7 @@ Singleton {
         // Into the other slot, after stopping any download still running for
         // the previous track
         coverSlot = 1 - coverSlot
-        fetch.running = false
+        fetch.request = coverRequest
         fetch.target = Quickshell.cachePath(`cover-${coverSlot}`)
         fetch.input = Cover.config(artUrl)
         fetch.command = ["bash", "-c", Cover.SCRIPT, "bash", fetch.target]
@@ -88,6 +93,7 @@ Singleton {
         // Kept on the Process so the exit handler knows which file finished
         property string target
         property string input
+        property int request: -1
         stderr: StdioCollector {}
         onRunningChanged: {
             if (running) {
@@ -95,7 +101,10 @@ Singleton {
                 stdinEnabled = false
             }
         }
-        onExited: code => root.coverFile = code === 0 ? `file://${target}` : ""
+        onExited: code => {
+            if (request === root.coverRequest)
+                root.coverFile = code === 0 ? `file://${target}` : ""
+        }
     }
 
     // The quantizer only exists while there is a cover; without one, tint
