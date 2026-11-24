@@ -14,8 +14,9 @@
 // the process list.
 //
 // The script: umask 077; ~/.config/git and its contas/ must be real
-// folders of the user (made 700 when missing), never a link and never
-// inside the clone of this repo ($2, the shell's folder of the repo); a
+// folders of the user (made 700 when missing, and only once there is
+// something to write), never a link and never inside the clone of this
+// repo ($2, the shell's folder of the repo); a
 // file there that is a link, not a plain file or not the user's is never
 // touched. Each text goes to <file>.new next to it, git must read it
 // (git config --file … --list) with only the expected keys, and it
@@ -26,21 +27,28 @@ var SCRIPT = 'set -u\n'
     + 'umask 077\n'
     + 'd=$1; q=$2\n'
     + 'r=$(readlink -f -- "$q/../../..") || { echo fail; exit 1; }\n'
-    + '[ -d "$(dirname -- "$d")" ] || { echo fail; exit 1; }\n'
-    + 'for x in "$d" "$d/contas"; do\n'
-    + '  if [ ! -e "$x" ] && [ ! -L "$x" ]; then install -d -m 700 -- "$x" 2>/dev/null || { echo fail; exit 1; }; fi\n'
-    + '  [ -d "$x" ] && [ ! -L "$x" ] && [ -O "$x" ] || { echo fail; exit 1; }\n'
-    + '  t=$(readlink -f -- "$x") || { echo fail; exit 1; }\n'
-    + '  case "$t/" in "$r"/*) echo fail; exit 1;; esac\n'
-    + 'done\n'
+    + 'ready=0\n'
+    // The folders, checked (and made, 700) only before the first write
+    + 'prepare() {\n'
+    + '  [ "$ready" = 1 ] && return 0\n'
+    + '  [ -d "$(dirname -- "$d")" ] || return 1\n'
+    + '  for x in "$d" "$d/contas"; do\n'
+    + '    if [ ! -e "$x" ] && [ ! -L "$x" ]; then install -d -m 700 -- "$x" 2>/dev/null || return 1; fi\n'
+    + '    [ -d "$x" ] && [ ! -L "$x" ] && [ -O "$x" ] || return 1\n'
+    + '    t=$(readlink -f -- "$x") || return 1\n'
+    + '    case "$t/" in "$r"/*) return 1;; esac\n'
+    + '  done\n'
+    + '  ready=1\n'
+    + '}\n'
     + 'status=ok\n'
     + 'while IFS=" " read -r mode name data key rest; do\n'
     + '  case "$mode" in w|e) ;; *) status=fail; continue;; esac\n'
     + '  case "$name" in contas.conf|contas/p[1-8].conf) ;; *) status=fail; continue;; esac\n'
     + '  [ -z "${rest:-}" ] || { status=fail; continue; }\n'
     + '  f=$d/$name; tmp=$f.new\n'
+    + '  if [ "$mode" = e ] && [ ! -e "$f" ] && [ ! -L "$f" ]; then continue; fi\n'
+    + '  prepare || { echo fail; exit 1; }\n'
     + '  if [ -L "$f" ] || { [ -e "$f" ] && { [ ! -f "$f" ] || [ ! -O "$f" ]; }; }; then status=fail; continue; fi\n'
-    + '  if [ "$mode" = e ] && [ ! -e "$f" ]; then continue; fi\n'
     + '  if [ -n "${key:-}" ]; then\n'
     + '    case "$key" in *[!A-Za-z0-9._@+-]*|.*|-*) status=fail; continue;; esac\n'
     + '    k=$HOME/.ssh/$key\n'
