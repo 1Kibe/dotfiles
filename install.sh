@@ -698,7 +698,7 @@ setup_gitconfig() {
   local gc="${HOME}/.gitconfig" block tmp
   block="$(printf '%s\n[include]\n\tpath = ~/.config/git/contas.conf\n%s' "$GITCONFIG_BEGIN" "$GITCONFIG_END")"
   if [[ -L "$gc" ]]; then
-    warn "~/.gitconfig is a link: not adding the code accounts' include (see hyprland/README.md)"
+    warn "~/.gitconfig is a link: not adding the code accounts' include"
     return 0
   fi
   if [[ -e "$gc" && ! -f "$gc" ]]; then
@@ -707,20 +707,33 @@ setup_gitconfig() {
   fi
   if [[ -f "$gc" ]]; then
     if [[ "$(tail -n 4 "$gc")" == "$block" ]]; then return 0; fi
-    # A begin with no end: someone edited the block by hand; never guess
-    if grep -qxF "$GITCONFIG_BEGIN" "$gc" && ! grep -qxF "$GITCONFIG_END" "$gc"; then
+    # Not exactly one begin and one end (or none): someone edited the
+    # block by hand; never guess
+    local nb ne
+    nb="$(grep -cxF "$GITCONFIG_BEGIN" "$gc" || true)"; ne="$(grep -cxF "$GITCONFIG_END" "$gc" || true)"
+    if [[ "$nb" != "$ne" || "$nb" -gt 1 ]]; then
       warn "~/.gitconfig has an unfinished code accounts block: left as it is"
       return 0
     fi
   fi
   tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
-  local ok=1
+  local ok=1 cut=0
   {
     if [[ -f "$gc" ]]; then
-      awk -v b="$GITCONFIG_BEGIN" -v e="$GITCONFIG_END" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip' "$gc"
+      # The end before the begin: the rest would be dropped (exit 1)
+      awk -v b="$GITCONFIG_BEGIN" -v e="$GITCONFIG_END" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip { print } END { exit skip }' "$gc" || cut=1
     fi
     printf '%s\n' "$block"
   } > "$tmp" || ok=0
+  if (( cut )); then
+    rm -f -- "$tmp"
+    warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+    return 0
+  fi
+  # git must still read it (a ~/.gitconfig git does not read is left alone)
+  if (( ok )) && command -v git >/dev/null 2>&1; then
+    git config --file "$tmp" --list >/dev/null 2>&1 || ok=0
+  fi
   if (( ok )) && [[ -f "$gc" ]]; then chmod --reference="$gc" "$tmp" || ok=0; fi
   if (( ok )); then mv -f -- "$tmp" "$gc" || ok=0; fi
   if (( ! ok )); then

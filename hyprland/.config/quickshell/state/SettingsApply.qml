@@ -392,7 +392,9 @@ Singleton {
     // text and replaces a file only when it changed. The texts go by its
     // input, so no name or e-mail is ever an argument; its error output is
     // kept here and dropped, never left for the log
-    readonly property string gitDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/git`
+    // Always ~/.config/git: the folder the ~/.gitconfig's include names
+    // (not git's own XDG one, which can be elsewhere)
+    readonly property string gitDir: `${Quickshell.env("HOME")}/.config/git`
     property string gitInput: ""
     property bool gitAgain: false
     function applyGit() {
