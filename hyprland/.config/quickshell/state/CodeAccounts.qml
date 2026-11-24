@@ -77,6 +77,10 @@ Singleton {
     property string glabText: ""
     // A reading asked while another one or a switch runs: again at their end
     property bool refreshAgain: false
+    // Bumped by clear(): a reading, switch or photo started before it
+    // comes back to nothing
+    property int opening: 0
+    property int readOpening: 0
     function refresh() {
         if (locked)
             return
@@ -87,6 +91,7 @@ Singleton {
         error = ""
         ghText = ""
         glabText = ""
+        readOpening = opening
         ghReader.running = true
         glabReader.running = true
     }
@@ -100,6 +105,8 @@ Singleton {
             const text = root.ghText
             root.ghText = ""
             root.readDone()
+            if (root.readOpening !== root.opening)
+                return
             root.ghAvailable = code !== 90
             if (code === 90) {
                 root.hosts = []
@@ -122,8 +129,14 @@ Singleton {
             const text = root.glabText
             root.glabText = ""
             root.readDone()
+            if (root.readOpening !== root.opening)
+                return
             root.glabAvailable = code !== 90
-            root.glabHosts = code === 90 || code === 124 || status !== 0 ? [] : Accounts.parseGlab(text)
+            // A timeout or a crash: the same phrase as gh's
+            const failed = code !== 90 && (code === 124 || status !== 0)
+            if (failed)
+                root.error = "Não consegui ler as contas"
+            root.glabHosts = code === 90 || failed ? [] : Accounts.parseGlab(text)
         }
     }
 
@@ -134,13 +147,25 @@ Singleton {
         }
     }
     // The section closed: the reading is let go (a switch only ever comes
-    // from the reading of the same opening)
+    // from the reading of the same opening). The readings and the photo
+    // still running are stopped and what they bring back is dropped; a
+    // switch already asked of gh is left to end (cut in the middle, gh's
+    // file could be left half written), but nothing is read after it
     function clear() {
+        opening++
+        refreshAgain = false
+        if (ghReader.running)
+            ghReader.running = false
+        if (glabReader.running)
+            glabReader.running = false
+        ghText = ""
+        glabText = ""
         hosts = []
         glabHosts = []
         error = ""
         switchError = ""
-        refreshAgain = false
+        stopPhotos()
+        photos = ({})
     }
 
     // gh's active account of host becomes login: only a pair of the reading
@@ -148,12 +173,14 @@ Singleton {
     // locked, and a second click within 3 s does nothing. The screen then
     // shows what gh says after a new reading, not what was asked
     property double lastSwitch: 0
+    property int switchOpening: 0
     function switchTo(host, login) {
         const argv = Accounts.switchCommand(hosts, host, login)
         if (argv === null || locked || switcher.running || Date.now() - lastSwitch < 3000)
             return false
         lastSwitch = Date.now()
         switchError = ""
+        switchOpening = opening
         switcher.command = ["bash", "-c", runScript, "bash"].concat(argv)
         switcher.running = true
         return true
@@ -173,6 +200,9 @@ Singleton {
     property var photoBlocked: ({})
     property int photoBudget: 0
     property string photoLogin: ""
+    // Bumped at every stop: the Job that ends after it is not this turn's
+    property int photoTurn: 0
+    property int photoJobTurn: 0
     readonly property string photoDir: {
         const x = Quickshell.env("XDG_CACHE_HOME") || ""
         const base = /^\/[A-Za-z0-9._\/-]{1,200}$/.test(x) && !x.includes("..") ? x : Quickshell.env("HOME") + "/.cache"
@@ -188,8 +218,12 @@ Singleton {
             photosHidden = false
         }
     }
+    // (what the stopped Job brings back is dropped: closed, locked or
+    // cleared)
     function stopPhotos() {
+        photoTurn++
         photoQueue = []
+        photoLogin = ""
         if (photoJob.running)
             photoJob.running = false
     }
@@ -226,6 +260,7 @@ Singleton {
         const q = photoQueue.slice()
         photoLogin = q.shift()
         photoQueue = q
+        photoJobTurn = photoTurn
         photoJob.stdinEnabled = true
         photoJob.running = true
     }
@@ -245,10 +280,15 @@ Singleton {
         onExited: code => {
             const key = Accounts.cacheKeyText("github.com", root.photoLogin)
             const word = photoOut.text.trim()
+            const same = root.photoJobTurn === root.photoTurn
             root.photoLogin = ""
-            // Closed or locked meanwhile: the cache keeps it, the screen not
-            if (root.photoWatchers === 0 || root.locked)
+            // Closed, cleared or locked meanwhile (even if opened again):
+            // the cache keeps it, the screen not; the queue of a new
+            // opening goes on
+            if (root.photoWatchers === 0 || root.locked || !same) {
+                root.nextPhoto()
                 return
+            }
             const src = Photos.source(root.photoDir, word)
             if (src !== "") {
                 const m = Object.assign({}, root.photos)
@@ -277,6 +317,12 @@ Singleton {
     Process {
         id: switcher
         onExited: (code, status) => {
+            // Cleared meanwhile: nothing is read for the closed section (a
+            // reading asked by a new opening still runs)
+            if (root.switchOpening !== root.opening) {
+                root.readDone()
+                return
+            }
             if (code !== 0 || status !== 0)
                 root.switchError = "Não consegui trocar de conta"
             root.refreshAgain = false

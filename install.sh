@@ -715,6 +715,11 @@ setup_gitconfig() {
       warn "~/.gitconfig has an unfinished code accounts block: left as it is"
       return 0
     fi
+    # A file git does not read: its fault, not a write that failed
+    if command -v git >/dev/null 2>&1 && ! git config --file "$gc" --list >/dev/null 2>&1; then
+      warn "~/.gitconfig is not read by git: left as it is"
+      return 0
+    fi
   fi
   tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
   local ok=1 cut=0

@@ -73,6 +73,11 @@ var SCRIPT = 'set -u\n'
     + '  if [ "$name" = contas.conf ]; then\n'
     + '    bad=$(git config --file "$tmp" --get-regexp "^includeif\\." 2>/dev/null | grep -cvE "^includeif\\.gitdir:[^ ]+\\.path contas/p[1-8]\\.conf$")\n'
     + '    [ "$bad" = 0 ] || { rm -f -- "$tmp"; status=fail; continue; }\n'
+    // The helpers: exactly the empty one then gh's for github.com, the
+    // empty one then glab's for gitlab.com, in this order
+    + '    cred=$(git config --file "$tmp" --get-regexp "^credential\\." 2>/dev/null)\n'
+    + '    want=$(printf "%s\\n" "credential.https://github.com.helper " "credential.https://github.com.helper !gh auth git-credential" "credential.https://gitlab.com.helper " "credential.https://gitlab.com.helper !glab auth git-credential")\n'
+    + '    [ "$cred" = "$want" ] || { rm -f -- "$tmp"; status=fail; continue; }\n'
     + '  else\n'
     + '    v=$(git config --file "$tmp" --get core.sshcommand 2>/dev/null)\n'
     + '    if [ -n "${key:-}" ]; then want="ssh -i $HOME/.ssh/$key -o IdentitiesOnly=yes"; else want=""; fi\n'

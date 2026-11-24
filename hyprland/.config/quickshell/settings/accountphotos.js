@@ -19,7 +19,8 @@
 // path) or ~/.cache, then dotfiles/contas-fotos, 700, never a link nor
 // inside the clone; each photo 600, named by the sha256 of
 // "github.com|<login in lower case>", replaced in one rename; renewed after
-// 7 days (or when its time is in the future). It prints one fixed word:
+// 7 days (or when its time is in the future); pruned at each run (30 days,
+// 32 photos, temporaries of an hour). It prints one fixed word:
 // "ok <hex>", "cached <hex>", "stale <hex>" (the network failed, an older
 // photo is there), "none" (no such account), "bad" (not an image to keep),
 // "fail", "nocurl".
@@ -44,6 +45,16 @@ var SCRIPT = 'set -u\n'
     + '  case "$t/" in "$r"/*) echo fail; exit 0;; esac\n'
     + 'done\n'
     + '[ -z "$(find "$dir" -maxdepth 0 -perm /077)" ] || { echo fail; exit 0; }\n'
+    // The pruning, inside the checked folder only and only plain files:
+    // photos (hex names) older than 30 days, then the oldest past 32, and
+    // temporaries older than an hour. Anything else there stays
+    + 'prune() {\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -name ".t.*" -mmin +60 -delete\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -mmin +43200 -delete\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -printf "%T@ %f\\n" \\\n'
+    + '    | sort -rn | tail -n +33 | while read -r _ n; do [[ $n =~ ^[0-9a-f]{64}$ ]] && rm -f -- "$dir/$n"; done\n'
+    + '}\n'
+    + 'prune\n'
     + 'key=$(printf "github.com|%s" "${login,,}" | sha256sum | cut -c1-64)\n'
     + '[[ $key =~ ^[0-9a-f]{64}$ ]] || { echo fail; exit 0; }\n'
     + 'f=$dir/$key\n'
@@ -99,6 +110,7 @@ var SCRIPT = 'set -u\n'
     + '(( w >= 8 && w <= 512 && h >= 8 && h <= 512 )) || bad\n'
     + 'chmod 600 -- "$tmp" && mv -f -T -- "$tmp" "$f" || { echo fail; exit 0; }\n'
     + 'trap - EXIT\n'
+    + 'prune\n'
     + 'echo "ok $key"\n'
 
 // The image source of a cached photo: the cache folder and a name the
