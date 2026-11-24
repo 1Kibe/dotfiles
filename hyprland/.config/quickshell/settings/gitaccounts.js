@@ -40,8 +40,12 @@ function validText(s, max) {
     return typeof s === "string" && s.length > 0 && s.length <= max && s.trim() !== "" && !Clean.BAD.test(s)
 }
 
+// git takes < and > out of a commit's name and e-mail: the screen would
+// show one thing and the commit another
+var IDENT_NOT = /[<>]/
+
 function validEmail(s) {
-    return validText(s, EMAIL_MAX) && EMAIL_RE.test(s)
+    return validText(s, EMAIL_MAX) && EMAIL_RE.test(s) && !IDENT_NOT.test(s)
 }
 
 // "" or github.com|<login>: the GitHub account whose photo the profile
@@ -56,7 +60,8 @@ function validGhAccount(s) {
 
 function validProfile(p) {
     return p !== null && typeof p === "object" && !Array.isArray(p) && typeof p.id === "string" && ID_RE.test(p.id)
-        && validText(p.label, LABEL_MAX) && validText(p.name, NAME_MAX) && validEmail(p.email) && validKey(p.key)
+        && validText(p.label, LABEL_MAX) && validText(p.name, NAME_MAX) && !IDENT_NOT.test(p.name) && validEmail(p.email)
+        && validKey(p.key)
         && (p.ghAccount === undefined || validGhAccount(p.ghAccount))
 }
 
