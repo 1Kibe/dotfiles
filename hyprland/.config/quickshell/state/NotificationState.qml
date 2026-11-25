@@ -56,7 +56,7 @@ Singleton {
     // brings nothing back
     onFullscreenChanged: {
         if (fullscreen)
-            setScreen(screenList.filter(c => c.urgent))
+            setScreen(screenList.filter(c => c.urgent).slice(0, Policy.URGENT_FULLSCREEN_MAX))
     }
 
     // ── The server ──
@@ -88,23 +88,36 @@ Singleton {
 
     // ── The door ──
     property var pace: null
+    // All of them over the pace: nothing else is done (counted)
+    function globalFull(now) {
+        const all = pace ? pace.all.filter(t => t > now - Group.PACE_MS).length : 0
+        return all >= Group.PACE_ALL
+    }
+    // This app's pace (and the global one): a new notification and an
+    // update in place both go through it
+    function admit(key, now) {
+        if (globalFull(now))
+            return false
+        const p = Group.pace(pace, key, now)
+        pace = p.pace
+        return p.ok
+    }
     function ingest(n) {
         const now = Date.now()
-        // (1) All of them over the pace: nothing else is done
-        const all = pace ? pace.all.filter(t => t > now - Group.PACE_MS).length : 0
-        if (all >= Group.PACE_ALL) {
+        // (1) The global pace, before any other work
+        if (globalFull(now)) {
             count("rate")
             return
         }
-        // (2) The cleaning
+        // (2) The cleaning; empty after it: dropped, spending no pace
         const copy = cleaned(n)
-        // (3) This app over its pace
-        const p = Group.pace(pace, copy.appKey, now)
-        pace = p.pace
-        const where = Policy.decide({ urgent: copy.urgent, empty: copy.summary === "" && copy.body === "" },
-                                    { overLimit: p.ok ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
+        const empty = copy.summary === "" && copy.body === ""
+        // (3) This app's pace
+        const ok = !empty && admit(copy.appKey, now)
+        const where = Policy.decide({ urgent: copy.urgent, empty: empty },
+                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
         if (where === "drop") {
-            count(Policy.dropReason({ empty: copy.summary === "" && copy.body === "" }, { overLimit: p.ok ? "" : "rate" }))
+            count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             return
         }
         n.tracked = true
@@ -159,7 +172,7 @@ Singleton {
         o[id] = n
         objects = o
         watch(n)
-        const t = Group.trim([e].concat(entries), Group.STORE_MAX, Group.STORE_PER_APP)
+        const t = Group.trim([e].concat(entries), Group.STORE_MAX, Group.STORE_PER_APP, id)
         for (const gone of t.removed)
             forget(gone, true)
         entries = t.store
@@ -167,6 +180,12 @@ Singleton {
             const d = Object.assign({}, dropped)
             d.cap += t.removed.length
             dropped = d
+        }
+        // (never taken out by the caps; if it were: no card for it)
+        if (!entries.some(x => x.id === id)) {
+            forget(id, true)
+            count("cap")
+            return
         }
         if (where === "screen")
             toScreen(e)
@@ -177,6 +196,9 @@ Singleton {
     // (several objects can change in the same moment: a queue, not the
     // arguments of Qt.callLater, which keeps only the last ones)
     property var changedQueue: []
+    // Each object is watched once (a replacement by another app keeps the
+    // same object)
+    property var watched: []
     function flushChanged() {
         const q = changedQueue
         changedQueue = []
@@ -184,6 +206,9 @@ Singleton {
             replaced(n)
     }
     function watch(n) {
+        if (watched.includes(n))
+            return
+        watched = watched.concat([n])
         const changed = () => {
             if (!root.changedQueue.includes(n))
                 root.changedQueue = root.changedQueue.concat([n])
@@ -196,7 +221,10 @@ Singleton {
         n.urgencyChanged.connect(changed)
         n.imageChanged.connect(changed)
         n.actionsChanged.connect(changed)
-        n.closed.connect(() => root.closedByApp(n))
+        n.closed.connect(() => {
+            root.closedByApp(n)
+            root.watched = root.watched.filter(x => x !== n)
+        })
     }
     function replaced(n) {
         const id = entryOf(n)
@@ -206,21 +234,33 @@ Singleton {
         const old = entries.find(e => e.id === id)
         if (!old)
             return
+        const now = Date.now()
+        // The app key is what the message says (anyone can send any name):
+        // it groups, it never proves who sent it
         if (copy.appKey === old.appKey) {
-            // The same app: in place, not counted as new
-            entries = entries.map(e => e.id === id ? Object.assign({}, e, copy) : e)
+            // The same app: in place, not counted as new, through the same
+            // pace (an update in a loop is capped like new ones); over it,
+            // the older text stays
+            if (!admit(copy.appKey, now)) {
+                count("rate")
+                return
+            }
+            // An update changes text and picture only: new or other buttons
+            // are not taken (the click would go to whoever owned the id)
+            const same = JSON.stringify(copy.actions) === JSON.stringify(old.actions) && copy.hasDefault === old.hasDefault
+            const update = same ? copy : Object.assign({}, copy, { actions: [], hasDefault: false })
+            entries = entries.map(e => e.id === id ? Object.assign({}, e, update, { read: false }) : e)
             return
         }
         // Another app over the same id: the old entry stays, without
         // buttons; the new one comes in like any other
         detach(id)
-        const now = Date.now()
-        const p = Group.pace(pace, copy.appKey, now)
-        pace = p.pace
-        const where = Policy.decide({ urgent: copy.urgent, empty: copy.summary === "" && copy.body === "" },
-                                    { overLimit: p.ok ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
+        const empty = copy.summary === "" && copy.body === ""
+        const ok = !empty && admit(copy.appKey, now)
+        const where = Policy.decide({ urgent: copy.urgent, empty: empty },
+                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
         if (where === "drop") {
-            count(Policy.dropReason({ empty: copy.summary === "" && copy.body === "" }, { overLimit: p.ok ? "" : "rate" }))
+            count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             n.dismiss()
             return
         }
@@ -277,19 +317,28 @@ Singleton {
         if (entries.some(e => !e.read))
             entries = entries.map(e => e.read ? e : Object.assign({}, e, { read: true }))
     }
+    // Locked or asked to lock: nothing here acts (the IPC, a stale click)
     function dismiss(id) {
+        if (locked)
+            return false
         forget(id, true)
         entries = entries.filter(e => e.id !== id)
         setScreen(screenList.filter(c => c.id !== id))
+        return true
     }
     function clearAll() {
+        if (locked)
+            return false
         for (const e of entries)
             forget(e.id, true)
         entries = []
         clearScreen()
+        return true
     }
     // A button: the object's own action, only that one
     function invoke(id, index) {
+        if (locked)
+            return false
         const n = objects[id]
         const e = entries.find(x => x.id === id)
         if (!n || !e || !e.actions.some(a => a.index === index) || !n.actions || index >= n.actions.length)
@@ -299,6 +348,8 @@ Singleton {
     }
     // The card's own click: the app's default action, if it sent one
     function activate(id) {
+        if (locked)
+            return false
         const n = objects[id]
         const e = entries.find(x => x.id === id)
         if (!n || !e || !e.hasDefault)
@@ -313,22 +364,37 @@ Singleton {
     }
 
     // ── Não perturbe (kept on disk: only {"dnd": bool}) ──
-    readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/quickshell`
-    readonly property string statePath: `${stateDir}/notifications.json`
+    // Only an absolute folder (no HOME: nothing on disk)
+    readonly property string stateBase: {
+        const x = Quickshell.env("XDG_STATE_HOME") || ""
+        const h = Quickshell.env("HOME") || ""
+        return x.startsWith("/") ? x : h.startsWith("/") ? h + "/.local/state" : ""
+    }
+    readonly property string stateDir: stateBase !== "" ? `${stateBase}/quickshell` : ""
+    readonly property string statePath: stateDir !== "" ? `${stateDir}/notifications.json` : ""
     property bool loaded: false
+    // A switch asked before the file was read: applied after it
+    property var asked: null
     function setDnd(on) {
+        if (locked)
+            return false
+        if (!loaded) {
+            asked = on === true
+            return true
+        }
         if (dnd === (on === true))
-            return
+            return true
         dnd = on === true
         if (dnd)
             setScreen(screenList.filter(c => c.urgent && Policy.URGENT_PIERCES_DND))
         save()
+        return true
     }
     function toggleDnd() {
-        setDnd(!dnd)
+        return setDnd(asked !== null ? !asked : !dnd)
     }
     function save() {
-        if (!loaded)
+        if (!loaded || statePath === "")
             return
         stateFile.setText(JSON.stringify({ dnd: dnd }))
     }
@@ -349,7 +415,15 @@ Singleton {
             Quickshell.execDetached(["mv", "-f", "--", statePath, statePath + ".bak"])
             dnd = false
         }
+        afterLoad()
+    }
+    function afterLoad() {
         loaded = true
+        if (asked !== null) {
+            const on = asked
+            asked = null
+            setDnd(on)
+        }
     }
     FileView {
         id: stateFile
@@ -360,8 +434,8 @@ Singleton {
             if (!root.loaded)
                 root.load(text())
         }
-        onLoadFailed: root.loaded = true
-        onSaved: Quickshell.execDetached(["chmod", "600", root.statePath])
+        onLoadFailed: root.afterLoad()
+        onSaved: Quickshell.execDetached(["chmod", "600", "--", root.statePath])
     }
 
     // ── Whose the name is: this shell's process, or another program ──
@@ -374,34 +448,53 @@ Singleton {
         + 'p=$(q GetConnectionUnixProcessID "$o") || { echo no; exit 0; }\n'
         + 'p=${p#"(uint32 "}; p=${p%",)"}\n'
         + '[ "$p" = "$PPID" ] && echo ok || echo no\n'
+    // A diagnosis only (the sininho, stats), never a security decision.
+    // Asked at 1.5, 5 and 15 s after start (a busy start can miss), then
+    // every minute while another program has it; warned once, after the
+    // second miss
     property bool warned: false
+    property int misses: 0
+    property int asks: 0
+    readonly property var askAt: [1500, 3500, 10000]
     Process {
         id: owner
         command: ["bash", "-c", root.ownerScript]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.serverOk = text.trim() === "ok"
-                if (!root.serverOk && !root.warned) {
+                root.misses = root.serverOk ? 0 : root.misses + 1
+                if (root.misses >= 2 && !root.warned) {
                     root.warned = true
-                    console.warn("notificacoes: outro programa de notificação tem o nome na sessão")
+                    console.warn("notificacoes: outro programa de notificação tem o nome na sessão; recarregue o shell depois de fechar o outro")
                 }
+                if (!root.serverOk && root.asks < root.askAt.length)
+                    ownerSoon.restart()
             }
         }
         stderr: StdioCollector {}
     }
-    // Asked a moment after start, then again while another program has it
+    Timer {
+        id: ownerSoon
+        interval: root.askAt[Math.min(root.asks, root.askAt.length - 1)]
+        running: true
+        onTriggered: {
+            root.asks++
+            if (!owner.running)
+                owner.running = true
+        }
+    }
     Timer {
         interval: 60000
-        running: !root.serverOk
+        running: !root.serverOk && root.asks >= root.askAt.length
         repeat: true
         onTriggered: if (!owner.running) owner.running = true
     }
-    Timer {
-        interval: 1500
-        running: true
-        onTriggered: owner.running = true
+    Component.onCompleted: {
+        if (stateDir !== "")
+            Quickshell.execDetached(["sh", "-c", "umask 077; mkdir -p -- \"$1\"; chmod 700 -- \"$1\"", "sh", stateDir])
+        else
+            afterLoad()
     }
-    Component.onCompleted: Quickshell.execDetached(["sh", "-c", "umask 077; mkdir -p \"$1\"; chmod 700 \"$1\"", "sh", stateDir])
 
     // Numbers and yes/no only
     function stats() {

@@ -14,8 +14,11 @@
 var DATA = /^image:\/\/qsimage\/[0-9]{1,12}(\/[0-9]{1,12})?$/
 // A theme icon's name
 var ICON = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/
-// Showing the protocol's image at all (off: initials and app icons only)
-var IMAGES = true
+// The protocol's image (image-data): off in this version. The Quickshell
+// decodes it before any check here and keeps it while the notification
+// lives; its memory was not measured. Off, the server does not offer it
+// (imageSupported) and only theme icons by name show
+var IMAGES = false
 
 var NONE = { kind: "none", value: "" }
 

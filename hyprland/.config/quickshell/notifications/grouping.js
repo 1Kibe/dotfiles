@@ -7,8 +7,13 @@
 // The central: at most this many, and per app
 var STORE_MAX = 200
 var STORE_PER_APP = 50
+// Urgent ones kept in the central, at most (so they never push out every
+// normal one)
+var STORE_URGENT_MAX = 50
 // The pace: per app and in all, in a window of PACE_MS; the apps
-// remembered for it
+// remembered for it. The key is what the message says it is (anyone can
+// use any name): the pace per app is a cap, never an identity, and the
+// global one is shared by all of them
 var PACE_PER_APP = 20
 var PACE_ALL = 60
 var PACE_MS = 10000
@@ -64,18 +69,21 @@ function limitScreen(list, max) {
 }
 
 // The central over its caps: the oldest goes first, a normal one before an
-// urgent one; the per-app cap first, then the total. → { store, removed }
-// (removed: the ids taken out)
-function trim(store, maxTotal, maxPerApp) {
+// urgent one; urgent ones have a cap of their own (STORE_URGENT_MAX); the
+// per-app cap, then the total. keepId (the one just in) is never the one
+// taken out. → { store, removed } (removed: the ids taken out)
+function trim(store, maxTotal, maxPerApp, keepId) {
     let s = store.slice()
     const removed = []
-    const drop = list => {
+    // The oldest of the indexes in list (not keepId), a normal one first
+    // unless onlyUrgent
+    const drop = (list, onlyUrgent) => {
         let k = -1
         let oldest = Infinity
-        for (const urgentPass of [false, true]) {
+        for (const urgentPass of onlyUrgent ? [true] : [false, true]) {
             for (let i = 0; i < list.length; i++) {
                 const e = s[list[i]]
-                if (!!e.urgent === urgentPass && e.time < oldest) {
+                if (e.id !== keepId && !!e.urgent === urgentPass && e.time < oldest) {
                     oldest = e.time
                     k = list[i]
                 }
@@ -83,8 +91,16 @@ function trim(store, maxTotal, maxPerApp) {
             if (k >= 0)
                 break
         }
+        if (k < 0)
+            return false
         removed.push(s[k].id)
         s.splice(k, 1)
+        return true
+    }
+    const all = () => s.map((_, i) => i)
+    while (s.filter(e => e.urgent).length > STORE_URGENT_MAX) {
+        if (!drop(all(), true))
+            break
     }
     const counts = {}
     for (const e of s)
@@ -93,12 +109,15 @@ function trim(store, maxTotal, maxPerApp) {
         while (counts[key] > maxPerApp) {
             const idx = []
             s.forEach((e, i) => { if (e.appKey === key) idx.push(i) })
-            drop(idx)
+            if (!drop(idx, false))
+                break
             counts[key]--
         }
     }
-    while (s.length > maxTotal)
-        drop(s.map((_, i) => i))
+    while (s.length > maxTotal) {
+        if (!drop(all(), false))
+            break
+    }
     return { store: s, removed: removed }
 }
 

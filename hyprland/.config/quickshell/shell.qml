@@ -22,6 +22,9 @@ ShellRoot {
     // shell touches both at start; the store reads the choices, the other
     // takes them out of the shell
     readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
+    // The notifications' server is up from the start (a singleton only lives
+    // once something reads it), so the session's notifications reach it
+    readonly property bool notificationsReady: NotificationState.serverOk
     // The night light keeps its hours with the panel closed too
     readonly property bool nightLightOn: NightLight.wanted
     // The minimize state from the start: it follows Hyprland's events (a
@@ -106,16 +109,15 @@ ShellRoot {
             return "ok"
         }
         function dnd(): string {
-            NotificationState.toggleDnd()
+            if (!NotificationState.toggleDnd())
+                return "travada"
             return NotificationState.dnd ? "ligado" : "desligado"
         }
         function dndOn(): string {
-            NotificationState.setDnd(true)
-            return "ligado"
+            return NotificationState.setDnd(true) ? "ligado" : "travada"
         }
         function dndOff(): string {
-            NotificationState.setDnd(false)
-            return "desligado"
+            return NotificationState.setDnd(false) ? "desligado" : "travada"
         }
         function stats(): string {
             return NotificationState.stats()
