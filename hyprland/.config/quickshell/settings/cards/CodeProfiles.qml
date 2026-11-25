@@ -19,7 +19,13 @@ ColumnLayout {
     id: root
 
     readonly property bool locked: CodeAccounts.locked
-    readonly property var profiles: Cards.list(SettingsStore.get("codeProfiles"))
+    // The text first: a change of another key gives the same text, so the
+    // list (and an editor open in it, with what was typed) is not built again
+    readonly property string profilesText: SettingsStore.get("codeProfiles") || "[]"
+    readonly property var profiles: Cards.list(profilesText)
+    // How gh's reading stands, for the accounts' lines
+    readonly property string reading: CodeAccounts.loading ? "loading"
+                                    : CodeAccounts.error !== "" || !CodeAccounts.ghAvailable ? "failed" : ""
     readonly property bool full: profiles.length >= 8
     // The id being edited, "new" for a new one, "" for none
     property string editing: ""
@@ -33,14 +39,8 @@ ColumnLayout {
         CodeAccounts.watchPhotos(true)
         readKeys()
     }
+    // (the end of a lock reads them again in CodeAccounts, while watched)
     Component.onDestruction: CodeAccounts.watchPhotos(false)
-    Connections {
-        target: CodeAccounts
-        function onLockedChanged() {
-            if (!CodeAccounts.locked)
-                CodeAccounts.refresh()
-        }
-    }
 
     function readKeys() {
         if (!keysJob.running)
@@ -61,7 +61,7 @@ ColumnLayout {
         readKeys()
     }
     function save(draft) {
-        const r = Cards.saveProfile(profiles, draft)
+        const r = Cards.saveProfile(profiles, draft, Cards.list(SettingsStore.get("codeFolders")))
         if (!r.ok) {
             error = r.error
             return
@@ -129,7 +129,7 @@ ColumnLayout {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: Cards.accountText(entry.modelData, CodeAccounts.hosts, entry.index, CodeAccounts.photosHidden)
+                        text: Cards.accountText(entry.modelData, CodeAccounts.hosts, entry.index, CodeAccounts.photosHidden, root.reading)
                               + " · " + entry.modelData.key
                         textFormat: Text.PlainText
                         elide: Text.ElideRight

@@ -15,6 +15,7 @@ var ERR = {
     key: "Escolha uma chave SSH de ~/.ssh",
     gh: "Escolha uma conta da lista",
     full: "No máximo 8 perfis",
+    ids: "Troque o perfil das pastas de perfis removidos ou tire essas pastas antes",
     folder: "Use uma pasta dentro da sua pasta pessoal, fora de ~/.ssh, ~/.config e ~/.gnupg, só com letras, números e . _ - @ +",
     taken: "Essa pasta já está na lista",
     folders: "No máximo 32 pastas",
@@ -31,11 +32,15 @@ function list(text) {
     }
 }
 
-// The first id not in use, "" when the 8 are
-function freeId(profiles) {
+// The first id not in use, "" when the 8 are. An id a folder still names
+// (its profile was removed) is not given again: that folder would take the
+// new profile's identity and key without being asked
+function freeId(profiles, folders) {
+    const named = Array.isArray(folders) ? folders : []
     for (let i = 1; i <= Git.PROFILE_MAX; i++) {
-        if (!profiles.some(p => p.id === "p" + i))
-            return "p" + i
+        const id = "p" + i
+        if (!profiles.some(p => p.id === id) && !named.some(f => f && f.profile === id))
+            return id
     }
     return ""
 }
@@ -53,14 +58,18 @@ function clean(s) {
 }
 
 // The editor's draft ({ id ("" for a new one), label, name, email, key,
-// ghAccount }) into the list: the first field that does not pass says so
-function saveProfile(profiles, draft) {
+// ghAccount }) into the list: the first field that does not pass says so.
+// folders: the folders' list (a new profile never takes an id one of them
+// still names)
+function saveProfile(profiles, draft, folders) {
     const p = { id: clean(draft.id), label: clean(draft.label), name: clean(draft.name), email: clean(draft.email),
                 key: clean(draft.key), ghAccount: clean(draft.ghAccount) }
     if (p.id === "") {
-        p.id = freeId(profiles)
-        if (p.id === "")
+        if (profiles.length >= Git.PROFILE_MAX)
             return fail(ERR.full)
+        p.id = freeId(profiles, folders)
+        if (p.id === "")
+            return fail(ERR.ids)
     } else if (!profiles.some(x => x.id === p.id)) {
         return fail(ERR.store)
     }
@@ -131,11 +140,17 @@ function accountRead(p, hosts) {
     return l !== "" && githubUsers(hosts).includes(l)
 }
 
-// Under the profile's name: its account (or why there is none), then its key
-function accountText(p, hosts, index, hidden) {
+// Under the profile's name: its account (or why there is none), then its key.
+// reading: "loading" while gh is read, "failed" when it could not be (the
+// account is not called missing then), "" once read
+function accountText(p, hosts, index, hidden, reading) {
     const l = ghLogin(p)
     if (l === "")
         return "sem conta do GitHub"
+    if (reading === "loading" && !accountRead(p, hosts))
+        return "lendo contas…"
+    if (reading === "failed" && !accountRead(p, hosts))
+        return hidden ? `conta ${index + 1}` : l
     if (!accountRead(p, hosts))
         return "conta não encontrada"
     return hidden ? `conta ${index + 1}` : l
@@ -180,7 +195,7 @@ function profileOptions(profiles) {
 var KEYS_SCRIPT = 'exec 2>/dev/null\n'
     + 's=$HOME/.ssh\n'
     + '[ -d "$s" ] && [ ! -L "$s" ] && [ -O "$s" ] || exit 0\n'
-    + 'find "$s" -mindepth 1 -maxdepth 1 -type f -user "$(id -u)" ! -perm /077 ! -name "*.pub" -printf "%f\\n" | head -n 64\n'
+    + 'find "$s" -mindepth 1 -maxdepth 1 -type f -user "$(id -u)" ! -perm /077 ! -name "*.pub" ! -name "*[!A-Za-z0-9._@+-]*" -printf "%f\\n" | head -n 64\n'
 
 function keyNames(text) {
     return typeof text === "string" ? text.split("\n").filter(n => Git.validKey(n)) : []
@@ -236,10 +251,11 @@ function parseState(text) {
     return out
 }
 
-// A folder's line in Estado
-function folderState(folder, index, state, profiles) {
+// A folder's line in Estado. done: the reading of the state ended (with no
+// answer for the folder, it failed)
+function folderState(folder, index, state, profiles, done) {
     if (state.dirs[index] === undefined)
-        return ""
+        return done ? "Não deu para ler o estado" : "Lendo…"
     if (!state.dirs[index])
         return "a pasta não existe"
     if (!profiles.some(p => p.id === folder.profile))
@@ -266,8 +282,17 @@ var CHECK_SCRIPT = 'set -u\n'
     + 'exec 2>/dev/null\n'
     + 'unset GIT_DIR GIT_WORK_TREE GIT_CONFIG GIT_CONFIG_GLOBAL GIT_CONFIG_SYSTEM GIT_CONFIG_COUNT GIT_CONFIG_PARAMETERS GIT_CEILING_DIRECTORIES GIT_TEMPLATE_DIR\n'
     + 'export GIT_OPTIONAL_LOCKS=0 LC_ALL=C\n'
-    + 'clone=$(readlink -f -- "$1/../../..") || exit 1\n'
+    + 'clone=$(readlink -f -- "$1/../../..") && [ "$clone" != / ] || exit 1\n'
+    + 'rh=$(readlink -f -- "$HOME") && [ "$rh" != / ] || exit 1\n'
+    + 'tab=$(printf "\\t")\n'
     + 'tmp=""; tmpin=""\n'
+    // The e-mail git would use in $1, only when it comes from a profile's
+    // file (a repo's own user.email, or the default identity, is not the
+    // profile at work)
+    + 'mail_at() {\n'
+    + '  local line; line=$(timeout 3 git -C "$1" config --show-origin --get user.email) || return 1\n'
+    + '  case "${line%%"$tab"*}" in "file:$HOME/.config/git/contas/p"[1-8]".conf") printf "%s" "${line#*"$tab"}";; *) return 1;; esac\n'
+    + '}\n'
     // Only a path made here, a direct child of its folder, never a link
     + 'drop() {\n'
     + '  local t=$1 parent=$2 b=${1##*/}\n'
@@ -288,24 +313,34 @@ var CHECK_SCRIPT = 'set -u\n'
     + '  repo=""\n'
     + '  if [ -e "$p/.git" ]; then repo=$p\n'
     + '  else\n'
-    + '    g=$(timeout 3 find "$p" -mindepth 2 -maxdepth 4 -name .git ! -path "*/.conferir.*" -print -quit)\n'
+    + '    g=$(timeout 3 find "$p" -xdev -mindepth 2 -maxdepth 4 -name .git ! -path "*/.conferir.*" -print -quit)\n'
     + '    [ -n "$g" ] && repo=${g%/.git}\n'
     + '  fi\n'
     + '  if [ -n "$repo" ]; then\n'
     + '    gd=$(timeout 3 git -C "$repo" rev-parse --absolute-git-dir) || { echo "$n naoda"; continue; }\n'
     + '    gd=$(readlink -f -- "$gd") || { echo "$n naoda"; continue; }\n'
     + '    case "$gd/" in "$real"/*) ;; *) echo "$n naoda"; continue;; esac\n'
-    + '    got=$(timeout 3 git -C "$repo" config --get user.email)\n'
+    + '    got=$(mail_at "$repo") || got=""\n'
     + '  else\n'
-    // No repo: the temporary one, only where it is safe to write
+    // No repo: the temporary one, only where it is safe to write: the
+    // folder is where its name says (no link on the way), not under
+    // ~/.ssh, ~/.config or ~/.gnupg, not in the clone, the user's and
+    // writable
+    + '    exp=$rh/${path#\\~/}; exp=${exp%/}\n'
+    + '    [ "$real" = "$exp" ] || { echo "$n naoda"; continue; }\n'
+    + '    case "$real/" in "$rh"/.ssh/*|"$rh"/.config/*|"$rh"/.gnupg/*|"$clone"/*) echo "$n naoda"; continue;; esac\n'
     + '    [ -O "$p" ] && [ -w "$p" ] || { echo "$n naoda"; continue; }\n'
-    + '    case "$real/" in "$clone"/*) echo "$n naoda"; continue;; esac\n'
-    + '    for old in "$p"/.conferir.*; do [ -e "$old" ] && drop "$old" "$p"; done\n'
+    // One left by a run that was killed: only an idle one (2 min: never
+    // another run's) holding nothing but its .git
+    + '    for old in "$p"/.conferir.*; do\n'
+    + '      [ -d "$old" ] && [ ! -L "$old" ] || continue\n'
+    + '      [ -z "$(find "$old" -mindepth 1 -maxdepth 1 ! -name .git -print -quit)" ] && [ -n "$(find "$old" -maxdepth 0 -mmin +2)" ] && drop "$old" "$p"\n'
+    + '    done\n'
     + '    tmpin=$p\n'
     + '    tmp=$(mktemp -d -- "$p/.conferir.XXXXXX") || { tmp=""; echo "$n naoda"; continue; }\n'
     + '    if [[ ${tmp##*/} =~ ^\\.conferir\\.[A-Za-z0-9]{6}$ ]] && [ "${tmp%/*}" = "$p" ] && [ ! -L "$tmp" ] \\\n'
     + '        && timeout 3 git init -q --template= -- "$tmp"; then\n'
-    + '      got=$(timeout 3 git -C "$tmp" config --get user.email)\n'
+    + '      got=$(mail_at "$tmp") || got=""\n'
     + '    else\n'
     + '      got=""; drop "$tmp" "$p"; tmp=""; echo "$n naoda"; continue\n'
     + '    fi\n'

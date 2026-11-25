@@ -19,11 +19,17 @@ ColumnLayout {
 
     readonly property bool locked: CodeAccounts.locked
     readonly property string home: Quickshell.env("HOME") || ""
-    readonly property var profiles: Cards.list(SettingsStore.get("codeProfiles"))
-    readonly property var folders: Cards.list(SettingsStore.get("codeFolders"))
+    readonly property string profilesText: SettingsStore.get("codeProfiles") || "[]"
+    readonly property string foldersText: SettingsStore.get("codeFolders") || "[]"
+    readonly property var profiles: Cards.list(profilesText)
+    readonly property var folders: Cards.list(foldersText)
     readonly property var nestedPaths: Git.nested(folders.filter(f => profiles.some(p => p.id === f.profile)))
     readonly property bool full: folders.length >= 32
     property string addProfile: ""
+    // The profile Adicionar uses: the one picked while it still exists,
+    // else the first
+    readonly property string addId: profiles.some(p => p.id === addProfile) ? addProfile
+                                  : profiles.length > 0 ? profiles[0].id : ""
     property string error: ""
 
     spacing: 0
@@ -73,7 +79,9 @@ ColumnLayout {
             RowLayout {
                 spacing: 6
                 Dropdown {
-                    options: Cards.profileOptions(root.profiles)
+                    // A removed profile shows as "Sem perfil" (not a blank button)
+                    options: root.profiles.some(p => p.id === line.modelData.profile) ? Cards.profileOptions(root.profiles)
+                           : [{ value: line.modelData.profile, label: "Sem perfil" }].concat(Cards.profileOptions(root.profiles))
                     value: line.modelData.profile
                     enabled: !root.locked && root.profiles.length > 0
                     opacity: enabled ? 1 : 0.5
@@ -102,6 +110,11 @@ ColumnLayout {
         Layout.rightMargin: 12
         Layout.bottomMargin: 6
         spacing: 6
+        // Typing again takes the refusal away
+        Connections {
+            target: pathField.input
+            function onTextChanged() { root.error = "" }
+        }
         Field {
             id: pathField
             Layout.fillWidth: true
@@ -113,7 +126,7 @@ ColumnLayout {
         }
         Dropdown {
             options: Cards.profileOptions(root.profiles)
-            value: root.addProfile !== "" ? root.addProfile : (root.profiles.length > 0 ? root.profiles[0].id : "")
+            value: root.addId
             enabled: addRow.can
             opacity: enabled ? 1 : 0.5
             onPicked: v => root.addProfile = v
@@ -123,8 +136,7 @@ ColumnLayout {
             enabled: addRow.can
             opacity: enabled ? 1 : 0.5
             onClicked: {
-                const id = root.addProfile !== "" ? root.addProfile : (root.profiles.length > 0 ? root.profiles[0].id : "")
-                if (root.store(Cards.addFolder(root.folders, root.profiles, pathField.input.text, id, root.home)))
+                if (root.store(Cards.addFolder(root.folders, root.profiles, pathField.input.text, root.addId, root.home)))
                     pathField.input.text = ""
             }
         }

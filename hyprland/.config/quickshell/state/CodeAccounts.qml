@@ -234,10 +234,14 @@ Singleton {
             photoJob.running = false
     }
     // Locked or asked to lock: what is read, being read or shown is let go
-    // (a reading or a switch that ends while locked brings back nothing)
+    // (a reading or a switch that ends while locked brings back nothing).
+    // Unlocked with the section or the page still showing: read again,
+    // once for both
     onLockedChanged: {
         if (locked)
             clear()
+        else if (photoWatchers > 0)
+            refresh()
     }
     onHostsChanged: queuePhotos()
     // The image of an account ("" for none: the initials show)
@@ -251,7 +255,9 @@ Singleton {
             return
         const q = photoQueue.slice()
         const now = Date.now()
-        for (const e of hosts) {
+        // Only github.com: the photo is fetched from there, so the login of
+        // another site would ask it for someone else's
+        for (const e of hosts.filter(h => h.host === "github.com")) {
             for (const u of e.users) {
                 const key = Accounts.cacheKeyText(e.host, u.login)
                 if (key !== "" && photos[key] === undefined && !q.includes(u.login) && u.login !== photoLogin

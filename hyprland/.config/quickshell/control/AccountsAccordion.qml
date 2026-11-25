@@ -52,24 +52,24 @@ ColumnLayout {
         watching = on
         CodeAccounts.watchPhotos(on)
     }
-    onActiveChanged: {
-        if (active) {
-            CodeAccounts.refresh()
-            watch(true)
-        } else {
-            watch(false)
+    // Opened: read and watch. Closed (or gone while open): the reading is
+    // let go, unless the settings' page still shows the accounts (both
+    // count in CodeAccounts.photoWatchers). The end of a lock reads them
+    // again in CodeAccounts, while watched
+    function opened() {
+        if (watching)
+            return
+        CodeAccounts.refresh()
+        watch(true)
+    }
+    function closed() {
+        watch(false)
+        if (CodeAccounts.photoWatchers === 0)
             CodeAccounts.clear()
-        }
     }
-    // A lock let the accounts go: read again when it ends, if still open
-    Connections {
-        target: CodeAccounts
-        function onLockedChanged() {
-            if (root.active && !CodeAccounts.locked)
-                CodeAccounts.refresh()
-        }
-    }
-    Component.onDestruction: watch(false)
+    onActiveChanged: active ? opened() : closed()
+    Component.onCompleted: if (active) opened()
+    Component.onDestruction: if (watching) closed()
 
     function switchTo(host, login) {
         if (active)
@@ -135,7 +135,7 @@ ColumnLayout {
         Layout.leftMargin: 4
         Layout.rightMargin: 4
         visible: text !== ""
-        text: CodeAccounts.loading && root.ghCount === 0 ? "Lendo as contas…"
+        text: (CodeAccounts.loading || CodeAccounts.refreshAgain) && root.ghCount === 0 ? "Lendo as contas…"
             : !CodeAccounts.ghAvailable ? "Instale o gh para trocar de conta."
             : CodeAccounts.error !== "" && root.ghCount === 0 ? CodeAccounts.error + "."
             : root.ghCount === 0 ? "Entre pelo terminal, sem rodar setup-git (veja a página)." : ""

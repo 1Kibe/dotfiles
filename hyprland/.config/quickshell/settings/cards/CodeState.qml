@@ -26,17 +26,31 @@ ColumnLayout {
     readonly property bool empty: folders.length === 0
 
     property var info: ({ files: {}, dirs: [], idFile: false })
+    // The state's reading ended (with no answer for a folder: it failed)
+    property bool infoDone: false
+    // Bumped at every change: a reading of the state started before it
+    // brings back nothing (the next one comes)
+    property int turn: 0
+    property int stateTurn: 0
     property var checked: ({})
     property string stateInput: ""
     property string checkInput: ""
+    // The lists a Conferir ran for: its answer counts only if they are the
+    // same when it ends
+    property string checkFor: ""
 
     spacing: 0
 
     // SettingsApply writes the files a moment after a change
     onProfilesTextChanged: changed()
     onFoldersTextChanged: changed()
+    // What was read or checked belongs to the lists of before: gone at
+    // once ("Lendo…"), and a Conferir still running is not shown
     function changed() {
         checked = ({})
+        info = ({ files: {}, dirs: [], idFile: false })
+        infoDone = false
+        turn++
         later.restart()
     }
     Timer {
@@ -56,6 +70,7 @@ ColumnLayout {
         } catch (e) {
             stateInput = Cards.stateInput("", folders)
         }
+        stateTurn = turn
         stateJob.stdinEnabled = true
         stateJob.running = true
     }
@@ -74,7 +89,10 @@ ColumnLayout {
         }
         onExited: {
             root.stateInput = ""
+            if (root.stateTurn !== root.turn)
+                return
             root.info = Cards.parseState(stateOut.text)
+            root.infoDone = true
         }
     }
 
@@ -83,6 +101,7 @@ ColumnLayout {
             return
         checked = ({})
         checkInput = Cards.checkInput(folders, profiles)
+        checkFor = checkInput
         checkJob.stdinEnabled = true
         checkJob.running = true
     }
@@ -101,7 +120,10 @@ ColumnLayout {
         }
         onExited: {
             root.checkInput = ""
-            root.checked = Cards.parseCheck(checkOut.text)
+            const same = root.checkFor === Cards.checkInput(root.folders, root.profiles)
+            root.checkFor = ""
+            if (same)
+                root.checked = Cards.parseCheck(checkOut.text)
         }
     }
 
@@ -114,10 +136,7 @@ ColumnLayout {
             readonly property string word: root.checked[index] !== undefined ? Cards.checkWord(root.checked[index]) : ""
             divider: index > 0
             label: modelData.path
-            desc: {
-                const s = Cards.folderState(modelData, index, root.info, root.profiles)
-                return s === "" ? "Lendo…" : s
-            }
+            desc: Cards.folderState(modelData, index, root.info, root.profiles, root.infoDone)
             Text {
                 visible: text !== ""
                 text: checkJob.running ? "conferindo…" : line.word
