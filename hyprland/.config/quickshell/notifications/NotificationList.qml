@@ -36,24 +36,25 @@ Item {
         const d = new Date(ms)
         return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2)
     }
-    // A click held from the press (index -1: the item; else a button)
-    property int pressedId: -1
-    property int pressedIndex: -2
+    // A click held from the press, one per place ("id:index"; index -1:
+    // the item, else a button): an item's press never takes a button's
+    property var presses: ({})
     function press(id, index) {
-        pressedId = id
-        pressedIndex = index
+        const p = Object.assign({}, presses)
+        p[id + ":" + index] = true
+        presses = p
+    }
+    function cancel(id, index) {
+        const p = Object.assign({}, presses)
+        delete p[id + ":" + index]
+        presses = p
     }
     function release(id, index) {
-        const same = pressedId === id && pressedIndex === index && NotificationState.entries.some(e => e.id === id)
-        pressedId = -1
-        pressedIndex = -2
-        if (!same)
+        const held = presses[id + ":" + index] === true
+        cancel(id, index)
+        if (!held || !NotificationState.entries.some(e => e.id === id))
             return false
-        if (index < 0)
-            NotificationState.open(id)
-        else
-            NotificationState.invoke(id, index)
-        return true
+        return index < 0 ? NotificationState.open(id) : NotificationState.invoke(id, index)
     }
 
     FontMetrics {
@@ -147,12 +148,13 @@ Item {
                             color: Theme.cardFill
 
                             TapHandler {
+                                gesturePolicy: TapHandler.ReleaseWithinBounds
                                 onPressedChanged: {
                                     if (pressed)
                                         root.press(item.modelData.id, -1)
                                 }
                                 onTapped: root.release(item.modelData.id, -1)
-                                onCanceled: root.pressedId = -1
+                                onCanceled: root.cancel(item.modelData.id, -1)
                             }
 
                             ColumnLayout {
@@ -235,7 +237,7 @@ Item {
                                                         root.press(item.modelData.id, button.modelData.index)
                                                 }
                                                 onTapped: root.release(item.modelData.id, button.modelData.index)
-                                                onCanceled: root.pressedId = -1
+                                                onCanceled: root.cancel(item.modelData.id, button.modelData.index)
                                             }
                                             Text {
                                                 id: label

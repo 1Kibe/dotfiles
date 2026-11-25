@@ -33,7 +33,8 @@ Item {
     property bool focusedHere: Hyprland.focusedMonitor !== null && Hyprland.focusedMonitor.name === monitorName
     // Hidden at once: another monitor in focus, the capture, the lock, or the
     // bar sliding away (a full screen): the cards wait
-    readonly property bool hidden: !focusedHere || CaptureState.open || NotificationState.locked || (frame !== null && frame.out > 0)
+    readonly property bool hidden: !focusedHere || CaptureState.open || CaptureState.recording || NotificationState.locked
+                                   || (frame !== null && frame.out > 0)
                                    || ShellState.openPanel === "notifications"
     readonly property bool mirrored: Theme.barAtBottom
     readonly property bool overCapture: false
@@ -100,9 +101,21 @@ Item {
             frame.showPanel(root)
         else
             frame.hidePanel(root)
-        ShellState.setOverlay("notificacoes:" + monitorName, visible && !hidden)
+        syncOverlay()
     }
-    onHiddenChanged: ShellState.setOverlay("notificacoes:" + monitorName, visible && !hidden)
+    onHiddenChanged: syncOverlay()
+    onMonitorNameChanged: syncOverlay()
+    // The overlay key in use: a monitor's name that comes late (or changes)
+    // lets go of the old key, so no stale one keeps the screen "busy"
+    property string overlayKey: ""
+    function syncOverlay() {
+        const key = monitorName !== "" ? "notificacoes:" + monitorName : ""
+        if (overlayKey !== "" && overlayKey !== key)
+            ShellState.setOverlay(overlayKey, false)
+        overlayKey = key
+        if (key !== "")
+            ShellState.setOverlay(key, visible && !hidden)
+    }
 
     // ── The bar's end: stretched before the first card, back after the last ──
     readonly property int stretchIn: Math.round(Theme.motionEdgeOpen * Theme.edgeBarShare)
@@ -415,6 +428,7 @@ Item {
     // A monitor gone with the pile showing: nothing of it stays
     Component.onDestruction: {
         ShellState.setRightPanelEdge(monitorName, 0, edgeOwner)
-        ShellState.setOverlay("notificacoes:" + monitorName, false)
+        if (overlayKey !== "")
+            ShellState.setOverlay(overlayKey, false)
     }
 }

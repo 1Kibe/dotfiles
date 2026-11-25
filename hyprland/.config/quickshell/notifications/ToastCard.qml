@@ -28,16 +28,26 @@ Item {
     // What it shows: the entry, kept while the mouse is over it and after
     // the entry is gone (a card sliding out)
     property var shown: null
+    // Anything the card shows differs (then the pointer waits again)
+    function differs(a, b) {
+        return a === null || b === null || a.id !== b.id || a.appName !== b.appName || a.summary !== b.summary
+               || a.body !== b.body || a.urgent !== b.urgent || JSON.stringify(a.image) !== JSON.stringify(b.image)
+               || JSON.stringify(a.actions) !== JSON.stringify(b.actions)
+    }
     function refresh() {
         if (entry !== null && (shown === null || !hover.hovered)) {
-            const changed = shown === null || shown.id !== entry.id || shown.summary !== entry.summary || shown.body !== entry.body
-                            || JSON.stringify(shown.actions) !== JSON.stringify(entry.actions)
+            const changed = differs(shown, entry)
             shown = entry
             if (changed)
                 arm()
         }
     }
     onEntryChanged: refresh()
+    // Shown again (the pile back): the pointer waits again
+    onActiveChanged: {
+        if (active)
+            arm()
+    }
     Component.onCompleted: refresh()
     // The pointer is ignored for 400 ms after a change (a click meant for
     // what was there before never lands on what came)
@@ -54,36 +64,38 @@ Item {
     readonly property bool urgent: shown !== null && shown.urgent
 
     // A click: the card (index -1: the app's default action and its
-    // window) or a button (its own action). Fixed at the press; at the
-    // release it acts only if the card still shows that same notification
-    // (a new one that came under the pointer never gets the click)
-    property int pressedId: -1
-    property int pressedIndex: -2
+    // window) or a button (its own action). Each one holds its own press
+    // (index -> id): the card's never takes a button's. At the release it
+    // acts only if the card still shows that same notification, with the
+    // same text (a new one, or a change, under the pointer never gets the
+    // click). The card leaves the screen by its place (cardId), which may
+    // already hold another one of the same app
+    property var presses: ({})
     signal acted(string what, int id, int index)
     function press(index) {
-        if (!armed || shown === null) {
-            pressedId = -1
-            return false
-        }
-        pressedId = shown.id
-        pressedIndex = index
-        return true
+        const p = Object.assign({}, presses)
+        delete p[index]
+        if (armed && shown !== null)
+            p[index] = shown.id
+        presses = p
+        return p[index] !== undefined
+    }
+    function cancel(index) {
+        const p = Object.assign({}, presses)
+        delete p[index]
+        presses = p
     }
     function release(index) {
-        const id = pressedId
-        const same = armed && shown !== null && id === shown.id && pressedIndex === index
-        pressedId = -1
-        pressedIndex = -2
-        if (!same)
+        const id = presses[index]
+        cancel(index)
+        const now = shown !== null ? (NotificationState.entries.find(e => e.id === shown.id) ?? null) : null
+        if (id === undefined || !armed || shown === null || id !== shown.id || (now !== null && differs(shown, now)))
             return false
-        if (index < 0) {
-            NotificationState.open(id)
-            acted("cartao", id, -1)
-        } else {
-            NotificationState.invoke(id, index)
-            NotificationState.dismissToast(id)
-            acted("botao", id, index)
-        }
+        const done = index < 0 ? NotificationState.open(id) : NotificationState.invoke(id, index)
+        if (!done)
+            return false
+        NotificationState.dismissToast(cardId)
+        acted(index < 0 ? "cartao" : "botao", id, index)
         return true
     }
     // The card's time (reading time, never scaled by the speed)
@@ -162,15 +174,17 @@ Item {
         }
         clip: true
 
-        // The card's own click (the buttons take theirs first)
+        // The card's own click (the buttons and the X take theirs first:
+        // each grab is exclusive)
         TapHandler {
             enabled: root.armed
+            gesturePolicy: TapHandler.ReleaseWithinBounds
             onPressedChanged: {
                 if (pressed)
                     root.press(-1)
             }
             onTapped: root.release(-1)
-            onCanceled: root.pressedId = -1
+            onCanceled: root.cancel(-1)
         }
 
         DragHandler {
@@ -306,7 +320,7 @@ Item {
                                     root.press(button.modelData.index)
                             }
                             onTapped: root.release(button.modelData.index)
-                            onCanceled: root.pressedId = -1
+                            onCanceled: root.cancel(button.modelData.index)
                         }
                         Text {
                             id: label

@@ -41,7 +41,8 @@ function decide(n, ctx) {
         return "drop"
     if (c.locked === true)
         return "central"
-    // The clock's panel open: it is in the list already, in front of the user
+    // The clock's panel open (it is in the list, in front of the user) or a
+    // recording going on (a card would be filmed)
     if (c.listOpen === true)
         return "central"
     if (c.dnd === true && !(n.urgent === true && URGENT_PIERCES_DND))

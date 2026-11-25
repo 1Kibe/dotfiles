@@ -61,6 +61,15 @@ Singleton {
             setScreen(screenList.filter(c => c.urgent).slice(0, Policy.URGENT_FULLSCREEN_MAX))
     }
 
+    // A recording starts: the cards on screen go to the list (never filmed)
+    Connections {
+        target: CaptureState
+        function onRecordingChanged() {
+            if (CaptureState.recording)
+                root.clearScreen()
+        }
+    }
+
     // The control center's Não perturbe button shows only while this shell
     // is the session's notifications (it only shows and switches dnd)
     Binding {
@@ -126,7 +135,7 @@ Singleton {
         const ok = !empty && admit(copy.appKey, now)
         const where = Policy.decide({ urgent: copy.urgent, empty: empty },
                                     { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen,
-                                      listOpen: ShellState.openPanel === "notifications" })
+                                      listOpen: ShellState.openPanel === "notifications" || CaptureState.recording })
         if (where === "drop") {
             count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             return
@@ -270,7 +279,7 @@ Singleton {
         const ok = !empty && admit(copy.appKey, now)
         const where = Policy.decide({ urgent: copy.urgent, empty: empty },
                                     { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen,
-                                      listOpen: ShellState.openPanel === "notifications" })
+                                      listOpen: ShellState.openPanel === "notifications" || CaptureState.recording })
         if (where === "drop") {
             count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             n.dismiss()
