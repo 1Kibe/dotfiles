@@ -50,13 +50,15 @@ var SCRIPT = 'set -u\n'
     // The pruning, inside the checked folder only and only of plain files
     // (a link or a folder with a photo's name is never removed: that
     // account then stays without a photo): photos (hex names) older than
-    // 30 days, then the oldest past 32 (a time in the future counts as
-    // that far in the past), and temporaries older than an hour. The photo
+    // 30 days (or more than 30 days ahead), then the oldest past 32 (a
+    // time in the future counts as that far in the past), and temporaries
+    // older than an hour. The photo
     // of this account always stays. Anything else there stays
     + 'prune() {\n'
     + '  local now; now=$(date +%s)\n'
     + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -name ".t.*" -mmin +60 -delete\n'
     + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" ! -name "$key" -mmin +43200 -delete\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" ! -name "$key" -newermt "@$((now + 2592000))" -delete\n'
     + '  LC_ALL=C find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -printf "%T@ %f\\n" \\\n'
     + '    | LC_ALL=C awk -v now="$now" -v k="$key" \'{ t = int($1); if ($2 == k) t = now + 1000000000; else if (t > now) t = 2 * now - t; print t, $2 }\' \\\n'
     + '    | LC_ALL=C sort -rn | tail -n +33 | while read -r _ n; do [[ $n =~ ^[0-9a-f]{64}$ ]] && [ "$n" != "$key" ] && rm -f -- "$dir/$n"; done\n'

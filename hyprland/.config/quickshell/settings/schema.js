@@ -107,9 +107,10 @@ var CARDS = {
                    { id: "usb", title: "Conectados por USB", component: "DevicesUsb",
                      syn: ["usb", "dispositivo", "teclado"] }],
     // The code accounts: the git identity and SSH key of each folder
-    contas: [{ id: "perfis", title: "Perfis", syn: ["conta", "git", "github", "gitlab", "perfil", "commit", "e-mail", "chave", "ssh", "foto"] },
-             { id: "pastas", title: "Pastas", syn: ["pasta", "git", "conta", "repositório", "repo"] },
-             { id: "estado", title: "Estado", syn: ["conferir", "git", "conta"] }],
+    contas: [{ id: "perfis", title: "Perfis", component: "CodeProfiles",
+               syn: ["conta", "git", "github", "gitlab", "perfil", "commit", "e-mail", "chave", "ssh", "foto"] },
+             { id: "pastas", title: "Pastas", component: "CodeFolders", syn: ["pasta", "git", "conta", "repositório", "repo"] },
+             { id: "estado", title: "Estado", component: "CodeState", syn: ["conferir", "git", "conta"] }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
