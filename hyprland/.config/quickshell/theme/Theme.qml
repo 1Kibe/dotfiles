@@ -12,28 +12,40 @@ import Quickshell
 Singleton {
     id: root
 
-    // Gruvbox dark, same values as hypr/modules/colors.lua
-    readonly property color bg: "#282828"
-    readonly property color bg1: "#3c3836"
-    readonly property color bg2: "#504945"
-    readonly property color bgHard: "#1d2021"
-    readonly property color bgDeep: "#141617"
-    readonly property color fg: "#ebdbb2"
-    readonly property color fg4: "#a89984"
-    // Text of the bar: plain white for now; the theme switcher will tune it
-    readonly property color text: "#ffffff"
-    readonly property color gray: "#928374"
-    readonly property color yellow: "#fabd2f"
-    readonly property color orange: "#fe8019"
-    readonly property color red: "#fb4934"
-    readonly property color green: "#b8bb26"
-    readonly property color aqua: "#8ec07c"
-    readonly property color blue: "#83a598"
-    readonly property color purple: "#d3869b"
+    // Gruvbox dark, same values as hypr/modules/colors.lua. Writable: the
+    // shell writes the chosen theme over them (state/SettingsApply); the
+    // login screen and a shell without settings keep these
+    property color bg: "#282828"
+    property color bg1: "#3c3836"
+    property color bg2: "#504945"
+    property color bgHard: "#1d2021"
+    property color bgDeep: "#141617"
+    property color fg: "#ebdbb2"
+    property color fg4: "#a89984"
+    // Text of the bar: white here; a theme gives its own fg
+    property color text: "#ffffff"
+    property color gray: "#928374"
+    property color yellow: "#fabd2f"
+    property color orange: "#fe8019"
+    property color red: "#fb4934"
+    property color green: "#b8bb26"
+    property color aqua: "#8ec07c"
+    property color blue: "#83a598"
+    property color purple: "#d3869b"
     // Windows accent color and a lighter tone of it (active window border);
     // Configurações → Tema e cores (settings/appearance.js accentPair)
     property color accent: "#7e735f"
     property color accentLight: "#bfb8a3"
+    // The terminal's eight dark tones (kitty color0 to color7), today's
+    // kitty.conf; nothing in the shell draws with them
+    property color ansi0: "#1d2021"
+    property color ansi1: "#cc241d"
+    property color ansi2: "#98971a"
+    property color ansi3: "#d79921"
+    property color ansi4: "#458588"
+    property color ansi5: "#b16286"
+    property color ansi6: "#689d6a"
+    property color ansi7: "#a89984"
 
     // Bar: one strip glued to the top edge, bottom corners rounded.
     // Translucent: Hyprland blurs what is behind it (layer rule
@@ -246,7 +258,7 @@ Singleton {
     // Login screen (system/greetd/quickshell, which copies this file): the
     // lock's clock, field and status pill, plus the session menu, the user
     // switcher and the power buttons
-    readonly property color fg2: "#d5c4a1"                      // the date
+    property color fg2: "#d5c4a1"                      // the date
     readonly property color loginVeil: root.alpha(bgDeep, 0.55)  // over the background picture
     readonly property color loginPill: root.alpha(bg, 0.88)
     readonly property color loginHighlight: root.alpha(fg, 0.14) // chosen session, hover

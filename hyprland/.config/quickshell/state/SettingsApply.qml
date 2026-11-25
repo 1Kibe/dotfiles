@@ -392,7 +392,9 @@ Singleton {
         kittyWanted = Kitty.colorsConf({
             bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
             green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua,
-            orange: Theme.orange, accentLight: Theme.accentLight
+            orange: Theme.orange, accentLight: Theme.accentLight,
+            ansi0: Theme.ansi0, ansi1: Theme.ansi1, ansi2: Theme.ansi2, ansi3: Theme.ansi3, ansi4: Theme.ansi4,
+            ansi5: Theme.ansi5, ansi6: Theme.ansi6, ansi7: Theme.ansi7
         })
         writeKitty()
     }

@@ -4,9 +4,17 @@
 // kitty.conf includes after its own (fallback) palette. Plain JS: read by the
 // shell (state/SettingsApply) and by the tests.
 
-// Kitty key -> Theme role. color0-7 stay in kitty.conf: the Theme has no
-// dark tones for them yet.
+// Kitty key -> Theme role (color0-7: the theme's dark tones; kitty.conf
+// keeps today's as the fallback)
 var ROLES = [
+    ["color0", "ansi0"],
+    ["color1", "ansi1"],
+    ["color2", "ansi2"],
+    ["color3", "ansi3"],
+    ["color4", "ansi4"],
+    ["color5", "ansi5"],
+    ["color6", "ansi6"],
+    ["color7", "ansi7"],
     ["background", "bgHard"],
     ["foreground", "fg"],
     ["cursor", "fg"],
