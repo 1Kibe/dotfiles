@@ -138,6 +138,25 @@ Singleton {
     readonly property color pinBorder: root.alpha(yellow, 0.75)
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // The volume and brightness notice (OSD) in the middle of the screen: a
+    // square of osdSize with the icon over a short bar; it stays osdHold
+    // after the last change (reading time: never scaled by the speed)
+    readonly property int osdSize: 132
+    readonly property int osdRadius: 22
+    readonly property int osdIconSize: 40
+    readonly property int osdBarWidth: 84
+    readonly property int osdBarHeight: 6
+    readonly property int osdHold: 1500
+    // Notifications: the cards' width, how long one stays (reading time,
+    // never scaled), how many show at once, the gap between them and the
+    // time bar; the clock's panel (calendar and list) and a calendar day
+    readonly property int toastWidth: 360
+    readonly property int toastHold: 5000
+    readonly property int toastMax: 3
+    readonly property int toastGap: 8
+    readonly property int toastTimerHeight: 2
+    readonly property int clockPanelWidth: 640
+    readonly property int calendarCell: 36
     // Clipboard drawer (Super+V): one height for its three tabs (the cards
     // take what is left), its fill, and the Anotações' list column
     readonly property int clipboardHeight: 220

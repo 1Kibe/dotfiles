@@ -87,6 +87,17 @@ ShellRoot {
     // is tried
     KeyboardKeep {}
 
+    // The notice in the middle of the screen: read the real value again and
+    // show it (no argument: nothing from outside reaches it)
+    // qs ipc call osd volume
+    IpcHandler {
+        target: "osd"
+
+        function volume(): string {
+            return OsdState.showVolume() ? "ok" : "sem aviso"
+        }
+    }
+
     IpcHandler {
         target: "capture"
 
