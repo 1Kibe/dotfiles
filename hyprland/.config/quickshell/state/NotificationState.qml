@@ -210,6 +210,36 @@ Singleton {
         if (where === "screen")
             toScreen(e)
         arrived(id, where)
+        // A minimized window of the app gets the mark (never with Não perturbe)
+        if (!dnd)
+            flagMinimized(e)
+    }
+
+    // ── The minimized windows (MinimizeState's own calls) ──
+    // The app's ids: only a key of the plain name rule, compared with the
+    // windows' class (never put in a command)
+    function appIds(e) {
+        return e && typeof e.appKey === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(e.appKey) ? [e.appKey] : []
+    }
+    function flagMinimized(e) {
+        const ids = appIds(e)
+        const m = ids.length > 0 ? MinimizeState.matchApp(ids) : null
+        if (m !== null)
+            MinimizeState.flag(m.address)
+    }
+    // (the tests swap it)
+    property var restoreApp: (ids, monitor) => MinimizeState.restoreByApp(ids, monitor)
+    // The card's click: a minimized window of the app comes back on the
+    // focused monitor; else the app's window is focused
+    function bringApp(e) {
+        const ids = appIds(e)
+        if (ids.length === 0)
+            return false
+        if (MinimizeState.matchApp(ids) !== null) {
+            const mon = Hyprland.focusedMonitor
+            return restoreApp(ids, mon ? mon.name : "")
+        }
+        return bringWindow(e.appKey)
     }
 
     // An object's own changes (a replacement, the app closing it)
@@ -380,7 +410,7 @@ Singleton {
         dismissToast(id)
         if (!e.read)
             entries = entries.map(x => x.id === id ? Object.assign({}, x, { read: true }) : x)
-        bringWindow(e.appKey)
+        bringApp(e)
         return true
     }
 
