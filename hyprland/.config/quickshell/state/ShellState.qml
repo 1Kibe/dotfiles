@@ -120,6 +120,22 @@ Singleton {
             delete m[key]
         rightPanelEdges = m
     }
+    // The same panels' body from left to right (the frame's x), so what
+    // hangs under one of them (the notifications' pile) lines up with it;
+    // same keys as rightPanelEdges
+    property var rightPanelSpans: ({})
+    function setRightPanelSpan(monitor, left, right, owner) {
+        const key = `${monitor}|${owner || "panel"}`
+        const old = rightPanelSpans[key]
+        if (right > left ? old && old.left === left && old.right === right : !old)
+            return
+        const m = Object.assign({}, rightPanelSpans)
+        if (right > left)
+            m[key] = { left: left, right: right }
+        else
+            delete m[key]
+        rightPanelSpans = m
+    }
     // Overlay pieces with no state of their own (the capture's toast and
     // card) say when they show: the minimize picture is not taken then
     property var overlays: ({})

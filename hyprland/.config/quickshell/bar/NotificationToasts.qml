@@ -34,7 +34,7 @@ Item {
     // Hidden at once: another monitor in focus, the capture, the lock, or the
     // bar sliding away (a full screen): the cards wait
     readonly property bool hidden: !focusedHere || CaptureState.open || CaptureState.recording || CaptureState.printing
-                                   || NotificationState.locked
+                                   || NotificationState.locked || squeezed
                                    || (frame !== null && frame.out > 0)
                                    || ShellState.openPanel === "notifications"
     readonly property bool mirrored: Theme.barAtBottom
@@ -58,21 +58,115 @@ Item {
     // the right edge of this monitor (the control center), Theme.toastGap
     // apart. Measured from the bar's edge side
     readonly property string edgeOwner: "notificacoes"
-    readonly property real othersEdge: {
-        if (cards.count === 0)
-            return 0
-        let y = 0
+    // The other panels on this edge, without the pile's own entry: a copy
+    // that changes only when theirs do (the pile's own edge follows the
+    // pile; reading it here would loop)
+    property var others: []
+    function readOthers() {
+        const out = []
         const prefix = monitorName + "|"
         for (const key in ShellState.rightPanelEdges) {
             if (!key.startsWith(prefix) || key === prefix + edgeOwner)
                 continue
-            const v = ShellState.rightPanelEdges[key]
-            const d = mirrored ? screenHeight - v : v
-            y = Math.max(y, d)
+            const sp = ShellState.rightPanelSpans[key] ?? null
+            out.push({ edge: ShellState.rightPanelEdges[key], span: sp ? { left: sp.left, right: sp.right } : null })
         }
-        return y
+        if (JSON.stringify(out) !== JSON.stringify(others))
+            others = out
     }
-    readonly property real wantTop: othersEdge > junction ? othersEdge + Theme.toastGap : junction
+    Connections {
+        target: ShellState
+        function onRightPanelEdgesChanged() { root.readOthers() }
+        function onRightPanelSpansChanged() { root.readOthers() }
+    }
+    // The panel it hangs under (the farthest-reaching one on this edge):
+    // { edge, span } (span: its body's left and right, when it says them)
+    readonly property var anchor: {
+        if (cards.count === 0)
+            return null
+        let best = null
+        for (const o of others) {
+            const d = mirrored ? screenHeight - o.edge : o.edge
+            if (best === null || d > best.edge)
+                best = { edge: d, span: o.span }
+        }
+        return best
+    }
+    readonly property real othersEdge: anchor !== null ? anchor.edge : 0
+    // Under a panel: off the bar, lined up with that panel's body
+    readonly property bool detached: othersEdge > junction
+    readonly property var span: detached && anchor.span ? anchor.span : null
+    readonly property real wantTop: detached ? othersEdge + Theme.toastGap : junction
+    // The pile's box, left to right: on the screen's edge (attached to the
+    // bar) or the panel's body; moving between them with the top
+    readonly property real wantLeft: span ? span.left : screenWidth - rowWidth
+    readonly property real wantRight: span ? span.right : screenWidth
+    property real boxLeft: screenWidth - rowWidth
+    property real boxRight: screenWidth
+    Binding on boxLeft {
+        value: root.wantLeft
+    }
+    Binding on boxRight {
+        value: root.wantRight
+    }
+    Behavior on boxLeft {
+        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
+        NumberAnimation {
+            duration: Theme.dur(Theme.motionEdgeClose)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.curveDecel
+        }
+    }
+    Behavior on boxRight {
+        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
+        NumberAnimation {
+            duration: Theme.dur(Theme.motionEdgeClose)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Theme.curveDecel
+        }
+    }
+    readonly property real boxWidth: boxRight - boxLeft
+
+    // Under a panel, only the cards that fit whole between its edge and the
+    // end of the screen show (the others wait, counted in "e mais N", their
+    // time stopped); none fits: the pile closes and they all wait. They come
+    // back as the panel shrinks or closes. { show: [bool by row], waiting }
+    readonly property real usefulBottom: screenHeight - Theme.gap
+    readonly property var fit: {
+        const n = rows.count
+        if (!detached)
+            return { show: [], waiting: 0 }
+        const pass = reserve => {
+            let y = wantTop
+            const show = []
+            let waiting = 0
+            for (let i = 0; i < n; i++) {
+                const slot = rows.itemAt(i)
+                if (!slot) {
+                    show.push(true)
+                    continue
+                }
+                if (slot.leaving) {
+                    y += slot.rowHeight * slot.room
+                    show.push(true)
+                    continue
+                }
+                if (waiting === 0 && y + slot.rowHeight <= usefulBottom - reserve) {
+                    y += slot.rowHeight
+                    show.push(true)
+                } else {
+                    show.push(false)
+                    waiting++
+                }
+            }
+            return { show: show, waiting: waiting }
+        }
+        const first = pass(0)
+        return first.waiting > 0 || NotificationState.moreCount > 0 ? pass(26) : first
+    }
+    readonly property int waiting: fit.waiting
+    // Not one card fits: the pile is closed (as hidden)
+    readonly property bool squeezed: detached && liveN > 0 && waiting >= liveN
     property real pileTop: junction
     Binding on pileTop {
         value: root.wantTop
@@ -105,7 +199,10 @@ Item {
         syncOverlay()
     }
     onHiddenChanged: syncOverlay()
-    onMonitorNameChanged: syncOverlay()
+    onMonitorNameChanged: {
+        syncOverlay()
+        readOthers()
+    }
     // The overlay key in use: a monitor's name that comes late (or changes)
     // lets go of the old key, so no stale one keeps the screen "busy"
     property string overlayKey: ""
@@ -224,7 +321,10 @@ Item {
         target: NotificationState
         function onScreenListChanged() { root.sync() }
     }
-    Component.onCompleted: sync()
+    Component.onCompleted: {
+        readOthers()
+        sync()
+    }
 
     // ── The rows, from the pile's top; mirrored with the bar on the bottom ──
     Item {
@@ -247,6 +347,7 @@ Item {
 
                 Item {
                     id: slot
+                    required property int index
                     required property int cardId
                     required property int count
                     required property bool leaving
@@ -254,19 +355,24 @@ Item {
                     property real room: 1
                     property real out: 1
                     readonly property real rowHeight: toast.implicitHeight + 2 * root.pad
-                    readonly property real leftX: root.screenWidth - root.rowWidth * (1 - out)
+                    // From the box's left (in) to the screen's edge (out)
+                    readonly property real leftX: root.boxLeft + (root.screenWidth - root.boxLeft) * out
+                    // Under a panel with no room for it: waiting
+                    readonly property bool shows: root.fit.show[index] !== false
                     width: root.width
-                    height: rowHeight * room
+                    height: shows ? rowHeight * room : 0
 
                     ToastCard {
                         id: toast
-                        x: Theme.reduceMotion ? root.screenWidth - root.rowWidth + root.pad : slot.leftX + root.pad
+                        x: (Theme.reduceMotion ? root.boxLeft : slot.leftX) + root.pad
                         y: root.pad
+                        width: root.boxWidth - 2 * root.pad
+                        visible: slot.shows
                         opacity: Theme.reduceMotion ? 1 - slot.out : 1
                         cardId: slot.cardId
                         count: slot.count
                         // Its time runs only while the pile shows it
-                        active: root.visible && !root.hidden && !slot.leaving
+                        active: root.visible && !root.hidden && !slot.leaving && slot.shows
                         onExpired: NotificationState.dismissToast(slot.cardId)
                         transform: Scale {
                             origin.y: toast.height / 2
@@ -336,12 +442,14 @@ Item {
             Item {
                 id: more
                 width: root.width
-                height: NotificationState.moreCount > 0 && root.liveN > 0 ? 26 : 0
+                // (the list's ones, and the ones waiting for room here)
+                readonly property int n: NotificationState.moreCount + root.waiting
+                height: n > 0 && root.liveN > root.waiting ? 26 : 0
                 visible: height > 0
                 Text {
-                    x: root.screenWidth - root.rowWidth + root.pad + 4
+                    x: root.boxLeft + root.pad + 4
                     anchors.verticalCenter: parent.verticalCenter
-                    text: NotificationState.moreCount === 1 ? "e mais 1" : `e mais ${NotificationState.moreCount}`
+                    text: more.n === 1 ? "e mais 1" : `e mais ${more.n}`
                     textFormat: Text.PlainText
                     color: Theme.fg4
                     font.family: Theme.fontPanels
@@ -360,12 +468,15 @@ Item {
         const out = []
         for (let i = 0; i < rows.count; i++) {
             const s = rows.itemAt(i)
-            if (s)
-                out.push({ x: Theme.reduceMotion ? screenWidth - rowWidth : s.leftX, y: pileTop + s.y, h: s.height })
+            if (s) {
+                const x = Theme.reduceMotion ? boxLeft : s.leftX
+                // Its right edge: the box's, or with the card on its way out
+                out.push({ x: x, y: pileTop + s.y, h: s.height, r: Math.min(screenWidth, Math.max(boxRight, x + boxWidth)) })
+            }
         }
         if (more.height > 0) {
             const minX = out.length > 0 ? Math.min(...out.map(r => r.x)) : screenWidth
-            out.push({ x: Math.max(minX, screenWidth - rowWidth), y: pileTop + more.y, h: more.height })
+            out.push({ x: Math.max(minX, boxLeft), y: pileTop + more.y, h: more.height, r: boxRight })
         }
         return out
     }
@@ -373,7 +484,7 @@ Item {
     readonly property var firstShown: {
         let f = null
         for (const r of segments) {
-            if (r.x < screenWidth - 0.5 && r.h > 0.5 && (f === null || r.y < f.y))
+            if (r.x < r.r - 0.5 && r.h > 0.5 && (f === null || r.y < f.y))
                 f = r
         }
         return f
@@ -388,7 +499,7 @@ Item {
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     readonly property real topRadius: firstShown === null ? 0
-        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (screenWidth - firstShown.x) / (rowWidth * 0.3))))
+        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (boxRight - firstShown.x) / (boxWidth * 0.3))))
     readonly property var outline: Pile.outline(screenWidth, segments, junction, Theme.radius, topRadius, Theme.cornerSmoothing)
 
     Shape {

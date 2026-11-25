@@ -188,10 +188,20 @@ Item {
         if (shownOn !== "")
             ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
     }
+    // Its body's left and right while it reaches that band
+    readonly property real stripLeft: reachesRightBand ? Math.round(x + shape.bodyX) : 0
+    readonly property real stripRight: reachesRightBand ? Math.round(x + shape.bodyX + bodyWidth) : 0
+    function publishSpan() {
+        if (shownOn !== "")
+            ShellState.setRightPanelSpan(shownOn, stripLeft, stripRight, edgeOwner)
+    }
+    onStripLeftChanged: publishSpan()
+    onStripRightChanged: publishSpan()
 
     // The bar squares its end while a panel continues it
     function square() {
         shownOn = ShellState.openOn
+        publishSpan()
         if (atRightEnd)
             ShellState.attachedRight = shownOn
         if (atLeftEnd)
@@ -210,8 +220,10 @@ Item {
         visible = false
         if (edgeSide === "")
             progress = 0
-        if (shownOn !== "")
+        if (shownOn !== "") {
             ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
         unsquare()
         if (frame)
             frame.hidePanel(root)
