@@ -1,0 +1,125 @@
+.pragma library
+
+// The cards on the screen and the central's list (state/NotificationState):
+// plain JS, read by the shell and by the tests. An entry here is a plain
+// object of cleaned text: { id, appKey, urgent, time, ... }.
+
+// The central: at most this many, and per app
+var STORE_MAX = 200
+var STORE_PER_APP = 50
+// The pace: per app and in all, in a window of PACE_MS; the apps
+// remembered for it
+var PACE_PER_APP = 20
+var PACE_ALL = 60
+var PACE_MS = 10000
+var PACE_KEYS = 256
+
+// An app's key: its desktop entry (cleaned, exact), else its name
+function appKey(desktopEntry, appName) {
+    return typeof desktopEntry === "string" && desktopEntry !== "" ? desktopEntry : (typeof appName === "string" ? appName : "")
+}
+
+// A new notification over the cards on screen ([{ id, appKey, urgent,
+// count }], newest first). One of the same app (not urgent, nor the new one
+// urgent) takes its place: it shows the newest and counts "N novas" (a
+// replacement of the same id does not count). An urgent one never joins
+// the normal ones; it takes the place of an urgent one of the same app.
+// Else it goes on top. → { list, merged }
+function mergeOnScreen(list, n) {
+    if (n.urgent) {
+        const rest = list.filter(c => !(c.urgent && c.appKey === n.appKey && n.appKey !== ""))
+        return { list: [Object.assign({ count: 1 }, n)].concat(rest), merged: rest.length !== list.length }
+    }
+    {
+        const i = list.findIndex(c => !c.urgent && c.appKey === n.appKey && n.appKey !== "")
+        if (i >= 0) {
+            const old = list[i]
+            const card = Object.assign({}, n, { count: old.id === n.id ? old.count : old.count + 1 })
+            const rest = list.filter((_, k) => k !== i)
+            return { list: [card].concat(rest), merged: true }
+        }
+    }
+    return { list: [Object.assign({ count: 1 }, n)].concat(list), merged: false }
+}
+
+// At most max cards (newest first); an urgent one takes the place of the
+// oldest normal one. The rest wait in the central: they never come back
+// to the screen. → { shown, more }
+function limitScreen(list, max) {
+    if (list.length <= max)
+        return { shown: list, more: 0 }
+    let shown = list.slice()
+    while (shown.length > max) {
+        // The oldest normal card goes first; only urgent ones: the oldest
+        let k = -1
+        for (let i = shown.length - 1; i >= 0; i--) {
+            if (!shown[i].urgent) {
+                k = i
+                break
+            }
+        }
+        shown.splice(k >= 0 ? k : shown.length - 1, 1)
+    }
+    return { shown: shown, more: list.length - max }
+}
+
+// The central over its caps: the oldest goes first, a normal one before an
+// urgent one; the per-app cap first, then the total. → { store, removed }
+// (removed: the ids taken out)
+function trim(store, maxTotal, maxPerApp) {
+    let s = store.slice()
+    const removed = []
+    const drop = list => {
+        let k = -1
+        let oldest = Infinity
+        for (const urgentPass of [false, true]) {
+            for (let i = 0; i < list.length; i++) {
+                const e = s[list[i]]
+                if (!!e.urgent === urgentPass && e.time < oldest) {
+                    oldest = e.time
+                    k = list[i]
+                }
+            }
+            if (k >= 0)
+                break
+        }
+        removed.push(s[k].id)
+        s.splice(k, 1)
+    }
+    const counts = {}
+    for (const e of s)
+        counts[e.appKey] = (counts[e.appKey] || 0) + 1
+    for (const key of Object.keys(counts)) {
+        while (counts[key] > maxPerApp) {
+            const idx = []
+            s.forEach((e, i) => { if (e.appKey === key) idx.push(i) })
+            drop(idx)
+            counts[key]--
+        }
+    }
+    while (s.length > maxTotal)
+        drop(s.map((_, i) => i))
+    return { store: s, removed: removed }
+}
+
+// The pace: { history: { key: [times] }, all: [times] } (a new object back).
+// → { ok, pace } where ok is false when the app or all of them are over;
+// at most PACE_KEYS apps remembered (the least recent forgotten)
+function pace(state, key, now) {
+    const st = state && state.history ? state : { history: {}, all: [] }
+    const since = now - PACE_MS
+    const all = st.all.filter(t => t > since)
+    const mine = (st.history[key] || []).filter(t => t > since)
+    if (all.length >= PACE_ALL || mine.length >= PACE_PER_APP)
+        return { ok: false, pace: { history: st.history, all: all } }
+    const history = {}
+    const keys = Object.keys(st.history).filter(k => k !== key)
+        .map(k => ({ k: k, t: st.history[k].filter(t => t > since) }))
+        .filter(x => x.t.length > 0)
+        .sort((a, b) => b.t[b.t.length - 1] - a.t[a.t.length - 1])
+        .slice(0, PACE_KEYS - 1)
+    for (const x of keys)
+        history[x.k] = x.t
+    history[key] = mine.concat([now])
+    return { ok: true, pace: { history: history, all: all.concat([now]) } }
+}
