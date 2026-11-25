@@ -5,13 +5,17 @@ import qs.theme
 import "text.js" as Clean
 
 // Top-right pill of the lock and login screens: keyboard layout, network
-// and battery (the battery hides without one). Shared with the login screen:
-// the layout comes from the caller; network and battery come from the
-// system bus (NetworkManager, UPower), not from the session.
+// and battery (the battery hides without one), and on the lock screen how
+// many notifications are unread (only the number: no app, text nor
+// picture; "99+" past 99). Shared with the login screen: the layout and
+// the count come from the caller (the login screen never sets the count);
+// network and battery come from the system bus (NetworkManager, UPower),
+// not from the session.
 Rectangle {
     id: root
 
     property string layout: ""
+    property int notificationCount: 0
 
     readonly property var devices: Networking.devices.values
     readonly property bool wired: devices.some(d => d.type === DeviceType.Wired && d.connected)
@@ -48,6 +52,15 @@ Rectangle {
         id: row
         anchors.centerIn: parent
         spacing: 14
+
+        Text {
+            visible: root.notificationCount > 0
+            text: `${String.fromCodePoint(0xF009A)} ${root.notificationCount > 99 ? "99+" : root.notificationCount}`
+            textFormat: Text.PlainText
+            color: Theme.text
+            font.family: Theme.font
+            font.pixelSize: 14
+        }
 
         Text {
             visible: Clean.clean(root.layout, 12) !== ""
