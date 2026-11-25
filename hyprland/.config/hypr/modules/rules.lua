@@ -102,6 +102,13 @@ hl.layer_rule({
   no_anim = true,
 })
 
+-- The volume and brightness notice (osd/Osd.qml): its own fade only
+hl.layer_rule({
+  name = "osd-no-anim",
+  match = { namespace = "^(quickshell-osd)$" },
+  no_anim = true,
+})
+
 -- The Quickshell wallpaper (wallpaper/Wallpaper.qml) is just there: no
 -- slide or fade when the session starts or a monitor is plugged in
 hl.layer_rule({

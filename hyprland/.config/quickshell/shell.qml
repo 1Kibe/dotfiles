@@ -11,6 +11,7 @@ import qs.state
 import qs.settings
 import qs.overview
 import qs.minimize
+import qs.osd
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -77,6 +78,8 @@ ShellRoot {
     CaptureOverlay {}
     Countdown {}
     CaptureToast {}
+    // The volume and brightness notice in the middle of the focused monitor
+    Osd {}
     CaptureCard {}
 
     // Configurações → Monitores: "Manter estas telas?" while an arrangement
