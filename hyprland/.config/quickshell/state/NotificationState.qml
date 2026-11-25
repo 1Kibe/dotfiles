@@ -299,7 +299,7 @@ Singleton {
             // are not taken (the click would go to whoever owned the id)
             const same = JSON.stringify(copy.actions) === JSON.stringify(old.actions) && copy.hasDefault === old.hasDefault
             const update = same ? copy : Object.assign({}, copy, { actions: [], hasDefault: false })
-            entries = entries.map(e => e.id === id ? Object.assign({}, e, update, { read: false }) : e)
+            entries = entries.map(e => e.id === id ? Object.assign({}, e, update, { read: ShellState.openPanel === "notifications" }) : e)
             return
         }
         // Another app over the same id: the old entry stays, without

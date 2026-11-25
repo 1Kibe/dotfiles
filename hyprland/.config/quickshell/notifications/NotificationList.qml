@@ -6,27 +6,75 @@ import qs.state
 // The list of the clock's panel: the notifications kept, grouped by app
 // (the newest group first), each group with its name, how many and an
 // arrow that folds it; each item with its title, up to 2 lines of text,
-// the time and an X (out of the list). The app's buttons only on the
-// newest item of a group. A click on an item opens it like a card (its
-// default action and its window); like the cards, a click is held from
-// the press and acts only on the same item. Everything from outside is
-// plain text, cut by lines and by height. It scrolls past maxHeight.
+// the time and an X (out of the list). At most groupMax items per group
+// ("e mais N" for the rest); the app's buttons only on the newest item of
+// a group. A click on an item opens it like a card (its default action
+// and its window). Like the cards: with the pointer over the list, what
+// arrives waits (the list does not move under it) until the pointer
+// leaves or the user acts here; for 400 ms after the list changes, the
+// pointer does nothing; and a click is held from the press, acting only
+// on the same item and place. Everything from outside is plain text, cut
+// by lines and by height. It scrolls past maxHeight.
 Item {
     id: root
 
     property real maxHeight: 360
-    property var folded: ({})
-    readonly property var groups: {
+    property int groupMax: 5
+    // The ones not read when the panel opened (their titles stand out)
+    property var fresh: []
+
+    // ── The groups, rebuilt only with the pointer away (or after the
+    // user's own action here) ──
+    property var groups: []
+    // Folded groups by app (a Map: an app's name is never a key of a plain
+    // object, where "constructor" or "__proto__" are already taken)
+    property var folded: new Map()
+    function build() {
         const out = []
-        const at = {}
+        const at = new Map()
         for (const e of NotificationState.entries) {
-            if (at[e.appKey] === undefined) {
-                at[e.appKey] = out.length
-                out.push({ key: e.appKey, name: e.appName, items: [] })
+            if (!at.has(e.appKey)) {
+                at.set(e.appKey, out.length)
+                out.push({ key: e.appKey, name: e.appName, items: [], total: 0 })
             }
-            out[at[e.appKey]].items.push(e)
+            const g = out[at.get(e.appKey)]
+            g.total++
+            if (g.items.length < groupMax)
+                g.items.push(e)
         }
         return out
+    }
+    function rebuild() {
+        groups = build()
+    }
+    Component.onCompleted: rebuild()
+    // (the tests hold it as the pointer would)
+    property bool pointerHold: false
+    readonly property bool held: hover.hovered || pointerHold
+    onHeldChanged: {
+        if (!held)
+            rebuild()
+    }
+    Connections {
+        target: NotificationState
+        function onEntriesChanged() {
+            if (!root.held)
+                root.rebuild()
+        }
+    }
+    HoverHandler {
+        id: hover
+    }
+    // The pointer waits 400 ms after the list changes
+    property bool armed: false
+    onGroupsChanged: {
+        armed = false
+        armTimer.restart()
+    }
+    Timer {
+        id: armTimer
+        interval: 400
+        onTriggered: root.armed = true
     }
 
     implicitHeight: groups.length === 0 ? empty.implicitHeight + 24 : Math.min(maxHeight, list.implicitHeight)
@@ -36,25 +84,46 @@ Item {
         const d = new Date(ms)
         return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2)
     }
+    function isFolded(key) {
+        return folded.get(key) === true
+    }
+    function fold(key) {
+        if (!armed)
+            return
+        const f = new Map(folded)
+        f.set(key, !isFolded(key))
+        folded = f
+        rebuild()
+    }
+
     // A click held from the press, one per place ("id:index"; index -1:
-    // the item, else a button): an item's press never takes a button's
-    property var presses: ({})
+    // the item, -3: its X, else a button): one place never takes another's
+    property var presses: new Map()
     function press(id, index) {
-        const p = Object.assign({}, presses)
-        p[id + ":" + index] = true
+        if (!armed)
+            return false
+        const p = new Map(presses)
+        p.set(id + ":" + index, true)
         presses = p
+        return true
     }
     function cancel(id, index) {
-        const p = Object.assign({}, presses)
-        delete p[id + ":" + index]
+        const p = new Map(presses)
+        p.delete(id + ":" + index)
         presses = p
     }
     function release(id, index) {
-        const held = presses[id + ":" + index] === true
+        const held = presses.get(id + ":" + index) === true
         cancel(id, index)
-        if (!held || !NotificationState.entries.some(e => e.id === id))
+        if (!held || !armed || !NotificationState.entries.some(e => e.id === id))
             return false
-        return index < 0 ? NotificationState.open(id) : NotificationState.invoke(id, index)
+        const done = index === -3 ? NotificationState.dismiss(id)
+                   : index < 0 ? NotificationState.open(id)
+                   : NotificationState.invoke(id, index)
+        // The user's own action: the list follows it at once
+        if (done)
+            rebuild()
+        return done
     }
 
     FontMetrics {
@@ -93,7 +162,7 @@ Item {
                 ColumnLayout {
                     id: group
                     required property var modelData
-                    readonly property bool open: root.folded[modelData.key] !== true
+                    readonly property bool open: !root.isFolded(modelData.key)
                     Layout.fillWidth: true
                     spacing: 2
 
@@ -113,7 +182,7 @@ Item {
                             font.pointSize: Theme.fontSizeSmall
                         }
                         Text {
-                            text: String(group.modelData.items.length)
+                            text: String(group.modelData.total)
                             textFormat: Text.PlainText
                             color: Theme.gray
                             font.family: Theme.fontPanels
@@ -126,11 +195,9 @@ Item {
                             font.family: Theme.font
                             font.pointSize: Theme.fontSizeSmall
                             TapHandler {
-                                onTapped: {
-                                    const f = Object.assign({}, root.folded)
-                                    f[group.modelData.key] = group.open
-                                    root.folded = f
-                                }
+                                enabled: root.armed
+                                gesturePolicy: TapHandler.ReleaseWithinBounds
+                                onTapped: root.fold(group.modelData.key)
                             }
                         }
                     }
@@ -148,6 +215,7 @@ Item {
                             color: Theme.cardFill
 
                             TapHandler {
+                                enabled: root.armed
                                 gesturePolicy: TapHandler.ReleaseWithinBounds
                                 onPressedChanged: {
                                     if (pressed)
@@ -176,7 +244,7 @@ Item {
                                         textFormat: Text.PlainText
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
-                                        color: item.modelData.read ? Theme.fg4 : Theme.fg
+                                        color: root.fresh.includes(item.modelData.id) ? Theme.fg : Theme.fg4
                                         font.family: Theme.fontPanels
                                         font.pointSize: Theme.fontSize - 1
                                         font.weight: Font.Medium
@@ -188,7 +256,7 @@ Item {
                                         font.family: Theme.fontPanels
                                         font.pointSize: Theme.fontSizeSmall
                                     }
-                                    // Out of the list
+                                    // Out of the list (held from the press, like the rest)
                                     Text {
                                         text: String.fromCodePoint(0xF0156)
                                         textFormat: Text.PlainText
@@ -196,8 +264,14 @@ Item {
                                         font.family: Theme.font
                                         font.pointSize: Theme.fontSizeSmall
                                         TapHandler {
+                                            enabled: root.armed
                                             gesturePolicy: TapHandler.ReleaseWithinBounds
-                                            onTapped: NotificationState.dismiss(item.modelData.id)
+                                            onPressedChanged: {
+                                                if (pressed)
+                                                    root.press(item.modelData.id, -3)
+                                            }
+                                            onTapped: root.release(item.modelData.id, -3)
+                                            onCanceled: root.cancel(item.modelData.id, -3)
                                         }
                                     }
                                 }
@@ -231,6 +305,7 @@ Item {
                                             color: Theme.bg1
                                             clip: true
                                             TapHandler {
+                                                enabled: root.armed
                                                 gesturePolicy: TapHandler.ReleaseWithinBounds
                                                 onPressedChanged: {
                                                     if (pressed)
@@ -257,6 +332,16 @@ Item {
                                 }
                             }
                         }
+                    }
+
+                    // The rest of the group, past groupMax
+                    Text {
+                        visible: group.open && group.modelData.total > group.modelData.items.length
+                        text: `e mais ${group.modelData.total - group.modelData.items.length}`
+                        textFormat: Text.PlainText
+                        color: Theme.gray
+                        font.family: Theme.fontPanels
+                        font.pointSize: Theme.fontSizeSmall
                     }
                 }
             }

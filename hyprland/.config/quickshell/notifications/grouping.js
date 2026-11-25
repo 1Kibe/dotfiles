@@ -102,16 +102,19 @@ function trim(store, maxTotal, maxPerApp, keepId) {
         if (!drop(all(), true))
             break
     }
-    const counts = {}
+    // (a Map: an app's name is never a key of a plain object, where
+    // "constructor" or "__proto__" are already taken)
+    const counts = new Map()
     for (const e of s)
-        counts[e.appKey] = (counts[e.appKey] || 0) + 1
-    for (const key of Object.keys(counts)) {
-        while (counts[key] > maxPerApp) {
+        counts.set(e.appKey, (counts.get(e.appKey) || 0) + 1)
+    for (const [key, n] of counts) {
+        let left = n
+        while (left > maxPerApp) {
             const idx = []
             s.forEach((e, i) => { if (e.appKey === key) idx.push(i) })
             if (!drop(idx, false))
                 break
-            counts[key]--
+            left--
         }
     }
     while (s.length > maxTotal) {
@@ -124,21 +127,23 @@ function trim(store, maxTotal, maxPerApp, keepId) {
 // The pace: { history: { key: [times] }, all: [times] } (a new object back).
 // → { ok, pace } where ok is false when the app or all of them are over;
 // at most PACE_KEYS apps remembered (the least recent forgotten)
+// (history: a Map by app, so an app named "constructor" or "__proto__" is
+// one more key, never a property of a plain object)
 function pace(state, key, now) {
-    const st = state && state.history ? state : { history: {}, all: [] }
+    const st = state && state.history instanceof Map ? state : { history: new Map(), all: [] }
     const since = now - PACE_MS
     const all = st.all.filter(t => t > since)
-    const mine = (st.history[key] || []).filter(t => t > since)
+    const mine = (st.history.get(key) || []).filter(t => t > since)
     if (all.length >= PACE_ALL || mine.length >= PACE_PER_APP)
         return { ok: false, pace: { history: st.history, all: all } }
-    const history = {}
-    const keys = Object.keys(st.history).filter(k => k !== key)
-        .map(k => ({ k: k, t: st.history[k].filter(t => t > since) }))
+    const keys = Array.from(st.history.keys()).filter(k => k !== key)
+        .map(k => ({ k: k, t: st.history.get(k).filter(t => t > since) }))
         .filter(x => x.t.length > 0)
         .sort((a, b) => b.t[b.t.length - 1] - a.t[a.t.length - 1])
         .slice(0, PACE_KEYS - 1)
+    const history = new Map()
     for (const x of keys)
-        history[x.k] = x.t
-    history[key] = mine.concat([now])
+        history.set(x.k, x.t)
+    history.set(key, mine.concat([now]))
     return { ok: true, pace: { history: history, all: all.concat([now]) } }
 }

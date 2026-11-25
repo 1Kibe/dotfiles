@@ -159,13 +159,16 @@ Item {
         Text {
             id: bell
             readonly property int unread: NotificationState.unread
-            text: (NotificationState.dnd ? String.fromCodePoint(0xF009B) : String.fromCodePoint(0xF009A))
+            // Crossed out only while this shell's Não perturbe is in force
+            text: (NotificationState.dnd && NotificationState.serverOk ? String.fromCodePoint(0xF009B) : String.fromCodePoint(0xF009A))
                   + (unread > 0 ? " " + (unread > 9 ? "9+" : unread) : "")
             textFormat: Text.PlainText
             color: !NotificationState.serverOk ? Theme.gray : unread > 0 ? Theme.accentLight : Theme.text
             font.family: Theme.font
             font.pointSize: Theme.fontSize - 1
+            // Its own tap (never also the island's click, the music panel)
             TapHandler {
+                gesturePolicy: TapHandler.ReleaseWithinBounds
                 onTapped: ShellState.toggle("notifications", root.monitorName)
             }
         }
