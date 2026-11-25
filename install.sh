@@ -685,6 +685,75 @@ setup_bashrc() {
   log "~/.bashrc loads ~/.config/bash/dotfiles.bash"
 }
 
+# The code accounts (Configurações → Contas de código): the real
+# ~/.gitconfig includes the file the shell writes (~/.config/git/contas.conf),
+# in a marked block kept as the last thing in it, since a [user] that
+# git config --global adds later lands after an earlier include and wins.
+# Never a link to the repo (git config --global would write into it): a
+# ~/.gitconfig that is a link, or not a plain file, is left alone with a
+# warning. Outside the block the file stays as it was.
+GITCONFIG_BEGIN="# >>> dotfiles: code accounts (written by install.sh) >>>"
+GITCONFIG_END="# <<< dotfiles: code accounts <<<"
+setup_gitconfig() {
+  local gc="${HOME}/.gitconfig" block tmp
+  block="$(printf '%s\n[include]\n\tpath = ~/.config/git/contas.conf\n%s' "$GITCONFIG_BEGIN" "$GITCONFIG_END")"
+  if [[ -L "$gc" ]]; then
+    warn "~/.gitconfig is a link: not adding the code accounts' include"
+    return 0
+  fi
+  if [[ -e "$gc" && ! -f "$gc" ]]; then
+    warn "~/.gitconfig is not a plain file: not adding the code accounts' include"
+    return 0
+  fi
+  if [[ -f "$gc" ]]; then
+    if [[ "$(tail -n 4 "$gc")" == "$block" ]]; then return 0; fi
+    # Not exactly one begin and one end (or none): someone edited the
+    # block by hand; never guess
+    local nb ne
+    nb="$(grep -cxF "$GITCONFIG_BEGIN" "$gc" || true)"; ne="$(grep -cxF "$GITCONFIG_END" "$gc" || true)"
+    if [[ "$nb" != "$ne" || "$nb" -gt 1 ]]; then
+      warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+      return 0
+    fi
+    # A file git does not read: its fault, not a write that failed
+    if command -v git >/dev/null 2>&1 && ! git config --file "$gc" --list >/dev/null 2>&1; then
+      warn "~/.gitconfig is not read by git: left as it is"
+      return 0
+    fi
+  fi
+  # git keeps its own settings in ~/.config/git/config only while there is
+  # no ~/.gitconfig: from now on git config --global writes to ~/.gitconfig
+  if [[ ! -e "$gc" && -f "${XDG_CONFIG_HOME:-$HOME/.config}/git/config" ]]; then
+    warn "~/.gitconfig created for the code accounts: git config --global now writes there, not to ~/.config/git/config"
+  fi
+  tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
+  local ok=1 cut=0
+  {
+    if [[ -f "$gc" ]]; then
+      # The end before the begin: the rest would be dropped (exit 1)
+      awk -v b="$GITCONFIG_BEGIN" -v e="$GITCONFIG_END" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip { print } END { exit skip }' "$gc" || cut=1
+    fi
+    printf '%s\n' "$block"
+  } > "$tmp" || ok=0
+  if (( cut )); then
+    rm -f -- "$tmp"
+    warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+    return 0
+  fi
+  # git must still read it (a ~/.gitconfig git does not read is left alone)
+  if (( ok )) && command -v git >/dev/null 2>&1; then
+    git config --file "$tmp" --list >/dev/null 2>&1 || ok=0
+  fi
+  if (( ok )) && [[ -f "$gc" ]]; then chmod --reference="$gc" "$tmp" || ok=0; fi
+  if (( ok )); then mv -f -- "$tmp" "$gc" || ok=0; fi
+  if (( ! ok )); then
+    rm -f -- "$tmp"
+    warn "could not write ~/.gitconfig"
+    return 0
+  fi
+  log "~/.gitconfig includes the code accounts' file (~/.config/git/contas.conf)"
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -711,6 +780,7 @@ link_configs() {
   log "Linked: ${pkgs[*]}"
   report_bak_files
   setup_bashrc
+  setup_gitconfig
 }
 
 # Without arguments removes the links of every package

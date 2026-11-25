@@ -125,7 +125,9 @@ AttachedPanel {
                       : modelData.id === "wifi" ? wifi.stateText
                       : modelData.id === "bluetooth" ? bluetooth.stateText
                       : modelData.id === "updates" ? Updates.summary.text
-                      : modelData.id === "tailscale" ? Tailnet.summary : ""
+                      : modelData.id === "tailscale" ? Tailnet.summary
+                      // Fixed: nothing of an account is read until its section opens
+                      : modelData.id === "github" ? "Contas" : ""
                 detail: modelData.id === "nightlight" ? root.night.hours : ""
                 keyFocus: keys.keyFocus("grid", index)
                 onClicked: {
@@ -190,6 +192,20 @@ AttachedPanel {
         }
     }
 
+    // The GitHub section: the code accounts
+    Accordion {
+        open: root.open && ShellState.controlSection === "github"
+        maxHeight: root.listMax
+
+        AccountsAccordion {
+            id: accounts
+            active: root.open && ShellState.controlSection === "github"
+            monitorName: root.monitorName
+            maxListHeight: Math.max(120, root.listMax - 200)
+            keyIndex: keys.group === "list" && keys.keyFocus("list", keys.index) ? keys.index : -1
+        }
+    }
+
     // The sliders: the volume (its arrow folds out the mixer, under it) and
     // the brightness
     VolumeSlider {
@@ -233,6 +249,7 @@ AttachedPanel {
                    : ShellState.controlSection === "mixer" ? mixer
                    : ShellState.controlSection === "updates" ? updates
                    : ShellState.controlSection === "tailscale" ? tailscale
+                   : ShellState.controlSection === "github" ? accounts
                    : ShellState.controlSection === "background" ? background.listKeys : null
         onToggleRequested: id => root.toggle(id)
         volume: volume
