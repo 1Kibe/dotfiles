@@ -11,12 +11,13 @@ var THEME_NAME = /^[a-z0-9][a-z0-9-]{0,31}$/
 // The four fixed flavors (each theme fills the ones its palette has)
 var FLAVORS = ["dark", "darkHard", "darkSoft", "light"]
 // A flavor's label: the palette's own name for it, short plain text
-var LABEL = /^[A-Za-z0-9À-ÿ][A-Za-z0-9À-ÿ '()-]{0,23}$/
+// (Latin letters with accents; never × or ÷)
+var LABEL = /^[A-Za-z0-9À-ÖØ-öø-ÿ][A-Za-z0-9À-ÖØ-öø-ÿ '()-]{0,23}$/
 // The Theme's roles and named colors
 var ROLES = ["bgDeep", "bgHard", "bg", "bg1", "bg2", "fg", "fg2", "fg4", "text", "gray"]
 var NAMED = ["yellow", "orange", "red", "green", "aqua", "blue", "purple"]
 // A theme's name and license: short plain text
-var TEXT = /^[A-Za-z0-9À-ÿ][A-Za-z0-9À-ÿ .'()+-]{0,39}$/
+var TEXT = /^[A-Za-z0-9À-ÖØ-öø-ÿ][A-Za-z0-9À-ÖØ-öø-ÿ .'()+-]{0,39}$/
 // delta's syntax theme: a name of this fixed list only (delta --list-syntax-themes);
 // anything else is base16, which follows the terminal's colors
 var SYNTAX_THEMES = ["1337", "Catppuccin Frappe", "Catppuccin Latte", "Catppuccin Macchiato", "Catppuccin Mocha",

@@ -12,31 +12,36 @@ import "../theme/palettes.js" as Palettes
 Singleton {
     id: root
 
-    // At most this many themes, each file at most this many bytes
+    // At most this many themes, each file at most this many characters
+    // (counted after the FileView read it whole: the files are the repo's
+    // own, so this is a guard against a mistake, not a defense)
     readonly property int maxThemes: 32
     readonly property int maxBytes: 65536
 
     property var ids: []
-    property var found: ({})
-    property int answered: 0
+    // id -> theme, and the ids that answered (Maps: an id like
+    // "constructor" or "__proto__" is never a plain object's property)
+    property var found: new Map()
+    property var answeredIds: new Map()
+    readonly property int answered: answeredIds.size
     readonly property bool ready: indexRead && answered === ids.length
     property bool indexRead: false
     // The checked themes, in the index's order
-    readonly property var themes: ids.filter(id => found[id] !== undefined).map(id => found[id])
+    readonly property var themes: ids.filter(id => found.has(id)).map(id => found.get(id))
 
     function get(id) {
-        return typeof id === "string" && Object.prototype.hasOwnProperty.call(found, id) ? found[id] : null
+        return typeof id === "string" && found.has(id) ? found.get(id) : null
     }
 
     function readIndex(text) {
-        let list = []
+        let list = null
         try {
-            list = text.length <= maxBytes ? JSON.parse(text) : []
+            list = text.length <= maxBytes ? JSON.parse(text) : null
         } catch (e) {
-            list = []
+            list = null
         }
         if (!Array.isArray(list)) {
-            console.warn("temas: themes/index.json inválido")
+            console.warn("temas: themes/index.json ausente, grande demais ou inválido")
             list = []
         }
         const out = []
@@ -44,8 +49,8 @@ Singleton {
             if (typeof id === "string" && Palettes.THEME_NAME.test(id) && !out.includes(id) && out.length < maxThemes)
                 out.push(id)
         }
-        found = ({})
-        answered = 0
+        found = new Map()
+        answeredIds = new Map()
         ids = out
         indexRead = true
     }
@@ -62,11 +67,14 @@ Singleton {
         if (theme === null)
             console.warn("temas: tema recusado: " + id)
         else {
-            const f = Object.assign({}, found)
-            f[id] = theme
+            const f = new Map(found)
+            f.set(id, theme)
             found = f
         }
-        answered++
+        // Each id answers once (a delegate made again never counts twice)
+        const a = new Map(answeredIds)
+        a.set(id, true)
+        answeredIds = a
     }
 
     FileView {
