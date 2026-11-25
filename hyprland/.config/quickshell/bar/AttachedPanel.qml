@@ -184,9 +184,13 @@ Item {
     readonly property real stripEdge: reachesRightBand ? Math.round(y + bodyFarEdge) : 0
     // Its own key in ShellState (two panels of a screen changing over)
     readonly property string edgeOwner: String(root)
+    // (the body's left and right go first, so a reader never sees the
+    // edge without them)
     onStripEdgeChanged: {
-        if (shownOn !== "")
-            ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
+        if (shownOn === "")
+            return
+        publishSpan()
+        ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
     }
     // Its body's left and right while it reaches that band
     readonly property real stripLeft: reachesRightBand ? Math.round(x + shape.bodyX) : 0
@@ -198,10 +202,26 @@ Item {
     onStripLeftChanged: publishSpan()
     onStripRightChanged: publishSpan()
 
+    // A screen gone with it open: its edge and its body go too
+    Component.onDestruction: {
+        if (shownOn !== "") {
+            ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
+    }
+
     // The bar squares its end while a panel continues it
     function square() {
+        // Opened again on another screen while closing: nothing stays on the
+        // one it leaves
+        if (shownOn !== "" && shownOn !== ShellState.openOn) {
+            ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
         shownOn = ShellState.openOn
         publishSpan()
+        if (stripEdge > 0)
+            ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
         if (atRightEnd)
             ShellState.attachedRight = shownOn
         if (atLeftEnd)

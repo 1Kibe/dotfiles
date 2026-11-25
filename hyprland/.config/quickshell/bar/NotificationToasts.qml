@@ -132,12 +132,16 @@ Item {
     // time stopped); none fits: the pile closes and they all wait. They come
     // back as the panel shrinks or closes. { show: [bool by row], waiting }
     readonly property real usefulBottom: screenHeight - Theme.gap
+    // Also while the pile goes back to the bar (its top still on the way):
+    // the ones that waited come in as there is room, never past the end
+    readonly property bool fitting: detached || pileTop > junction + 0.5
     readonly property var fit: {
         const n = rows.count
-        if (!detached)
-            return { show: [], waiting: 0 }
+        if (!fitting)
+            return { show: [], waiting: 0, noMore: false }
+        const top = detached ? wantTop : pileTop
         const pass = reserve => {
-            let y = wantTop
+            let y = top
             const show = []
             let waiting = 0
             for (let i = 0; i < n; i++) {
@@ -162,11 +166,20 @@ Item {
             return { show: show, waiting: waiting }
         }
         const first = pass(0)
-        return first.waiting > 0 || NotificationState.moreCount > 0 ? pass(26) : first
+        if (first.waiting === 0 && NotificationState.moreCount === 0)
+            return Object.assign(first, { noMore: false })
+        // Room for "e mais N" too; if then not even one card fits, the card
+        // shows and the line does not
+        const second = pass(26)
+        const shown = f => f.show.filter(x => x).length
+        return shown(second) === 0 && shown(first) > 0 ? Object.assign(first, { noMore: true }) : Object.assign(second, { noMore: false })
     }
     readonly property int waiting: fit.waiting
     // Not one card fits: the pile is closed (as hidden)
-    readonly property bool squeezed: detached && liveN > 0 && waiting >= liveN
+    // (not while a card on the screen slides out: the pile stays for it)
+    readonly property int minCardWidth: Theme.toastWidth - 2 * pad
+    readonly property bool squeezed: detached && liveN > 0 && cards.count === liveN
+                                     && (waiting >= liveN || boxWidth - 2 * pad < minCardWidth)
     property real pileTop: junction
     Binding on pileTop {
         value: root.wantTop
@@ -358,7 +371,10 @@ Item {
                     // From the box's left (in) to the screen's edge (out)
                     readonly property real leftX: root.boxLeft + (root.screenWidth - root.boxLeft) * out
                     // Under a panel with no room for it: waiting
-                    readonly property bool shows: root.fit.show[index] !== false
+                    // (a row the fit has not counted yet waits: it is new)
+                    readonly property bool shows: !root.fitting || root.fit.show[index] === true
+                    // Seen at least once (a card that only waited leaves at once)
+                    property bool everShown: false
                     width: root.width
                     height: shows ? rowHeight * room : 0
 
@@ -381,22 +397,42 @@ Item {
                     }
 
                     function enter() {
+                        everShown = true
                         wait.duration = Theme.dur(root.openBar())
                         comeIn.restart()
                     }
                     Component.onCompleted: {
-                        if (!leaving)
+                        if (!leaving && shows)
+                            enter()
+                    }
+                    // A waiting card comes in when there is room for it
+                    onShowsChanged: {
+                        if (shows && !leaving && !everShown)
                             enter()
                     }
                     onLeavingChanged: {
                         if (leaving) {
                             comeIn.stop()
-                            goOut.restart()
                             root.countLive()
+                            if (everShown) {
+                                goOut.restart()
+                            } else {
+                                // Never on the screen: gone, no slide, no room
+                                out = 1
+                                room = 0
+                                drop.restart()
+                            }
                         } else if (goOut.running) {
                             goOut.stop()
                             enter()
+                        } else if (shows && !everShown) {
+                            enter()
                         }
+                    }
+                    Timer {
+                        id: drop
+                        interval: 0
+                        onTriggered: root.remove(slot.cardId)
                     }
                     // In: the bar's end first (if it is not there yet), then
                     // the card slides in from the right
@@ -444,7 +480,7 @@ Item {
                 width: root.width
                 // (the list's ones, and the ones waiting for room here)
                 readonly property int n: NotificationState.moreCount + root.waiting
-                height: n > 0 && root.liveN > root.waiting ? 26 : 0
+                height: n > 0 && root.liveN > root.waiting && !root.fit.noMore ? 26 : 0
                 visible: height > 0
                 Text {
                     x: root.boxLeft + root.pad + 4
@@ -469,9 +505,12 @@ Item {
         for (let i = 0; i < rows.count; i++) {
             const s = rows.itemAt(i)
             if (s) {
-                const x = Theme.reduceMotion ? boxLeft : s.leftX
-                // Its right edge: the box's, or with the card on its way out
-                out.push({ x: x, y: pileTop + s.y, h: s.height, r: Math.min(screenWidth, Math.max(boxRight, x + boxWidth)) })
+                // All out (waiting to come in, or its room closing after it
+                // left): not in the shape, with motion reduced too
+                const x = s.out >= 0.999 ? screenWidth : Theme.reduceMotion ? boxLeft : s.leftX
+                // Its right edge is the box's (a card on its way past it is
+                // drawn over the shape)
+                out.push({ x: x, y: pileTop + s.y, h: s.height, r: boxRight })
             }
         }
         if (more.height > 0) {
@@ -499,7 +538,7 @@ Item {
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     readonly property real topRadius: firstShown === null ? 0
-        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (boxRight - firstShown.x) / (boxWidth * 0.3))))
+        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (boxRight - firstShown.x) / Math.max(1, boxWidth * 0.3))))
     readonly property var outline: Pile.outline(screenWidth, segments, junction, Theme.radius, topRadius, Theme.cornerSmoothing)
 
     Shape {
@@ -535,8 +574,11 @@ Item {
     }
 
     // The minimized windows' strip slides out of the pile's way
-    readonly property real stripEdge: visible && !hidden && outline.lowest > 0
-                                      ? Math.round(mirrored ? screenHeight - outline.lowest : outline.lowest) : 0
+    // (down to the rooms still open, a card's that left included, so the
+    // strip below moves with them instead of jumping)
+    readonly property real pileBottom: cards.count > 0 && column.height > 0.5 ? Math.max(outline.lowest, pileTop + column.height) : 0
+    readonly property real stripEdge: visible && !hidden && pileBottom > 0
+                                      ? Math.round(mirrored ? screenHeight - pileBottom : pileBottom) : 0
     onStripEdgeChanged: ShellState.setRightPanelEdge(monitorName, stripEdge, edgeOwner)
     // A monitor gone with the pile showing: nothing of it stays
     Component.onDestruction: {
