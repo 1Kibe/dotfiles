@@ -35,7 +35,7 @@ Item {
         for (const e of NotificationState.entries) {
             if (!at.has(e.appKey)) {
                 at.set(e.appKey, out.length)
-                out.push({ key: e.appKey, name: e.appName, items: [], total: 0 })
+                out.push({ key: e.appKey, name: e.appName, external: e.external === true, items: [], total: 0 })
             }
             const g = out[at.get(e.appKey)]
             g.total++
@@ -173,7 +173,8 @@ Item {
                             Layout.fillWidth: true
                             Layout.maximumHeight: line.height
                             clip: true
-                            text: group.modelData.name
+                            // A shell's name from outside: "externo" after it
+                            text: group.modelData.name + (group.modelData.external ? " (externo)" : "")
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
                             maximumLineCount: 1

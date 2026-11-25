@@ -234,7 +234,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.maximumHeight: small.height
                     clip: true
-                    text: root.shown ? root.shown.appName + " · " + root.timeText(root.shown.time) : ""
+                    // A shell's name from outside: "externo" after it
+                    text: root.shown ? root.shown.appName + (root.shown.external ? " (externo)" : "") + " · " + root.timeText(root.shown.time) : ""
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     maximumLineCount: 1

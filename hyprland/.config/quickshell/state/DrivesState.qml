@@ -292,34 +292,22 @@ Singleton {
         })
     }
 
-    // ── The notification (until it is closed) ──
-    // One at a time; a drive mounted while one is open is shown after it
-    // (the last one only). Never with the session locked. The label goes to
-    // notify-send through sh's argument (see open()), escaped and cut
-    property string pendingNotify: ""
+    // ── The notice (the notifications' own local path: no D-Bus, no
+    // program run) ──
+    // Never with the session locked. The label is plain text there (never
+    // markup), filtered and cut. Its buttons act on the same drive only if
+    // it is still there
     function notify(token) {
         if (locked() || !find(token))
             return
-        if (notifyJob.running) {
-            pendingNotify = token
-            return
-        }
         const d = find(token)
-        run(notifyJob, ["setpriv", "--pdeathsig", "TERM", "--", "sh", "-c", 'exec notify-send -a Dispositivos -A open=Abrir -A eject=Ejetar -- "Pendrive conectado" "$1"',
-                        "sh", Devices.notifyLabel(d.label)], 600000, (code, out) => {
-            const action = String(out).trim()
-            // The same drive, still there
-            if (find(token)) {
-                if (action === "open")
-                    open(token)
-                else if (action === "eject")
-                    eject(token)
-            }
-            const later = pendingNotify
-            pendingNotify = ""
-            const m = later !== "" ? find(later) : null
-            if (m && m.mounted)
-                Qt.callLater(() => notify(later))
+        NotificationState.post("Dispositivos", "Pendrive conectado", Devices.text(d.label), ["Abrir", "Ejetar"], index => {
+            if (!root.find(token))
+                return
+            if (index === 0)
+                root.open(token)
+            else if (index === 1)
+                root.eject(token)
         })
     }
 
@@ -500,5 +488,4 @@ Singleton {
     Job { id: lockCheck }
     Job { id: plugCheck }
     Job { id: mountJob }
-    Job { id: notifyJob }
 }

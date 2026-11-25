@@ -35,6 +35,13 @@ function dropReason(n, ctx) {
     return ""
 }
 
+// Names the shell's own notices use: one from outside with one of them
+// (any case) carries the "externo" tag, so it never passes for the shell's
+var RESERVED = ["dispositivos", "atualizações", "sistema", "bateria", "quickshell", "hyprland"]
+function isReserved(appName) {
+    return typeof appName === "string" && RESERVED.includes(appName.trim().toLowerCase())
+}
+
 function decide(n, ctx) {
     const c = ctx || {}
     if (dropReason(n, c) !== "")

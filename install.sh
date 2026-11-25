@@ -1313,6 +1313,26 @@ setup_locale_keyboard() {
 }
 
 # ── Install ──────────────────────────────────────────────────────────────────
+# Notifications (the Quickshell shell): another program that also answers
+# org.freedesktop.Notifications (xfce4-notifyd, dunst, mako...) takes the
+# name when it starts first, and then the shell shows none. Nothing is
+# written or disabled (Xfce still uses its own): only a warning at the end;
+# the clock panel says it too. Fills NOTIFICATION_DAEMONS with the programs'
+# names (basename of Exec, letters, digits and "._-" only)
+NOTIFICATION_DAEMONS=()
+check_notification_daemons() {
+  local f exe name
+  NOTIFICATION_DAEMONS=()
+  for f in "${DBUS_SERVICES_DIR:-/usr/share/dbus-1/services}"/*.service; do
+    [[ -f "$f" ]] || continue
+    grep -qx 'Name=org.freedesktop.Notifications' "$f" 2>/dev/null || continue
+    exe="$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' "$f" | head -n 1)"
+    name="$(basename -- "${exe:-$f}")"
+    [[ "$name" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || name="(unknown)"
+    NOTIFICATION_DAEMONS+=("$name")
+  done
+}
+
 print_summary() {
   echo ""
   echo "============================================================"
@@ -1356,6 +1376,13 @@ print_summary() {
     echo "  • Keybinds: Super+F1 or hyprland/README.md"
     echo "  • The Quickshell bar starts with the session; Super+D opens the launcher (rofi for now)"
     echo ""
+    if (( ${#NOTIFICATION_DAEMONS[@]} > 0 )); then
+      warn "Another notification program is installed: ${NOTIFICATION_DAEMONS[*]}"
+      echo "    Quickshell shows the notifications only while it holds the name. If the clock"
+      echo "    panel (Super+N) says another program is active, stop it (pkill -x <name>)"
+      echo "    and Quickshell takes over. Nothing was changed: Xfce keeps using its own."
+      echo ""
+    fi
   fi
   echo "============================================================"
 }
@@ -1458,6 +1485,7 @@ main() {
     install_lock_pam
     install_battery_rule
     mask_hypr_applets
+    check_notification_daemons
   fi
   if has_env xfce || has_env hyprland; then
     configure_printing

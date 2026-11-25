@@ -181,17 +181,22 @@ Singleton {
             urgent: n.urgency === NotificationUrgency.Critical,
             image: picture.kind !== "none" ? picture : Img.classify(n.appIcon),
             actions: actions,
-            hasDefault: hasDefault
+            hasDefault: hasDefault,
+            local: false,
+            // A shell's name from outside: tagged
+            external: Policy.isReserved(appName)
         }
     }
 
     function keep(n, copy, now, where) {
         const id = ++serial
         const e = Object.assign({ id: id, time: now, read: false, closed: false }, copy)
-        const o = Object.assign({}, objects)
-        o[id] = n
-        objects = o
-        watch(n)
+        if (n) {
+            const o = Object.assign({}, objects)
+            o[id] = n
+            objects = o
+            watch(n)
+        }
         const t = Group.trim([e].concat(entries), Group.STORE_MAX, Group.STORE_PER_APP, id)
         for (const gone of t.removed)
             forget(gone, true)
@@ -213,6 +218,47 @@ Singleton {
         // A minimized window of the app gets the mark (never with Não perturbe)
         if (!dnd)
             flagMinimized(e)
+    }
+
+    // ── The shell's own notices (Dispositivos, Atualizações): no D-Bus, no
+    // notify-send. They go through the same policy (Não perturbe, locked,
+    // full screen, the panel open) and caps as any other, never the pace.
+    // actions: the buttons' texts (at most 3); handler(index) runs when one
+    // is clicked, and the notice leaves the list. Returns the id (0: not
+    // kept) ──
+    property var localActions: new Map()
+    function post(app, summary, body, actions, handler) {
+        const copy = {
+            appName: Safe.clean(app, Safe.LIMITS.app) || "Quickshell",
+            // Never a plain name: no window is ever looked for by it
+            appKey: "shell:" + Safe.clean(app, Safe.LIMITS.app),
+            summary: Safe.clean(summary, Safe.LIMITS.summary),
+            body: Safe.cleanBody(body, Safe.LIMITS.body, Safe.LIST_LINES),
+            urgent: false,
+            image: { kind: "none", value: "" },
+            actions: (Array.isArray(actions) ? actions : []).slice(0, 3)
+                     .map((t, i) => ({ text: Safe.clean(t, Safe.LIMITS.action), index: i })).filter(a => a.text !== ""),
+            hasDefault: false,
+            local: true,
+            external: false
+        }
+        if (copy.summary === "" && copy.body === "")
+            return 0
+        const where = Policy.decide({ urgent: false, empty: false },
+                                    { overLimit: "", dnd: dnd, locked: locked, fullscreen: fullscreen,
+                                      listOpen: ShellState.openPanel === "notifications" || CaptureState.recording })
+        const id = serial + 1
+        if (typeof handler === "function" && copy.actions.length > 0) {
+            const m = new Map(localActions)
+            m.set(id, handler)
+            localActions = m
+        }
+        keep(null, copy, Date.now(), where)
+        if (!entries.some(e => e.id === id)) {
+            forget(id, false)
+            return 0
+        }
+        return id
     }
 
     // ── The minimized windows (MinimizeState's own calls) ──
@@ -332,6 +378,11 @@ Singleton {
     }
     // An entry gone from the list (the X, the caps): its object dismissed
     function forget(id, dismiss) {
+        if (localActions.has(id)) {
+            const m = new Map(localActions)
+            m.delete(id)
+            localActions = m
+        }
         const n = objects[id]
         const o = Object.assign({}, objects)
         delete o[id]
@@ -390,6 +441,16 @@ Singleton {
     function invoke(id, index) {
         if (locked)
             return false
+        // The shell's own notice: its handler, then it leaves the list
+        const local = localActions.get(id)
+        if (local) {
+            const e = entries.find(x => x.id === id)
+            if (!e || !e.actions.some(a => a.index === index))
+                return false
+            dismiss(id)
+            local(index)
+            return true
+        }
         const n = objects[id]
         const e = entries.find(x => x.id === id)
         if (!n || !e || !e.actions.some(a => a.index === index) || !n.actions || index >= n.actions.length)
