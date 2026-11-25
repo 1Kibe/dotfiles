@@ -83,6 +83,20 @@ Singleton {
 
     // The focused monitor's name ("" for none)
     property string focusName: Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+    // ── Brightness: read on request (the IPC target, the brightness keys),
+    // through state/Brightness's reader; with no backlight, nothing shows ──
+    function showBrightness() {
+        Brightness.readOnce()
+        return true
+    }
+    Connections {
+        target: Brightness
+        function onRead(available, percent) {
+            if (available)
+                root.show("brightness", percent / 100, false)
+        }
+    }
+
     function show(what, value, mute) {
         if (quiet || focusName === "")
             return false

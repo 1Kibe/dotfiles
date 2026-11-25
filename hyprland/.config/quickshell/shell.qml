@@ -124,12 +124,17 @@ ShellRoot {
 
     // The notice in the middle of the screen: read the real value again and
     // show it (no argument: nothing from outside reaches it)
-    // qs ipc call osd volume
+    // qs ipc call osd volume | brightness
     IpcHandler {
         target: "osd"
 
         function volume(): string {
             return OsdState.showVolume() ? "ok" : "sem aviso"
+        }
+        // Read again and shown when there is a backlight
+        function brightness(): string {
+            OsdState.showBrightness()
+            return "ok"
         }
     }
 
