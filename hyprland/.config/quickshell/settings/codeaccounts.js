@@ -160,10 +160,6 @@ function switchCommand(known, host, login) {
     return null
 }
 
-// ── Photos ──
-// A GitHub login as it can go into github.com/<login>.png: letters,
-// digits and inner hyphens, at most 39 (no dot, no underscore: either
-// would make another path)
 // The account picked for a profile, from gh api users/<login>: only its id
 // (a positive whole number) and its login (the same rule, and the one asked
 // for, any case); anything else in the answer is never read. null: no fill
@@ -198,6 +194,10 @@ function fillFromAccount(fields, user) {
     }
 }
 
+// ── Photos ──
+// A GitHub login as it can go into github.com/<login>.png: letters,
+// digits and inner hyphens, at most 39 (no dot, no underscore: either
+// would make another path)
 var GITHUB_PHOTO_LOGIN = /^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
 function validGithubPhotoLogin(s) {
     return typeof s === "string" && GITHUB_PHOTO_LOGIN.test(s)
