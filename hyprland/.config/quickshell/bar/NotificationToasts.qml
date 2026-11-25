@@ -33,7 +33,8 @@ Item {
     property bool focusedHere: Hyprland.focusedMonitor !== null && Hyprland.focusedMonitor.name === monitorName
     // Hidden at once: another monitor in focus, the capture, the lock, or the
     // bar sliding away (a full screen): the cards wait
-    readonly property bool hidden: !focusedHere || CaptureState.open || CaptureState.recording || NotificationState.locked
+    readonly property bool hidden: !focusedHere || CaptureState.open || CaptureState.recording || CaptureState.printing
+                                   || NotificationState.locked
                                    || (frame !== null && frame.out > 0)
                                    || ShellState.openPanel === "notifications"
     readonly property bool mirrored: Theme.barAtBottom
@@ -155,6 +156,7 @@ Item {
     // (the tests read the rows)
     readonly property alias rowItems: rows
     readonly property alias moreItem: more
+    readonly property alias maskItem: maskArea
 
     // ── The cards drawn, oldest at the top: { cardId, count, leaving } ──
     // A card that leaves NotificationState.screenList stays here while it

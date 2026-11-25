@@ -139,7 +139,25 @@ Singleton {
     // For hypr-print (the quick prints, IPC "capture target"): where and how
     // it saves, as JSON
     function target() {
+        startPrinting()
         return JSON.stringify({ dir: picturesDir, name: fileName(), copy: copyOnEnter })
+    }
+    // A quick print going on (hypr-print asked target() and takes the screen
+    // right after): the notifications' pile and the volume notice step
+    // aside. Its card ends it; if none comes, the timer does
+    property bool printing: false
+    function startPrinting() {
+        printing = true
+        printingTimer.restart()
+    }
+    function endPrinting() {
+        printing = false
+        printingTimer.stop()
+    }
+    Timer {
+        id: printingTimer
+        interval: 2000
+        onTriggered: root.printing = false
     }
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || home + "/.local/state"}/quickshell`
     readonly property string statePath: `${stateDir}/capture.json`
@@ -227,6 +245,7 @@ Singleton {
 
     // A quick print was taken: show its card (only for a file in Capturas)
     function showCard(path) {
+        endPrinting()
         run(["sh", "-c", checkScript, "sh", picturesDir, path], (code, out) => {
             if (out === "") {
                 console.warn("capture: card ignorado (não é um PNG da pasta Capturas)")
