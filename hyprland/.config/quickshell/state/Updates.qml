@@ -94,13 +94,17 @@ Singleton {
     // ones says nothing again). "Ver" opens the control center's updates
     // section on the focused monitor
     property int noticed: 0
+    property int lastNotice: 0
     function notify(count) {
         if (count <= noticed) {
             noticed = count
             return
         }
         noticed = count
-        NotificationState.post("Atualizações", count === 1 ? "1 pacote para atualizar" : `${count} pacotes para atualizar`, "",
+        // The newer count replaces the older notice
+        if (lastNotice > 0)
+            NotificationState.dismiss(lastNotice)
+        lastNotice = NotificationState.post("Atualizações", count === 1 ? "1 pacote para atualizar" : `${count} pacotes para atualizar`, "",
                                ["Ver"], index => {
             const m = Hyprland.focusedMonitor
             if (index === 0 && m)

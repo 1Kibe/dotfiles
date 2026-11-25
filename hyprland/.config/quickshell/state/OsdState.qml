@@ -35,7 +35,9 @@ Singleton {
     signal appeared(string kind)
 
     readonly property bool locked: LockState.locked || LockState.wanted
+    // (a capture: the shell's open, a recording or a quick print, never filmed)
     readonly property bool quiet: locked || ShellState.openPanel === "volume" || ShellState.openPanel === "control"
+                                  || CaptureState.open || CaptureState.recording || CaptureState.printing
     onQuietChanged: {
         if (quiet)
             hide()

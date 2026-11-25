@@ -230,8 +230,9 @@ Singleton {
     function post(app, summary, body, actions, handler) {
         const copy = {
             appName: Safe.clean(app, Safe.LIMITS.app) || "Quickshell",
-            // Never a plain name: no window is ever looked for by it
-            appKey: "shell:" + Safe.clean(app, Safe.LIMITS.app),
+            // Never a plain name (no window is ever looked for by it) and never
+            // one an outside app forms: clean() cuts control characters
+            appKey: "\u0001shell:" + Safe.clean(app, Safe.LIMITS.app),
             summary: Safe.clean(summary, Safe.LIMITS.summary),
             body: Safe.cleanBody(body, Safe.LIMITS.body, Safe.LIST_LINES),
             urgent: false,
@@ -621,7 +622,7 @@ Singleton {
                 root.misses = root.serverOk ? 0 : root.misses + 1
                 if (root.misses >= 2 && !root.warned) {
                     root.warned = true
-                    console.warn("notificacoes: outro programa de notificação tem o nome na sessão; recarregue o shell depois de fechar o outro")
+                    console.warn("notificacoes: outro programa de notificação tem o nome na sessão; feche o outro e o shell assume (a conferência é a cada minuto)")
                 }
                 if (!root.serverOk && root.asks < root.askAt.length)
                     ownerSoon.restart()

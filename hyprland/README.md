@@ -353,7 +353,8 @@ A lista fica só na memória: reiniciar o shell a esvazia.
 
 **Outro programa de notificação** (o `xfce4-notifyd` do Xfce, `dunst`, `mako`): quem pega o nome primeiro fica com ele. O
 install avisa se houver um instalado, sem mexer nele (o Xfce continua usando o seu). Se o painel do relógio disser "Outro
-programa de notificação está ativo", feche o outro (`pkill -x xfce4-notifyd`) e o shell assume. Para testar à mão:
+programa de notificação está ativo", feche o outro (`pkill -x xfce4-notifyd`): o shell pega o nome sozinho e o painel
+atualiza em até um minuto. Para testar à mão:
 `notify-send -a Teste "Título" "Texto"`.
 
 **Aviso de volume e brilho:** no meio da tela em foco, com o ícone e a barra; some sozinho. Não aparece com a tela travada

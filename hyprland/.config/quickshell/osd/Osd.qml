@@ -14,8 +14,8 @@ PanelWindow {
     readonly property bool shown: OsdState.shown
 
     screen: Quickshell.screens.find(s => s.name === OsdState.monitor) ?? Quickshell.screens[0]
-    // A quick print going on: out of the picture
-    visible: (shown || (box.fading && !OsdState.locked)) && !CaptureState.printing
+    // Out of every picture: the shell's capture open, a recording, a quick print
+    visible: (shown || (box.fading && !OsdState.locked)) && !CaptureState.open && !CaptureState.recording && !CaptureState.printing
     onVisibleChanged: ShellState.setOverlay("osd", visible)
     // No anchors: the compositor centres it
     implicitWidth: Theme.osdSize
