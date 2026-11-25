@@ -14,7 +14,7 @@ var SECTIONS = [
     { id: "updates", icon: String.fromCodePoint(0xF06B0), label: "Atualizações", hasList: true },
     { id: "nightlight", icon: String.fromCodePoint(0xF0594), label: "Luz noturna", hasList: false },
     { id: "dnd", icon: String.fromCodePoint(0xF009B), label: "Não perturbe", hasList: false, flag: "dndAvailable" },
-    { id: "github", icon: String.fromCodePoint(0xF02A4), label: "GitHub", hasList: true, available: false }
+    { id: "github", icon: String.fromCodePoint(0xF02A4), label: "GitHub", hasList: true }
 ]
 
 // The buttons drawn, in order, with no gap where one is left out
