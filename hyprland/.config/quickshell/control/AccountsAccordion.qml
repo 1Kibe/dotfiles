@@ -64,8 +64,6 @@ ColumnLayout {
     }
     function closed() {
         watch(false)
-        if (CodeAccounts.photoWatchers === 0)
-            CodeAccounts.clear()
     }
     onActiveChanged: active ? opened() : closed()
     Component.onCompleted: if (active) opened()

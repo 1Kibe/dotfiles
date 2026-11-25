@@ -34,13 +34,24 @@ ColumnLayout {
 
     spacing: 0
 
-    Component.onCompleted: {
-        CodeAccounts.refresh()
-        CodeAccounts.watchPhotos(true)
-        readKeys()
+    // Watched while it shows (the settings panel only hides when it closes):
+    // read once on showing; hidden, the accounts are let go once nothing
+    // else shows them. The end of a lock reads them again in CodeAccounts,
+    // while watched
+    property bool watching: false
+    function watch(on) {
+        if (on === watching)
+            return
+        watching = on
+        if (on) {
+            CodeAccounts.refresh()
+            readKeys()
+        }
+        CodeAccounts.watchPhotos(on)
     }
-    // (the end of a lock reads them again in CodeAccounts, while watched)
-    Component.onDestruction: CodeAccounts.watchPhotos(false)
+    onVisibleChanged: watch(visible)
+    Component.onCompleted: watch(visible)
+    Component.onDestruction: watch(false)
 
     function readKeys() {
         if (!keysJob.running)

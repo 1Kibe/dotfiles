@@ -89,8 +89,9 @@ function parseGhJson(text) {
     return done(model)
 }
 
-// gh auth status as text: a line per account ("Logged in to <host> account
-// <login>", or one of the failure lines), then "- Active account: true".
+// gh auth status as text: a line per account (the logged-in phrase or one
+// of the failure phrases, then the site and the account; GH_ACCOUNT lists
+// them), then the active-account line (GH_ACTIVE).
 // Read from the line as it came (the Job asks for no colors): only at the
 // start of the line, after gh's mark at most, and a host or login with a
 // color code or a control character inside is not kept
@@ -117,8 +118,8 @@ function parseGhText(text) {
 }
 
 // glab auth status: --output json ({ hosts: [{ host, state, user, ... }] })
-// or the text ("Logged in to <host> as <user>"); one account per site,
-// the active one
+// or the text (one line per site with the site and the user, as
+// GLAB_ACCOUNT reads it); one account per site, the active one
 var GLAB_ACCOUNT = /^\s*(?:\S{1,3}\s+)?Logged in to (\S+) as (\S+)(?:\s|$)/
 function parseGlab(text) {
     const model = []

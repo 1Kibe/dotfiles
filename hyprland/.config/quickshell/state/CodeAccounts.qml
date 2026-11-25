@@ -55,6 +55,13 @@ Singleton {
         + 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST\n'
         + 'unset GITLAB_TOKEN GITLAB_ACCESS_TOKEN OAUTH_TOKEN GL_TOKEN GITLAB_HOST GL_HOST GITLAB_URI GITLAB_API_HOST\n'
         + 'run() { timeout -k 2 8 setpriv --pdeathsig TERM -- "$@" | head -c 65536; return "${PIPESTATUS[0]}"; }\n'
+        // The switch: its site and login come by the input, checked again
+        + 'if [ "$#" = 3 ] && [ "$1 $2 $3" = "gh auth switch" ]; then\n'
+        + '  IFS= read -r h || exit 1; IFS= read -r l || exit 1\n'
+        + '  [[ $h =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$ && $h == *.* && $h != *..* ]] || exit 1\n'
+        + '  [[ $l =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1\n'
+        + '  run gh auth switch --hostname "$h" --user "$l"; exit $?\n'
+        + 'fi\n'
         + 'if [ "$1" = glab ]; then\n'
         // glab's JSON (stdout) first; an older glab without it: its text,
         // which it writes to the error output
@@ -180,6 +187,7 @@ Singleton {
     // shows what gh says after a new reading, not what was asked
     property double lastSwitch: 0
     property int switchOpening: 0
+    property string switchInput: ""
     function switchTo(host, login) {
         const argv = Accounts.switchCommand(hosts, host, login)
         if (argv === null || locked || switcher.running || Date.now() - lastSwitch < 3000)
@@ -187,7 +195,10 @@ Singleton {
         lastSwitch = Date.now()
         switchError = ""
         switchOpening = opening
-        switcher.command = ["bash", "-c", runScript, "bash"].concat(argv)
+        // The site and the login go by the input, never in the arguments
+        // (the process list shows those)
+        switchInput = host + "\n" + login + "\n"
+        switcher.stdinEnabled = true
         switcher.running = true
         return true
     }
@@ -220,8 +231,21 @@ Singleton {
             photoBudget = 4
             queuePhotos()
         } else {
+            // The last one that showed the accounts went: nothing of them
+            // stays (the reading, the photos, the hidden state)
             stopPhotos()
             photosHidden = false
+            clear()
+        }
+    }
+    // The switch of the photos: on, they are fetched for what shows now;
+    // off, a fetch already out is stopped
+    onPhotosOnChanged: {
+        if (photosOn) {
+            photoBudget = 4
+            queuePhotos()
+        } else {
+            stopPhotos()
         }
     }
     // (what the stopped Job brings back is dropped: closed, locked or
@@ -330,7 +354,15 @@ Singleton {
 
     Process {
         id: switcher
+        command: ["bash", "-c", root.runScript, "bash", "gh", "auth", "switch"]
+        onRunningChanged: {
+            if (running) {
+                write(root.switchInput)
+                stdinEnabled = false
+            }
+        }
         onExited: (code, status) => {
+            root.switchInput = ""
             // Cleared meanwhile: nothing is read for the closed section (a
             // reading asked by a new opening still runs)
             if (root.switchOpening !== root.opening) {

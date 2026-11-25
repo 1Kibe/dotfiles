@@ -303,7 +303,11 @@ var CHECK_SCRIPT = 'set -u\n'
     + '}\n'
     + 'trap \'[ -n "$tmp" ] && drop "$tmp" "$tmpin"\' EXIT\n'
     + 'trap \'exit 1\' TERM INT HUP\n'
+    + 'dirs=()\n'
     + 'while IFS=" " read -r n path mail rest; do\n'
+    // The page's folders: a repo inside a deeper one of them takes that
+    // folder's profile, so it is never the one checked for this folder
+    + '  if [ "$n" = d ]; then [[ $path =~ ^~/[A-Za-z0-9._@+/-]+$ ]] && dirs+=("$path"); continue; fi\n'
     + '  [[ $n =~ ^[0-9]{1,2}$ ]] || continue\n'
     + '  if ! [[ $path =~ ^~/[A-Za-z0-9._@+/-]+$ ]] || [[ /$path/ == */../* || /$path/ == */./* ]]; then echo "$n falta"; continue; fi\n'
     + '  p=$HOME/${path#\\~/}\n'
@@ -313,7 +317,10 @@ var CHECK_SCRIPT = 'set -u\n'
     + '  repo=""\n'
     + '  if [ -e "$p/.git" ]; then repo=$p\n'
     + '  else\n'
-    + '    g=$(timeout 3 find "$p" -xdev -mindepth 2 -maxdepth 4 -name .git ! -path "*/.conferir.*" -print -quit)\n'
+    + '    ex=()\n'
+    + '    for q in "${dirs[@]}"; do [[ $q == "$path"/* ]] && ex+=(-path "$HOME/${q#\\~/}" -o); done\n'
+    + '    if [ "${#ex[@]}" -gt 0 ]; then ex=(\\( "${ex[@]:0:${#ex[@]}-1}" \\) -prune -o); fi\n'
+    + '    g=$(timeout 3 find "$p" -xdev -mindepth 1 -maxdepth 4 "${ex[@]}" -name .git ! -path "*/.conferir.*" -print -quit)\n'
     + '    [ -n "$g" ] && repo=${g%/.git}\n'
     + '  fi\n'
     + '  if [ -n "$repo" ]; then\n'
@@ -352,7 +359,7 @@ var CHECK_SCRIPT = 'set -u\n'
 // One line per folder with a profile of the list (the others have nothing
 // to check)
 function checkInput(folders, profiles) {
-    let text = ""
+    let text = folders.map(f => `d ${f.path}\n`).join("")
     folders.forEach((f, i) => {
         const p = profiles.find(x => x.id === f.profile)
         if (p)

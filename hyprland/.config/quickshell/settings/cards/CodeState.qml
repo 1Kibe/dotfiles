@@ -139,7 +139,8 @@ ColumnLayout {
             desc: Cards.folderState(modelData, index, root.info, root.profiles, root.infoDone)
             Text {
                 visible: text !== ""
-                text: checkJob.running ? "conferindo…" : line.word
+                // (a folder with no profile has nothing to check)
+                text: checkJob.running && root.profiles.some(p => p.id === line.modelData.profile) ? "conferindo…" : line.word
                 textFormat: Text.PlainText
                 color: root.checked[line.index] === "ok" ? Theme.green
                      : root.checked[line.index] === "diferente" ? Theme.yellow : Theme.fg4

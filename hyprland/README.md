@@ -565,7 +565,8 @@ use o e-mail noreply do GitHub.
 - **Estado** diz se cada pasta existe e se os arquivos do git estão em dia. **Conferir** pergunta ao git qual e-mail ele
   usaria em cada pasta e mostra só "ok" ou "diferente". Numa pasta sem repositório, ele cria um repositório temporário
   (`.conferir.*`) dentro dela e apaga logo depois, porque o git só aplica o perfil dentro de um repositório.
-- Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login.
+- Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login. Ler as contas (ao abrir a
+  seção ou a página) faz o `gh` e o `glab` consultarem os sites deles.
 - **Fotos dos perfis** (ligado por padrão): o shell baixa a foto pública do GitHub, guarda no cache
   (`~/.cache/dotfiles/contas-fotos`) e renova a cada 7 dias, só com a página ou a seção da central abertas. Desligado, não
   usa a rede nem o cache e mostra a inicial; as contas do GitLab ficam sempre com a inicial.

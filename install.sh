@@ -721,6 +721,11 @@ setup_gitconfig() {
       return 0
     fi
   fi
+  # git keeps its own settings in ~/.config/git/config only while there is
+  # no ~/.gitconfig: from now on git config --global writes to ~/.gitconfig
+  if [[ ! -e "$gc" && -f "${XDG_CONFIG_HOME:-$HOME/.config}/git/config" ]]; then
+    warn "~/.gitconfig created for the code accounts: git config --global now writes there, not to ~/.config/git/config"
+  fi
   tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
   local ok=1 cut=0
   {
