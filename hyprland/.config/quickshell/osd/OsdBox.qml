@@ -26,7 +26,9 @@ Item {
         color: Theme.stripFill
         opacity: root.shown ? 1 : 0
         scale: root.shown || Theme.reduceMotion ? 1 : 0.92
+        // Locked: gone at once, so nothing is left fading to show on unlock
         Behavior on opacity {
+            enabled: !OsdState.cut
             NumberAnimation {
                 id: fade
                 duration: Theme.dur(root.shown ? Theme.animNormal : Theme.animFast)

@@ -11,7 +11,7 @@ import qs.state
 PanelWindow {
     id: root
 
-    readonly property bool shown: OsdState.shown && !OsdState.locked
+    readonly property bool shown: OsdState.shown
 
     screen: Quickshell.screens.find(s => s.name === OsdState.monitor) ?? Quickshell.screens[0]
     visible: shown || (box.fading && !OsdState.locked)

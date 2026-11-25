@@ -28,6 +28,8 @@ Singleton {
     property string monitor: ""
     // How many times it came in (a change while it shows only updates it)
     property int entries: 0
+    // Hidden by a lock: gone at once, with no fade (set before shown goes)
+    property bool cut: false
     // The time runs only while it shows (for the tests: nothing in repose)
     readonly property bool holding: hold.running
     signal appeared(string kind)
@@ -88,6 +90,7 @@ Singleton {
         level = Osd.clamp(value)
         muted = mute === true
         monitor = focusName
+        cut = false
         if (!shown) {
             shown = true
             entries++
@@ -98,6 +101,7 @@ Singleton {
     }
     function hide() {
         hold.stop()
+        cut = locked
         shown = false
     }
     // Reading time: never scaled by the animations' speed
