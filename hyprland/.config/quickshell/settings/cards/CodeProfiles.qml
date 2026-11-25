@@ -220,16 +220,4 @@ ColumnLayout {
             onCancel: root.edit("")
         }
     }
-
-    OptionRow {
-        divider: true
-        label: "Fotos dos perfis"
-        desc: "Mostra a foto pública da conta do GitHub"
-        Toggle {
-            checked: SettingsStore.get("codePhotos") === true
-            enabled: !root.locked
-            opacity: enabled ? 1 : 0.5
-            onToggled: v => SettingsStore.set("codePhotos", v)
-        }
-    }
 }

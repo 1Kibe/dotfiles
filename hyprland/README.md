@@ -570,9 +570,9 @@ use o e-mail noreply do GitHub.
   sempre escolhida à mão.
 - Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login. Ler as contas (ao abrir a
   seção ou a página) faz o `gh` e o `glab` consultarem os sites deles.
-- **Fotos dos perfis** (ligado por padrão): o shell baixa a foto pública do GitHub, guarda no cache
-  (`~/.cache/dotfiles/contas-fotos`) e renova a cada 7 dias, só com a página ou a seção da central abertas. Desligado, não
-  usa a rede nem o cache e mostra a inicial; as contas do GitLab ficam sempre com a inicial.
+- **Fotos dos perfis:** o shell sempre baixa a foto pública do GitHub, guarda no cache (`~/.cache/dotfiles/contas-fotos`) e
+  renova a cada 7 dias, só com a página ou a seção da central abertas; é a única coisa das contas que usa a rede sozinha.
+  "Esconder fotos" só as esconde na tela (para prints), com números no lugar. As contas do GitLab ficam sempre com a inicial.
 
 ## Bloqueio e login
 

@@ -271,14 +271,13 @@ Singleton {
 
     // ── Photos (settings/accountphotos.js) ──
     // Fetched one at a time (one queue for the Central and the page), only
-    // while one of them shows accounts (watchPhotos), with the photos on
-    // in the settings and the screen unlocked; at most 4 an opening. Any
+    // while one of them shows accounts (watchPhotos) and the screen is
+    // unlocked; at most 4 an opening. Esconder fotos only hides them. Any
     // failure stops the queue and leaves that account alone for an hour
     // (in memory only). Nothing of an account goes to the log.
     property int photoWatchers: 0
     // One hidden state for the Central and the page, never kept
     property bool photosHidden: false
-    readonly property bool photosOn: SettingsStore.get("codePhotos") === true
     property var photos: ({})
     property var photoQueue: []
     property var photoBlocked: ({})
@@ -305,16 +304,6 @@ Singleton {
             clear()
         }
     }
-    // The switch of the photos: on, they are fetched for what shows now;
-    // off, a fetch already out is stopped
-    onPhotosOnChanged: {
-        if (photosOn) {
-            photoBudget = 4
-            queuePhotos()
-        } else {
-            stopPhotos()
-        }
-    }
     // (what the stopped Job brings back is dropped: closed, locked or
     // cleared)
     function stopPhotos() {
@@ -337,12 +326,12 @@ Singleton {
     onHostsChanged: queuePhotos()
     // The image of an account ("" for none: the initials show)
     function photoSource(host, login) {
-        if (photosHidden || locked || !photosOn)
+        if (photosHidden || locked)
             return ""
         return photos[Accounts.cacheKeyText(host, login)] ?? ""
     }
     function queuePhotos() {
-        if (photoWatchers === 0 || locked || !photosOn)
+        if (photoWatchers === 0 || locked)
             return
         const q = photoQueue.slice()
         const now = Date.now()
@@ -360,7 +349,7 @@ Singleton {
         nextPhoto()
     }
     function nextPhoto() {
-        if (photoJob.running || photoQueue.length === 0 || photoBudget <= 0 || photoWatchers === 0 || locked || !photosOn)
+        if (photoJob.running || photoQueue.length === 0 || photoBudget <= 0 || photoWatchers === 0 || locked)
             return
         const q = photoQueue.slice()
         photoLogin = q.shift()

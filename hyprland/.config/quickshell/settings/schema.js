@@ -446,9 +446,6 @@ var KEYS = {
                     label: "Perfis" },
     codeFolders: { def: "[]", type: "codefolders", machine: true, hidden: true, kept: true, page: "contas", card: "pastas",
                    label: "Pastas" },
-    // The accounts' public photos (GitHub): off, no network and no cache
-    codePhotos: { def: true, type: "bool", page: "contas", card: "perfis", label: "Fotos dos perfis",
-                  desc: "Mostra a foto pública da conta do GitHub", syn: ["foto", "avatar", "imagem", "github"] }
 }
 
 function appKey(label, syn) {
