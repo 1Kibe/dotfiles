@@ -90,6 +90,38 @@ ShellRoot {
     // is tried
     KeyboardKeep {}
 
+    // The notifications: no argument, nothing from outside comes back
+    // (stats: numbers and yes/no only). Locked: refused
+    // qs ipc call notifications toggle | clear | dnd | dndOn | dndOff | stats
+    IpcHandler {
+        target: "notifications"
+
+        function toggle(): string {
+            return NotificationState.locked ? "travada" : "sem painel"
+        }
+        function clear(): string {
+            if (NotificationState.locked)
+                return "travada"
+            NotificationState.clearAll()
+            return "ok"
+        }
+        function dnd(): string {
+            NotificationState.toggleDnd()
+            return NotificationState.dnd ? "ligado" : "desligado"
+        }
+        function dndOn(): string {
+            NotificationState.setDnd(true)
+            return "ligado"
+        }
+        function dndOff(): string {
+            NotificationState.setDnd(false)
+            return "desligado"
+        }
+        function stats(): string {
+            return NotificationState.stats()
+        }
+    }
+
     // The notice in the middle of the screen: read the real value again and
     // show it (no argument: nothing from outside reaches it)
     // qs ipc call osd volume
