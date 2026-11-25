@@ -45,18 +45,23 @@ var SCRIPT = 'set -u\n'
     + '  case "$t/" in "$r"/*) echo fail; exit 0;; esac\n'
     + 'done\n'
     + '[ -z "$(find "$dir" -maxdepth 0 -perm /077)" ] || { echo fail; exit 0; }\n'
-    // The pruning, inside the checked folder only and only plain files:
-    // photos (hex names) older than 30 days, then the oldest past 32, and
-    // temporaries older than an hour. Anything else there stays
-    + 'prune() {\n'
-    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -name ".t.*" -mmin +60 -delete\n'
-    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -mmin +43200 -delete\n'
-    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -printf "%T@ %f\\n" \\\n'
-    + '    | sort -rn | tail -n +33 | while read -r _ n; do [[ $n =~ ^[0-9a-f]{64}$ ]] && rm -f -- "$dir/$n"; done\n'
-    + '}\n'
-    + 'prune\n'
     + 'key=$(printf "github.com|%s" "${login,,}" | sha256sum | cut -c1-64)\n'
     + '[[ $key =~ ^[0-9a-f]{64}$ ]] || { echo fail; exit 0; }\n'
+    // The pruning, inside the checked folder only and only of plain files
+    // (a link or a folder with a photo's name is never removed: that
+    // account then stays without a photo): photos (hex names) older than
+    // 30 days, then the oldest past 32 (a time in the future counts as
+    // that far in the past), and temporaries older than an hour. The photo
+    // of this account always stays. Anything else there stays
+    + 'prune() {\n'
+    + '  local now; now=$(date +%s)\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -name ".t.*" -mmin +60 -delete\n'
+    + '  find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" ! -name "$key" -mmin +43200 -delete\n'
+    + '  LC_ALL=C find "$dir" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended -regex ".*/[0-9a-f]{64}" -printf "%T@ %f\\n" \\\n'
+    + '    | LC_ALL=C awk -v now="$now" -v k="$key" \'{ t = int($1); if ($2 == k) t = now + 1000000000; else if (t > now) t = 2 * now - t; print t, $2 }\' \\\n'
+    + '    | LC_ALL=C sort -rn | tail -n +33 | while read -r _ n; do [[ $n =~ ^[0-9a-f]{64}$ ]] && [ "$n" != "$key" ] && rm -f -- "$dir/$n"; done\n'
+    + '}\n'
+    + 'prune\n'
     + 'f=$dir/$key\n'
     // A network failure with an older photo there: that one stays shown
     + 'net() { if [ -f "$f" ] && [ ! -L "$f" ]; then echo "stale $key"; else echo fail; fi; exit 0; }\n'

@@ -140,10 +140,16 @@ Singleton {
         }
     }
 
+    // The reading asked meanwhile runs once all is done; a clear() before it
+    // runs takes it back (it drops refreshAgain)
     function readDone() {
         if (refreshAgain && !ghReader.running && !glabReader.running && !switcher.running) {
-            refreshAgain = false
-            Qt.callLater(refresh)
+            Qt.callLater(() => {
+                if (root.refreshAgain) {
+                    root.refreshAgain = false
+                    root.refresh()
+                }
+            })
         }
     }
     // The section closed: the reading is let go (a switch only ever comes
@@ -227,9 +233,11 @@ Singleton {
         if (photoJob.running)
             photoJob.running = false
     }
+    // Locked or asked to lock: what is read, being read or shown is let go
+    // (a reading or a switch that ends while locked brings back nothing)
     onLockedChanged: {
         if (locked)
-            stopPhotos()
+            clear()
     }
     onHostsChanged: queuePhotos()
     // The image of an account ("" for none: the initials show)
