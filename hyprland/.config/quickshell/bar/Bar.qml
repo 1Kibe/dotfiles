@@ -331,7 +331,7 @@ PanelWindow {
     // The notifications on screen: a drawer from the right edge, on the
     // focused monitor's bar
     NotificationToasts {
-        button: root.barArea
+        frame: root
         monitorName: root.monitorName
     }
 
