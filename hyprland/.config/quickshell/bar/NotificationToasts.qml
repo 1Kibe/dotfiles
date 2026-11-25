@@ -29,13 +29,18 @@ Item {
     required property var frame            // the bar's window (Bar.qml)
     required property string monitorName
 
-    readonly property bool focusedHere: Hyprland.focusedMonitor !== null && Hyprland.focusedMonitor.name === monitorName
-    readonly property bool hidden: !focusedHere || CaptureState.open || NotificationState.locked
+    // (the tests set it: there is no Hyprland offscreen)
+    property bool focusedHere: Hyprland.focusedMonitor !== null && Hyprland.focusedMonitor.name === monitorName
+    // Hidden at once: another monitor in focus, the capture, the lock, or the
+    // bar sliding away (a full screen): the cards wait
+    readonly property bool hidden: !focusedHere || CaptureState.open || NotificationState.locked || (frame !== null && frame.out > 0)
     readonly property bool mirrored: Theme.barAtBottom
     readonly property bool overCapture: false
 
     // What the frame reads: the right end of the bar stretched to the edge
-    readonly property string edgeSide: "right"
+    // (asked only while it stretches it: a hidden or settling pile never
+    // takes the bar's right corner from a panel there)
+    readonly property string edgeSide: edgeStep > 0 ? "right" : ""
     property real stretch: 0
     readonly property real edgeStep: hidden ? 0 : stretch
 
@@ -51,6 +56,8 @@ Item {
     // apart. Measured from the bar's edge side
     readonly property string edgeOwner: "notificacoes"
     readonly property real othersEdge: {
+        if (cards.count === 0)
+            return 0
         let y = 0
         const prefix = monitorName + "|"
         for (const key in ShellState.rightPanelEdges) {
@@ -67,8 +74,10 @@ Item {
     Binding on pileTop {
         value: root.wantTop
     }
+    // Moving only while it already shows (a first card is born in its place)
+    property bool settled: false
     Behavior on pileTop {
-        enabled: cards.count > 0 && !Theme.reduceMotion
+        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
         NumberAnimation {
             duration: Theme.dur(Theme.motionEdgeClose)
             easing.type: Easing.BezierSpline
@@ -117,14 +126,21 @@ Item {
         stretchOpen.restart()
         return Math.round(Theme.motionEdgeOpen * Theme.edgePanelFrom)
     }
-    function liveCount() {
+    // The cards not leaving (kept up to date: a ListModel's roles are not
+    // watched by bindings)
+    property int liveN: 0
+    function countLive() {
         let n = 0
         for (let i = 0; i < cards.count; i++) {
             if (!cards.get(i).leaving)
                 n++
         }
-        return n
+        liveN = n
     }
+
+    // (the tests read the rows)
+    readonly property alias rowItems: rows
+    readonly property alias moreItem: more
 
     // ── The cards drawn, oldest at the top: { cardId, count, leaving } ──
     // A card that leaves NotificationState.screenList stays here while it
@@ -144,6 +160,7 @@ Item {
         return e ? e.appKey : ""
     }
     function sync() {
+        settled = cards.count > 0
         const want = NotificationState.screenList
         const wanted = id => want.some(w => w.id === id)
         // Oldest first, so the newest goes to the bottom
@@ -170,18 +187,21 @@ Item {
             if (!wanted(cards.get(i).cardId))
                 cards.setProperty(i, "leaving", true)
         }
+        countLive()
     }
     function remove(id) {
         const i = indexOf(id)
         if (i >= 0 && cards.get(i).leaving)
             cards.remove(i)
+        countLive()
         if (cards.count === 0)
             stretchClose.restart()
     }
-    // A card started leaving: with no other one left, the bar's end goes
-    // back once it is out
-    function leaving() {
-        if (liveCount() === 0)
+    // A card is out (its room still closing): with no other one left, the
+    // bar's end goes back now
+    function slidOut() {
+        countLive()
+        if (liveN === 0)
             stretchClose.restart()
     }
     Connections {
@@ -250,7 +270,7 @@ Item {
                         if (leaving) {
                             comeIn.stop()
                             goOut.restart()
-                            root.leaving()
+                            root.countLive()
                         } else if (goOut.running) {
                             goOut.stop()
                             enter()
@@ -261,10 +281,19 @@ Item {
                     SequentialAnimation {
                         id: comeIn
                         PauseAnimation { id: wait }
-                        NumberAnimation {
-                            target: slot; property: "out"; to: 0
-                            duration: Theme.dur(Math.round(Theme.motionEdgeOpen * (1 - Theme.edgePanelFrom)))
-                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                        ParallelAnimation {
+                            NumberAnimation {
+                                target: slot; property: "out"; to: 0
+                                duration: Theme.dur(Math.round(Theme.motionEdgeOpen * (1 - Theme.edgePanelFrom)))
+                                easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                            }
+                            // (a slot taken back while its room was closing
+                            // opens it again)
+                            NumberAnimation {
+                                target: slot; property: "room"; to: 1
+                                duration: Theme.dur(Theme.motionEdgeClose)
+                                easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                            }
                         }
                     }
                     // Out: to the right first, then its room closes
@@ -275,6 +304,8 @@ Item {
                             duration: Theme.dur(Math.round(Theme.motionEdgeClose * (1 - Theme.edgePanelFrom)))
                             easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveAccel
                         }
+                        // Out of the screen: the bar's end may go back now
+                        ScriptAction { script: root.slidOut() }
                         NumberAnimation {
                             target: slot; property: "room"; to: 0
                             duration: Theme.dur(Theme.motionEdgeClose)
@@ -289,7 +320,7 @@ Item {
             Item {
                 id: more
                 width: root.width
-                height: NotificationState.moreCount > 0 && root.liveCount() > 0 ? 26 : 0
+                height: NotificationState.moreCount > 0 && root.liveN > 0 ? 26 : 0
                 visible: height > 0
                 Text {
                     x: root.screenWidth - root.rowWidth + root.pad + 4
@@ -322,11 +353,26 @@ Item {
         }
         return out
     }
-    // The concave corner on the bar grows as the first card comes in
-    readonly property real topRadius: {
-        const first = segments.length > 0 ? segments[0] : null
-        return first ? Theme.radius * Math.max(0, Math.min(1, (screenWidth - first.x) / (rowWidth * 0.3))) : 0
+    // The top row on the screen (a row all off the screen is not drawn)
+    readonly property var firstShown: {
+        let f = null
+        for (const r of segments) {
+            if (r.x < screenWidth - 0.5 && r.h > 0.5 && (f === null || r.y < f.y))
+                f = r
+        }
+        return f
     }
+    // The concave corner on the bar: it grows while the pile meets the bar
+    // (as the first card comes in, as the pile goes back up under it) and
+    // goes as it leaves it
+    readonly property bool meetsBar: firstShown !== null && Math.abs(firstShown.y - junction) < 0.5
+    property real attachRadius: meetsBar ? Theme.radius : 0
+    Behavior on attachRadius {
+        enabled: !Theme.reduceMotion
+        NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
+    }
+    readonly property real topRadius: firstShown === null ? 0
+        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (screenWidth - firstShown.x) / (rowWidth * 0.3))))
     readonly property var outline: Pile.outline(screenWidth, segments, junction, Theme.radius, topRadius, Theme.cornerSmoothing)
 
     Shape {
@@ -354,14 +400,20 @@ Item {
     Item {
         id: maskArea
         x: root.leftmost
-        y: root.mirrored ? root.screenHeight - root.outline.lowest : root.pileTop
+        // From the top row drawn (never the room of one sliding out above)
+        readonly property real from: root.firstShown !== null ? root.firstShown.y : root.pileTop
+        y: root.mirrored ? root.screenHeight - root.outline.lowest : from
         width: root.hidden ? 0 : root.screenWidth - root.leftmost
-        height: root.hidden || root.outline.lowest <= root.pileTop ? 0 : root.outline.lowest - root.pileTop
+        height: root.hidden || root.outline.lowest <= from ? 0 : root.outline.lowest - from
     }
 
     // The minimized windows' strip slides out of the pile's way
     readonly property real stripEdge: visible && !hidden && outline.lowest > 0
                                       ? Math.round(mirrored ? screenHeight - outline.lowest : outline.lowest) : 0
     onStripEdgeChanged: ShellState.setRightPanelEdge(monitorName, stripEdge, edgeOwner)
-    Component.onDestruction: ShellState.setRightPanelEdge(monitorName, 0, edgeOwner)
+    // A monitor gone with the pile showing: nothing of it stays
+    Component.onDestruction: {
+        ShellState.setRightPanelEdge(monitorName, 0, edgeOwner)
+        ShellState.setOverlay("notificacoes:" + monitorName, false)
+    }
 }
