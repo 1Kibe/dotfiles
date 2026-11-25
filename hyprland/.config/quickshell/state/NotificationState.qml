@@ -61,6 +61,14 @@ Singleton {
             setScreen(screenList.filter(c => c.urgent).slice(0, Policy.URGENT_FULLSCREEN_MAX))
     }
 
+    // The control center's Não perturbe button shows only while this shell
+    // is the session's notifications (it only shows and switches dnd)
+    Binding {
+        target: ShellState
+        property: "dndAvailable"
+        value: root.serverOk
+    }
+
     // ── The server ──
     NotificationServer {
         id: server
@@ -117,7 +125,8 @@ Singleton {
         // (3) This app's pace
         const ok = !empty && admit(copy.appKey, now)
         const where = Policy.decide({ urgent: copy.urgent, empty: empty },
-                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
+                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen,
+                                      listOpen: ShellState.openPanel === "notifications" })
         if (where === "drop") {
             count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             return
@@ -260,7 +269,8 @@ Singleton {
         const empty = copy.summary === "" && copy.body === ""
         const ok = !empty && admit(copy.appKey, now)
         const where = Policy.decide({ urgent: copy.urgent, empty: empty },
-                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen })
+                                    { overLimit: ok || empty ? "" : "rate", dnd: dnd, locked: locked, fullscreen: fullscreen,
+                                      listOpen: ShellState.openPanel === "notifications" })
         if (where === "drop") {
             count(Policy.dropReason({ empty: empty }, { overLimit: ok || empty ? "" : "rate" }))
             n.dismiss()

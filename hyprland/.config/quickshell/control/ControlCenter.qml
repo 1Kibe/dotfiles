@@ -66,6 +66,9 @@ AttachedPanel {
     function toggle(id) {
         if (id === "nightlight" && SettingsStore.ready)
             SettingsStore.set("nightLight", SettingsStore.get("nightLight") !== true)
+        // Não perturbe: the notifications' own state (nothing kept here)
+        else if (id === "dnd")
+            NotificationState.toggleDnd()
     }
 
     // The minimize strip needs the room: only the section folds
@@ -115,8 +118,10 @@ AttachedPanel {
                 hasArrow: modelData.hasList
                 open: modelData.hasList && ShellState.controlSection === modelData.id
                 on: (modelData.id === "nightlight" && NightLight.enabled) || (modelData.id === "tailscale" && Tailnet.backend === "Running")
+                    || (modelData.id === "dnd" && NotificationState.dnd)
                 warn: modelData.id === "updates" && Updates.summary.warn
                 status: modelData.id === "nightlight" ? root.night.status
+                      : modelData.id === "dnd" ? (NotificationState.dnd ? "Ligado" : "Desligado")
                       : modelData.id === "wifi" ? wifi.stateText
                       : modelData.id === "bluetooth" ? bluetooth.stateText
                       : modelData.id === "updates" ? Updates.summary.text

@@ -99,8 +99,15 @@ ShellRoot {
     IpcHandler {
         target: "notifications"
 
+        // Super+N: the clock's panel on the focused monitor
         function toggle(): string {
-            return NotificationState.locked ? "travada" : "sem painel"
+            if (NotificationState.locked)
+                return "travada"
+            const monitor = Hyprland.focusedMonitor
+            if (!monitor)
+                return "sem monitor"
+            ShellState.toggleByKey("notifications", monitor.name)
+            return "ok"
         }
         function clear(): string {
             if (NotificationState.locked)

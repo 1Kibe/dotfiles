@@ -34,6 +34,7 @@ Item {
     // Hidden at once: another monitor in focus, the capture, the lock, or the
     // bar sliding away (a full screen): the cards wait
     readonly property bool hidden: !focusedHere || CaptureState.open || NotificationState.locked || (frame !== null && frame.out > 0)
+                                   || ShellState.openPanel === "notifications"
     readonly property bool mirrored: Theme.barAtBottom
     readonly property bool overCapture: false
 

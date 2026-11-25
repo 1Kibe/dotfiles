@@ -268,7 +268,7 @@ Item {
             }
             Text {
                 Layout.fillWidth: true
-                Layout.maximumHeight: 3 * bodyFont.height
+                Layout.maximumHeight: Math.ceil(3 * bodyFont.lineSpacing)
                 visible: text !== ""
                 text: root.shown ? root.shown.body : ""
                 textFormat: Text.PlainText

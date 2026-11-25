@@ -45,7 +45,7 @@ Singleton {
 
     // The panels a click, a keybind or the IPC may open; any other name is
     // ignored (a name from the IPC never lands in openPanel)
-    readonly property var panels: ["control", "network", "volume", "bluetooth", "media", "system", "settings"]
+    readonly property var panels: ["control", "network", "volume", "bluetooth", "media", "system", "settings", "notifications"]
     function panelId(name) {
         if (name === "power" || name === "controlcenter")
             return "control"
@@ -209,6 +209,9 @@ Singleton {
         }
         const id = panelId(panel)
         if (id === "" || monitor === "" || OverviewState.open)
+            return
+        // The notifications never open locked or asked to lock (whatever asks)
+        if (id === "notifications" && (LockState.locked || LockState.wanted))
             return
         if (isOpen(id, monitor)) {
             close()

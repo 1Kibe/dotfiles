@@ -41,6 +41,9 @@ function decide(n, ctx) {
         return "drop"
     if (c.locked === true)
         return "central"
+    // The clock's panel open: it is in the list already, in front of the user
+    if (c.listOpen === true)
+        return "central"
     if (c.dnd === true && !(n.urgent === true && URGENT_PIERCES_DND))
         return "central"
     if (c.fullscreen === true && n.urgent !== true)
