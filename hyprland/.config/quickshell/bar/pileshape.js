@@ -4,11 +4,8 @@
 // The shape of the notifications' pile (bar/NotificationToasts): plain JS,
 // read by the shell and by the tests. Coordinates are the frame's with the
 // bar on top (the caller mirrors them with the bar on the bottom). The
-// pile hangs on the screen's right edge, x = W; each row is { x, y, h, r }:
-// its left edge (W when it is all off the screen), its top and height, and
-// its right edge (r, W when left out). A column whose right edge stays off
-// the screen's edge (under a panel set in from it) rounds its two right
-// corners, more the farther it is.
+// pile hangs on the screen's right edge, x = W; each row is { x, y, h }:
+// its left edge (W when it is all off the screen), its top and height.
 // Rows that touch one another make one column, drawn as one closed path,
 // clockwise like the panels' shapes (bar/AttachedShape): from the top, down
 // the screen's edge, along the bottom, up the left side with a step at
@@ -23,11 +20,8 @@ function reachToRadius(reach, s) {
 }
 
 // The rows on the screen, top first, in columns of touching rows
-function rightOf(r, W) {
-    return typeof r.r === "number" ? Math.min(W, r.r) : W
-}
 function columns(rows, W) {
-    const segs = rows.filter(r => r.x < rightOf(r, W) - 0.5 && r.h > 0.5).slice().sort((a, b) => a.y - b.y)
+    const segs = rows.filter(r => r.x < W - 0.5 && r.h > 0.5).slice().sort((a, b) => a.y - b.y)
     const out = []
     for (const s of segs) {
         const col = out[out.length - 1]
@@ -40,30 +34,20 @@ function columns(rows, W) {
     return out
 }
 
-// One column's path. W: its right edge; top: { attached, r } (r: the
-// concave corner's radius when attached, else the convex one's); botR: the
-// bottom corner's radius; rightR: the right corners' (0 on the screen's edge)
-function columnPath(W, col, top, botR, R, s, rightR) {
+// One column's path. top: { attached, r } (r: the concave corner's radius
+// when attached, else the convex one's); botR: the bottom corner's radius
+function columnPath(W, col, top, botR, R, s) {
     const first = col[0]
     const last = col[col.length - 1]
     const ye = last.y + last.h
-    const rr = rightR > 0 ? Math.min(rightR, reachToRadius(first.h / 2, s), reachToRadius((W - first.x) / 2, s),
-                                     reachToRadius(last.h / 2, s), reachToRadius((W - last.x) / 2, s)) : 0
     let d = ""
-    // Start where the top meets the right edge (attached: at the far end
+    // Start where the top meets the screen's edge (attached: at the far end
     // of the concave corner, on the bar's edge)
     const ra = top.attached ? Corners.reach(top.r, s) : 0
-    if (rr > 0) {
-        d += top.attached ? `M ${first.x - ra} ${first.y} ` : `M ${first.x} ${first.y} `
-        d += Corners.corner(W, first.y, 1, 0, 0, 1, rr, s)
-        // Down the right side, its bottom corner, to the bottom-left corner
-        d += Corners.corner(W, ye, 0, 1, -1, 0, rr, s)
-    } else {
-        d += top.attached ? `M ${first.x - ra} ${first.y} L ${W} ${first.y} ` : `M ${W} ${first.y} `
-        // Down the screen's edge, along the bottom to the bottom-left corner
-        d += `L ${W} ${ye} `
-    }
-    const rb = Math.min(botR, reachToRadius(last.h / 2, s), reachToRadius((W - last.x - (rr > 0 ? Corners.reach(rr, s) : 0)) / 2, s))
+    d += top.attached ? `M ${first.x - ra} ${first.y} L ${W} ${first.y} ` : `M ${W} ${first.y} `
+    // Down the screen's edge, along the bottom to the bottom-left corner
+    d += `L ${W} ${ye} `
+    const rb = Math.min(botR, reachToRadius(last.h / 2, s), reachToRadius((W - last.x) / 2, s))
     d += Corners.corner(last.x, ye, -1, 0, 0, -1, rb, s)
     // Up the left side: a step where the width changes
     for (let i = col.length - 1; i > 0; i--) {
@@ -97,9 +81,6 @@ function outline(W, rows, junction, R, topR, s) {
     cols.forEach((col, i) => {
         const first = col[0]
         const last = col[col.length - 1]
-        // The column's right edge, and how much its right corners round
-        const Wc = Math.max(...col.map(r => rightOf(r, W)))
-        const rightR = Math.max(0, Math.min(R, W - Wc))
         const above = i > 0 ? cols[i - 1][cols[i - 1].length - 1] : null
         const gapTop = Math.max(0, first.y - (above ? above.y + above.h : junction))
         const below = cols[i + 1]
@@ -107,11 +88,11 @@ function outline(W, rows, junction, R, topR, s) {
         let top
         if (i === 0 && gapTop < 0.5) {
             attached = true
-            top = { attached: true, r: Math.max(0, Math.min(topR, reachToRadius(Wc - first.x, s))) }
+            top = { attached: true, r: Math.max(0, Math.min(topR, reachToRadius(W - first.x, s))) }
         } else {
-            top = { attached: false, r: Math.max(0, Math.min(R, 2 * gapTop, reachToRadius(first.h / 2, s), reachToRadius((Wc - first.x) / 2, s))) }
+            top = { attached: false, r: Math.max(0, Math.min(R, 2 * gapTop, reachToRadius(first.h / 2, s), reachToRadius((W - first.x) / 2, s))) }
         }
-        d += columnPath(Wc, col, top, Math.min(R, 2 * gapBot), R, s, rightR)
+        d += columnPath(W, col, top, Math.min(R, 2 * gapBot), R, s)
         lowest = Math.max(lowest, last.y + last.h)
     })
     return { path: d, lowest: lowest, attached: attached }

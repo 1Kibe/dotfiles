@@ -97,17 +97,13 @@ Item {
     readonly property bool detached: othersEdge > junction
     readonly property var span: detached && anchor.span ? anchor.span : null
     readonly property real wantTop: detached ? othersEdge + Theme.toastGap : junction
-    // The pile's box, left to right: on the screen's edge (attached to the
-    // bar) or the panel's body; moving between them with the top
+    // The pile's box, from its left to the screen's edge: its own width
+    // (attached to the bar) or the panel's body (a drawer of the right
+    // edge too); moving between them with the top
     readonly property real wantLeft: span ? span.left : screenWidth - rowWidth
-    readonly property real wantRight: span ? span.right : screenWidth
     property real boxLeft: screenWidth - rowWidth
-    property real boxRight: screenWidth
     Binding on boxLeft {
         value: root.wantLeft
-    }
-    Binding on boxRight {
-        value: root.wantRight
     }
     Behavior on boxLeft {
         enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
@@ -117,15 +113,7 @@ Item {
             easing.bezierCurve: Theme.curveDecel
         }
     }
-    Behavior on boxRight {
-        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
-        NumberAnimation {
-            duration: Theme.dur(Theme.motionEdgeClose)
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Theme.curveDecel
-        }
-    }
-    readonly property real boxWidth: boxRight - boxLeft
+    readonly property real boxWidth: screenWidth - boxLeft
 
     // Under a panel, only the cards that fit whole between its edge and the
     // end of the screen show (the others wait, counted in "e mais N", their
@@ -508,14 +496,12 @@ Item {
                 // All out (waiting to come in, or its room closing after it
                 // left): not in the shape, with motion reduced too
                 const x = s.out >= 0.999 ? screenWidth : Theme.reduceMotion ? boxLeft : s.leftX
-                // Its right edge is the box's (a card on its way past it is
-                // drawn over the shape)
-                out.push({ x: x, y: pileTop + s.y, h: s.height, r: boxRight })
+                out.push({ x: x, y: pileTop + s.y, h: s.height })
             }
         }
         if (more.height > 0) {
             const minX = out.length > 0 ? Math.min(...out.map(r => r.x)) : screenWidth
-            out.push({ x: Math.max(minX, boxLeft), y: pileTop + more.y, h: more.height, r: boxRight })
+            out.push({ x: Math.max(minX, boxLeft), y: pileTop + more.y, h: more.height })
         }
         return out
     }
@@ -523,7 +509,7 @@ Item {
     readonly property var firstShown: {
         let f = null
         for (const r of segments) {
-            if (r.x < r.r - 0.5 && r.h > 0.5 && (f === null || r.y < f.y))
+            if (r.x < screenWidth - 0.5 && r.h > 0.5 && (f === null || r.y < f.y))
                 f = r
         }
         return f
@@ -538,7 +524,7 @@ Item {
         NumberAnimation { duration: Theme.dur(Theme.animFast); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     readonly property real topRadius: firstShown === null ? 0
-        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (boxRight - firstShown.x) / Math.max(1, boxWidth * 0.3))))
+        : Math.min(attachRadius, Theme.radius * Math.max(0, Math.min(1, (screenWidth - firstShown.x) / Math.max(1, boxWidth * 0.3))))
     readonly property var outline: Pile.outline(screenWidth, segments, junction, Theme.radius, topRadius, Theme.cornerSmoothing)
 
     Shape {
