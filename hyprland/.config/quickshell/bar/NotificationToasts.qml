@@ -27,7 +27,9 @@ AttachedPanel {
     edgeSide: "right"
     panelWidth: Theme.toastWidth + 12
     open: focusedHere && !held && cards.count > 0
-    onVisibleChanged: ShellState.setOverlay("notificacoes", visible)
+    // One name per monitor: a focus change never lets one bar's "off" land
+    // after another's "on"
+    onVisibleChanged: ShellState.setOverlay("notificacoes:" + monitorName, visible)
 
     // The cards drawn, newest first: { cardId, count, leaving }. A card
     // that leaves NotificationState.screenList stays here while it slides
@@ -108,12 +110,17 @@ AttachedPanel {
                     id: toast
                     cardId: slot.cardId
                     count: slot.count
+                    // Its time runs only while this pile shows it
+                    active: root.open
                     x: Theme.reduceMotion ? 0 : slot.out * (Theme.toastWidth + 12)
                     opacity: Theme.reduceMotion ? 1 - slot.out : 1
                     onExpired: NotificationState.dismissToast(slot.cardId)
                 }
 
-                Component.onCompleted: comeIn.start()
+                Component.onCompleted: {
+                    if (!leaving)
+                        comeIn.start()
+                }
                 onLeavingChanged: {
                     if (leaving) {
                         comeIn.stop()

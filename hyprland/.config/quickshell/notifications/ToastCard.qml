@@ -12,14 +12,46 @@ import "policy.js" as Policy
 // Everything from outside is plain text, cut by lines and by height. The
 // mouse over it holds its time; dragged to the right it leaves the screen
 // (it stays in the list). It reads only the cleaned copy
-// (NotificationState.entries), never the notification itself.
+// (NotificationState.entries), never the notification itself, and shows a
+// copy of its own: with the mouse over it, a new arrival only changes the
+// count; the text and the buttons wait until the mouse leaves. For 400 ms
+// after it shows or changes, the pointer does nothing on it. Its time runs
+// only while the pile shows it (active).
 Item {
     id: root
 
     required property int cardId
     property int count: 1
+    // The pile shows it now (on the focused monitor, nothing over it)
+    property bool active: true
     readonly property var entry: NotificationState.entries.find(e => e.id === cardId) ?? null
-    readonly property bool urgent: entry !== null && entry.urgent
+    // What it shows: the entry, kept while the mouse is over it and after
+    // the entry is gone (a card sliding out)
+    property var shown: null
+    function refresh() {
+        if (entry !== null && (shown === null || !hover.hovered)) {
+            const changed = shown === null || shown.id !== entry.id || shown.summary !== entry.summary || shown.body !== entry.body
+                            || JSON.stringify(shown.actions) !== JSON.stringify(entry.actions)
+            shown = entry
+            if (changed)
+                arm()
+        }
+    }
+    onEntryChanged: refresh()
+    Component.onCompleted: refresh()
+    // The pointer is ignored for 400 ms after a change (a click meant for
+    // what was there before never lands on what came)
+    property bool armed: false
+    function arm() {
+        armed = false
+        armTimer.restart()
+    }
+    Timer {
+        id: armTimer
+        interval: 400
+        onTriggered: root.armed = true
+    }
+    readonly property bool urgent: shown !== null && shown.urgent
     // The card's time (reading time, never scaled by the speed)
     readonly property int life: Policy.cardTime(urgent, NotificationState.fullscreen, Theme.toastHold)
     property real elapsed: 0
@@ -43,7 +75,7 @@ Item {
         id: clock
         interval: 100
         repeat: true
-        running: root.entry !== null && !root.held
+        running: root.active && root.shown !== null && !root.held
         onRunningChanged: root.last = Date.now()
         onTriggered: {
             const now = Date.now()
@@ -55,11 +87,30 @@ Item {
             }
         }
     }
-    // A new one of the same app: its time starts again
+    // A new one of the same app (or another one in its place): its time
+    // starts again
     onCountChanged: elapsed = 0
+    onCardIdChanged: elapsed = 0
 
     HoverHandler {
         id: hover
+        onHoveredChanged: if (!hovered) root.refresh()
+    }
+    // Text heights: a line's height cuts what stacks marks over it
+    FontMetrics {
+        id: small
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSizeSmall
+    }
+    FontMetrics {
+        id: normal
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize
+    }
+    FontMetrics {
+        id: bodyFont
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize - 1
     }
 
     Rectangle {
@@ -79,6 +130,7 @@ Item {
 
         DragHandler {
             id: drag
+            enabled: root.armed
             target: null
             xAxis.enabled: true
             yAxis.enabled: false
@@ -115,13 +167,15 @@ Item {
                         cache: false
                         sourceSize.width: 36
                         sourceSize.height: 36
-                        source: root.entry && root.entry.image.kind === "icon" ? AppIcons.icon(root.entry.image.value) : ""
+                        source: root.shown && root.shown.image.kind === "icon" ? AppIcons.icon(root.shown.image.value) : ""
                     }
                 }
                 // The name always in the same place, plain (anyone can say any name)
                 Text {
                     Layout.fillWidth: true
-                    text: root.entry ? root.entry.appName + " · " + root.timeText(root.entry.time) : ""
+                    Layout.maximumHeight: small.height
+                    clip: true
+                    text: root.shown ? root.shown.appName + " · " + root.timeText(root.shown.time) : ""
                     textFormat: Text.PlainText
                     elide: Text.ElideRight
                     maximumLineCount: 1
@@ -146,14 +200,17 @@ Item {
                     font.family: Theme.font
                     font.pointSize: Theme.fontSize
                     TapHandler {
+                        enabled: root.armed
                         onTapped: NotificationState.dismissToast(root.cardId)
                     }
                 }
             }
             Text {
                 Layout.fillWidth: true
+                Layout.maximumHeight: normal.height
+                clip: true
                 visible: text !== ""
-                text: root.entry ? root.entry.summary : ""
+                text: root.shown ? root.shown.summary : ""
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 maximumLineCount: 1
@@ -165,9 +222,9 @@ Item {
             }
             Text {
                 Layout.fillWidth: true
-                Layout.maximumHeight: 3 * (font.pointSize * 2)
+                Layout.maximumHeight: 3 * bodyFont.height
                 visible: text !== ""
-                text: root.entry ? root.entry.body : ""
+                text: root.shown ? root.shown.body : ""
                 textFormat: Text.PlainText
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
@@ -180,19 +237,24 @@ Item {
             // The app's own buttons (what they do comes with the actions)
             RowLayout {
                 Layout.fillWidth: true
-                visible: root.entry !== null && root.entry.actions.length > 0
+                visible: root.shown !== null && root.shown.actions.length > 0
                 spacing: 6
                 Repeater {
-                    model: root.entry ? root.entry.actions : []
+                    model: root.shown ? root.shown.actions : []
                     Rectangle {
                         required property var modelData
+                        // At most a third of the card: a long text is cut
+                        Layout.maximumWidth: (Theme.toastWidth - 20 - 12) / 3
                         implicitWidth: label.implicitWidth + 16
-                        implicitHeight: label.implicitHeight + 8
+                        implicitHeight: bodyFont.height + 8
+                        clip: true
                         radius: Theme.radius
                         color: Theme.bg1
                         Text {
                             id: label
                             anchors.centerIn: parent
+                            width: Math.min(implicitWidth, parent.width - 16)
+                            height: bodyFont.height
                             text: parent.modelData.text
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
