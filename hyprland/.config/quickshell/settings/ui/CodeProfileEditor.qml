@@ -74,6 +74,21 @@ ColumnLayout {
 
     spacing: 0
 
+    // A new profile: what it holds, above its fields
+    Text {
+        visible: root.isNew
+        Layout.fillWidth: true
+        Layout.leftMargin: 12
+        Layout.rightMargin: 12
+        Layout.topMargin: 6
+        text: "Nome e e-mail do commit, chave SSH e, se quiser, a conta do GitHub"
+        textFormat: Text.PlainText
+        wrapMode: Text.WordWrap
+        color: Theme.fg4
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize - 1
+    }
+
     OptionRow {
         divider: true
         label: "Nome do perfil"

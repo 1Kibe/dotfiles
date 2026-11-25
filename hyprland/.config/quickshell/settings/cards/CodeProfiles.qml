@@ -91,11 +91,23 @@ ColumnLayout {
             error = Cards.ERR.store
     }
 
+    // At the right of the card's title: Adicionar (off with 8 profiles or
+    // a new one open), then Esconder fotos
     readonly property Component headerActions: Component {
-        Button {
-            text: CodeAccounts.photosHidden ? "Mostrar fotos" : "Esconder fotos"
-            icon: CodeAccounts.photosHidden ? "\u{f0208}" : "\u{f0209}"
-            onClicked: CodeAccounts.photosHidden = !CodeAccounts.photosHidden
+        RowLayout {
+            spacing: 6
+            Button {
+                text: "Adicionar"
+                icon: "\u{f0415}"
+                enabled: !root.locked && !root.full && root.editing !== "new"
+                opacity: enabled ? 1 : 0.5
+                onClicked: root.edit("new")
+            }
+            Button {
+                text: CodeAccounts.photosHidden ? "Mostrar fotos" : "Esconder fotos"
+                icon: CodeAccounts.photosHidden ? "\u{f0208}" : "\u{f0209}"
+                onClicked: CodeAccounts.photosHidden = !CodeAccounts.photosHidden
+            }
         }
     }
 
@@ -182,17 +194,16 @@ ColumnLayout {
         }
     }
 
-    OptionRow {
-        visible: root.editing !== "new"
-        label: "Adicionar perfil"
-        desc: root.full ? "No máximo 8 perfis" : "Nome e e-mail do commit, chave SSH e, se quiser, a conta do GitHub"
-        Button {
-            text: "Adicionar"
-            icon: "\u{f0415}"
-            enabled: !root.locked && !root.full
-            opacity: enabled ? 1 : 0.5
-            onClicked: root.edit("new")
-        }
+    // The limit, said where the row used to be (Adicionar is off then)
+    Text {
+        visible: root.full
+        Layout.fillWidth: true
+        Layout.margins: 8
+        text: "No máximo 8 perfis"
+        textFormat: Text.PlainText
+        color: Theme.fg4
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize - 1
     }
     Loader {
         Layout.fillWidth: true
@@ -220,16 +231,5 @@ ColumnLayout {
             opacity: enabled ? 1 : 0.5
             onToggled: v => SettingsStore.set("codePhotos", v)
         }
-    }
-
-    Text {
-        Layout.fillWidth: true
-        Layout.margins: 8
-        text: "O e-mail vira autor dos commits. Em repo público, use o e-mail noreply do GitHub. A foto vem da conta do GitHub ligada ao perfil."
-        textFormat: Text.PlainText
-        wrapMode: Text.WordWrap
-        color: Theme.fg4
-        font.family: Theme.fontPanels
-        font.pointSize: Theme.fontSize - 1
     }
 }
