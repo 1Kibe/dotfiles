@@ -118,11 +118,12 @@ Singleton {
     }
 
     // A group's "Restaurar padrão": these keys back to the defaults in one
-    // change (one write); unknown keys are left out
+    // change (one write); unknown keys and the ones only their own card
+    // changes (schema `kept`) are left out
     function resetMany(keys) {
         if (!ready || !Array.isArray(keys))
             return false
-        const gone = keys.filter(k => spec(k) && (own(user, k) || own(extra, k)))
+        const gone = keys.filter(k => spec(k) && !spec(k).kept && (own(user, k) || own(extra, k)))
         if (gone.length === 0)
             return false
         dropUndo()
@@ -164,10 +165,11 @@ Singleton {
     property var undoUser: null
     property double undoUntil: 0
     readonly property int undoSeconds: 30
-    // The choices Restaurar tudo would take away: not the system's own keys
-    // nor the ones the shell keeps itself (schema `system`, `auto`)
+    // The choices Restaurar tudo would take away: not the system's own keys,
+    // the ones the shell keeps itself nor the ones only their own card
+    // changes (schema `system`, `auto`, `kept`)
     function restorableKeys() {
-        return Object.keys(user).filter(k => !(spec(k) && (spec(k).system || spec(k).auto)))
+        return Object.keys(user).filter(k => !(spec(k) && (spec(k).system || spec(k).auto || spec(k).kept)))
     }
     function dropUndo() {
         undoUser = null

@@ -235,7 +235,7 @@ De cima para baixo:
 - **Topo:** a bateria (com "Conservação ligada" quando o limite de carga está ligado), a engrenagem (Configurações, como
   `Super+S`) e o botão de energia, que abre a seção da energia: Bloquear, Sair, Suspender, Reiniciar e Desligar (quais
   aparecem e quais pedem segundo clique ficam em Configurações → Energia; Reiniciar e Desligar sempre pedem).
-- **Grade:** Rede, Bluetooth, Tailscale, Atualizações e Luz noturna (este só liga e desliga, com o horário embaixo). Cada botão
+- **Grade:** Rede, Bluetooth, Tailscale, Atualizações, Luz noturna (este só liga e desliga, com o horário embaixo) e GitHub. Cada botão
   com lista abre a sua seção logo abaixo, uma por vez: abrir outra fecha a que estava aberta.
 - **Volume** (mudo, nível e a seta do mixer) e **brilho** (só com tela interna).
 - **Em segundo plano**, no fim: os apps rodando sem janela.
@@ -249,6 +249,7 @@ valor ou a ação à direita. Cada uma fica num cartão próprio e rola por dent
 | Bluetooth | Liga/desliga (pelo `rfkill`, como no Windows: fica desligado depois de reiniciar), os pareados com a bateria e "Por perto", achados com "Procurar aparelhos" (os sem nome ficam atrás de "+ N sem nome"). Clique conecta ou pareia (pareado aqui fica confiável); "Esquecer" pede um segundo clique. "Mais opções…" abre o `bluetui` |
 | Mixer | Saídas e microfone (clique escolhe o padrão, o microfone com nível e mudo) e um nível com mudo por app tocando som |
 | Atualizações | O sistema (`checkupdates`, com a hora da última verificação) e o AUR (`paru -Qua`), os 3 primeiros pacotes de cada e "e mais N". "Verificar agora" e "Atualizar tudo no terminal": abre o Kitty com o `paru -Syu`, onde se vê o que vai instalar e se digita a senha. Procura sozinho 2 min depois de entrar e a cada 6 h, nunca com a tela travada; depois do "Atualizar tudo" a lista se atualiza sozinha. O botão da grade fica amarelo com o total, e mostra só a parte conhecida ("2 do AUR") quando uma das origens não deu para ler |
+| GitHub | As contas do `gh` (com a foto, "ativa" na que está em uso e Trocar nas outras) e as do `glab`, só para ver; "N pastas com conta própria · editar" abre Configurações → Contas de código. Só lê ao abrir a seção (o botão diz sempre "Contas"); "Esconder nomes" troca os logins por "conta N" e as fotos por números. Trocar vale para todos os terminais do `gh`. Ver [Contas de código](#contas-de-código) |
 | Tailscale | O estado, este aparelho (nome e endereço, com copiar), os aparelhos da tailnet (online com o endereço, offline com quando foi visto), o aviso quando a internet está saindo por outro aparelho e "Esconder nomes e endereços" (para prints; o copiar continua copiando o de verdade). O interruptor abre o terminal com `sudo tailscale up`/`down`; "Abrir o painel do Tailscale" abre o painel da conta no navegador |
 
 **Em segundo plano.** Uma ficha por app com ícone de bandeja (o shell é a bandeja; não há ícones fixos na barra), em até duas
@@ -486,13 +487,14 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 
 `Super+S` abre as Configurações pela borda esquerda: as páginas numa coluna e, no topo, uma busca que acha qualquer opção.
 As páginas: Tema e cores, Papel de parede, Fontes e animações, Barra, Bloqueio e login, Captura e clipboard, Energia,
-Monitores, Teclado e mouse, Gestos, Atalhos, Apps padrão, Dispositivos e Sobre. Cada mudança vale na hora.
+Monitores, Teclado e mouse, Gestos, Atalhos, Apps padrão, Dispositivos, Contas de código e Sobre. Cada mudança vale na
+hora.
 
 - **Onde fica o que você escolhe:** em `~/.config/dotfiles/settings.json`, só o que difere do padrão. Os padrões são o
   `hyprland/.config/quickshell/settings/defaults.json` do repo. A partir das escolhas o shell gera os arquivos que os
   outros programas leem, todos fora do git: `dotfiles_settings.lua`, `dotfiles_monitors.lua`, `dotfiles_apps.lua`,
-  `dotfiles_autostart.lua` e `dotfiles_gestures.lua` (Hyprland), `hypridle.gerado.conf` e as cores do Kitty, do btop e do
-  lazygit.
+  `dotfiles_autostart.lua` e `dotfiles_gestures.lua` (Hyprland), `hypridle.gerado.conf`, as cores do Kitty, do btop e do
+  lazygit e os arquivos das contas de código em `~/.config/git/`.
 - **Exportar** (em Sobre) grava no `defaults.json` do repo o que você escolheu, menos o que é só desta máquina (como
   monitores, apps e teclado); depois é revisar o `git diff` antes do commit.
 - **Restaurar tudo** (em Sobre) volta ao padrão do repo, menos o layout do teclado e os apps padrão do sistema. Antes
@@ -546,6 +548,31 @@ PDF, fontes, documentos e o resto ficam sem, para um arquivo de pendrive não se
 No Hyprland o ícone de rede (nm-applet) e o da fila de impressão não sobem (o `install.sh` mascara as duas unidades do
 autostart): a rede fica no painel da barra e na central de controle, as impressoras em Configurações → Dispositivos. No
 XFCE eles continuam. Para voltar: `systemctl --user unmask 'app-nm\x2dapplet@autostart.service' 'app-print\x2dapplet@autostart.service'`.
+
+### Contas de código
+
+Em Configurações → Contas de código, cada **perfil** tem o nome e o e-mail que assinam os commits e a chave SSH que faz o
+push (escolhida pelo nome entre os arquivos de `~/.ssh`; o conteúdo da chave nunca é lido). Cada **pasta** ganha um perfil:
+dentro dela, e em tudo abaixo, o git usa aquele perfil; fora das pastas vale a conta ativa do `gh`. A pasta troca a identidade
+e a chave SSH; em HTTPS continua valendo a conta ativa do `gh`. O e-mail do perfil vira autor dos commits: em repo público,
+use o e-mail noreply do GitHub.
+
+- O shell grava `~/.config/git/contas.conf` (um `includeIf` por pasta) e `~/.config/git/contas/p1.conf` … `p8.conf` (nome,
+  e-mail e o `sshCommand` com a chave), arquivos 600 fora do repo. O `install.sh` acrescenta ao fim do `~/.gitconfig` de
+  verdade um bloco marcado que inclui o `contas.conf`; o resto do arquivo fica como está. O mesmo arquivo liga o
+  `gh auth git-credential` ao github.com e o `glab auth git-credential` ao gitlab.com: não rode `gh auth setup-git`.
+- Nenhum nome de conta, e-mail ou chave vai para o repo: os perfis e as pastas ficam só nesta máquina, fora do Restaurar tudo.
+- **Estado** diz se cada pasta existe e se os arquivos do git estão em dia. **Conferir** pergunta ao git qual e-mail ele
+  usaria em cada pasta e mostra só "ok" ou "diferente". Numa pasta sem repositório, ele cria um repositório temporário
+  (`.conferir.*`) dentro dela e apaga logo depois, porque o git só aplica o perfil dentro de um repositório.
+- Ao escolher a conta do GitHub num perfil, os campos ainda vazios se preenchem por ela: os dois nomes com o login e o
+  e-mail com o noreply do GitHub (`<id>+<login>@users.noreply.github.com`); o que já foi digitado não muda. A chave SSH é
+  sempre escolhida à mão.
+- Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login. Ler as contas (ao abrir a
+  seção ou a página) faz o `gh` e o `glab` consultarem os sites deles.
+- **Fotos dos perfis:** o shell sempre baixa a foto pública do GitHub, guarda no cache (`~/.cache/dotfiles/contas-fotos`) e
+  renova a cada 7 dias, só com a página ou a seção da central abertas; é a única coisa das contas que usa a rede sozinha.
+  "Esconder fotos" só as esconde na tela (para prints), com números no lugar. As contas do GitLab ficam sempre com a inicial.
 
 ## Bloqueio e login
 

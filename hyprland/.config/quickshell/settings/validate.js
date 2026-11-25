@@ -1,4 +1,5 @@
 .pragma library
+.import "gitaccounts.js" as GitAccounts
 
 // Checks one value against its key of settings/schema.js. Anything that
 // does not fit gives { ok: false, value: spec.def }: the caller keeps the
@@ -52,7 +53,7 @@ function expandPath(text, home) {
     return p
 }
 
-// home is only needed for "path"
+// home is only needed for "path" and "codefolders"
 function validate(spec, value, home) {
     if (!spec)
         return { ok: false, value: undefined }
@@ -100,6 +101,16 @@ function validate(spec, value, home) {
             names[v] = true
         }
         return good(value.slice())
+    case "codeprofiles": {
+        // The code accounts' profiles: JSON text, checked entry by entry
+        // (settings/gitaccounts.js); kept as the shell writes it again
+        const text = GitAccounts.profilesText(value)
+        return text === null ? bad(spec) : good(text)
+    }
+    case "codefolders": {
+        const text = GitAccounts.foldersText(value, home || "/nonexistent-home")
+        return text === null ? bad(spec) : good(text)
+    }
     case "gestures": {
         // A plain object of the key's positions (a missing one takes its
         // default), each a name of that position's choices; the result in

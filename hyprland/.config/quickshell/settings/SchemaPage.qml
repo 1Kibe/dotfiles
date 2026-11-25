@@ -56,7 +56,8 @@ Flickable {
                                        "LockSecurity", "ClipboardClear", "EnergyNotices", "BatteryLimit",
                                        "MonitorNotice", "MonitorLayout", "KeyboardLayout", "KeybindList", "DefaultApps",
                                        "Autostart", "AboutVersion", "AboutData", "GestureList",
-                                       "DevicesPrinters", "DevicesDrives", "DevicesUsb"]
+                                       "DevicesPrinters", "DevicesDrives", "DevicesUsb",
+                                       "CodeProfiles", "CodeFolders", "CodeState"]
     // A card that needs something this machine does not have stays out
     // (the touchpad's: SystemLists.hasTouchpad). Hyprland tells nothing when
     // a device is plugged in: the devices are read again when this page opens
