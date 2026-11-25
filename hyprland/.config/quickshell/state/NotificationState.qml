@@ -10,6 +10,8 @@ import "../notifications/safetext.js" as Safe
 import "../notifications/policy.js" as Policy
 import "../notifications/grouping.js" as Group
 import "../notifications/imagepolicy.js" as Img
+import "../overview/hypract.js" as HyprAct
+import "../settings/hyprland.js" as Hypr
 
 // The notifications of the session (the D-Bus server lives here). Every
 // notification goes through one door, ingest(): the pace first, then the
@@ -346,7 +348,51 @@ Singleton {
         n.actions[index].invoke()
         return true
     }
-    // The card's own click: the app's default action, if it sent one
+    // The card's own click: the app's default action (if it sent one), the
+    // card off the screen, read, and the app's window brought up
+    function open(id) {
+        if (locked)
+            return false
+        const e = entries.find(x => x.id === id)
+        if (!e)
+            return false
+        if (e.hasDefault)
+            activate(id)
+        dismissToast(id)
+        if (!e.read)
+            entries = entries.map(x => x.id === id ? Object.assign({}, x, { read: true }) : x)
+        bringWindow(e.appKey)
+        return true
+    }
+
+    // ── The app's window: found by its class, focused by its address ──
+    // What talks to Hyprland (the tests swap them): the clients, as
+    // hyprctl -j clients gives them, and a dispatch of checked Lua
+    property var clientsNow: done => AreasState.clients(done)
+    property var dispatch: text => Hyprland.dispatch(text)
+    // The class is only compared (exact, any case) with the app's key, and
+    // only a key of the plain name rule; the focus goes by the window's
+    // address, checked (overview/hypract.js). A window in a special
+    // workspace (the minimized ones) or none: nothing happens
+    function bringWindow(key) {
+        if (typeof key !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(key))
+            return false
+        clientsNow(list => {
+            if (root.locked || !Array.isArray(list))
+                return
+            const k = key.toLowerCase()
+            const c = list.find(x => x && typeof x.class === "string" && x.class.toLowerCase() === k
+                                     && !(x.workspace && String(x.workspace.name || "").startsWith("special")))
+            if (!c)
+                return
+            const text = HyprAct.focusWindow(Hypr.windowAddress(String(c.address || "")))
+            if (text !== null)
+                root.dispatch(text)
+        })
+        return true
+    }
+
+    // The default action only (the card's click goes through open())
     function activate(id) {
         if (locked)
             return false

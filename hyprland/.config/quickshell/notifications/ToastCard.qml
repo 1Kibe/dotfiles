@@ -52,6 +52,40 @@ Item {
         onTriggered: root.armed = true
     }
     readonly property bool urgent: shown !== null && shown.urgent
+
+    // A click: the card (index -1: the app's default action and its
+    // window) or a button (its own action). Fixed at the press; at the
+    // release it acts only if the card still shows that same notification
+    // (a new one that came under the pointer never gets the click)
+    property int pressedId: -1
+    property int pressedIndex: -2
+    signal acted(string what, int id, int index)
+    function press(index) {
+        if (!armed || shown === null) {
+            pressedId = -1
+            return false
+        }
+        pressedId = shown.id
+        pressedIndex = index
+        return true
+    }
+    function release(index) {
+        const id = pressedId
+        const same = armed && shown !== null && id === shown.id && pressedIndex === index
+        pressedId = -1
+        pressedIndex = -2
+        if (!same)
+            return false
+        if (index < 0) {
+            NotificationState.open(id)
+            acted("cartao", id, -1)
+        } else {
+            NotificationState.invoke(id, index)
+            NotificationState.dismissToast(id)
+            acted("botao", id, index)
+        }
+        return true
+    }
     // The card's time (reading time, never scaled by the speed)
     readonly property int life: Policy.cardTime(urgent, NotificationState.fullscreen, Theme.toastHold)
     property real elapsed: 0
@@ -128,6 +162,17 @@ Item {
         }
         clip: true
 
+        // The card's own click (the buttons take theirs first)
+        TapHandler {
+            enabled: root.armed
+            onPressedChanged: {
+                if (pressed)
+                    root.press(-1)
+            }
+            onTapped: root.release(-1)
+            onCanceled: root.pressedId = -1
+        }
+
         DragHandler {
             id: drag
             enabled: root.armed
@@ -201,6 +246,7 @@ Item {
                     font.pointSize: Theme.fontSize
                     TapHandler {
                         enabled: root.armed
+                        gesturePolicy: TapHandler.ReleaseWithinBounds
                         onTapped: NotificationState.dismissToast(root.cardId)
                     }
                 }
@@ -234,7 +280,7 @@ Item {
                 font.family: Theme.fontPanels
                 font.pointSize: Theme.fontSize - 1
             }
-            // The app's own buttons (what they do comes with the actions)
+            // The app's own buttons
             RowLayout {
                 Layout.fillWidth: true
                 visible: root.shown !== null && root.shown.actions.length > 0
@@ -243,6 +289,7 @@ Item {
                     model: root.shown ? root.shown.actions : []
                     Rectangle {
                         required property var modelData
+                        id: button
                         // At most a third of the card: a long text is cut
                         Layout.maximumWidth: (Theme.toastWidth - 20 - 12) / 3
                         implicitWidth: label.implicitWidth + 16
@@ -250,6 +297,17 @@ Item {
                         clip: true
                         radius: Theme.radius
                         color: Theme.bg1
+                        // Its own click, held from the press (never the card's)
+                        TapHandler {
+                            enabled: root.armed
+                            gesturePolicy: TapHandler.ReleaseWithinBounds
+                            onPressedChanged: {
+                                if (pressed)
+                                    root.press(button.modelData.index)
+                            }
+                            onTapped: root.release(button.modelData.index)
+                            onCanceled: root.pressedId = -1
+                        }
                         Text {
                             id: label
                             anchors.centerIn: parent
