@@ -565,6 +565,9 @@ use o e-mail noreply do GitHub.
 - **Estado** diz se cada pasta existe e se os arquivos do git estão em dia. **Conferir** pergunta ao git qual e-mail ele
   usaria em cada pasta e mostra só "ok" ou "diferente". Numa pasta sem repositório, ele cria um repositório temporário
   (`.conferir.*`) dentro dela e apaga logo depois, porque o git só aplica o perfil dentro de um repositório.
+- Ao escolher a conta do GitHub num perfil, os campos ainda vazios se preenchem por ela: os dois nomes com o login e o
+  e-mail com o noreply do GitHub (`<id>+<login>@users.noreply.github.com`); o que já foi digitado não muda. A chave SSH é
+  sempre escolhida à mão.
 - Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login. Ler as contas (ao abrir a
   seção ou a página) faz o `gh` e o `glab` consultarem os sites deles.
 - **Fotos dos perfis** (ligado por padrão): o shell baixa a foto pública do GitHub, guarda no cache

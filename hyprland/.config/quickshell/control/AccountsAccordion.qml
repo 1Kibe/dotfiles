@@ -136,7 +136,7 @@ ColumnLayout {
         text: (CodeAccounts.loading || CodeAccounts.refreshAgain) && root.ghCount === 0 ? "Lendo as contas…"
             : !CodeAccounts.ghAvailable ? "Instale o gh para trocar de conta."
             : CodeAccounts.error !== "" && root.ghCount === 0 ? CodeAccounts.error + "."
-            : root.ghCount === 0 ? "Entre pelo terminal, sem rodar setup-git (veja a página)." : ""
+            : root.ghCount === 0 ? "Use gh auth login e entre na sua conta." : ""
         textFormat: Text.PlainText
         wrapMode: Text.WordWrap
         color: Theme.gray
@@ -213,7 +213,8 @@ ColumnLayout {
         Layout.leftMargin: 4
         Layout.rightMargin: 4
         visible: root.ghCount > 0
-        text: "A conta ativa vale para todos os terminais do gh."
+        // The command only, never a login (nothing shows with the names hidden)
+        text: 'Troca manual: gh auth switch --user ""'
         textFormat: Text.PlainText
         wrapMode: Text.WordWrap
         color: Theme.gray

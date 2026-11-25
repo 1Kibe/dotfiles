@@ -55,6 +55,13 @@ Singleton {
         + 'unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN GH_HOST\n'
         + 'unset GITLAB_TOKEN GITLAB_ACCESS_TOKEN OAUTH_TOKEN GL_TOKEN GITLAB_HOST GL_HOST GITLAB_URI GITLAB_API_HOST\n'
         + 'run() { timeout -k 2 8 setpriv --pdeathsig TERM -- "$@" | head -c 65536; return "${PIPESTATUS[0]}"; }\n'
+        // An account's public id and login (filling a profile): the login
+        // comes by the input, checked again
+        + 'if [ "$#" = 3 ] && [ "$1 $2 $3" = "gh api user" ]; then\n'
+        + '  IFS= read -r l || exit 1\n'
+        + '  [[ $l =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]] || exit 1\n'
+        + '  run gh api "users/$l"; exit $?\n'
+        + 'fi\n'
         // The switch: its site and login come by the input, checked again
         + 'if [ "$#" = 3 ] && [ "$1 $2 $3" = "gh auth switch" ]; then\n'
         + '  IFS= read -r h || exit 1; IFS= read -r l || exit 1\n'
@@ -202,6 +209,66 @@ Singleton {
         switcher.running = true
         return true
     }
+    // ── An account's id and login, to fill a profile's empty fields ──
+    // Only when an account is picked in the editor, one at a time (a new
+    // pick takes the place of the one waiting); never locked. The answer
+    // is a serial and { id, login } or null (a failure, a timeout, another
+    // account): the editor fills nothing then and shows nothing
+    signal userRead(int serial, var user)
+    property int userSerial: 0
+    property string userLogin: ""
+    property string userText: ""
+    property bool userAgain: false
+    function readUser(login) {
+        if (locked || !Accounts.validLogin(login))
+            return 0
+        userSerial++
+        userLogin = login
+        // One running: this one starts when it ends (its answer is dropped
+        // by the editor, whose serial moved on)
+        if (userReader.running)
+            userAgain = true
+        else
+            startUser()
+        return userSerial
+    }
+    // The serial and login go with the process when it is asked to start
+    // (they may change before it actually runs)
+    function startUser() {
+        userText = ""
+        userReader.serial = userSerial
+        userReader.login = userLogin
+        userReader.stdinEnabled = true
+        userReader.running = true
+    }
+    Process {
+        id: userReader
+        property int serial: 0
+        property string login: ""
+        command: ["bash", "-c", root.runScript, "bash", "gh", "api", "user"]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => root.userText += data
+        }
+        onRunningChanged: {
+            if (running) {
+                write(login + "\n")
+                stdinEnabled = false
+            }
+        }
+        onExited: (code, status) => {
+            const text = root.userText
+            root.userText = ""
+            const user = code === 0 && status === 0 && !root.locked ? Accounts.parseGhUser(text, login) : null
+            root.userRead(serial, user)
+            if (root.userAgain) {
+                root.userAgain = false
+                if (!root.locked)
+                    root.startUser()
+            }
+        }
+    }
+
     // ── Photos (settings/accountphotos.js) ──
     // Fetched one at a time (one queue for the Central and the page), only
     // while one of them shows accounts (watchPhotos), with the photos on

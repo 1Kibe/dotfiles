@@ -1,12 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.theme
+import qs.state
+import "../codeaccounts.js" as Accounts
 
 // The editor of one profile in Configurações → Contas de código → Perfis
 // (settings/cards/CodeProfiles; here because the cards load by address):
 // its five fields, read when Pronto is pressed (typed text counts even
 // before Enter). Nothing is kept until the card's saveProfile accepts it;
-// a refusal shows its fixed phrase here.
+// a refusal shows its fixed phrase here. Picking a GitHub account fills the
+// fields still empty from it (the login for both names, GitHub's noreply
+// for the e-mail), never what was typed; a failed reading fills nothing.
 ColumnLayout {
     id: root
 
@@ -23,6 +27,45 @@ ColumnLayout {
     property string keyValue: draft.key || ""
     property string ghValue: draft.ghAccount || ""
     property bool armed: false
+    // (the tests read the fields)
+    readonly property string labelText: labelField.input.text
+    readonly property string nameText: nameField.input.text
+    readonly property string emailText: emailField.input.text
+
+    // The reading asked for the account picked last (its serial); an
+    // answer for another pick, or after the editor changed account, is
+    // dropped
+    property int userSerial: 0
+    property string userAccount: ""
+    function pickAccount(v) {
+        ghValue = v
+        userSerial = 0
+        userAccount = ""
+        if (locked || typeof v !== "string" || !v.startsWith("github.com|"))
+            return
+        userAccount = v
+        userSerial = CodeAccounts.readUser(v.slice("github.com|".length))
+    }
+    function fill(user) {
+        const f = Accounts.fillFromAccount({ label: labelField.input.text, name: nameField.input.text,
+                                             email: emailField.input.text }, user)
+        if (f.label !== labelField.input.text)
+            labelField.input.text = f.label
+        if (f.name !== nameField.input.text)
+            nameField.input.text = f.name
+        if (f.email !== emailField.input.text)
+            emailField.input.text = f.email
+    }
+    Connections {
+        target: CodeAccounts
+        function onUserRead(serial, user) {
+            if (serial === 0 || serial !== root.userSerial || root.ghValue !== root.userAccount || root.locked)
+                return
+            root.userSerial = 0
+            if (user !== null)
+                root.fill(user)
+        }
+    }
     Timer {
         id: disarm
         interval: 3000
@@ -81,7 +124,7 @@ ColumnLayout {
             value: root.ghValue
             enabled: !root.locked
             opacity: enabled ? 1 : 0.5
-            onPicked: v => root.ghValue = v
+            onPicked: v => root.pickAccount(v)
         }
     }
 

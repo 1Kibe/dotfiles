@@ -164,6 +164,40 @@ function switchCommand(known, host, login) {
 // A GitHub login as it can go into github.com/<login>.png: letters,
 // digits and inner hyphens, at most 39 (no dot, no underscore: either
 // would make another path)
+// The account picked for a profile, from gh api users/<login>: only its id
+// (a positive whole number) and its login (the same rule, and the one asked
+// for, any case); anything else in the answer is never read. null: no fill
+function parseGhUser(text, want) {
+    if (typeof text !== "string" || text.length > MAX_TEXT || !validLogin(want))
+        return null
+    let o
+    try {
+        o = JSON.parse(text)
+    } catch (e) {
+        return null
+    }
+    if (o === null || typeof o !== "object" || Array.isArray(o))
+        return null
+    const id = Object.prototype.hasOwnProperty.call(o, "id") ? o.id : null
+    const login = Object.prototype.hasOwnProperty.call(o, "login") ? o.login : null
+    if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0 || !validLogin(login)
+            || login.toLowerCase() !== want.toLowerCase())
+        return null
+    return { id: id, login: login }
+}
+// The editor's fields filled from an account: only the empty ones (the
+// profile's and the commit's name: the login; the e-mail: GitHub's noreply)
+function fillFromAccount(fields, user) {
+    if (!user)
+        return fields
+    const empty = v => typeof v !== "string" || v.trim() === ""
+    return {
+        label: empty(fields.label) ? user.login : fields.label,
+        name: empty(fields.name) ? user.login : fields.name,
+        email: empty(fields.email) ? `${user.id}+${user.login}@users.noreply.github.com` : fields.email
+    }
+}
+
 var GITHUB_PHOTO_LOGIN = /^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
 function validGithubPhotoLogin(s) {
     return typeof s === "string" && GITHUB_PHOTO_LOGIN.test(s)
