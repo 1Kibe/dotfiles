@@ -328,6 +328,13 @@ PanelWindow {
         Separator {}
     }
 
+    // The notifications on screen: a drawer from the right edge, on the
+    // focused monitor's bar
+    NotificationToasts {
+        button: root.barArea
+        monitorName: root.monitorName
+    }
+
     // The settings (Super+S), on this monitor's left edge
     SettingsPanel {
         id: settingsPanel
