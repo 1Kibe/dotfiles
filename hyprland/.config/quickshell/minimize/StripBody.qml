@@ -214,25 +214,33 @@ Item {
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
         gap: root.edgeReach, level: level === "hidden" ? "wire" : level, n: count
     }, m)
-    // The notifications' pile on this screen moving a card in or out: the
-    // strip steps aside into the edge (its closing motion) and comes back
-    // at its new place (its opening one) once the pile has settled a
-    // moment (a burst keeps it aside until the last card is in place);
-    // never under the mouse. Its top holds still while it goes in, moves
-    // only once it is all in, and it comes back only after that
-    readonly property bool pileMoving: ShellState.pileMoving[screenName] === true
+    // The notifications' pile on this screen moving a card: coming in (it
+    // takes the strip's place), the strip steps aside into the edge (its
+    // closing motion) and comes back at its new place (its opening one)
+    // once the pile has settled a moment (a burst keeps it aside until the
+    // last card is in place); never under the mouse. Its top holds still
+    // while it goes in, moves only once it is all in, and it comes back
+    // only after that. Only leaving, it waits where it is (same width) and,
+    // once the pile has settled, slides to its new place on its own
+    readonly property string pileMotion: ShellState.pileMoving[screenName] || ""
+    readonly property bool pileMoving: pileMotion !== ""
     property bool asideForPile: false
     property real heldTop: -1
-    onPileMovingChanged: {
-        if (pileMoving) {
-            settleTimer.stop()
-            if (!hovered && !asideForPile) {
-                heldTop = pieceTop
-                asideForPile = true
-            }
-        } else if (asideForPile) {
-            settleTimer.restart()
+    // Sliding to its place after waiting (its own motion, even with an
+    // edge still moving: picked up from where it is, never a leap)
+    property bool slidingBack: false
+    onPileMotionChanged: {
+        if (pileMotion === "")  {
+            if (heldTop >= 0 || asideForPile)
+                settleTimer.restart()
+            return
         }
+        settleTimer.stop()
+        const from = pieceTop
+        slidingBack = false
+        heldTop = from
+        if (pileMotion === "in" && !hovered)
+            asideForPile = true
     }
     readonly property bool allIn: animW < 0.5
     onAllInChanged: {
@@ -243,10 +251,13 @@ Item {
         id: settleTimer
         interval: Theme.dur(Theme.animFast)
         onTriggered: {
-            if (!root.allIn) {
+            // (aside, back only once it is all in)
+            if (root.asideForPile && !root.allIn) {
                 restart()
                 return
             }
+            if (!root.asideForPile && Math.abs(root.wantTop - root.heldTop) > 0.5)
+                root.slidingBack = true
             root.heldTop = -1
             root.asideForPile = false
         }
@@ -339,18 +350,31 @@ Item {
         onTriggered: root.edgeMoving = false
     }
     property real pieceTop: heldTop >= 0 ? heldTop : wantTop
-    // Its last moves for the stats (time, top, target, edge, following)
-    onPieceTopChanged: {
+    // Its last moves for the stats (time, top, target, edge, following,
+    // width, aside, waiting)
+    function traceMove() {
         const t = MinimizeState.stripTrace
         const list = t[screenName] || []
-        list.push([Date.now() % 100000, Math.round(pieceTop * 10) / 10, Math.round(wantTop * 10) / 10, Math.round(topEdge), edgeMoving ? 1 : 0])
+        list.push([Date.now() % 100000, Math.round(pieceTop * 10) / 10, Math.round(wantTop * 10) / 10, Math.round(topEdge), edgeMoving ? 1 : 0,
+                   Math.round(pieceW * 10) / 10, asideForPile ? 1 : 0, heldTop >= 0 ? 1 : 0])
         if (list.length > 300)
             list.splice(0, list.length - 300)
         t[screenName] = list
     }
+    onPieceTopChanged: traceMove()
+    onPieceWChanged: traceMove()
     Behavior on pieceTop {
-        enabled: !Theme.reduceMotion && !root.edgeMoving && !root.asideForPile
-        NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
+        enabled: !Theme.reduceMotion && (root.slidingBack || (!root.edgeMoving && !root.asideForPile))
+        NumberAnimation {
+            id: topMotion
+            duration: Theme.dur(root.slidingBack ? Theme.motionEdgeOpen : Theme.motionPanelOpen)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.slidingBack ? Theme.curveStandard : Theme.curveDecel
+            onRunningChanged: {
+                if (!running)
+                    root.slidingBack = false
+            }
+        }
     }
     property real pieceH: wantH
     Behavior on pieceH {

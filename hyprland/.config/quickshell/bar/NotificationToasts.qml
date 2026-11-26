@@ -265,7 +265,8 @@ Item {
     // How many cards' rooms are moving now (coming in, leaving, stepping
     // aside for room): said in ShellState for the minimized strip
     property int movingRooms: 0
-    readonly property bool roomsMoving: movingRooms > 0
+    property int arrivingRooms: 0
+    readonly property string roomsMoving: arrivingRooms > 0 ? "in" : movingRooms > 0 ? "out" : ""
     onRoomsMovingChanged: ShellState.setPileMoving(monitorName, roomsMoving)
     // The cards not leaving (kept up to date: a ListModel's roles are not
     // watched by bindings)
@@ -394,9 +395,13 @@ Item {
                     // Its room moving (counted by the pile)
                     readonly property bool moving: comeIn.running || goOut.running || tuck.running
                     onMovingChanged: root.movingRooms += moving ? 1 : -1
+                    readonly property bool arriving: comeIn.running
+                    onArrivingChanged: root.arrivingRooms += arriving ? 1 : -1
                     Component.onDestruction: {
                         if (moving)
                             root.movingRooms--
+                        if (arriving)
+                            root.arrivingRooms--
                     }
                     width: root.width
                     // (a card that stops fitting slides away and its room
@@ -651,6 +656,6 @@ Item {
         ShellState.setRightPanelEdge(monitorName, 0, edgeOwner)
         if (overlayKey !== "")
             ShellState.setOverlay(overlayKey, false)
-        ShellState.setPileMoving(monitorName, false)
+        ShellState.setPileMoving(monitorName, "")
     }
 }
