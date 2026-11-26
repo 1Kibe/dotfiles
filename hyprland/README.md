@@ -8,7 +8,7 @@ captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do vi
 | `hyprland/.config/hypr/` | `~/.config/hypr/` |
 | `hyprland/.config/quickshell/` | `~/.config/quickshell/` |
 | `hyprland/.config/swayimg/` | `~/.config/swayimg/` |
-| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-hypridle` (sobe o hypridle com os tempos das Configurações), `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair, `hypr-atualizar` e `hypr-tailscale`, os terminais da central de controle) |
+| `hyprland/.local/bin/` | `~/.local/bin/` (`hypr-atalhos`, `hypr-print`, `hypr-flutuar` (Super+F), `hypr-clip-imagem` (imagens no histórico do clipboard), `hypr-calculadora`, `hypr-travar`, `hypr-hypridle` (sobe o hypridle com os tempos das Configurações), `hypr-energia-ociosa` e `hypr-energia`, o menu de energia no terminal, reserva se o Quickshell cair, `hypr-atualizar` e `hypr-tailscale`, os terminais da central de controle, `hypr-escolher-imagem`, o seletor de arquivos do sistema para o "Escolher arquivo…" do papel de parede) |
 
 Este README fica fora dos links: o GNU Stow ignora `README.*` na raiz de cada pacote.
 
