@@ -250,6 +250,23 @@ THEMES = [
         # The project's own Kitty theme (extras/kitty/cyberdream.conf)
         "ansi": ["#16181a", "#ff6e5e", "#5eff6c", "#f1ff5e", "#5ea1ff", "#bd5eff", "#5ef1ff", "#ffffff"],
     },
+    {
+        "id": "flexoki", "nome": "Flexoki", "licenca": "Flexoki (MIT)",
+        "accent": "#3aa99f",   # cyan-400
+        "sabores": {
+            # black, base-950, base-900; base-200, base-300, base-500,
+            # base-600; the accents in their 400 tones (the dark theme's)
+            "dark": {
+                "rotulo": "Dark", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#100f0f", "bg1": "#1c1b1a", "bg2": "#282726",
+                "fg": "#cecdc3", "fg2": "#b7b5ac", "fg4": "#878580", "gray": "#6f6e69",
+            },
+        },
+        "nomeadas": {"yellow": "#d0a215", "orange": "#da702c", "red": "#d14d41", "green": "#879a39",
+                     "aqua": "#3aa99f", "blue": "#4385be", "purple": "#8b7ec8"},
+        # The project's own Kitty theme (kitty/flexoki_dark.conf)
+        "ansi": ["#100f0f", "#af3029", "#66800b", "#ad8301", "#205ea6", "#a02f6f", "#24837b", "#878580"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
