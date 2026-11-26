@@ -235,7 +235,7 @@ De cima para baixo:
 - **Topo:** a bateria (com "Conservação ligada" quando o limite de carga está ligado), a engrenagem (Configurações, como
   `Super+S`) e o botão de energia, que abre a seção da energia: Bloquear, Sair, Suspender, Reiniciar e Desligar (quais
   aparecem e quais pedem segundo clique ficam em Configurações → Energia; Reiniciar e Desligar sempre pedem).
-- **Grade:** Rede, Bluetooth, Tailscale, Atualizações e Luz noturna (este só liga e desliga, com o horário embaixo). Cada botão
+- **Grade:** Rede, Bluetooth, Tailscale, Atualizações, Luz noturna (este só liga e desliga, com o horário embaixo) e GitHub. Cada botão
   com lista abre a sua seção logo abaixo, uma por vez: abrir outra fecha a que estava aberta.
 - **Volume** (mudo, nível e a seta do mixer) e **brilho** (só com tela interna).
 - **Em segundo plano**, no fim: os apps rodando sem janela.
@@ -249,6 +249,7 @@ valor ou a ação à direita. Cada uma fica num cartão próprio e rola por dent
 | Bluetooth | Liga/desliga (pelo `rfkill`, como no Windows: fica desligado depois de reiniciar), os pareados com a bateria e "Por perto", achados com "Procurar aparelhos" (os sem nome ficam atrás de "+ N sem nome"). Clique conecta ou pareia (pareado aqui fica confiável); "Esquecer" pede um segundo clique. "Mais opções…" abre o `bluetui` |
 | Mixer | Saídas e microfone (clique escolhe o padrão, o microfone com nível e mudo) e um nível com mudo por app tocando som |
 | Atualizações | O sistema (`checkupdates`, com a hora da última verificação) e o AUR (`paru -Qua`), os 3 primeiros pacotes de cada e "e mais N". "Verificar agora" e "Atualizar tudo no terminal": abre o Kitty com o `paru -Syu`, onde se vê o que vai instalar e se digita a senha. Procura sozinho 2 min depois de entrar e a cada 6 h, nunca com a tela travada; depois do "Atualizar tudo" a lista se atualiza sozinha. O botão da grade fica amarelo com o total, e mostra só a parte conhecida ("2 do AUR") quando uma das origens não deu para ler |
+| GitHub | As contas do `gh` (com a foto, "ativa" na que está em uso e Trocar nas outras) e as do `glab`, só para ver; "N pastas com conta própria · editar" abre Configurações → Contas de código. Só lê ao abrir a seção (o botão diz sempre "Contas"); "Esconder nomes" troca os logins por "conta N" e as fotos por números. Trocar vale para todos os terminais do `gh`. Ver [Contas de código](#contas-de-código) |
 | Tailscale | O estado, este aparelho (nome e endereço, com copiar), os aparelhos da tailnet (online com o endereço, offline com quando foi visto), o aviso quando a internet está saindo por outro aparelho e "Esconder nomes e endereços" (para prints; o copiar continua copiando o de verdade). O interruptor abre o terminal com `sudo tailscale up`/`down`; "Abrir o painel do Tailscale" abre o painel da conta no navegador |
 
 **Em segundo plano.** Uma ficha por app com ícone de bandeja (o shell é a bandeja; não há ícones fixos na barra), em até duas
@@ -324,6 +325,41 @@ volta ou fecha, e a pasta inteira quando o shell sobe. Ela só é tirada com a j
 
 **Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
 as escondidas, a janela em tela cheia e a fixada, e dois monitores.
+
+### Notificações (Super+N)
+
+O shell é quem recebe as notificações da sessão (o serviço `org.freedesktop.Notifications`). A música aparece como as outras:
+nenhuma notificação é descartada pelo que diz.
+
+- **Na tela:** cada uma entra como gaveta pela borda direita, logo abaixo da barra, colada a ela, e sai pelo mesmo lado.
+  Do mesmo app viram um cartão só, com "N novas". No máximo três na tela; o resto espera no painel ("e mais N"). Com o mouse
+  em cima, o cartão para de contar o tempo e o texto não muda; por 400 ms depois de aparecer ou mudar, o clique não vale.
+  Clicar abre o app (a janela dele, ou a minimizada de volta); os botões fazem só o que o app mandou; arrastar para a direita
+  tira da tela (fica no painel). A urgente tem borda vermelha e um ×, e fica até 60 s.
+- **Painel do relógio:** `Super+N`, o sininho ao lado da hora ou o relógio (sem música) abrem o mês e as notificações
+  guardadas, agrupadas por app (até 5 por grupo), com "Limpar tudo", o Não perturbe e quantos avisos foram recusados.
+  Abrir marca tudo como lido; nada é apagado. Com ele aberto, o que chega vai direto para a lista.
+- **Sininho:** mostra quantas não foram lidas (9+ a partir de 10) e fica riscado com o Não perturbe.
+- **Não perturbe:** nada aparece na tela, nem a urgente; tudo vai para o painel. Também na central de controle e em
+  `qs ipc call notifications dnd`. Continua ligado depois de reiniciar.
+- **Tela cheia:** só as urgentes aparecem (no máximo duas, 15 s cada). **Travada:** nada aparece; a tela de bloqueio mostra só
+  quantas chegaram, sem nada do conteúdo. **Print e gravação:** a pilha e o aviso de volume saem da imagem.
+- **Avisos do próprio shell** (pendrive conectado, atualizações) entram pelo mesmo caminho, sem passar pelo D-Bus. Uma
+  notificação de fora com o nome de um deles ("Dispositivos", "Atualizações", "Sistema"...) leva "(externo)" ao lado do nome.
+- **Limites:** texto sempre simples (sem formatação nem links), cortado; até 200 guardadas (50 por app); um app que manda
+  demais (mais de 20 em 10 s) tem o excesso recusado e contado. Imagens das notificações ficam desligadas por enquanto: só o
+  ícone do app.
+
+A lista fica só na memória: reiniciar o shell a esvazia.
+
+**Outro programa de notificação** (o `xfce4-notifyd` do Xfce, `dunst`, `mako`): quem pega o nome primeiro fica com ele. O
+install avisa se houver um instalado, sem mexer nele (o Xfce continua usando o seu). Se o painel do relógio disser "Outro
+programa de notificação está ativo", feche o outro (`pkill -x xfce4-notifyd`): o shell pega o nome sozinho e o painel
+atualiza em até um minuto. Para testar à mão:
+`notify-send -a Teste "Título" "Texto"`.
+
+**Aviso de volume e brilho:** no meio da tela em foco, com o ícone e a barra; some sozinho. Não aparece com a tela travada
+nem com o painel de volume ou a central abertos. O de brilho ainda não sai pelas teclas (falta conferir no notebook).
 
 ### Clipboard (Super+V)
 
@@ -446,6 +482,10 @@ Outros alvos, para scripts:
 | `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
 | `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
 | `qs ipc call capture card <arquivo>` | Mostra o cartão de um print (só PNG da pasta `Capturas`; o `hypr-print` chama no fim) |
+| `qs ipc call notifications clear` | Limpa a lista de notificações (não funciona com a tela travada) |
+| `qs ipc call notifications dnd` / `dndOn` / `dndOff` | Alterna, liga ou desliga o Não perturbe |
+| `qs ipc call notifications stats` | O estado das notificações em JSON (contagens, Não perturbe, recusadas); nunca texto ou nome de app |
+| `qs ipc call osd volume` / `brightness` | Mostra o aviso de volume ou de brilho (para teclas que o shell não vê) |
 | `qs ipc call capture stats` | O estado da captura em JSON (aberta, modo, gravando, tempo); nunca caminhos ou conteúdo |
 | `qs ipc call lock stats` | O estado do bloqueio em JSON (travado, conferindo, escurecido, erro); nunca a senha |
 | `qs ipc call lock background` | Abre o escolhedor do fundo do bloqueio e do login (não abre com a tela travada) |
@@ -453,7 +493,8 @@ Outros alvos, para scripts:
 
 Não existe alvo para destravar: só a senha, pelo PAM, destrava.
 
-O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.
+O aviso de volume aparece sozinho (o módulo lê o PipeWire); o de brilho, pelo alvo `osd brightness` (as teclas de brilho ainda
+não o chamam: falta conferir no notebook).
 
 ### Spotify
 
@@ -486,13 +527,14 @@ trazer de volta: no Spotify, carrinho → engrenagem → Back up/Restore → **I
 
 `Super+S` abre as Configurações pela borda esquerda: as páginas numa coluna e, no topo, uma busca que acha qualquer opção.
 As páginas: Tema e cores, Papel de parede, Fontes e animações, Barra, Bloqueio e login, Captura e clipboard, Energia,
-Monitores, Teclado e mouse, Gestos, Atalhos, Apps padrão, Dispositivos e Sobre. Cada mudança vale na hora.
+Monitores, Teclado e mouse, Gestos, Atalhos, Apps padrão, Dispositivos, Contas de código e Sobre. Cada mudança vale na
+hora.
 
 - **Onde fica o que você escolhe:** em `~/.config/dotfiles/settings.json`, só o que difere do padrão. Os padrões são o
   `hyprland/.config/quickshell/settings/defaults.json` do repo. A partir das escolhas o shell gera os arquivos que os
   outros programas leem, todos fora do git: `dotfiles_settings.lua`, `dotfiles_monitors.lua`, `dotfiles_apps.lua`,
-  `dotfiles_autostart.lua` e `dotfiles_gestures.lua` (Hyprland), `hypridle.gerado.conf` e as cores do Kitty, do btop e do
-  lazygit.
+  `dotfiles_autostart.lua` e `dotfiles_gestures.lua` (Hyprland), `hypridle.gerado.conf`, as cores do Kitty, do btop e do
+  lazygit e os arquivos das contas de código em `~/.config/git/`.
 - **Exportar** (em Sobre) grava no `defaults.json` do repo o que você escolheu, menos o que é só desta máquina (como
   monitores, apps e teclado); depois é revisar o `git diff` antes do commit.
 - **Restaurar tudo** (em Sobre) volta ao padrão do repo, menos o layout do teclado e os apps padrão do sistema. Antes
@@ -546,6 +588,31 @@ PDF, fontes, documentos e o resto ficam sem, para um arquivo de pendrive não se
 No Hyprland o ícone de rede (nm-applet) e o da fila de impressão não sobem (o `install.sh` mascara as duas unidades do
 autostart): a rede fica no painel da barra e na central de controle, as impressoras em Configurações → Dispositivos. No
 XFCE eles continuam. Para voltar: `systemctl --user unmask 'app-nm\x2dapplet@autostart.service' 'app-print\x2dapplet@autostart.service'`.
+
+### Contas de código
+
+Em Configurações → Contas de código, cada **perfil** tem o nome e o e-mail que assinam os commits e a chave SSH que faz o
+push (escolhida pelo nome entre os arquivos de `~/.ssh`; o conteúdo da chave nunca é lido). Cada **pasta** ganha um perfil:
+dentro dela, e em tudo abaixo, o git usa aquele perfil; fora das pastas vale a conta ativa do `gh`. A pasta troca a identidade
+e a chave SSH; em HTTPS continua valendo a conta ativa do `gh`. O e-mail do perfil vira autor dos commits: em repo público,
+use o e-mail noreply do GitHub.
+
+- O shell grava `~/.config/git/contas.conf` (um `includeIf` por pasta) e `~/.config/git/contas/p1.conf` … `p8.conf` (nome,
+  e-mail e o `sshCommand` com a chave), arquivos 600 fora do repo. O `install.sh` acrescenta ao fim do `~/.gitconfig` de
+  verdade um bloco marcado que inclui o `contas.conf`; o resto do arquivo fica como está. O mesmo arquivo liga o
+  `gh auth git-credential` ao github.com e o `glab auth git-credential` ao gitlab.com: não rode `gh auth setup-git`.
+- Nenhum nome de conta, e-mail ou chave vai para o repo: os perfis e as pastas ficam só nesta máquina, fora do Restaurar tudo.
+- **Estado** diz se cada pasta existe e se os arquivos do git estão em dia. **Conferir** pergunta ao git qual e-mail ele
+  usaria em cada pasta e mostra só "ok" ou "diferente". Numa pasta sem repositório, ele cria um repositório temporário
+  (`.conferir.*`) dentro dela e apaga logo depois, porque o git só aplica o perfil dentro de um repositório.
+- Ao escolher a conta do GitHub num perfil, os campos ainda vazios se preenchem por ela: os dois nomes com o login e o
+  e-mail com o noreply do GitHub (`<id>+<login>@users.noreply.github.com`); o que já foi digitado não muda. A chave SSH é
+  sempre escolhida à mão.
+- Entrar numa conta é pelo terminal (`gh auth login`, `glab auth login`); nenhum botão faz login. Ler as contas (ao abrir a
+  seção ou a página) faz o `gh` e o `glab` consultarem os sites deles.
+- **Fotos dos perfis:** o shell sempre baixa a foto pública do GitHub, guarda no cache (`~/.cache/dotfiles/contas-fotos`) e
+  renova a cada 7 dias, só com a página ou a seção da central abertas; é a única coisa das contas que usa a rede sozinha.
+  "Esconder fotos" só as esconde na tela (para prints), com números no lugar. As contas do GitLab ficam sempre com a inicial.
 
 ## Bloqueio e login
 

@@ -27,8 +27,12 @@ import qs.state
 // edgeSide "left"/"right": the body goes to that screen edge, past the
 // bar's side gap, and opens on the edge timeline (bar/EdgeTimeline): the
 // bar first stretches that end to the screen's edge and squares that
-// corner, then the body unrolls; closing, the other way round. No panel
-// uses it yet (the settings, on the left, are their own piece).
+// corner, then the body unrolls; closing, the other way round. A panel that
+// would continue the bar's right end (the control center, a status item's
+// panel near it) becomes this drawer of the right edge when it opens
+// (rightDrawer), so the notifications' pile and the minimized windows'
+// strip under it share the screen's edge with it. The settings, on the
+// left, are their own piece.
 Item {
     id: root
 
@@ -39,6 +43,8 @@ Item {
     property bool alignLeft: false     // left edges lined up (buttons on the left of the bar)
     property string side: "center"     // "right": continues the bar's right end
     property string edgeSide: ""       // "left"/"right": to the screen's edge (see above)
+    // Opening on the bar's right end: a drawer of the right edge (see above)
+    property bool rightDrawer: true
     // One piece with the button (the music panel and the center island): the
     // shape also takes the button's box, from the screen's top edge down, and
     // the body is never narrower than the button plus its inner corners
@@ -90,6 +96,7 @@ Item {
     }
     // What the frame reads to stretch the bar's end (Bar.qml)
     readonly property real edgeStep: edgeSide !== "" ? edgeTimeline.barStep : 0
+    readonly property real edgeCorner: edgeSide !== "" ? edgeTimeline.barCorner : 0
     // Set by place(): whether the body continues one of the bar's ends
     property bool atLeftEnd: false
     property bool atRightEnd: false
@@ -121,6 +128,19 @@ Item {
     property real bodyHeight: body.implicitHeight + 12
     Behavior on bodyHeight {
         NumberAnimation { duration: Theme.animNormal; easing.type: Easing.OutCubic }
+    }
+
+    // At an opening: on the bar's right end, the drawer of the right edge;
+    // anywhere else, under its button (decided once, before it unrolls)
+    function chooseEdge() {
+        if (!rightDrawer || !frame || !button || edgeSide === "left")
+            return
+        const bar = frame.barArea
+        const p = button.mapToItem(bar, 0, 0)
+        const left = centered ? p.x + button.width / 2 - bodyWidth / 2
+                   : alignLeft ? p.x
+                   : p.x + button.width - bodyWidth
+        edgeSide = side === "right" || left + bodyWidth > bar.width - shape.fullReach ? "right" : ""
     }
 
     // Body position on the bar, in the frame's coordinates: under the bar,
@@ -184,14 +204,44 @@ Item {
     readonly property real stripEdge: reachesRightBand ? Math.round(y + bodyFarEdge) : 0
     // Its own key in ShellState (two panels of a screen changing over)
     readonly property string edgeOwner: String(root)
+    // (the body's left and right go first, so a reader never sees the
+    // edge without them)
     onStripEdgeChanged: {
+        if (shownOn === "")
+            return
+        publishSpan()
+        ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
+    }
+    // Its body's left and right while it reaches that band
+    readonly property real stripLeft: reachesRightBand ? Math.round(x + shape.bodyX) : 0
+    readonly property real stripRight: reachesRightBand ? Math.round(x + shape.bodyX + bodyWidth) : 0
+    function publishSpan() {
         if (shownOn !== "")
-            ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, stripLeft, stripRight, edgeOwner)
+    }
+    onStripLeftChanged: publishSpan()
+    onStripRightChanged: publishSpan()
+
+    // A screen gone with it open: its edge and its body go too
+    Component.onDestruction: {
+        if (shownOn !== "") {
+            ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
     }
 
     // The bar squares its end while a panel continues it
     function square() {
+        // Opened again on another screen while closing: nothing stays on the
+        // one it leaves
+        if (shownOn !== "" && shownOn !== ShellState.openOn) {
+            ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
         shownOn = ShellState.openOn
+        publishSpan()
+        if (stripEdge > 0)
+            ShellState.setRightPanelEdge(shownOn, stripEdge, edgeOwner)
         if (atRightEnd)
             ShellState.attachedRight = shownOn
         if (atLeftEnd)
@@ -210,8 +260,10 @@ Item {
         visible = false
         if (edgeSide === "")
             progress = 0
-        if (shownOn !== "")
+        if (shownOn !== "") {
             ShellState.setRightPanelEdge(shownOn, 0, edgeOwner)
+            ShellState.setRightPanelSpan(shownOn, 0, 0, edgeOwner)
+        }
         unsquare()
         if (frame)
             frame.hidePanel(root)
@@ -242,6 +294,7 @@ Item {
             // Reopening in the middle of a close goes on from where it is;
             // a hidden panel starts rolled up
             if (!visible) {
+                chooseEdge()
                 if (edgeSide === "")
                     progress = 0
                 else
@@ -311,9 +364,13 @@ Item {
         edge: root.mirrored ? "bottom" : "top"
         flareLeft: !root.atLeftEnd
         flareRight: !root.atRightEnd
+        // A drawer of a screen edge: its bottom corner on that edge is square
+        roundBottomLeft: root.edgeSide !== "left"
+        roundBottomRight: root.edgeSide !== "right"
         bodyWidth: root.bodyWidth
         bodyHeight: root.bodyHeight
         progress: root.progress
+        cornerProgress: root.edgeSide !== "" ? edgeTimeline.panelTime : root.progress
         islandWidth: root.joinButton && root.button ? root.button.width : 0
         islandHeight: root.joinButton && root.frame ? root.frame.barArea.height : 0
         islandRadius: Theme.barRadius

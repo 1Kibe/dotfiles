@@ -63,7 +63,10 @@ Item {
     readonly property real junctionY: hasStrip ? stripHeight : hasIsland ? islandHeight : 0
     readonly property real visibleHeight: unroll ? bodyHeight * Math.max(0, Math.min(1, progress)) : bodyHeight
     // The concave corners' radius now, and how far they reach
-    readonly property real flare: radius * Math.max(0, Math.min(1, progress / 0.3))
+    // The concave corners grow over the first 30% of this (the progress, or
+    // the edge timeline's even time for a drawer of a screen edge)
+    property real cornerProgress: progress
+    readonly property real flare: radius * Math.max(0, Math.min(1, cornerProgress / 0.3))
     readonly property real flareReach: Corners.reach(flare, smoothing)
     // Bottom corners: never more than half the visible height
     readonly property real bottomRadius: Math.min(radius, visibleHeight / 2 / (1 + smoothing))

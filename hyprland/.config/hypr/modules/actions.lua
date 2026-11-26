@@ -105,7 +105,8 @@ return {
   -- Ends the session (hypr-sair: the uwsm session, or Hyprland itself)
   logout        = "hypr-sair",
 
-  -- Media keys (the Quickshell OSD reads PipeWire and brightness itself)
+  -- Media keys (the Quickshell OSD reads PipeWire itself; the brightness
+  -- notice comes only through "qs ipc call osd brightness", not these keys yet)
   volume_up       = "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+",
   volume_down     = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
   volume_mute     = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",

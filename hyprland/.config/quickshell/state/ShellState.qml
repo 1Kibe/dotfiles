@@ -45,7 +45,7 @@ Singleton {
 
     // The panels a click, a keybind or the IPC may open; any other name is
     // ignored (a name from the IPC never lands in openPanel)
-    readonly property var panels: ["control", "network", "volume", "bluetooth", "media", "system", "settings"]
+    readonly property var panels: ["control", "network", "volume", "bluetooth", "media", "system", "settings", "notifications"]
     function panelId(name) {
         if (name === "power" || name === "controlcenter")
             return "control"
@@ -119,6 +119,36 @@ Singleton {
         else
             delete m[key]
         rightPanelEdges = m
+    }
+    // The same panels' body from left to right (the frame's x), so what
+    // hangs under one of them (the notifications' pile) lines up with it;
+    // same keys as rightPanelEdges
+    property var rightPanelSpans: ({})
+    // Monitors whose notifications' pile has a card's room moving right now:
+    // "in" (one coming in, maybe others leaving) or "out" (only leaving);
+    // the minimized strip steps aside or waits meanwhile
+    property var pileMoving: ({})
+    function setPileMoving(monitor, kind) {
+        if (monitor === "" || (pileMoving[monitor] || "") === kind)
+            return
+        const m = Object.assign({}, pileMoving)
+        if (kind === "in" || kind === "out")
+            m[monitor] = kind
+        else
+            delete m[monitor]
+        pileMoving = m
+    }
+    function setRightPanelSpan(monitor, left, right, owner) {
+        const key = `${monitor}|${owner || "panel"}`
+        const old = rightPanelSpans[key]
+        if (right > left ? old && old.left === left && old.right === right : !old)
+            return
+        const m = Object.assign({}, rightPanelSpans)
+        if (right > left)
+            m[key] = { left: left, right: right }
+        else
+            delete m[key]
+        rightPanelSpans = m
     }
     // Overlay pieces with no state of their own (the capture's toast and
     // card) say when they show: the minimize picture is not taken then
@@ -209,6 +239,9 @@ Singleton {
         }
         const id = panelId(panel)
         if (id === "" || monitor === "" || OverviewState.open)
+            return
+        // The notifications never open locked or asked to lock (whatever asks)
+        if (id === "notifications" && (LockState.locked || LockState.wanted))
             return
         if (isOpen(id, monitor)) {
             close()

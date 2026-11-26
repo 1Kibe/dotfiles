@@ -35,6 +35,11 @@
 // - auto: kept by the shell itself from the machine's state (the areas'
 //   places, from the screens), not a choice: Restaurar tudo and Desfazer
 //   leave it, and the shell writes it with SettingsStore.setAuto()
+// - kept: changed only by its own card (the code accounts' profiles and
+//   folders): Restaurar tudo, its Desfazer and a group's Restaurar padrão
+//   leave it
+// - codeprofiles / codefolders: JSON text of the code accounts' lists,
+//   checked by settings/gitaccounts.js
 //
 // A card: id, title; component (a special card, settings/cards/); strip (a
 // preview at the top of the page, no title or block); columns (the titles
@@ -58,6 +63,7 @@ var PAGES = [
     { id: "atalhos", group: "Sistema", icon: "󰘳", name: "Atalhos", sub: "Lista dos atalhos" },
     { id: "apps", group: "Sistema", icon: "󰀻", name: "Apps padrão", sub: "Navegador, arquivos, terminal e outros" },
     { id: "dispositivos", group: "Sistema", icon: "\u{f042a}", name: "Dispositivos", sub: "Impressoras, pendrives e USB" },
+    { id: "contas", group: "Sistema", icon: "\u{f0306}", name: "Contas de código", sub: "Perfis e pastas do git" },
     { id: "sobre", group: "Sistema", icon: "󰋼", name: "Sobre", sub: "Versão, sistema e suas configurações" }
 ]
 
@@ -100,6 +106,11 @@ var CARDS = {
                    { id: "armazenamento", title: "Pendrives e HDs", component: "DevicesDrives" },
                    { id: "usb", title: "Conectados por USB", component: "DevicesUsb",
                      syn: ["usb", "dispositivo", "teclado"] }],
+    // The code accounts: the git identity and SSH key of each folder
+    contas: [{ id: "perfis", title: "Perfis", component: "CodeProfiles",
+               syn: ["conta", "git", "github", "gitlab", "perfil", "commit", "e-mail", "chave", "ssh", "foto"] },
+             { id: "pastas", title: "Pastas", component: "CodeFolders", syn: ["pasta", "git", "conta", "repositório", "repo"] },
+             { id: "estado", title: "Estado", component: "CodeState", syn: ["conferir", "git", "conta"] }],
     sobre: [{ id: "versao", title: "Versão", component: "AboutVersion" }, { id: "dados", title: "Suas configurações",
             component: "AboutData" }]
 }
@@ -426,7 +437,15 @@ var KEYS = {
     autostartArtcraft: { def: true, type: "bool", machine: true, hidden: true, page: "apps", card: "inicio",
                          label: "ArtCraft Launcher (escondido)", syn: ["iniciar", "login", "entrar"] },
     autostartApps: { def: [], type: "idlist", pattern: DESKTOP_ID, max: 16, machine: true, hidden: true, page: "apps",
-                     card: "inicio", label: "Apps ao entrar", syn: ["iniciar", "login", "entrar"] }
+                     card: "inicio", label: "Apps ao entrar", syn: ["iniciar", "login", "entrar"] },
+
+    // ── Contas de código (this machine only): who signs the commits and
+    // which SSH key pushes, per folder; written to ~/.config/git by
+    // state/SettingsApply. Only their own cards change them ──
+    codeProfiles: { def: "[]", type: "codeprofiles", machine: true, hidden: true, kept: true, page: "contas", card: "perfis",
+                    label: "Perfis" },
+    codeFolders: { def: "[]", type: "codefolders", machine: true, hidden: true, kept: true, page: "contas", card: "pastas",
+                   label: "Pastas" },
 }
 
 function appKey(label, syn) {

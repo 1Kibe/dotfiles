@@ -74,6 +74,8 @@ shfmt
 openssh
 tailscale   # tailscaled is enabled by install.sh
 networkmanager   # network backend of the Quickshell bar (nmtui comes with it); enabled by install.sh
+github-cli   # gh: Configurações → Contas de código reads and switches its accounts
+glab         # GitLab's own: its accounts show there too (read only)
 
 # ── Apps ──
 spotify-launcher   # official Spotify client, installed and updated by the launcher; MPRIS for the bar
@@ -101,7 +103,7 @@ avahi                  # network printer discovery, off until turned on in Confi
 nss-mdns               # .local printer names while discovery is on
 udisks2                # mounts and ejects removable drives
 gvfs                   # Thunar's volumes and trash, gio
-libnotify              # notify-send: the "Pendrive conectado" notice (state/DrivesState)
+libnotify              # notify-send: to try the notifications by hand (hyprland/README.md)
 
 # ── Login screen (greetd + Quickshell in cage, for every environment) ──
 greetd

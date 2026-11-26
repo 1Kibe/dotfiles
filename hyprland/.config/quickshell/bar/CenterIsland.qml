@@ -8,7 +8,10 @@ import "mediaflight.js" as Flight
 // Center of the bar: the clock, which becomes an island when music plays:
 // a lighter background, a small cover on the left and an equalizer on the
 // right (moving while playing). Hover: the track; click: the music panel;
-// middle click: play/pause. Without music it is just the clock.
+// middle click: play/pause. Without music it is the clock, whose click opens
+// the clock's panel (the month and the notifications). The bell at the
+// right of the time opens that panel too, with the count of unread ones
+// ("9+" from 10) and crossed out with Não perturbe on.
 Item {
     id: root
 
@@ -25,8 +28,11 @@ Item {
 
     // Shared by the island's MouseArea and the clock's own clicks
     function act(button) {
-        if (!active)
+        if (!active) {
+            if (button === Qt.LeftButton)
+                ShellState.toggle("notifications", monitorName)
             return
+        }
         if (button === Qt.MiddleButton) {
             if (player.canTogglePlaying)
                 player.togglePlaying()
@@ -119,7 +125,7 @@ Item {
         // Clickable only as an island; the tooltip shows the track and the
         // player's name, or the full date without music
         Clock {
-            clickable: root.active
+            clickable: true
             tooltip: root.active && root.player ? `${root.track}\n${root.player.identity}` : fullDate
             onClicked: button => root.act(button)
         }
@@ -148,6 +154,31 @@ Item {
                 tint: MediaState.tint
             }
         }
+        // The bell: the clock's panel, with the unread count; crossed out
+        // with Não perturbe, grey while another program has the name
+        Text {
+            id: bell
+            readonly property int unread: NotificationState.unread
+            // Crossed out only while this shell's Não perturbe is in force
+            text: (NotificationState.dnd && NotificationState.serverOk ? String.fromCodePoint(0xF009B) : String.fromCodePoint(0xF009A))
+                  + (unread > 0 ? " " + (unread > 9 ? "9+" : unread) : "")
+            textFormat: Text.PlainText
+            color: !NotificationState.serverOk ? Theme.gray : unread > 0 ? Theme.accentLight : Theme.text
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+            // Its own tap (never also the island's click, the music panel)
+            TapHandler {
+                gesturePolicy: TapHandler.ReleaseWithinBounds
+                onTapped: ShellState.toggle("notifications", root.monitorName)
+            }
+        }
+    }
+
+    // The clock's panel: the month and the notifications
+    ClockPanel {
+        button: root
+        monitorName: root.monitorName
+        open: ShellState.isOpen("notifications", root.monitorName)
     }
 
     // Hangs centered under the island, which grows and shrinks with the music

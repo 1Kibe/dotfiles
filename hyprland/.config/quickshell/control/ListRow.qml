@@ -3,9 +3,10 @@ import QtQuick.Layouts
 import qs.theme
 
 // One row of the sections' lists, the same in all of them: a dot or an
-// icon (a glyph, or a theme image), the name on the left (it gives way
-// first), a note beside it, dim, and on the right the value or the action,
-// dim (mono for addresses and versions), then anything in `trailing`.
+// icon (a glyph, a theme image, or `leading`), the name on the left (it
+// gives way first), a note beside it, dim, and on the right the value or
+// the action, dim (mono for addresses and versions), then anything in
+// `trailing`.
 // Inside a block (ListBlock) a thin line above it (divider) parts it from
 // the row before. Clickable rows get the veil on hover; `danger` turns it
 // red (an armed action); `action` is a row that does something ("Mais
@@ -18,6 +19,8 @@ Item {
     // A resolved icon path (an app's, from the icon theme); the glyph in
     // `icon` shows instead while it does not load (or loads empty)
     property string image
+    // Something drawn in the icon's place instead (an account's picture)
+    property Component leading: null
     readonly property bool imageOk: image !== "" && picture.status === Image.Ready && picture.implicitWidth > 0
     property bool dot: false
     property color dotColor: Theme.green
@@ -96,6 +99,11 @@ Item {
             sourceSize.height: 16
             Layout.preferredWidth: 16
             Layout.preferredHeight: 16
+        }
+        Loader {
+            active: root.leading !== null
+            visible: active
+            sourceComponent: root.leading
         }
         Text {
             visible: !root.dot && !root.imageOk && root.icon !== ""

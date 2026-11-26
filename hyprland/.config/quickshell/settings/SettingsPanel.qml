@@ -36,6 +36,7 @@ Item {
     property alias u: timeline.u
     readonly property string edgeSide: "left"
     readonly property real edgeStep: timeline.barStep
+    readonly property real edgeCorner: timeline.barCorner
     readonly property real progress: timeline.panelStep
 
     // What the frame reads (Bar.qml): its room under the bar and the

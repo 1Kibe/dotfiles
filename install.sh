@@ -685,6 +685,75 @@ setup_bashrc() {
   log "~/.bashrc loads ~/.config/bash/dotfiles.bash"
 }
 
+# The code accounts (Configurações → Contas de código): the real
+# ~/.gitconfig includes the file the shell writes (~/.config/git/contas.conf),
+# in a marked block kept as the last thing in it, since a [user] that
+# git config --global adds later lands after an earlier include and wins.
+# Never a link to the repo (git config --global would write into it): a
+# ~/.gitconfig that is a link, or not a plain file, is left alone with a
+# warning. Outside the block the file stays as it was.
+GITCONFIG_BEGIN="# >>> dotfiles: code accounts (written by install.sh) >>>"
+GITCONFIG_END="# <<< dotfiles: code accounts <<<"
+setup_gitconfig() {
+  local gc="${HOME}/.gitconfig" block tmp
+  block="$(printf '%s\n[include]\n\tpath = ~/.config/git/contas.conf\n%s' "$GITCONFIG_BEGIN" "$GITCONFIG_END")"
+  if [[ -L "$gc" ]]; then
+    warn "~/.gitconfig is a link: not adding the code accounts' include"
+    return 0
+  fi
+  if [[ -e "$gc" && ! -f "$gc" ]]; then
+    warn "~/.gitconfig is not a plain file: not adding the code accounts' include"
+    return 0
+  fi
+  if [[ -f "$gc" ]]; then
+    if [[ "$(tail -n 4 "$gc")" == "$block" ]]; then return 0; fi
+    # Not exactly one begin and one end (or none): someone edited the
+    # block by hand; never guess
+    local nb ne
+    nb="$(grep -cxF "$GITCONFIG_BEGIN" "$gc" || true)"; ne="$(grep -cxF "$GITCONFIG_END" "$gc" || true)"
+    if [[ "$nb" != "$ne" || "$nb" -gt 1 ]]; then
+      warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+      return 0
+    fi
+    # A file git does not read: its fault, not a write that failed
+    if command -v git >/dev/null 2>&1 && ! git config --file "$gc" --list >/dev/null 2>&1; then
+      warn "~/.gitconfig is not read by git: left as it is"
+      return 0
+    fi
+  fi
+  # git keeps its own settings in ~/.config/git/config only while there is
+  # no ~/.gitconfig: from now on git config --global writes to ~/.gitconfig
+  if [[ ! -e "$gc" && -f "${XDG_CONFIG_HOME:-$HOME/.config}/git/config" ]]; then
+    warn "~/.gitconfig created for the code accounts: git config --global now writes there, not to ~/.config/git/config"
+  fi
+  tmp="$(mktemp "${gc}.XXXXXX")" || { warn "could not write ~/.gitconfig"; return 0; }
+  local ok=1 cut=0
+  {
+    if [[ -f "$gc" ]]; then
+      # The end before the begin: the rest would be dropped (exit 1)
+      awk -v b="$GITCONFIG_BEGIN" -v e="$GITCONFIG_END" '$0 == b { skip = 1; next } skip && $0 == e { skip = 0; next } !skip { print } END { exit skip }' "$gc" || cut=1
+    fi
+    printf '%s\n' "$block"
+  } > "$tmp" || ok=0
+  if (( cut )); then
+    rm -f -- "$tmp"
+    warn "~/.gitconfig has an unfinished code accounts block: left as it is"
+    return 0
+  fi
+  # git must still read it (a ~/.gitconfig git does not read is left alone)
+  if (( ok )) && command -v git >/dev/null 2>&1; then
+    git config --file "$tmp" --list >/dev/null 2>&1 || ok=0
+  fi
+  if (( ok )) && [[ -f "$gc" ]]; then chmod --reference="$gc" "$tmp" || ok=0; fi
+  if (( ok )); then mv -f -- "$tmp" "$gc" || ok=0; fi
+  if (( ! ok )); then
+    rm -f -- "$tmp"
+    warn "could not write ~/.gitconfig"
+    return 0
+  fi
+  log "~/.gitconfig includes the code accounts' file (~/.config/git/contas.conf)"
+}
+
 link_configs() {
   local -a pkgs=(common)
   local env pkg
@@ -711,6 +780,7 @@ link_configs() {
   log "Linked: ${pkgs[*]}"
   report_bak_files
   setup_bashrc
+  setup_gitconfig
 }
 
 # Without arguments removes the links of every package
@@ -1313,6 +1383,26 @@ setup_locale_keyboard() {
 }
 
 # ── Install ──────────────────────────────────────────────────────────────────
+# Notifications (the Quickshell shell): another program that also answers
+# org.freedesktop.Notifications (xfce4-notifyd, dunst, mako...) takes the
+# name when it starts first, and then the shell shows none. Nothing is
+# written or disabled (Xfce still uses its own): only a warning at the end;
+# the clock panel says it too. Fills NOTIFICATION_DAEMONS with the programs'
+# names (basename of Exec, letters, digits and "._-" only)
+NOTIFICATION_DAEMONS=()
+check_notification_daemons() {
+  local f exe name
+  NOTIFICATION_DAEMONS=()
+  for f in "${DBUS_SERVICES_DIR:-/usr/share/dbus-1/services}"/*.service; do
+    [[ -f "$f" ]] || continue
+    grep -qx 'Name=org.freedesktop.Notifications' "$f" 2>/dev/null || continue
+    exe="$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' "$f" | head -n 1)"
+    name="$(basename -- "${exe:-$f}")"
+    [[ "$name" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || name="(unknown)"
+    NOTIFICATION_DAEMONS+=("$name")
+  done
+}
+
 print_summary() {
   echo ""
   echo "============================================================"
@@ -1356,6 +1446,13 @@ print_summary() {
     echo "  • Keybinds: Super+F1 or hyprland/README.md"
     echo "  • The Quickshell bar starts with the session; Super+D opens the launcher (rofi for now)"
     echo ""
+    if (( ${#NOTIFICATION_DAEMONS[@]} > 0 )); then
+      warn "Another notification program is installed: ${NOTIFICATION_DAEMONS[*]}"
+      echo "    Quickshell shows the notifications only while it holds the name. If the clock"
+      echo "    panel (Super+N) says another program is active, stop it (pkill -x <name>)"
+      echo "    and Quickshell takes over. Nothing was changed: Xfce keeps using its own."
+      echo ""
+    fi
   fi
   echo "============================================================"
 }
@@ -1458,6 +1555,7 @@ main() {
     install_lock_pam
     install_battery_rule
     mask_hypr_applets
+    check_notification_daemons
   fi
   if has_env xfce || has_env hyprland; then
     configure_printing
