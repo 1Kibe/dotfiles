@@ -303,6 +303,25 @@ THEMES = [
         # The project's Xresources (xresources/solarized)
         "ansi": ["#073642", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#eee8d5"],
     },
+    {
+        "id": "neofusion", "nome": "Neofusion", "licenca": "Neofusion (MIT)",
+        "accent": "#66def9",   # neutral_aqua
+        "sabores": {
+            # dark0-2; the palette's text (bright_blue, a beige) and the dim
+            # tones toward its gray. Its names do not match its colors: the
+            # named ones by color (orange, yellow and green the nearest)
+            "dark": {
+                "rotulo": "Escuro", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#06101e", "bg1": "#031b26", "bg2": "#052839",
+                "fg": "#e2d9c5", "fg2": ("mix", "#e2d9c5", "#22536f", 0.25), "fg4": ("mix", "#e2d9c5", "#22536f", 0.55),
+                "gray": ("mix", "#e2d9c5", "#22536f", 0.6),
+            },
+        },
+        "nomeadas": {"yellow": "#98971a", "orange": "#fa7a61", "red": "#fd5e3a", "green": "#5f6e29",
+                     "aqua": "#66def9", "blue": "#35b5ff", "purple": "#ec30ac"},
+        # The project's Kitty theme (diegoulloao/neofusion.kitty)
+        "ansi": ["#0e0807", "#ea6847", "#ea6847", "#5db2f8", "#2f516c", "#d943a8", "#86dbf5", "#e0d9c7"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

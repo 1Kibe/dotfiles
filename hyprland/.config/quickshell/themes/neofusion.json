@@ -1,0 +1,23 @@
+{
+  "versao": 1,
+  "id": "neofusion",
+  "nome": "Neofusion",
+  "licenca": "Neofusion (MIT)",
+  "destaquePadrao": { "accent": "#66def9", "light": "#abedfc" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Escuro",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#040810", "bgHard": "#050c17", "bg": "#06101e", "bg1": "#031b26", "bg2": "#052839",
+        "fg": "#e2d9c5", "fg2": "#b2b8b0", "fg4": "#788f96", "text": "#e2d9c5", "gray": "#6f8991"
+      },
+      "nomeadas": {
+        "yellow": "#98971a", "orange": "#fa7a61", "red": "#fd5e3a", "green": "#5f6e29", "aqua": "#66def9",
+        "blue": "#35b5ff", "purple": "#ec30ac"
+      },
+      "ansi": ["#0e0807", "#ea6847", "#ea6847", "#5db2f8", "#2f516c", "#d943a8", "#86dbf5", "#e0d9c7"]
+    }
+  }
+}
