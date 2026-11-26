@@ -35,20 +35,21 @@ var ROLES = [
 ]
 
 // Only a plain "#rrggbb" (what a QML color with full alpha prints) goes into
-// the file; anything else is left out, and kitty.conf's color stays
+// the file: any other value of a role throws, and nothing is written
+function isHex(value) {
+    return /^#[0-9a-f]{6}$/.test(String(value))
+}
 function hex(value) {
-    const s = String(value)
-    return /^#[0-9a-f]{6}$/.test(s) ? s : ""
+    if (!isHex(value))
+        throw new Error("kitty: cor inválida")
+    return String(value)
 }
 
 // theme: the Theme's colors by role (anything String() turns into "#rrggbb")
 function colorsConf(theme) {
     let text = "# Written by the shell from its theme; rewritten at every change.\n"
-    for (const [key, role] of ROLES) {
-        const v = hex(theme[role])
-        if (v !== "")
-            text += `${key} ${v}\n`
-    }
+    for (const [key, role] of ROLES)
+        text += `${key} ${hex(theme[role])}\n`
     // The selected text keeps its own color
     text += "selection_foreground none\n"
     return text

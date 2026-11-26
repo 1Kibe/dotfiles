@@ -267,6 +267,8 @@ Singleton {
             gesturesTimer.restart()
             writeBtop()
             writeLazygit()
+            writeKitty()
+            applyCursor()
         }
     }
     Timer {
@@ -491,17 +493,23 @@ Singleton {
     property string kittyWanted: ""
     property bool kittyLoaded: false
     function applyKitty() {
-        kittyWanted = Kitty.colorsConf({
-            bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
-            green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua,
-            orange: Theme.orange, accentLight: Theme.accentLight,
-            ansi0: Theme.ansi0, ansi1: Theme.ansi1, ansi2: Theme.ansi2, ansi3: Theme.ansi3, ansi4: Theme.ansi4,
-            ansi5: Theme.ansi5, ansi6: Theme.ansi6, ansi7: Theme.ansi7
-        })
+        // (a color that does not pass keeps the file as it was)
+        try {
+            kittyWanted = Kitty.colorsConf({
+                bgHard: Theme.bgHard, fg: Theme.fg, bg2: Theme.bg2, gray: Theme.gray, red: Theme.red,
+                green: Theme.green, yellow: Theme.yellow, blue: Theme.blue, purple: Theme.purple, aqua: Theme.aqua,
+                orange: Theme.orange, accentLight: Theme.accentLight,
+                ansi0: Theme.ansi0, ansi1: Theme.ansi1, ansi2: Theme.ansi2, ansi3: Theme.ansi3, ansi4: Theme.ansi4,
+                ansi5: Theme.ansi5, ansi6: Theme.ansi6, ansi7: Theme.ansi7
+            })
+        } catch (e) {
+            return
+        }
         writeKitty()
     }
     function writeKitty() {
-        if (!kittyLoaded || kittyWanted === "" || kittyView.text() === kittyWanted)
+        // Never with the screen locked (written again at unlocking)
+        if (!kittyLoaded || locked || kittyWanted === "" || kittyView.text() === kittyWanted)
             return
         if (kittyCheck.running) {
             kittyAgain = true
@@ -788,6 +796,9 @@ Singleton {
     }
 
     function applyCursor() {
+        // (with the screen locked it waits: applied again at unlocking)
+        if (locked)
+            return
         const theme = SettingsStore.get("cursorTheme")
         const size = SettingsStore.get("cursorSize")
         if (!SystemLists.has("cursorThemes", theme) || !Schema.KEYS.cursorSize.options.some(o => o.value === size))
