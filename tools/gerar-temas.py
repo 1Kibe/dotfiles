@@ -322,6 +322,28 @@ THEMES = [
         # The project's Kitty theme (diegoulloao/neofusion.kitty)
         "ansi": ["#0e0807", "#ea6847", "#ea6847", "#5db2f8", "#2f516c", "#d943a8", "#86dbf5", "#e0d9c7"],
     },
+    {
+        "id": "oxocarbon", "nome": "Oxocarbon", "licenca": "Oxocarbon (MIT)",
+        "accent": "#78a9ff",   # base09
+        "sabores": {
+            # base00; base01-02, the theme's own blends of base00 toward
+            # base06 (in HSLuv, so for these grays a straight step of
+            # lightness): 0.085 and 0.18; base04 as the text, base05; the dim
+            # text between base03 (0.3) and base04. No yellow anywhere in the
+            # palette: the light theme's orange as orange and as yellow; the
+            # red is base10
+            "dark": {
+                "rotulo": "Escuro", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#161616", "bg1": "#262626", "bg2": "#393939",
+                "fg": "#d0d0d0", "fg2": "#f2f2f2", "fg4": ("mix", "#525252", "#d0d0d0", 0.5),
+                "gray": ("mix", "#525252", "#d0d0d0", 0.4),
+            },
+        },
+        "nomeadas": {"yellow": "#ff6f00", "orange": "#ff6f00", "red": "#ee5396", "green": "#42be65",
+                     "aqua": "#08bdba", "blue": "#78a9ff", "purple": "#be95ff"},
+        # The theme's terminal colors (terminal_color_0-7)
+        "ansi": ["#262626", "#33b1ff", "#be95ff", "#42be65", "#78a9ff", "#82cfff", "#3ddbd9", "#f2f2f2"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

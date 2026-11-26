@@ -1,0 +1,23 @@
+{
+  "versao": 1,
+  "id": "oxocarbon",
+  "nome": "Oxocarbon",
+  "licenca": "Oxocarbon (MIT)",
+  "destaquePadrao": { "accent": "#78a9ff", "light": "#b5d0ff" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Escuro",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#0c0c0c", "bgHard": "#111111", "bg": "#161616", "bg1": "#262626", "bg2": "#393939",
+        "fg": "#d0d0d0", "fg2": "#f2f2f2", "fg4": "#919191", "text": "#d0d0d0", "gray": "#848484"
+      },
+      "nomeadas": {
+        "yellow": "#ff6f00", "orange": "#ff6f00", "red": "#ee5396", "green": "#42be65", "aqua": "#08bdba",
+        "blue": "#78a9ff", "purple": "#be95ff"
+      },
+      "ansi": ["#262626", "#33b1ff", "#be95ff", "#42be65", "#78a9ff", "#82cfff", "#3ddbd9", "#f2f2f2"]
+    }
+  }
+}
