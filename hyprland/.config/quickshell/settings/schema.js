@@ -122,6 +122,10 @@ var CARDS = {
 // absolute paths)
 var FONT_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._+-]{0,63}$/
 var THEME_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+// A color theme of the repo (themes/<id>.json): the same pattern as
+// theme/palettes.js THEME_NAME; one the catalog does not have falls on the
+// repo's default when applied (state/SettingsApply)
+var COLOR_THEME = /^[a-z0-9][a-z0-9-]{0,31}$/
 // A screen's port name (eDP-1, HDMI-A-1, Virtual-1), the same shape as
 // settings/monitors.js NAME: never a number or a word Hyprland reads as a
 // selector (next, l, current)
@@ -247,6 +251,14 @@ var KEYS = {
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               control: "swatches", syn: ["cor", "acento", "destaque"] },
+    // The color theme and its flavor (one of the four fixed places; the
+    // theme's own name for it is its rotulo). Hidden until the Temas page
+    // gives them their rows
+    theme: { def: "gruvbox", type: "string", pattern: COLOR_THEME, hidden: true, page: "tema", card: "cores",
+             label: "Tema", syn: ["paleta", "cores"] },
+    flavor: { def: "dark", type: "enum", hidden: true, page: "tema", card: "cores", label: "Sabor",
+              options: opts([["dark", "Escuro"], ["darkHard", "Escuro forte"], ["darkSoft", "Escuro suave"], ["light", "Claro"]]),
+              syn: ["escuro", "claro"] },
     // One for the bar and its panels: they are one shape
     barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
                   card: "superficies", label: "Transparência da barra e dos painéis", desc: "100% é sólida",

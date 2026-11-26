@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.theme
 import "../settings/appearance.js" as Appearance
+import "../theme/palettes.js" as Palettes
 import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
@@ -78,6 +79,11 @@ Singleton {
         function onCursorsReadChanged() { root.applyAppearance() }
         function onLayoutsReadChanged() { root.applyAppearance() }
     }
+    // The repo's themes, once read
+    Connections {
+        target: ThemeCatalog
+        function onReadyChanged() { root.applyAppearance() }
+    }
     Component.onCompleted: {
         applyMotion()
         applyAppearance()
@@ -102,15 +108,43 @@ Singleton {
                  orange: String(Theme.orange) }
     }
 
+    // The chosen theme and flavor, resolved with the accent (a theme the
+    // catalog does not have falls on the repo's default; the flavor on the
+    // theme's first): every color "#rrggbb", or null while the catalog reads
+    function themeColors(v) {
+        if (!ThemeCatalog.ready)
+            return null
+        const theme = ThemeCatalog.get(v.theme) ?? ThemeCatalog.get(SettingsStore.defaults.theme)
+        return theme === null ? null : Palettes.resolve(theme, v.flavor, v.accent)
+    }
+    // Its colors into the Theme's roles, named colors and terminal tones
+    function writeTheme(c) {
+        for (const role of Palettes.ROLES)
+            Theme[role] = c.roles[role]
+        for (const name of Palettes.NAMED)
+            Theme[name] = c.named[name]
+        for (let i = 0; i < 8; i++)
+            Theme["ansi" + i] = c.ansi[i]
+        Theme.accent = c.accent
+        Theme.accentLight = c.accentLight
+    }
+
     // The store's choices into the Theme (a font this machine does not have
     // keeps the default), then the Hyprland file
     function applyAppearance() {
         if (!SettingsStore.ready)
             return
         const v = SettingsStore.values
-        const pair = Appearance.accentPair(v.accent, palette())
-        Theme.accent = pair.accent
-        Theme.accentLight = pair.light
+        const colors = themeColors(v)
+        // (no theme read yet: the accent over the Theme's own colors)
+        const pair = colors !== null ? { accent: colors.accent, light: colors.accentLight }
+                                     : Appearance.accentPair(v.accent, palette())
+        if (colors !== null) {
+            writeTheme(colors)
+        } else {
+            Theme.accent = pair.accent
+            Theme.accentLight = pair.light
+        }
         // Kitty's, btop's and lazygit's colors, the accent among them
         applyKitty()
         applyBtop()

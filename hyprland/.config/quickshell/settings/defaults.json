@@ -1,5 +1,7 @@
 {
   "accent": "padrao",
+  "theme": "gruvbox",
+  "flavor": "dark",
   "barOpacity": 0.85,
   "blur": true,
   "radius": 8,
