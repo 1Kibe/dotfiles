@@ -49,6 +49,14 @@ function textScale(percent) {
 // schema); `pair`: accentPair(); `cursorOk`: the cursor theme is installed
 // (else the line is left out and the theme of hypr/modules/env.lua stays);
 // `lua`: serialize.js luaValue. Throws if a value cannot be written.
+// The GTK look of a flavor (gsettings, org.gnome.desktop.interface): a
+// fixed table chosen by the flavor's strict boolean, never text of a theme
+var GTK_DARK = { "gtk-theme": "Adwaita-dark", "color-scheme": "prefer-dark", "icon-theme": "breeze-dark" }
+var GTK_LIGHT = { "gtk-theme": "Adwaita", "color-scheme": "prefer-light", "icon-theme": "breeze" }
+function gtkLook(escuro) {
+    return Object.assign({}, escuro === true ? GTK_DARK : GTK_LIGHT)
+}
+
 // surface (optional): the theme's { bg2, bgDeep }: the inactive border and
 // the desktop's color under the wallpaper; without it, look.lua's own
 function hyprLua(v, pair, cursorOk, lua, surface) {

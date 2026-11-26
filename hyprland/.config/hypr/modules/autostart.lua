@@ -1,9 +1,8 @@
 -- Started once with the session. The shell (Quickshell) only starts when it
 -- has a config, so a fresh install shows no errors.
+-- (the GTK theme, color scheme and icons follow the shell's color theme:
+-- state/SettingsApply sets them)
 local gtk = {
-  "gtk-theme 'Adwaita-dark'",
-  "color-scheme 'prefer-dark'",
-  "icon-theme 'breeze-dark'",
   "font-name 'Agave Nerd Font Propo 11'",
   "cursor-theme 'Bibata-Modern-Classic-Right'",
   "cursor-size 24",

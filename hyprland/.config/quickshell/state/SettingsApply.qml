@@ -141,6 +141,7 @@ Singleton {
                                      : Appearance.accentPair(v.accent, palette())
         if (colors !== null) {
             writeTheme(colors)
+            applyGtk(colors)
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
@@ -736,6 +737,44 @@ Singleton {
 
     // The cursor now: Hyprland's and the GTK apps'. Only a theme this machine
     // has (SystemLists) and a size of the schema; argument lists only
+    // ── GTK by the flavor ──
+    // The three GTK settings as they are now (read once at the start), and
+    // set only where the flavor's differs: opening the shell writes nothing
+    // when the machine already has them; never with the screen locked
+    property var gtkNow: ({})
+    property bool gtkRead: false
+    function applyGtk(colors) {
+        if (!gtkRead || locked || colors === null)
+            return
+        const want = Appearance.gtkLook(colors.escuro)
+        const now = Object.assign({}, gtkNow)
+        for (const key of Object.keys(want)) {
+            if (now[key] === want[key])
+                continue
+            Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", key, want[key]])
+            now[key] = want[key]
+        }
+        gtkNow = now
+    }
+    Process {
+        id: gtkReader
+        running: true
+        command: ["sh", "-c", "for k in gtk-theme color-scheme icon-theme; do printf '%s=' \"$k\"; gsettings get org.gnome.desktop.interface \"$k\"; done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const now = {}
+                for (const line of text.split("\n")) {
+                    const m = /^(gtk-theme|color-scheme|icon-theme)='([A-Za-z0-9-]*)'$/.exec(line.trim())
+                    if (m)
+                        now[m[1]] = m[2]
+                }
+                root.gtkNow = now
+                root.gtkRead = true
+                root.applyGtk(root.themeColors(SettingsStore.values))
+            }
+        }
+    }
+
     function applyCursor() {
         const theme = SettingsStore.get("cursorTheme")
         const size = SettingsStore.get("cursorSize")
