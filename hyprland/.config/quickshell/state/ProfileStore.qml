@@ -156,10 +156,12 @@ Singleton {
         + '  mini "$d"\n'
         + '  return 0\n'
         + '}\n'
-        // miniatura.png from papel.png (640 px, at most 1 MB), or none
+        // miniatura.png from papel.png (640 px, at most 1 MB), or none; $2
+        // the seconds it may take (30; the listing gives 15: three of them
+        // and their kills fit its 60)
         + 'mini() {\n'
         + '  m=$(mktemp -- "$1/.mini.XXXXXX") || return 0\n'
-        + '  if [ "$(mime "$1/papel.png")" = image/png ] && timeout -k 2 30 prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
+        + '  if [ "$(mime "$1/papel.png")" = image/png ] && timeout -k 2 "${2:-30}" prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
         + '       -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v png -f image2 -pattern_type none -i "file:$1/papel.png" -frames:v 1 -map_metadata -1 \\\n'
         + '       -vf "scale=\'if(gte(iw,ih),min(640,iw),-2)\':\'if(gte(iw,ih),-2,min(640,ih))\'" -f image2 -update 1 -c:v png "file:$m" </dev/null \\\n'
         + '     && [ "$(stat -c %s -- "$m")" -le 1048576 ]; then chmod 600 -- "$m" && mv -fT -- "$m" "$1/miniatura.png"; else rm -f -- "$m" "$1/miniatura.png"; fi\n'
@@ -186,7 +188,7 @@ Singleton {
         + '  pa=0; okpng "$id/papel.png" 31457280 && pa=1\n'
         + '  mi=0; [ "$pa" = 1 ] && okpng "$id/miniatura.png" 1048576 && mi=1\n'
         + '  if [ "$pa" = 1 ] && [ "$mi" = 0 ] && [ "$made" -lt 3 ]; then\n'
-        + '    made=$((made + 1)); [ -L "$id/miniatura.png" ] && rm -f -- "$id/miniatura.png"; mini "$id"; okpng "$id/miniatura.png" 1048576 && mi=1\n'
+        + '    made=$((made + 1)); [ -L "$id/miniatura.png" ] && rm -f -- "$id/miniatura.png"; mini "$id" 15; okpng "$id/miniatura.png" 1048576 && mi=1\n'
         + '  fi\n'
         + '  printf "%s %s %s " "$id" "$pa" "$mi"; head -c 65536 -- "$id/perfil.json" | base64 -w0; echo\n'
         + 'done\n'
