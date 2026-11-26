@@ -50,8 +50,8 @@
 
 // ── Pages, in the order of the rail ──
 var PAGES = [
-    { id: "temas", group: "Aparência", icon: "", name: "Temas", sub: "Paleta, sabor e destaque" },
-    { id: "tema", group: "Aparência", icon: "󰏘", name: "Superfícies e cursor", sub: "Transparência, cantos e cursor" },
+    { id: "temas", group: "Aparência", icon: "\u{f03d8}", name: "Temas", sub: "Paleta, sabor e destaque" },
+    { id: "tema", group: "Aparência", icon: "\u{f0328}", name: "Superfícies e cursor", sub: "Transparência, cantos e cursor" },
     { id: "papel", group: "Aparência", icon: "󰸉", name: "Papel de parede", sub: "Imagem e preenchimento" },
     { id: "fontes", group: "Aparência", icon: "󰛖", name: "Fontes e animações", sub: "Fontes, tamanho do texto e velocidade" },
     { id: "barra", group: "Shell", icon: "󰕮", name: "Barra", sub: "Itens, posição e relógio" },
