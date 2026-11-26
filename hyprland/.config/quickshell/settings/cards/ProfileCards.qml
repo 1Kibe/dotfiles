@@ -30,6 +30,8 @@ Item {
     readonly property bool full: Object.keys(ProfileStore.found).length >= Profile.MAX
     // "" | "save" | "rename": the field asking for a name
     property string naming: ""
+    // The profile being renamed (the one picked when the field opened)
+    property string namingId: ""
     property bool nameBad: false
     property string notice: ""
     property bool armed: false
@@ -50,17 +52,38 @@ Item {
                 root.pickedId = ProfileStore.active
         }
     }
-    onPickedChanged: {
-        if (picked === null)
-            pickedId = ""
+    // A picked one gone (removed by another way): back to the active one
+    Connections {
+        target: ProfileStore
+        function onFoundChanged() {
+            if (ProfileStore.get(root.pickedId) === null)
+                root.pickedId = ProfileStore.active
+        }
     }
+    // Another one picked: Apagar disarms and the rename field closes (they
+    // were for the one before)
+    onPickedIdChanged: {
+        armed = false
+        disarm.stop()
+        if (naming === "rename")
+            naming = ""
+    }
+    readonly property string busyText: "Espere: os perfis ainda estão sendo lidos ou gravados."
 
+    // An action: never silent (busy, or the store refused without saying why)
     function act(fn) {
         notice = ""
         armed = false
-        if (!canAct)
+        disarm.stop()
+        if (!canAct) {
+            if (!locked)
+                notice = busyText
             return false
-        return fn()
+        }
+        const ok = fn() === true
+        if (!ok && notice === "")
+            notice = "Não deu para fazer isso agora: nada mudou."
+        return ok
     }
     function apply(p) {
         notice = ""
@@ -68,11 +91,14 @@ Item {
             return
         if (ProfileStore.apply(p.id))
             pickedId = p.id
+        else if (notice === "")
+            notice = "Não deu para aplicar o perfil: nada mudou."
     }
     function startNaming(kind) {
         if (!canAct || (kind === "save" && full) || (kind === "rename" && !pickedOwn))
             return
         naming = kind
+        namingId = kind === "rename" ? pickedId : ""
         nameBad = false
         nameField.value = kind === "rename" ? picked.nome : ""
         nameField.input.text = nameField.value
@@ -85,10 +111,10 @@ Item {
             nameBad = true
             return
         }
-        const kind = naming
-        naming = ""
+        const kind = naming, id = namingId
         nameBad = false
-        act(() => kind === "save" ? ProfileStore.save(text) : ProfileStore.rename(pickedId, text))
+        if (act(() => kind === "save" ? ProfileStore.save(text) : ProfileStore.rename(id, text)))
+            naming = ""
     }
     // Reorder: an own profile to a place among the owner's (0 = right after
     // the Padrão)
@@ -99,24 +125,24 @@ Item {
     readonly property int columns: 3
     readonly property real cellWidth: Math.max(110, Math.floor((width - (columns - 1) * grid.spacing) / columns))
     readonly property int activeIndex: profiles.findIndex(p => p.id === ProfileStore.active)
-    Keys.onLeftPressed: event => {
-        const i = activeIndex - 1
-        if (event.modifiers & Qt.ControlModifier) {
-            if (activeIndex > 1)
+    // The arrows: the neighbor applied; with Ctrl, the active one moved
+    // (nothing while a name is being typed)
+    function arrow(dir, ctrl) {
+        if (naming !== "")
+            return
+        if (ctrl) {
+            if (dir < 0 && activeIndex > 1)
                 moveTo(ProfileStore.active, activeIndex - 2)
-        } else if (i >= 0) {
-            apply(profiles[i])
-        }
-    }
-    Keys.onRightPressed: event => {
-        const i = activeIndex + 1
-        if (event.modifiers & Qt.ControlModifier) {
-            if (activeIndex >= 1 && activeIndex < profiles.length - 1)
+            else if (dir > 0 && activeIndex >= 1 && activeIndex < profiles.length - 1)
                 moveTo(ProfileStore.active, activeIndex)
-        } else if (i < profiles.length) {
-            apply(profiles[i])
+            return
         }
+        const i = activeIndex + dir
+        if (i >= 0 && i < profiles.length)
+            apply(profiles[i])
     }
+    Keys.onLeftPressed: event => arrow(-1, (event.modifiers & Qt.ControlModifier) !== 0)
+    Keys.onRightPressed: event => arrow(1, (event.modifiers & Qt.ControlModifier) !== 0)
 
     implicitHeight: column.implicitHeight
     Column {
@@ -176,6 +202,7 @@ Item {
                             root.moveTo(cell.modelData.id, place)
                         }
                         onClicked: {
+                            root.forceActiveFocus()
                             if (!moved)
                                 root.apply(cell.modelData)
                         }
@@ -183,7 +210,7 @@ Item {
                     // The pencil: picks an own one for the actions, without
                     // applying it
                     Rectangle {
-                        visible: !cell.modelData.builtin
+                        visible: !cell.modelData.builtin && !handle.dragging
                         x: card.width - width - 6
                         y: 6
                         width: 24; height: 24; radius: 6
@@ -253,12 +280,19 @@ Item {
         }
 
         // The name being asked (a new profile, or the picked one renamed)
+        Connections {
+            target: nameField.input
+            function onTextChanged() {
+                root.nameBad = false
+            }
+        }
         Row {
             visible: root.naming !== ""
             spacing: 8
             Field {
                 id: nameField
-                width: Math.min(260, root.width - 200)
+                width: Math.max(120, Math.min(260, root.width - 200))
+                Component.onCompleted: input.maximumLength = 32
                 placeholder: "Nome do perfil"
                 invalid: root.nameBad
                 onAccepted: text => {
@@ -283,7 +317,7 @@ Item {
             visible: root.naming !== "" && root.nameBad
             width: parent.width
             wrapMode: Text.WordWrap
-            text: "De 1 a 32 letras, números, espaços e . _ -, sem espaço nas pontas."
+            text: "De 1 a 32 caracteres: letras, números, espaços e . _ -, com ao menos uma letra ou número, sem espaço nas pontas e sem “..”."
             textFormat: Text.PlainText
             color: Theme.yellow
             font.family: Theme.fontPanels

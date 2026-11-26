@@ -25,7 +25,6 @@ Item {
     property bool marks: false
     property bool active: false
     property bool dirty: false
-    signal picked()
 
     implicitWidth: 150
     implicitHeight: poster.height + 26
@@ -45,7 +44,8 @@ Item {
             visible: root.picture !== "" && status === Image.Ready
             source: root.picture
             fillMode: Image.PreserveAspectCrop
-            sourceSize: Qt.size(Math.ceil(poster.width), Math.ceil(poster.height))
+            // (in steps of 64: a resize does not read the file again each step)
+            sourceSize: Qt.size(Math.ceil(poster.width / 64) * 64, Math.ceil(poster.height / 64) * 64)
             asynchronous: true
             cache: false
         }

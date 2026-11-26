@@ -73,7 +73,22 @@ Singleton {
         const rest = Object.keys(found).filter(id => !kept.includes(id)).sort()
         return kept.concat(rest)
     }
-    readonly property var profiles: [padrao].concat(order.map(id => found[id]))
+    // The cards' list: reassigned only when what they show changes (the
+    // order is rebuilt on every change of the settings; a new list would
+    // make every card again, its picture too)
+    property var profiles: []
+    property string profilesKey: ""
+    function relist() {
+        const list = [padrao].concat(order.map(id => found[id]))
+        const key = JSON.stringify(list) + "|" + stamp
+        if (key !== profilesKey) {
+            profilesKey = key
+            profiles = list
+        }
+    }
+    onOrderChanged: relist()
+    onPadraoChanged: relist()
+    onStampChanged: relist()
     readonly property string active: Object.prototype.hasOwnProperty.call(found, SettingsStore.values.profileActive ?? "")
                                      ? SettingsStore.values.profileActive : ""
     // What a card shows (the page's and the carousel's): the picture, as a
@@ -210,7 +225,7 @@ Singleton {
     // picture, at most 3 a reading (the rest on the next ones)
     readonly property string listScript: chainScript
         // first: whether the repo's wallpaper ($a) is there (the Padrão's card)
-        + 'if [ -f "$a" ] && [ ! -L "$a" ]; then echo "repo 1"; else echo "repo 0"; fi\n'
+        + 'if [ -f "$a" ]; then echo "repo 1"; else echo "repo 0"; fi\n'
         + 'made=0\n'
         + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 300 | while IFS= read -r -d "" p; do\n'
         + '  id=${p#./}\n'
@@ -527,8 +542,10 @@ Singleton {
         const batch = {}
         for (const k of keys.concat(["wallpaper"]))
             batch[k] = m[k]
-        if (!SettingsStore.setMany(batch))
+        if (!SettingsStore.setMany(batch)) {
+            failed("Não deu para aplicar o perfil: nada mudou.")
             return false
+        }
         SettingsStore.setAuto("profileActive", id)
         return true
     }
