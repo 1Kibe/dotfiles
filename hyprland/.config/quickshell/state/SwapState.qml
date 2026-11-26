@@ -164,34 +164,43 @@ Singleton {
         ready = {}
         revealed = {}
         limit.restart()
-        if (kind === "circle" && opts.fromCursor === true && focused !== "") {
+        if (kind === "circle" && opts.fromCursor === true) {
             cursor.command = ["hyprctl", "cursorpos"]
             cursor.running = true
             return
         }
         freeze()
     }
-    // The cursor, as two numbers inside the focused monitor
+    // The cursor, as two numbers: the monitor it is on (Hyprland's focused
+    // monitor may not be known yet) and the point in it
     Process {
         id: cursor
+        // (the text is whole only once its stream ends, not at the exit)
         stdout: StdioCollector {
-            id: cursorOut
+            onStreamFinished: root.cursorRead(text)
         }
         onExited: code => {
-            const m = /^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*$/.exec(cursorOut.text)
-            const s = Quickshell.screens.find(x => x.name === root.originScreen)
-            if (code === 0 && m && s) {
-                const x = Number(m[1]) - s.x, y = Number(m[2]) - s.y
-                if (x >= 0 && y >= 0 && x < s.width && y < s.height) {
-                    root.originX = x
-                    root.originY = y
-                }
-            }
-            if (root.phase === "" && root.current !== null)
-                root.freeze()
+            if (code !== 0)
+                root.cursorRead("")
         }
     }
+    function cursorRead(text) {
+        const m = /^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*$/.exec(text)
+        if (m) {
+            const gx = Number(m[1]), gy = Number(m[2])
+            const s = Quickshell.screens.find(x => gx >= x.x && gy >= x.y && gx < x.x + x.width && gy < x.y + x.height)
+            if (s) {
+                originScreen = s.name
+                originX = gx - s.x
+                originY = gy - s.y
+            }
+        }
+        if (phase === "" && current !== null)
+            freeze()
+    }
     function freeze() {
+        if (phase !== "")
+            return
         if (current === null || blocked()) {
             drop(false)
             return
@@ -308,9 +317,14 @@ Singleton {
     Connections {
         target: Quickshell
         function onScreensChanged() {
-            if (root.active || root.current !== null)
-                root.drop(true)
+            root.screenChanged()
         }
+    }
+    // (also a monitor's scale or resolution changing, which does not change
+    // the list: its overlay's size says it, wallpaper/SwapFrames)
+    function screenChanged() {
+        if (active || current !== null)
+            drop(true)
     }
     onActiveChanged: ShellState.setOverlay("swap", active)
 }

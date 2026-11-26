@@ -46,6 +46,19 @@ Scope {
                 Component.onCompleted: SwapState.addFrame(name, win)
                 Component.onDestruction: SwapState.removeFrame(name, win)
 
+                // Its monitor's scale or resolution changing during a change:
+                // the frames go. Neither the list of monitors nor the monitor
+                // says it; the overlay's size does, once it is up (it grows
+                // as it shows, before it is armed)
+                onWidthChanged: {
+                    if (armed)
+                        SwapState.screenChanged()
+                }
+                onHeightChanged: {
+                    if (armed)
+                        SwapState.screenChanged()
+                }
+
                 // The picture is taken once this overlay is clear on screen
                 property bool armed: false
                 onWantedChanged: {
