@@ -285,6 +285,24 @@ THEMES = [
         # The project's Kitty theme (dracula/kitty)
         "ansi": ["#21222c", "#ff5555", "#50fa7b", "#f1fa8c", "#bd93f9", "#ff79c6", "#8be9fd", "#f8f8f2"],
     },
+    {
+        "id": "solarized", "nome": "Solarized", "licenca": "Solarized (MIT)",
+        "accent": "#268bd2",   # blue
+        "sabores": {
+            # base03, base02 (and the tone between it and base01); base0,
+            # base1, base00 as the dim text (base01 reads under 3 on
+            # base03), base01
+            "dark": {
+                "rotulo": "Dark", "syntaxTheme": "Solarized (dark)",
+                "bgHard": None, "bg": "#002b36", "bg1": "#073642", "bg2": ("mix", "#073642", "#586e75", 0.35),
+                "fg": "#839496", "fg2": "#93a1a1", "fg4": "#657b83", "gray": "#586e75",
+            },
+        },
+        "nomeadas": {"yellow": "#b58900", "orange": "#cb4b16", "red": "#dc322f", "green": "#859900",
+                     "aqua": "#2aa198", "blue": "#268bd2", "purple": "#6c71c4"},
+        # The project's Xresources (xresources/solarized)
+        "ansi": ["#073642", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#eee8d5"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

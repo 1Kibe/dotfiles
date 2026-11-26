@@ -1,0 +1,23 @@
+{
+  "versao": 1,
+  "id": "solarized",
+  "nome": "Solarized",
+  "licenca": "Solarized (MIT)",
+  "destaquePadrao": { "accent": "#268bd2", "light": "#88bfe6" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Dark",
+      "escuro": true,
+      "syntaxTheme": "Solarized (dark)",
+      "papeis": {
+        "bgDeep": "#00161d", "bgHard": "#002029", "bg": "#002b36", "bg1": "#073642", "bg2": "#234a54",
+        "fg": "#839496", "fg2": "#93a1a1", "fg4": "#657b83", "text": "#839496", "gray": "#586e75"
+      },
+      "nomeadas": {
+        "yellow": "#b58900", "orange": "#cb4b16", "red": "#dc322f", "green": "#859900", "aqua": "#2aa198",
+        "blue": "#268bd2", "purple": "#6c71c4"
+      },
+      "ansi": ["#073642", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#eee8d5"]
+    }
+  }
+}
