@@ -37,6 +37,14 @@ function barStep(u, curve, share) {
     return bezier(curve, clamp01(u / share))
 }
 
+// The bar's corner along that step (0 = round, 1 = square): eased in and
+// out, since the step itself starts or ends with a rush and a corner
+// growing several px in one frame shows
+function cornerStep(step) {
+    const x = clamp01(step)
+    return x * x * (3 - 2 * x)
+}
+
 // The panel: 0 = closed, 1 = open. From `from` to the end
 function panelStep(u, curve, from) {
     return bezier(curve, clamp01((u - from) / (1 - from)))
@@ -50,6 +58,15 @@ function sideStep(panels, side) {
     for (const p of panels)
         if (p && p.edgeSide === side)
             step = Math.max(step, Number(p.edgeStep) || 0)
+    return step
+}
+// The bar's corner on that side: the panels' own corner step (edgeCorner,
+// an even time eased at both ends) or, without one, their step eased
+function sideCorner(panels, side) {
+    let step = 0
+    for (const p of panels)
+        if (p && p.edgeSide === side)
+            step = Math.max(step, p.edgeCorner !== undefined ? Number(p.edgeCorner) || 0 : cornerStep(Number(p.edgeStep) || 0))
     return step
 }
 function sideAsked(panels, side) {

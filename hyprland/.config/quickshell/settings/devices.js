@@ -420,12 +420,6 @@ function screensUnlocked(out) {
                            && !m.solitaryBlockedBy.includes("LOCK"))
 }
 
-// A label for the notification's body: filtered, cut at 64 and with the
-// markup characters escaped (notification servers may read it as markup)
-function notifyLabel(label) {
-    return text(label).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-}
-
 // udisksctl's error says the filesystem is in use
 function busy(errText) {
     return typeof errText === "string" && /target is busy|device is busy|EBUSY/i.test(errText.slice(0, 4096))

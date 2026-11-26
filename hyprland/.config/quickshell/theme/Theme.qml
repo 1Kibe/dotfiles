@@ -138,6 +138,25 @@ Singleton {
     readonly property color pinBorder: root.alpha(yellow, 0.75)
     readonly property int stripRadius: 14
     readonly property int cardSize: 200
+    // The volume and brightness notice (OSD) in the middle of the screen: a
+    // square of osdSize with the icon over a short bar; it stays osdHold
+    // after the last change (reading time: never scaled by the speed)
+    readonly property int osdSize: 132
+    readonly property int osdRadius: 22
+    readonly property int osdIconSize: 40
+    readonly property int osdBarWidth: 84
+    readonly property int osdBarHeight: 6
+    readonly property int osdHold: 1500
+    // Notifications: the cards' width, how long one stays (reading time,
+    // never scaled), how many show at once, the gap between them and the
+    // time bar; the clock's panel (calendar and list) and a calendar day
+    readonly property int toastWidth: 360
+    readonly property int toastHold: 5000
+    readonly property int toastMax: 3
+    readonly property int toastGap: 8
+    readonly property int toastTimerHeight: 2
+    readonly property int clockPanelWidth: 640
+    readonly property int calendarCell: 36
     // Clipboard drawer (Super+V): one height for its three tabs (the cards
     // take what is left), its fill, and the Anotações' list column
     readonly property int clipboardHeight: 220
@@ -176,6 +195,8 @@ Singleton {
     readonly property int minimizeRow: 32
     readonly property int minimizeMargin: 7
     readonly property int minimizeRadius: 9
+    // The tab's room from a panel above it (or below, with the bar there)
+    readonly property int minimizePanelGap: 8
     // The wire's long curve from the edge: how far along the edge it runs,
     // and how far into the body it ends
     readonly property int minimizeWireReach: 24
@@ -324,6 +345,9 @@ Singleton {
     // still
     readonly property var curveDecel: [0.2, 0, 0, 1, 1, 1]
     readonly property var curveAccel: [0.4, 0, 1, 1, 1, 1]
+    // Soft at both ends: a room that opens or closes in a column (what
+    // follows its edge, like the minimized strip, never starts with a leap)
+    readonly property var curveStandard: [0.4, 0, 0.2, 1, 1, 1]
 
     // A panel that touches the screen's left or right edge (the settings,
     // bar/EdgeTimeline): one timeline: the bar first stretches that end to the

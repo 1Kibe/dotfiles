@@ -30,6 +30,18 @@ Singleton {
     property double lastWrite: 0
     // Writes that ran (for the tests)
     property int writes: 0
+    // One reading asked by the notice in the middle of the screen
+    // (state/OsdState), the same reader and curve as the slider's; the
+    // answer comes in read(available, percent)
+    property bool asked: false
+    signal read(bool available, int percent)
+    function readOnce() {
+        asked = true
+        if (reader.running)
+            return
+        readTimeout.restart()
+        reader.running = true
+    }
 
     function refresh() {
         if (!active || reader.running)
@@ -91,6 +103,10 @@ Singleton {
             root.available = m !== null
             if (m !== null && !root.writing && root.pending < 0)
                 root.percent = Levels.curvePercent(m.current, m.max)
+            if (root.asked) {
+                root.asked = false
+                root.read(m !== null, m !== null ? Levels.curvePercent(m.current, m.max) : 0)
+            }
         }
     }
     Process {
@@ -114,7 +130,10 @@ Singleton {
     Timer {
         id: readTimeout
         interval: 3000
-        onTriggered: reader.running = false
+        onTriggered: {
+            reader.running = false
+            root.asked = false
+        }
     }
     Timer {
         id: writeTimeout

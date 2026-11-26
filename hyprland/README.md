@@ -326,6 +326,41 @@ volta ou fecha, e a pasta inteira quando o shell sobe. Ela só é tirada com a j
 **Falta conferir no notebook:** esconder sem mostrar a área especial, o botão de minimizar de um app de verdade, o Alt+Tab sem
 as escondidas, a janela em tela cheia e a fixada, e dois monitores.
 
+### Notificações (Super+N)
+
+O shell é quem recebe as notificações da sessão (o serviço `org.freedesktop.Notifications`). A música aparece como as outras:
+nenhuma notificação é descartada pelo que diz.
+
+- **Na tela:** cada uma entra como gaveta pela borda direita, logo abaixo da barra, colada a ela, e sai pelo mesmo lado.
+  Do mesmo app viram um cartão só, com "N novas". No máximo três na tela; o resto espera no painel ("e mais N"). Com o mouse
+  em cima, o cartão para de contar o tempo e o texto não muda; por 400 ms depois de aparecer ou mudar, o clique não vale.
+  Clicar abre o app (a janela dele, ou a minimizada de volta); os botões fazem só o que o app mandou; arrastar para a direita
+  tira da tela (fica no painel). A urgente tem borda vermelha e um ×, e fica até 60 s.
+- **Painel do relógio:** `Super+N`, o sininho ao lado da hora ou o relógio (sem música) abrem o mês e as notificações
+  guardadas, agrupadas por app (até 5 por grupo), com "Limpar tudo", o Não perturbe e quantos avisos foram recusados.
+  Abrir marca tudo como lido; nada é apagado. Com ele aberto, o que chega vai direto para a lista.
+- **Sininho:** mostra quantas não foram lidas (9+ a partir de 10) e fica riscado com o Não perturbe.
+- **Não perturbe:** nada aparece na tela, nem a urgente; tudo vai para o painel. Também na central de controle e em
+  `qs ipc call notifications dnd`. Continua ligado depois de reiniciar.
+- **Tela cheia:** só as urgentes aparecem (no máximo duas, 15 s cada). **Travada:** nada aparece; a tela de bloqueio mostra só
+  quantas chegaram, sem nada do conteúdo. **Print e gravação:** a pilha e o aviso de volume saem da imagem.
+- **Avisos do próprio shell** (pendrive conectado, atualizações) entram pelo mesmo caminho, sem passar pelo D-Bus. Uma
+  notificação de fora com o nome de um deles ("Dispositivos", "Atualizações", "Sistema"...) leva "(externo)" ao lado do nome.
+- **Limites:** texto sempre simples (sem formatação nem links), cortado; até 200 guardadas (50 por app); um app que manda
+  demais (mais de 20 em 10 s) tem o excesso recusado e contado. Imagens das notificações ficam desligadas por enquanto: só o
+  ícone do app.
+
+A lista fica só na memória: reiniciar o shell a esvazia.
+
+**Outro programa de notificação** (o `xfce4-notifyd` do Xfce, `dunst`, `mako`): quem pega o nome primeiro fica com ele. O
+install avisa se houver um instalado, sem mexer nele (o Xfce continua usando o seu). Se o painel do relógio disser "Outro
+programa de notificação está ativo", feche o outro (`pkill -x xfce4-notifyd`): o shell pega o nome sozinho e o painel
+atualiza em até um minuto. Para testar à mão:
+`notify-send -a Teste "Título" "Texto"`.
+
+**Aviso de volume e brilho:** no meio da tela em foco, com o ícone e a barra; some sozinho. Não aparece com a tela travada
+nem com o painel de volume ou a central abertos. O de brilho ainda não sai pelas teclas (falta conferir no notebook).
+
 ### Clipboard (Super+V)
 
 `Super+V` sobe uma gaveta da borda de baixo da tela, de um lado ao outro (com a barra embaixo, ela fica em cima da barra),
@@ -447,6 +482,10 @@ Outros alvos, para scripts:
 | `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
 | `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
 | `qs ipc call capture card <arquivo>` | Mostra o cartão de um print (só PNG da pasta `Capturas`; o `hypr-print` chama no fim) |
+| `qs ipc call notifications clear` | Limpa a lista de notificações (não funciona com a tela travada) |
+| `qs ipc call notifications dnd` / `dndOn` / `dndOff` | Alterna, liga ou desliga o Não perturbe |
+| `qs ipc call notifications stats` | O estado das notificações em JSON (contagens, Não perturbe, recusadas); nunca texto ou nome de app |
+| `qs ipc call osd volume` / `brightness` | Mostra o aviso de volume ou de brilho (para teclas que o shell não vê) |
 | `qs ipc call capture stats` | O estado da captura em JSON (aberta, modo, gravando, tempo); nunca caminhos ou conteúdo |
 | `qs ipc call lock stats` | O estado do bloqueio em JSON (travado, conferindo, escurecido, erro); nunca a senha |
 | `qs ipc call lock background` | Abre o escolhedor do fundo do bloqueio e do login (não abre com a tela travada) |
@@ -454,7 +493,8 @@ Outros alvos, para scripts:
 
 Não existe alvo para destravar: só a senha, pelo PAM, destrava.
 
-O OSD de volume e brilho não precisa de alvo: o módulo lê o PipeWire e o brilho direto.
+O aviso de volume aparece sozinho (o módulo lê o PipeWire); o de brilho, pelo alvo `osd brightness` (as teclas de brilho ainda
+não o chamam: falta conferir no notebook).
 
 ### Spotify
 

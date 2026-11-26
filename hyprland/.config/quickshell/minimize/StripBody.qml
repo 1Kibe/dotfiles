@@ -35,6 +35,10 @@ Item {
     // A bar panel is one of those edges (a drawer from the bottom never
     // makes the strip close anything)
     property bool panelInTheWay: topEdge > 0
+    // How far the tab's curve reaches past its body towards a panel (the
+    // wire's, the longest): the room kept from a panel is counted to the
+    // curve's end, not to the body
+    readonly property real edgeReach: Math.max(Theme.minimizeWireReach, Theme.minimizeRadius * (1 + Theme.cornerSmoothing))
 
     readonly property var m: ({
         wire: Theme.wireWidth, icons: Theme.minimizeIcons, names: Theme.minimizeNames,
@@ -82,7 +86,7 @@ Item {
     function fits(lvl) {
         return Geom.place({
             areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-            gap: Theme.minimizeRadius, level: lvl, n: count
+            gap: root.edgeReach, level: lvl, n: count
         }, m).visible
     }
     // Open over the screen: the minimize picture waits (it would be in it)
@@ -153,7 +157,7 @@ Item {
                 return
             const g = Geom.place({
                 areaTop: root.areaTop, areaBottom: root.areaBottom, topEdge: root.topEdge, bottomEdge: root.bottomEdge,
-                gap: Theme.minimizeRadius, level: "icons", n: root.count
+                gap: root.edgeReach, level: "icons", n: root.count
             }, root.m)
             if (!g.visible && root.panelInTheWay) {
                 // The panel closes: the strip opens once it is out of the way
@@ -208,9 +212,57 @@ Item {
     // ── Where it is ──
     readonly property var g: Geom.place({
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-        gap: Theme.minimizeRadius, level: level === "hidden" ? "wire" : level, n: count
+        gap: root.edgeReach, level: level === "hidden" ? "wire" : level, n: count
     }, m)
-    readonly property real wantW: level === "hidden" || !g.visible ? 0 : Geom.widthFor(level, m)
+    // The notifications' pile on this screen moving a card: coming in (it
+    // takes the strip's place), the strip steps aside into the edge (its
+    // closing motion) and comes back at its new place (its opening one)
+    // once the pile has settled a moment (a burst keeps it aside until the
+    // last card is in place); never under the mouse. Its top holds still
+    // while it goes in, moves only once it is all in, and it comes back
+    // only after that. Only leaving, it waits where it is (same width) and,
+    // once the pile has settled, slides to its new place on its own
+    readonly property string pileMotion: ShellState.pileMoving[screenName] || ""
+    readonly property bool pileMoving: pileMotion !== ""
+    property bool asideForPile: false
+    property real heldTop: -1
+    // Sliding to its place after waiting (its own motion, even with an
+    // edge still moving: picked up from where it is, never a leap)
+    property bool slidingBack: false
+    onPileMotionChanged: {
+        if (pileMotion === "")  {
+            if (heldTop >= 0 || asideForPile)
+                settleTimer.restart()
+            return
+        }
+        settleTimer.stop()
+        const from = pieceTop
+        slidingBack = false
+        heldTop = from
+        if (pileMotion === "in" && !hovered)
+            asideForPile = true
+    }
+    readonly property bool allIn: animW < 0.5
+    onAllInChanged: {
+        if (allIn && asideForPile)
+            heldTop = -1
+    }
+    Timer {
+        id: settleTimer
+        interval: Theme.dur(Theme.animFast)
+        onTriggered: {
+            // (aside, back only once it is all in)
+            if (root.asideForPile && !root.allIn) {
+                restart()
+                return
+            }
+            if (!root.asideForPile && Math.abs(root.wantTop - root.heldTop) > 0.5)
+                root.slidingBack = true
+            root.heldTop = -1
+            root.asideForPile = false
+        }
+    }
+    readonly property real wantW: level === "hidden" || !g.visible || asideForPile ? 0 : Geom.widthFor(level, m)
     readonly property bool attention: entries.some(e => e.attention)
     // Open with a window wanting attention: its icon pulses (about 1 s, 8
     // steps a second); the timer runs only then
@@ -255,8 +307,8 @@ Item {
         }
     }
     // The whole list after "+N": as tall as it needs, inside the free part
-    readonly property real freeTop: Math.max(areaTop, topEdge > 0 ? topEdge + Theme.minimizeRadius : areaTop)
-    readonly property real freeBottom: Math.min(areaBottom, bottomEdge > 0 ? bottomEdge - Theme.minimizeRadius : areaBottom)
+    readonly property real freeTop: Math.max(areaTop, topEdge > 0 ? topEdge + edgeReach : areaTop)
+    readonly property real freeBottom: Math.min(areaBottom, bottomEdge > 0 ? bottomEdge - edgeReach : areaBottom)
     readonly property real allHeight: Math.max(0, Math.min(freeBottom - freeTop, 2 * Theme.minimizeMargin + count * Theme.minimizeRow))
     readonly property real wantTop: all ? Math.min(Math.max(freeTop, (areaTop + areaBottom) / 2 - allHeight / 2), freeBottom - allHeight)
                                         : g.top
@@ -268,25 +320,61 @@ Item {
             MinimizeState.setWireAt(screenName, wireMid)
     }
     // Following a panel or the drawer: in the same movement as theirs (no
-    // animation of its own); changing level or count: animated
+    // animation of its own); changing level or count, or a panel that comes
+    // or goes all at once (its edge from or to none: the last card of the
+    // notifications' pile gone), animated
     property bool edgeMoving: false
-    onTopEdgeChanged: {
+    property real lastTopEdge: 0
+    property real lastBottomEdge: 0
+    function edgeChanged(before, now) {
+        if ((before > 0) !== (now > 0)) {
+            // came or went: its own motion, even right after following it
+            edgeTimer.stop()
+            edgeMoving = false
+            return
+        }
         edgeMoving = true
         edgeTimer.restart()
     }
+    onTopEdgeChanged: {
+        edgeChanged(lastTopEdge, topEdge)
+        lastTopEdge = topEdge
+    }
     onBottomEdgeChanged: {
-        edgeMoving = true
-        edgeTimer.restart()
+        edgeChanged(lastBottomEdge, bottomEdge)
+        lastBottomEdge = bottomEdge
     }
     Timer {
         id: edgeTimer
         interval: Theme.dur(Theme.animFast)
         onTriggered: root.edgeMoving = false
     }
-    property real pieceTop: wantTop
+    property real pieceTop: heldTop >= 0 ? heldTop : wantTop
+    // Its last moves for the stats (time, top, target, edge, following,
+    // width, aside, waiting)
+    function traceMove() {
+        const t = MinimizeState.stripTrace
+        const list = t[screenName] || []
+        list.push([Date.now() % 100000, Math.round(pieceTop * 10) / 10, Math.round(wantTop * 10) / 10, Math.round(topEdge), edgeMoving ? 1 : 0,
+                   Math.round(pieceW * 10) / 10, asideForPile ? 1 : 0, heldTop >= 0 ? 1 : 0])
+        if (list.length > 300)
+            list.splice(0, list.length - 300)
+        t[screenName] = list
+    }
+    onPieceTopChanged: traceMove()
+    onPieceWChanged: traceMove()
     Behavior on pieceTop {
-        enabled: !Theme.reduceMotion && !root.edgeMoving
-        NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
+        enabled: !Theme.reduceMotion && (root.slidingBack || (!root.edgeMoving && !root.asideForPile))
+        NumberAnimation {
+            id: topMotion
+            duration: Theme.dur(root.slidingBack ? Theme.motionEdgeOpen : Theme.motionPanelOpen)
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.slidingBack ? Theme.curveStandard : Theme.curveDecel
+            onRunningChanged: {
+                if (!running)
+                    root.slidingBack = false
+            }
+        }
     }
     property real pieceH: wantH
     Behavior on pieceH {
@@ -304,7 +392,7 @@ Item {
     // near its end would be left outside
     readonly property var gw: Geom.place({
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-        gap: Theme.minimizeRadius, level: "wire", n: count
+        gap: root.edgeReach, level: "wire", n: count
     }, m)
     Item {
         id: hitArea

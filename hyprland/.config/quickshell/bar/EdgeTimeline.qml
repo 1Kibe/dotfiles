@@ -20,8 +20,15 @@ Item {
 
     readonly property real barStep: Theme.reduceMotion ? (u > 0 ? 1 : 0)
                                     : EdgeMotion.barStep(u, Theme.curveDecel, Theme.edgeBarShare)
+    // The bar's corner: along the bar's part of the time at an even pace,
+    // eased at both ends (barStep rushes at the end of a closing)
+    readonly property real barCorner: Theme.reduceMotion ? barStep : EdgeMotion.cornerStep(u / Theme.edgeBarShare)
     readonly property real panelStep: Theme.reduceMotion ? u
                                       : EdgeMotion.panelStep(u, Theme.curveDecel, Theme.edgePanelFrom)
+    // The panel's part of the time, linear (0 when it starts, 1 at the end):
+    // what grows or shrinks evenly along it (its corners), not with the
+    // panel's eased step, which closes with a rush at the end
+    readonly property real panelTime: Theme.reduceMotion ? u : Math.max(0, Math.min(1, (u - Theme.edgePanelFrom) / (1 - Theme.edgePanelFrom)))
     readonly property bool running: enter.running || leave.running
 
     signal closed()

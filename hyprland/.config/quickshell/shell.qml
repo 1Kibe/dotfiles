@@ -11,6 +11,7 @@ import qs.state
 import qs.settings
 import qs.overview
 import qs.minimize
+import qs.osd
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -21,6 +22,9 @@ ShellRoot {
     // shell touches both at start; the store reads the choices, the other
     // takes them out of the shell
     readonly property bool settingsReady: SettingsStore.ready && SettingsApply.handlers !== null
+    // The notifications' server is up from the start (a singleton only lives
+    // once something reads it), so the session's notifications reach it
+    readonly property bool notificationsReady: NotificationState.serverOk
     // The night light keeps its hours with the panel closed too
     readonly property bool nightLightOn: NightLight.wanted
     // The minimize state from the start: it follows Hyprland's events (a
@@ -77,6 +81,8 @@ ShellRoot {
     CaptureOverlay {}
     Countdown {}
     CaptureToast {}
+    // The volume and brightness notice in the middle of the focused monitor
+    Osd {}
     CaptureCard {}
 
     // Configurações → Monitores: "Manter estas telas?" while an arrangement
@@ -86,6 +92,60 @@ ShellRoot {
     // Configurações → Teclado e mouse: "Manter este teclado?" while a layout
     // is tried
     KeyboardKeep {}
+
+    // The notifications: no argument, nothing from outside comes back
+    // (stats: numbers and yes/no only). Locked: refused
+    // qs ipc call notifications toggle | clear | dnd | dndOn | dndOff | stats
+    IpcHandler {
+        target: "notifications"
+
+        // Super+N: the clock's panel on the focused monitor
+        function toggle(): string {
+            if (NotificationState.locked)
+                return "travada"
+            const monitor = Hyprland.focusedMonitor
+            if (!monitor)
+                return "sem monitor"
+            ShellState.toggleByKey("notifications", monitor.name)
+            return "ok"
+        }
+        function clear(): string {
+            if (NotificationState.locked)
+                return "travada"
+            NotificationState.clearAll()
+            return "ok"
+        }
+        function dnd(): string {
+            if (!NotificationState.toggleDnd())
+                return "travada"
+            return NotificationState.dnd ? "ligado" : "desligado"
+        }
+        function dndOn(): string {
+            return NotificationState.setDnd(true) ? "ligado" : "travada"
+        }
+        function dndOff(): string {
+            return NotificationState.setDnd(false) ? "desligado" : "travada"
+        }
+        function stats(): string {
+            return NotificationState.stats()
+        }
+    }
+
+    // The notice in the middle of the screen: read the real value again and
+    // show it (no argument: nothing from outside reaches it)
+    // qs ipc call osd volume | brightness
+    IpcHandler {
+        target: "osd"
+
+        function volume(): string {
+            return OsdState.showVolume() ? "ok" : "sem aviso"
+        }
+        // Read again and shown when there is a backlight
+        function brightness(): string {
+            OsdState.showBrightness()
+            return "ok"
+        }
+    }
 
     IpcHandler {
         target: "capture"
@@ -272,6 +332,15 @@ ShellRoot {
         function restoreLast(): string {
             const m = Hyprland.focusedMonitor
             return MinimizeState.restoreLast(m ? m.name : "") ? "ok" : "nada"
+        }
+        // The strips' last moves (numbers only: time ms, top, target, the
+        // panel edge it follows, following 1/0) and the panel edges now by
+        // kind; never a window, a title or a class
+        function stats(): string {
+            const edges = {}
+            for (const k in ShellState.rightPanelEdges)
+                edges[k.endsWith("|notificacoes") ? "notificacoes" : "painel"] = ShellState.rightPanelEdges[k]
+            return JSON.stringify({ edges: edges, trace: MinimizeState.stripTrace })
         }
     }
 

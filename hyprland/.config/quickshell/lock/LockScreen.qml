@@ -84,6 +84,8 @@ Scope {
                     anchors.right: parent.right
                     anchors.margins: 24
                     layout: LockState.layout
+                    // Only how many (never what they say)
+                    notificationCount: NotificationState.unread
                 }
 
                 Column {

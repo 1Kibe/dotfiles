@@ -47,11 +47,14 @@ Variants {
             // bar there; the clipboard's drawer always from the bottom
             readonly property real panelEdge: ShellState.rightPanelEdge[win.name] ?? 0
             readonly property real drawerEdge: ShellState.bottomPanelEdge[win.name] ?? 0
-            topEdge: Theme.barAtBottom ? 0 : panelEdge
+            // Kept Theme.minimizePanelGap from the panel, so the tab's own
+            // corner never runs into the panel's
+            topEdge: Theme.barAtBottom || panelEdge <= 0 ? 0 : panelEdge + Theme.minimizePanelGap
             // Only a bar panel is closed for room, never for the drawer
             panelInTheWay: panelEdge > 0
+            readonly property real panelBottomEdge: panelEdge - Theme.minimizePanelGap
             bottomEdge: Theme.barAtBottom && panelEdge > 0
-                        ? (drawerEdge > 0 ? Math.min(panelEdge, drawerEdge) : panelEdge) : drawerEdge
+                        ? (drawerEdge > 0 ? Math.min(panelBottomEdge, drawerEdge) : panelBottomEdge) : drawerEdge
         }
     }
 }

@@ -34,6 +34,9 @@ Singleton {
 
     // In order of arrival (the last is Super+Shift+H's)
     property var entries: []
+    // The strips' last moves, by screen, for "qs ipc call minimize stats"
+    // (numbers only; filled by StripBody, never watched by a binding)
+    readonly property var stripTrace: ({})
     signal minimized(string address)
     signal restored(string address)
     signal closed(string address)

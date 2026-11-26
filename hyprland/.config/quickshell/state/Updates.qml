@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Networking
 import qs.state
 import "../control/lists.js" as Lists
@@ -88,8 +89,27 @@ Singleton {
     ].join("\n")
     readonly property int maxBytes: 1048576
 
-    // The hook for the notifications module, once it exists: the count only
+    // The notice (the notifications' own local path): the count only, and
+    // only when it grew since the last notice (a check finding the same
+    // ones says nothing again). "Ver" opens the control center's updates
+    // section on the focused monitor
+    property int noticed: 0
+    property int lastNotice: 0
     function notify(count) {
+        if (count <= noticed) {
+            noticed = count
+            return
+        }
+        noticed = count
+        // The newer count replaces the older notice
+        if (lastNotice > 0)
+            NotificationState.dismiss(lastNotice)
+        lastNotice = NotificationState.post("Atualizações", count === 1 ? "1 pacote para atualizar" : `${count} pacotes para atualizar`, "",
+                               ["Ver"], index => {
+            const m = Hyprland.focusedMonitor
+            if (index === 0 && m)
+                ShellState.openControl(ShellState.panelScreen(m.name), "updates", false)
+        })
     }
 
     // "Verificar agora": ignored while one runs and within 3 s
@@ -219,7 +239,8 @@ Singleton {
             clock.restart()
         }
         const total = Math.max(0, sys.count) + Math.max(0, aur.count)
-        if (total > 0)
+        // (a failed check says nothing, and keeps the last count)
+        if (!anyFailed)
             notify(total)
     }
 
