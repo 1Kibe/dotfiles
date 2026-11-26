@@ -377,6 +377,9 @@ Singleton {
     // come in one after another with the expressive curve (a slight
     // overshoot) and leave the other way
     readonly property int settingsWidth: 720
+    // Wider while the theme editor is open (its form and preview side by
+    // side); never more than the screen has
+    readonly property int settingsWideWidth: 960
     readonly property int cascadeStart: 160     // after the panel starts opening
     readonly property int cascadeItem: 220      // each item coming in
     readonly property int cascadeStagger: 35    // between two items

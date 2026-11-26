@@ -27,6 +27,8 @@ Singleton {
     property string attachedRight: ""
     // The settings page asked for (IPC open(page), shell.qml); "" = the first
     property string settingsPage: ""
+    // The theme editor open in Configurações › Temas (the panel widens)
+    property bool themeEditing: false
     // The monitor whose settings panel shows (opening, open or closing), for
     // bar/SettingsZone
     property string settingsOn: ""
@@ -283,6 +285,7 @@ Singleton {
     function close() {
         openPanel = ""
         openOn = ""
+        themeEditing = false
     }
 
     // A bar whose monitor is not known yet (name "") is never open

@@ -114,7 +114,7 @@ function build(model, id) {
     const obj = {
         versao: 1, id: id, nome: name.nome,
         licenca: typeof model.licenca === "string" && Palettes.TEXT.test(model.licenca) ? model.licenca : "Próprio",
-        destaquePadrao: { accent: accent, light: Appearance.mix(accent, "#ffffff", 0.45) },
+        destaquePadrao: { accent: accent, light: lightOf(accent) },
         sabores: {}
     }
     obj.sabores[place] = {
@@ -123,6 +123,11 @@ function build(model, id) {
         papeis: copy(model.roles), nomeadas: copy(model.named), ansi: model.ansi.slice()
     }
     return Palettes.validateTheme(obj)
+}
+
+// A default accent's light tone (the shell's accentPair: 45% toward white)
+function lightOf(hex) {
+    return Appearance.mix(hex, "#ffffff", 0.45)
 }
 
 // The theme file's text (what is written), two-space JSON

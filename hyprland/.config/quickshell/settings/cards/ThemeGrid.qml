@@ -15,7 +15,6 @@ import "../../theme/palettes.js" as Palettes
 Item {
     id: root
 
-    implicitHeight: grid.implicitHeight
     activeFocusOnTab: true
 
     readonly property var effective: ThemeCatalog.get(SettingsStore.values.theme ?? "")
@@ -45,6 +44,17 @@ Item {
     Keys.onUpPressed: step(-columns)
     Keys.onDownPressed: step(columns)
 
+    implicitHeight: grid.implicitHeight + newButton.height + 12
+    Button {
+        id: newButton
+        anchors.bottom: parent.bottom
+        icon: "󰐕"
+        text: "Novo tema personalizado"
+        onClicked: {
+            if (!LockState.locked && !LockState.wanted)
+                ShellState.themeEditing = true
+        }
+    }
     Flow {
         id: grid
         width: parent.width
@@ -55,7 +65,7 @@ Item {
                 required property var modelData
                 width: Math.max(120, Math.floor((grid.width - (root.columns - 1) * grid.spacing) / root.columns))
                 colors: Palettes.resolve(modelData, root.flavorOf(modelData), root.accent)
-                name: modelData.nome
+                name: ThemeCatalog.isOwn(modelData.id) ? modelData.nome + " · seu" : modelData.nome
                 chosen: modelData.id === root.theme
                 focusRing: chosen && root.activeFocus
                 onPicked: root.pick(modelData)

@@ -85,6 +85,11 @@ Singleton {
             const f = new Map(ownFound)
             f.set(id, theme)
             ownFound = f
+            // Saved with "Salvar e aplicar": picked once it is read back
+            if (id === applyWhenRead) {
+                applyWhenRead = ""
+                SettingsStore.setMany({ theme: id, flavor: Palettes.flavors(theme)[0].id })
+            }
         }
         const a = new Map(ownAnsweredIds)
         a.set(id, true)
@@ -96,6 +101,9 @@ Singleton {
     // through a temporary file in the folder and renamed over. done(ok, id)
     signal saveDone(bool ok, string id)
     property string saveText: ""
+    // A saved theme to pick as soon as it is read back (the editor's
+    // "Salvar e aplicar"): the store takes only a theme the catalog has
+    property string applyWhenRead: ""
     readonly property string saveScript:
         'umask 077; d=$1; id=$2; index=$3\n'
         + '[ -L "$d" ] && exit 1\n'
@@ -107,7 +115,7 @@ Singleton {
         + 'i=$(mktemp -- "$d/.indice.XXXXXX") || exit 1\n'
         + 'printf "%s\\n" "$index" > "$i" && chmod 600 -- "$i" && mv -f -- "$i" "$d/index.json" || { rm -f -- "$i"; exit 1; }\n'
         + 'echo ok'
-    function saveOwn(theme) {
+    function saveOwn(theme, andApply) {
         if (saver.running || !ownIndexRead)
             return false
         const v = Palettes.validateTheme(theme)
@@ -117,6 +125,7 @@ Singleton {
         if (list.length > maxOwn)
             return false
         saveText = Custom.serialize(v.theme)
+        applyWhenRead = andApply === true ? v.theme.id : ""
         saver.command = ["sh", "-c", saveScript, "sh", ownDir, v.theme.id, JSON.stringify(list)]
         saver.stdinEnabled = true
         saver.running = true
@@ -141,6 +150,8 @@ Singleton {
             root.saveText = ""
             if (ok)
                 ownIndex.reload()
+            else
+                root.applyWhenRead = ""
             root.saveDone(ok, ok ? id : "")
         }
     }

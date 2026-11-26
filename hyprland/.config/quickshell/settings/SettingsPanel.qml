@@ -66,7 +66,37 @@ Item {
     // Where the slider is: -its width (out of the screen) to 0 (open)
     readonly property real slide: Theme.reduceMotion ? 0 : Math.round(-shape.implicitWidth * (1 - progress))
     // How much of the body is on the screen
-    readonly property real visibleWidth: Math.max(0, Theme.settingsWidth + slide)
+    readonly property real visibleWidth: Math.max(0, panelWidth + slide)
+    // The panel's width: wider while the theme editor is open (never more
+    // than the screen has), animated like the drawers (the frame's shape
+    // follows every frame)
+    readonly property real screenRoom: frame ? frame.width - 2 * Theme.gap : Theme.settingsWideWidth
+    // (the editor shows only on Temas: a flag left over never widens it)
+    readonly property bool editing: ShellState.themeEditing && page === "temas"
+    readonly property bool editorShown: editorLoader.status === Loader.Ready && editorLoader.active
+    readonly property real wantWidth: editing ? Math.max(Theme.settingsWidth, Math.min(Theme.settingsWideWidth, screenRoom))
+                                                              : Theme.settingsWidth
+    // (the curve and the time picked by the direction when the move starts:
+    // opening decelerates, closing accelerates)
+    property real panelWidth: Theme.settingsWidth
+    onWantWidthChanged: {
+        widthMotion.stop()
+        if (Theme.reduceMotion) {
+            panelWidth = wantWidth
+            return
+        }
+        const opening = wantWidth > panelWidth
+        widthMotion.duration = Theme.dur(opening ? Theme.motionEdgeOpen : Theme.motionEdgeClose)
+        widthMotion.easing.bezierCurve = opening ? Theme.curveDecel : Theme.curveAccel
+        widthMotion.to = wantWidth
+        widthMotion.start()
+    }
+    NumberAnimation {
+        id: widthMotion
+        target: root
+        property: "panelWidth"
+        easing.type: Easing.BezierSpline
+    }
 
     // Back to the first page each time, unless a page was asked for (IPC
     // open(page) or a search)
@@ -124,12 +154,12 @@ Item {
     Item {
         id: bodyArea
         y: root.bodyY
-        width: Math.max(0, Theme.settingsWidth + root.slide)
+        width: Math.max(0, root.panelWidth + root.slide)
         height: root.roomHeight
     }
     Item {
         id: cornerArea
-        x: Theme.settingsWidth + root.slide
+        x: root.panelWidth + root.slide
         y: root.mirrored ? root.roomHeight - height : Theme.barHeight
         width: shape.flareReach
         height: width
@@ -152,7 +182,7 @@ Item {
             flareRight: true
             roundBottomLeft: false
             roundBottomRight: false
-            bodyWidth: Theme.settingsWidth
+            bodyWidth: root.panelWidth
             bodyHeight: root.roomHeight
             progress: root.progress
             unroll: false
@@ -164,12 +194,20 @@ Item {
         // page on the right
         Item {
             id: content
-            width: Theme.settingsWidth
+            width: root.panelWidth
             height: root.roomHeight
             focus: true
-            Keys.onEscapePressed: ShellState.close()
+            Keys.onEscapePressed: {
+                if (ShellState.themeEditing)
+                    ShellState.themeEditing = false
+                else
+                    ShellState.close()
+            }
 
             function show(p, card) {
+                // (another page closes the theme editor: the panel narrows)
+                if (p !== "temas")
+                    ShellState.themeEditing = false
                 if (p === root.page) {
                     if (card)
                         pageView.showCard(card)
@@ -203,6 +241,7 @@ Item {
                 x: rail.width + 1
                 width: parent.width - x
                 page: root.page
+                visible: !root.editorShown
                 onSearched: (p, card) => content.show(p, card)
             }
             SchemaPage {
@@ -212,6 +251,23 @@ Item {
                 width: parent.width - x
                 height: parent.height - y
                 page: root.page
+                visible: !root.editorShown
+            }
+            // The theme editor, in place of the page while it is open
+            Loader {
+                id: editorLoader
+                x: rail.width + 1
+                width: parent.width - x
+                height: parent.height
+                active: root.editing
+                // Built without holding the frames (the panel widens
+                // meanwhile); the page stays until it is ready
+                asynchronous: true
+                source: active ? Qt.resolvedUrl("ThemeEditor.qml") : ""
+            }
+            Connections {
+                target: editorLoader.item
+                function onClosed() { ShellState.themeEditing = false }
             }
         }
     }
