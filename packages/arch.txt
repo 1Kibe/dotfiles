@@ -151,6 +151,7 @@ hyprland
 uwsm                         # starts Hyprland as a systemd session
 xdg-desktop-portal-hyprland  # screen sharing, screenshots for apps
 xdg-desktop-portal-gtk       # file picker and dark mode for GTK apps
+python-gobject               # hypr-escolher-imagem: asks the portal's file picker and waits on the same connection
 hyprpolkitagent              # password dialog for apps (polkit)
 qt6-wayland
 

@@ -1,39 +1,63 @@
-#!/usr/bin/env bash
-# Asks the system's file chooser (xdg-desktop-portal, FileChooser) for one
-# image (PNG, JPEG or WebP) and prints its file:// URI, or nothing when it is
-# cancelled. Used by the shell (Configurações → Papel de parede → Escolher
-# arquivo…), which checks and copies the file itself (WallpaperStore).
-#
-# The portal answers on a request object named by our token: its signals are
-# watched first, then the request is made, then the answer read (at most
-# 10 minutes for the person to pick). Nothing is logged.
-#
-# Usage: hypr-escolher-imagem <token>   (letters and digits)
-set -u
+#!/usr/bin/env python3
+"""Asks the system's file chooser (xdg-desktop-portal, FileChooser) for one
+image (PNG, JPEG or WebP) and prints its file:// URI, or nothing when it is
+cancelled, fails or takes more than 10 minutes. Used by the shell
+(Configurações → Papel de parede → Escolher arquivo…), which checks and
+copies the file itself (WallpaperStore).
 
-token="${1:-}"
-[[ "$token" =~ ^[A-Za-z0-9]{6,32}$ ]] || exit 2
+The request belongs to the D-Bus connection that makes it, and the portal
+drops it when that connection goes away: the call and the wait for its
+answer happen on this one connection, which stays until the answer.
+Nothing is logged.
 
-out="$(mktemp -p "${XDG_RUNTIME_DIR:-/tmp}" escolher.XXXXXX)" || exit 1
-cleanup() { [[ -n "${watch:-}" ]] && kill "$watch" 2>/dev/null; rm -f -- "$out"; }
-trap cleanup EXIT
+Usage: hypr-escolher-imagem <token>   (6 to 32 letters and digits)
+"""
+import re
+import sys
 
-gdbus monitor --session --dest org.freedesktop.portal.Desktop > "$out" 2>/dev/null &
-watch=$!
-sleep 0.3
+import gi
 
-options="{'handle_token': <'$token'>, 'modal': <true>,
-  'filters': <[('Imagens', [(uint32 1, 'image/png'), (uint32 1, 'image/jpeg'), (uint32 1, 'image/webp')])]>}"
-gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop \
-  --method org.freedesktop.portal.FileChooser.OpenFile "" "Escolher imagem" "$options" > /dev/null 2>&1 || exit 1
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
 
-answer=""
-for _ in $(seq 1 1200); do
-  answer="$(grep -m1 "/$token: org.freedesktop.portal.Request.Response" "$out")" && break
-  sleep 0.5
-done
-# 0 = chosen; 1 = cancelled; 2 = failed
-case "$answer" in
-  *"(uint32 0,"*) grep -o "file://[^' ,]*" <<< "$answer" | head -n 1 ;;
-esac
-exit 0
+PORTAL = "org.freedesktop.portal.Desktop"
+PATH = "/org/freedesktop/portal/desktop"
+
+
+def main():
+    token = sys.argv[1] if len(sys.argv) > 1 else ""
+    if not re.fullmatch(r"[A-Za-z0-9]{6,32}", token):
+        return 2
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    sender = bus.get_unique_name().lstrip(":").replace(".", "_")
+    handle = f"{PATH}/request/{sender}/{token}"
+    loop = GLib.MainLoop()
+    answer = {"uri": ""}
+
+    def on_response(_conn, _sender, _path, _iface, _signal, params):
+        code, results = params.unpack()
+        uris = results.get("uris", []) if code == 0 else []
+        if uris and isinstance(uris[0], str) and uris[0].startswith("file://"):
+            answer["uri"] = uris[0]
+        loop.quit()
+
+    # Listened to before asking: the answer can never come first
+    bus.signal_subscribe(PORTAL, "org.freedesktop.portal.Request", "Response", handle, None,
+                         Gio.DBusSignalFlags.NONE, on_response)
+    filters = GLib.Variant("a(sa(us))", [("Imagens", [(1, "image/png"), (1, "image/jpeg"), (1, "image/webp")])])
+    options = {"handle_token": GLib.Variant("s", token), "modal": GLib.Variant("b", True), "filters": filters}
+    try:
+        bus.call_sync(PORTAL, PATH, "org.freedesktop.portal.FileChooser", "OpenFile",
+                      GLib.Variant("(ssa{sv})", ("", "Escolher imagem", options)), GLib.VariantType("(o)"),
+                      Gio.DBusCallFlags.NONE, -1, None)
+    except GLib.Error:
+        return 1
+    GLib.timeout_add_seconds(600, loop.quit)
+    loop.run()
+    if answer["uri"] and "\n" not in answer["uri"]:
+        print(answer["uri"])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
