@@ -35,6 +35,10 @@ Item {
     // A bar panel is one of those edges (a drawer from the bottom never
     // makes the strip close anything)
     property bool panelInTheWay: topEdge > 0
+    // How far the tab's curve reaches past its body towards a panel (the
+    // wire's, the longest): the room kept from a panel is counted to the
+    // curve's end, not to the body
+    readonly property real edgeReach: Math.max(Theme.minimizeWireReach, Theme.minimizeRadius * (1 + Theme.cornerSmoothing))
 
     readonly property var m: ({
         wire: Theme.wireWidth, icons: Theme.minimizeIcons, names: Theme.minimizeNames,
@@ -82,7 +86,7 @@ Item {
     function fits(lvl) {
         return Geom.place({
             areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-            gap: Theme.minimizeRadius, level: lvl, n: count
+            gap: root.edgeReach, level: lvl, n: count
         }, m).visible
     }
     // Open over the screen: the minimize picture waits (it would be in it)
@@ -153,7 +157,7 @@ Item {
                 return
             const g = Geom.place({
                 areaTop: root.areaTop, areaBottom: root.areaBottom, topEdge: root.topEdge, bottomEdge: root.bottomEdge,
-                gap: Theme.minimizeRadius, level: "icons", n: root.count
+                gap: root.edgeReach, level: "icons", n: root.count
             }, root.m)
             if (!g.visible && root.panelInTheWay) {
                 // The panel closes: the strip opens once it is out of the way
@@ -208,7 +212,7 @@ Item {
     // ── Where it is ──
     readonly property var g: Geom.place({
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-        gap: Theme.minimizeRadius, level: level === "hidden" ? "wire" : level, n: count
+        gap: root.edgeReach, level: level === "hidden" ? "wire" : level, n: count
     }, m)
     readonly property real wantW: level === "hidden" || !g.visible ? 0 : Geom.widthFor(level, m)
     readonly property bool attention: entries.some(e => e.attention)
@@ -255,8 +259,8 @@ Item {
         }
     }
     // The whole list after "+N": as tall as it needs, inside the free part
-    readonly property real freeTop: Math.max(areaTop, topEdge > 0 ? topEdge + Theme.minimizeRadius : areaTop)
-    readonly property real freeBottom: Math.min(areaBottom, bottomEdge > 0 ? bottomEdge - Theme.minimizeRadius : areaBottom)
+    readonly property real freeTop: Math.max(areaTop, topEdge > 0 ? topEdge + edgeReach : areaTop)
+    readonly property real freeBottom: Math.min(areaBottom, bottomEdge > 0 ? bottomEdge - edgeReach : areaBottom)
     readonly property real allHeight: Math.max(0, Math.min(freeBottom - freeTop, 2 * Theme.minimizeMargin + count * Theme.minimizeRow))
     readonly property real wantTop: all ? Math.min(Math.max(freeTop, (areaTop + areaBottom) / 2 - allHeight / 2), freeBottom - allHeight)
                                         : g.top
@@ -268,15 +272,29 @@ Item {
             MinimizeState.setWireAt(screenName, wireMid)
     }
     // Following a panel or the drawer: in the same movement as theirs (no
-    // animation of its own); changing level or count: animated
+    // animation of its own); changing level or count, or a panel that comes
+    // or goes all at once (its edge from or to none: the last card of the
+    // notifications' pile gone), animated
     property bool edgeMoving: false
-    onTopEdgeChanged: {
+    property real lastTopEdge: 0
+    property real lastBottomEdge: 0
+    function edgeChanged(before, now) {
+        if ((before > 0) !== (now > 0)) {
+            // came or went: its own motion, even right after following it
+            edgeTimer.stop()
+            edgeMoving = false
+            return
+        }
         edgeMoving = true
         edgeTimer.restart()
     }
+    onTopEdgeChanged: {
+        edgeChanged(lastTopEdge, topEdge)
+        lastTopEdge = topEdge
+    }
     onBottomEdgeChanged: {
-        edgeMoving = true
-        edgeTimer.restart()
+        edgeChanged(lastBottomEdge, bottomEdge)
+        lastBottomEdge = bottomEdge
     }
     Timer {
         id: edgeTimer
@@ -304,7 +322,7 @@ Item {
     // near its end would be left outside
     readonly property var gw: Geom.place({
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
-        gap: Theme.minimizeRadius, level: "wire", n: count
+        gap: root.edgeReach, level: "wire", n: count
     }, m)
     Item {
         id: hitArea
