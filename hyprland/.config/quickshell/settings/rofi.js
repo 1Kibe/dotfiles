@@ -13,7 +13,7 @@ var VARIABLES = [
     ["gruvbox-dark-bg3", "bg2"],
     ["gruvbox-dark-fg0", "text"],
     ["gruvbox-dark-fg1", "fg"],
-    ["gruvbox-dark-gray", "fg4"],
+    ["gruvbox-dark-gray", "gray"],
     ["gruvbox-dark-red-dark", "ansi1"],
     ["gruvbox-dark-red-light", "red"],
     ["gruvbox-dark-yellow-dark", "ansi3"],

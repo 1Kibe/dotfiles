@@ -17,8 +17,12 @@ do
   local dir = os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")
   local f = io.open(dir .. "/swayimg/cores.txt", "r")
   if f then
+    -- At most 4 KB, whatever the file is (a huge one, or a link to an
+    -- endless one, never fills the memory), and at most 32 lines of it
+    local s = f:read(4096) or ""
+    f:close()
     local n = 0
-    for line in f:lines() do
+    for line in s:gmatch("[^\r\n]+") do
       n = n + 1
       if n > 32 then
         break
@@ -28,7 +32,6 @@ do
         c[key] = tonumber(value, 16)
       end
     end
-    f:close()
   end
 end
 -- An opaque color, or with alpha a (0-255)
