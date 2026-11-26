@@ -156,6 +156,10 @@ Singleton {
     }
 
     function reset(key) {
+        // (the theme and its flavor always together: never a pair the
+        // catalog does not have)
+        if (key === "theme" || key === "flavor")
+            return resetMany(["theme", "flavor"])
         if (!ready || !spec(key) || (!own(user, key) && !own(extra, key)))
             return false
         dropUndo()
@@ -171,6 +175,8 @@ Singleton {
     function resetMany(keys) {
         if (!ready || !Array.isArray(keys))
             return false
+        if ((keys.includes("theme") || keys.includes("flavor")) && !(keys.includes("theme") && keys.includes("flavor")))
+            keys = keys.concat([keys.includes("theme") ? "flavor" : "theme"])
         const gone = keys.filter(k => spec(k) && !spec(k).kept && (own(user, k) || own(extra, k)))
         if (gone.length === 0)
             return false

@@ -8,13 +8,19 @@ import "../../theme/palettes.js" as Palettes
 // flavor chosen now (or its first one when it has not that one) and the
 // accent chosen now. A click picks the theme in one change (SettingsStore
 // setMany): the flavor kept when the theme has it, else the theme's first.
-// Nothing changes with the screen locked.
+// With the keyboard focus (Tab), the arrows move the choice like the
+// accent's dots (up and down by a row). Nothing changes with the screen
+// locked. A stored theme the catalog no longer has shows as the repo's
+// default, the one the shell applies.
 Item {
     id: root
 
     implicitHeight: grid.implicitHeight
+    activeFocusOnTab: true
 
-    readonly property string theme: SettingsStore.values.theme ?? ""
+    readonly property var effective: ThemeCatalog.get(SettingsStore.values.theme ?? "")
+                                     ?? ThemeCatalog.get(SettingsStore.defaults.theme ?? "")
+    readonly property string theme: effective ? effective.id : ""
     readonly property string flavor: SettingsStore.values.flavor ?? ""
     readonly property string accent: SettingsStore.values.accent ?? "padrao"
     // The flavor a theme shows in: the chosen one if it has it, else its first
@@ -26,6 +32,18 @@ Item {
             return
         SettingsStore.setMany({ theme: t.id, flavor: flavorOf(t) })
     }
+    readonly property int columns: 3
+    readonly property int chosenIndex: ThemeCatalog.themes.findIndex(t => t.id === theme)
+    function step(by) {
+        const list = ThemeCatalog.themes
+        const i = chosenIndex + by
+        if (chosenIndex >= 0 && i >= 0 && i < list.length)
+            pick(list[i])
+    }
+    Keys.onLeftPressed: step(-1)
+    Keys.onRightPressed: step(1)
+    Keys.onUpPressed: step(-columns)
+    Keys.onDownPressed: step(columns)
 
     Flow {
         id: grid
@@ -35,10 +53,11 @@ Item {
             model: ThemeCatalog.themes
             ThemeThumb {
                 required property var modelData
-                width: Math.max(120, Math.floor((grid.width - 2 * grid.spacing) / 3))
+                width: Math.max(120, Math.floor((grid.width - (root.columns - 1) * grid.spacing) / root.columns))
                 colors: Palettes.resolve(modelData, root.flavorOf(modelData), root.accent)
                 name: modelData.nome
                 chosen: modelData.id === root.theme
+                focusRing: chosen && root.activeFocus
                 onPicked: root.pick(modelData)
             }
         }

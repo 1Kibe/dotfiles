@@ -13,6 +13,8 @@ Item {
     property var colors: null
     property string name: ""
     property bool chosen: false
+    // The keyboard is on the grid: the chosen one shows it
+    property bool focusRing: false
     signal picked()
 
     implicitWidth: 150
@@ -26,8 +28,8 @@ Item {
         height: 84
         radius: Theme.radius
         color: root.c.bgDeep || "transparent"
-        border.width: root.chosen ? 2 : 1
-        border.color: root.chosen ? Theme.accent : Theme.alpha(Theme.fg, 0.15)
+        border.width: root.focusRing ? 3 : root.chosen ? 2 : 1
+        border.color: root.focusRing ? Theme.text : root.chosen ? Theme.accent : Theme.alpha(Theme.fg, 0.15)
         clip: true
         // The bar, with its accent's workspace
         Rectangle {
