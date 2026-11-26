@@ -15,7 +15,11 @@ Item {
     property bool chosen: false
     // The keyboard is on the grid: the chosen one shows it
     property bool focusRing: false
+    // A theme of the owner's own: the "seu" badge (never cut with the name)
+    // and its edit button
+    property bool own: false
     signal picked()
+    signal edit()
 
     implicitWidth: 150
     implicitHeight: 112
@@ -61,10 +65,30 @@ Item {
             }
         }
     }
+    Rectangle {
+        id: badge
+        visible: root.own
+        anchors.right: parent.right
+        anchors.top: screen.bottom
+        anchors.topMargin: 6
+        width: visible ? badgeText.implicitWidth + 10 : 0
+        height: badgeText.implicitHeight + 2
+        radius: height / 2
+        color: Theme.alpha(Theme.accent, 0.25)
+        Text {
+            id: badgeText
+            anchors.centerIn: parent
+            text: "seu"
+            textFormat: Text.PlainText
+            color: Theme.text
+            font.family: Theme.fontPanels
+            font.pointSize: Theme.fontSize - 2
+        }
+    }
     Text {
         anchors.top: screen.bottom
         anchors.topMargin: 6
-        width: parent.width
+        width: parent.width - badge.width - (root.own ? 4 : 0)
         text: root.name
         textFormat: Text.PlainText
         elide: Text.ElideRight
@@ -77,5 +101,25 @@ Item {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onClicked: root.picked()
+    }
+    // Edit (own themes only), over the miniature's corner
+    Rectangle {
+        visible: root.own
+        x: screen.width - width - 6
+        y: screen.height - height - 6
+        width: 24; height: 24; radius: 6
+        color: Theme.alpha(Theme.bgHard, 0.85)
+        Text {
+            anchors.centerIn: parent
+            text: "󰏫"
+            color: Theme.text
+            font.family: Theme.font
+            font.pointSize: Theme.fontSize - 1
+        }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.edit()
+        }
     }
 }

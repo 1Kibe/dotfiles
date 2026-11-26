@@ -51,8 +51,10 @@ Item {
         icon: "󰐕"
         text: "Novo tema personalizado"
         onClicked: {
-            if (!LockState.locked && !LockState.wanted)
+            if (!LockState.locked && !LockState.wanted) {
+                ShellState.themeEditId = ""
                 ShellState.themeEditing = true
+            }
         }
     }
     Flow {
@@ -65,7 +67,14 @@ Item {
                 required property var modelData
                 width: Math.max(120, Math.floor((grid.width - (root.columns - 1) * grid.spacing) / root.columns))
                 colors: Palettes.resolve(modelData, root.flavorOf(modelData), root.accent)
-                name: ThemeCatalog.isOwn(modelData.id) ? modelData.nome + " · seu" : modelData.nome
+                name: modelData.nome
+                own: ThemeCatalog.isOwn(modelData.id)
+                onEdit: {
+                    if (!LockState.locked && !LockState.wanted) {
+                        ShellState.themeEditId = modelData.id
+                        ShellState.themeEditing = true
+                    }
+                }
                 chosen: modelData.id === root.theme
                 focusRing: chosen && root.activeFocus
                 onPicked: root.pick(modelData)

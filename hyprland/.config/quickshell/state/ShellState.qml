@@ -29,6 +29,8 @@ Singleton {
     property string settingsPage: ""
     // The theme editor open in Configurações › Temas (the panel widens)
     property bool themeEditing: false
+    // An own theme the editor opens on (its id), or "" for a new one
+    property string themeEditId: ""
     // The monitor whose settings panel shows (opening, open or closing), for
     // bar/SettingsZone
     property string settingsOn: ""

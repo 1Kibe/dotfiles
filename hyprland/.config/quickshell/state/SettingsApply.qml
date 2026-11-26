@@ -82,10 +82,13 @@ Singleton {
         function onCursorsReadChanged() { root.applyAppearance() }
         function onLayoutsReadChanged() { root.applyAppearance() }
     }
-    // The repo's themes, once read
+    // The repo's themes, once read, and the owner's own (read, saved or
+    // removed)
     Connections {
         target: ThemeCatalog
         function onReadyChanged() { root.applyAppearance() }
+        function onOwnReadChanged() { root.applyAppearance() }
+        function onOwnFoundChanged() { root.applyAppearance() }
     }
     Component.onCompleted: {
         applyMotion()
@@ -115,7 +118,9 @@ Singleton {
     // catalog does not have falls on the repo's default; the flavor on the
     // theme's first): every color "#rrggbb", or null while the catalog reads
     function themeColors(v) {
-        if (!ThemeCatalog.ready)
+        // (a theme of the owner's own waits for those to be read, at most
+        // 5 s: never the repo's default first and the chosen one after)
+        if (!ThemeCatalog.ready || (ThemeCatalog.isOwnTheme(v.theme) && !ThemeCatalog.ownRead))
             return null
         const theme = ThemeCatalog.get(v.theme) ?? ThemeCatalog.get(SettingsStore.defaults.theme)
         return theme === null ? null : Palettes.resolve(theme, v.flavor, v.accent)

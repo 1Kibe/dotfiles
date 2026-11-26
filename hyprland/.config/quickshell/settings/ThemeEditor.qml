@@ -18,11 +18,36 @@ Item {
 
     signal closed()
 
+    // An own theme being edited (its id; saved over it, and Excluir), or ""
+    // for a new one
+    readonly property string editId: ThemeCatalog.isOwn(ShellState.themeEditId) ? ShellState.themeEditId : ""
     // "base" or "zero"
     property string mode: "base"
     property string baseTheme: ThemeCatalog.get(SettingsStore.values.theme ?? "") ? SettingsStore.values.theme : "gruvbox"
     property string baseFlavor: SettingsStore.values.flavor ?? "dark"
-    property var model: Custom.fromBase(ThemeCatalog.get(baseTheme), baseFlavor)
+    property var model: editId !== "" ? fromOwn(editId) : Custom.fromBase(ThemeCatalog.get(baseTheme), baseFlavor)
+    function fromOwn(id) {
+        const t = ThemeCatalog.get(id)
+        const m = Custom.fromBase(t, Palettes.flavors(t)[0].id)
+        m.nome = t.nome
+        return m
+    }
+    readonly property bool saving: savingId !== "" || removing || ThemeCatalog.busy
+    property bool removing: false
+    property bool armed: false
+    Timer {
+        id: disarm
+        interval: 3000
+        onTriggered: root.armed = false
+    }
+    // Esc: the color picker first (true: handled here)
+    function handleEscape() {
+        if (picker.visible) {
+            picker.visible = false
+            return true
+        }
+        return false
+    }
     property string message: ""
     property string savingId: ""
 
@@ -86,14 +111,21 @@ Item {
     // it (never with the screen locked)
     function save(andApply) {
         message = ""
-        if (LockState.locked || LockState.wanted)
+        if (saving || LockState.locked || LockState.wanted)
             return
+        // (the name as it is in the field, Enter or not)
+        if (nameField.input.text !== model.nome)
+            update(m => { m.nome = nameField.input.text })
+        if (editId === "" && ThemeCatalog.ownIds.length >= ThemeCatalog.maxOwn) {
+            message = "No máximo 24 temas seus."
+            return
+        }
         const name = Custom.checkName(model.nome)
         if (!name.ok) {
             message = "Dê um nome ao tema (até 24 letras, números, espaço e . ' ( ) + -)."
             return
         }
-        const id = Custom.newId(Math.random, ThemeCatalog.themes.map(t => t.id))
+        const id = editId !== "" ? editId : Custom.newId(Math.random, ThemeCatalog.themes.map(t => t.id))
         const r = Custom.build(model, id)
         if (!r.ok) {
             message = "Alguma cor não é #rrggbb: confira os campos."
@@ -105,8 +137,31 @@ Item {
             message = "Não deu para salvar agora: tente de novo."
         }
     }
+    // Excluir (an own theme): the shell first goes back to the repo's
+    // default when it is the applied one, then the file goes
+    function remove() {
+        if (editId === "" || saving || LockState.locked || LockState.wanted)
+            return
+        if (SettingsStore.values.theme === editId)
+            SettingsStore.setMany({ theme: SettingsStore.defaults.theme, flavor: SettingsStore.defaults.flavor })
+        removing = true
+        if (!ThemeCatalog.removeOwn(editId)) {
+            removing = false
+            message = "Não deu para excluir agora: tente de novo."
+        }
+    }
     Connections {
         target: ThemeCatalog
+        function onRemoveDone(ok, id) {
+            if (!root.removing)
+                return
+            root.removing = false
+            if (!ok) {
+                root.message = "Não deu para excluir o tema."
+                return
+            }
+            root.closed()
+        }
         function onSaveDone(ok, id) {
             if (root.savingId === "" || id !== root.savingId && ok)
                 return
@@ -131,7 +186,7 @@ Item {
         width: parent.width - 32
         spacing: 10
         Text {
-            text: "Novo tema personalizado"
+            text: root.editId !== "" ? "Editar tema personalizado" : "Novo tema personalizado"
             textFormat: Text.PlainText
             color: Theme.text
             font.family: Theme.fontPanels
@@ -142,6 +197,7 @@ Item {
             width: parent.width
             spacing: 10
             Segmented {
+                visible: root.editId === ""
                 options: [{ value: "base", label: "A partir de um tema" }, { value: "zero", label: "Do zero" }]
                 value: root.mode
                 onPicked: v => {
@@ -150,8 +206,8 @@ Item {
                 }
             }
             Dropdown {
-                visible: root.mode === "base"
-                options: ThemeCatalog.themes.map(t => ({ value: t.id, label: t.nome }))
+                visible: root.mode === "base" && root.editId === ""
+                options: ThemeCatalog.themes.map(t => ({ value: t.id, label: ThemeCatalog.isOwn(t.id) ? `${t.nome} · seu` : t.nome }))
                 value: root.baseTheme
                 onPicked: v => {
                     root.baseTheme = v
@@ -162,7 +218,7 @@ Item {
                 }
             }
             Dropdown {
-                visible: root.mode === "base"
+                visible: root.mode === "base" && root.editId === ""
                 options: ThemeCatalog.get(root.baseTheme) ? Palettes.flavors(ThemeCatalog.get(root.baseTheme)).map(f => ({ value: f.id, label: f.rotulo })) : []
                 value: root.baseFlavor
                 onPicked: v => {
@@ -171,6 +227,7 @@ Item {
                 }
             }
             Field {
+                id: nameField
                 width: 200
                 placeholder: "Nome"
                 value: root.model.nome
@@ -354,9 +411,27 @@ Item {
             font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 2
         }
+        // Two clicks: the first arms it for 3 s
+        Button {
+            visible: root.editId !== ""
+            text: root.armed ? "Confirmar?" : "Excluir"
+            danger: root.armed
+            destructive: true
+            enabled: !root.saving
+            opacity: enabled ? 1 : 0.5
+            onClicked: {
+                if (!root.armed) {
+                    root.armed = true
+                    disarm.restart()
+                    return
+                }
+                root.armed = false
+                root.remove()
+            }
+        }
         Button { text: "Cancelar"; onClicked: root.closed() }
-        Button { text: "Salvar"; onClicked: root.save(false) }
-        Button { text: "Salvar e aplicar"; primary: true; onClicked: root.save(true) }
+        Button { text: "Salvar"; enabled: !root.saving; opacity: enabled ? 1 : 0.5; onClicked: root.save(false) }
+        Button { text: "Salvar e aplicar"; primary: true; enabled: !root.saving; opacity: enabled ? 1 : 0.5; onClicked: root.save(true) }
     }
 
     // ── The color picker, over everything; a click outside closes it ──
@@ -380,11 +455,5 @@ Item {
         }
         onMoved: h => root.setColor(path, h)
         onDone: visible = false
-    }
-    Keys.onEscapePressed: event => {
-        if (picker.visible) {
-            picker.visible = false
-            event.accepted = true
-        }
     }
 }

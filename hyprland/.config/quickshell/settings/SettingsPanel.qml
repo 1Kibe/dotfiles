@@ -27,6 +27,7 @@ Item {
     required property string monitorName
 
     readonly property bool open: ShellState.isOpen("settings", monitorName)
+
     property string page: "tema"
     readonly property bool overCapture: false
 
@@ -109,6 +110,12 @@ Item {
     }
 
     onOpenChanged: {
+        // However it closes (another panel, the IPC), the theme editor goes
+        // with it: never open by itself the next time
+        if (!open) {
+            ShellState.themeEditing = false
+            ShellState.themeEditId = ""
+        }
         if (open) {
             if (!visible) {
                 timeline.reset()
@@ -198,6 +205,9 @@ Item {
             height: root.roomHeight
             focus: true
             Keys.onEscapePressed: {
+                // (the editor's color picker first, then the editor, then the panel)
+                if (editorLoader.item && editorLoader.item.handleEscape())
+                    return
                 if (ShellState.themeEditing)
                     ShellState.themeEditing = false
                 else
