@@ -146,17 +146,30 @@ Singleton {
     }
 
     // Escolher arquivo…: the system's file chooser (hypr-escolher-imagem,
-    // the portal), only images; cancelled, nothing happens
+    // the portal), only images; cancelled, nothing happens. The settings,
+    // a layer over the windows, would cover the chooser: they close while it
+    // is open (their usual closing) and come back on this page when it
+    // answers, unless something else was opened meanwhile
     property bool picking: false
     function pickFile() {
         if (busy || picking)
             return
         picking = true
         message = ""
+        const monitor = ShellState.openOn
+        const wasOpen = ShellState.openPanel === "settings" && monitor !== ""
+        if (wasOpen)
+            ShellState.close()
         const token = "dotfiles" + Math.floor(Math.random() * 1e9)
         run(["hypr-escolher-imagem", token], (code, out) => {
             root.picking = false
             const path = root.localPath(out.trim())
+            if (wasOpen && ShellState.openPanel === "" && !LockState.locked && !LockState.wanted) {
+                ShellState.settingsPage = ""
+                ShellState.settingsPage = "papel"
+                ShellState.openPanel = "settings"
+                ShellState.openOn = monitor
+            }
             if (path !== "")
                 root.importFile(path)
         })

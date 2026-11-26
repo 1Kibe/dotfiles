@@ -13,6 +13,15 @@ hl.window_rule({
   size = { "monitor_w * 0.55", "monitor_h * 0.75" },
   center = true,
 })
+-- The system's file chooser (the portal's, for any app: the wallpaper's
+-- Escolher arquivo… among them): floating in the middle, not the whole screen
+hl.window_rule({
+  name = "float-file-chooser",
+  match = { class = "^(xdg-desktop-portal-gtk)$" },
+  float = true,
+  size = { "monitor_w * 0.6", "monitor_h * 0.7" },
+  center = true,
+})
 hl.window_rule({
   name = "float-qalculate",
   match = { class = "^(qalculate-gtk)$" },
