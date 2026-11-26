@@ -91,10 +91,12 @@ Singleton {
         if (p === null || !SettingsStore.ready)
             return false
         const w = wanted(p)
-        return !Profile.sameValues(w, SettingsStore.values, keys.concat(["wallpaper"]))
+        return !Profile.sameValues(w, SettingsStore.values, keys) || !samePath(w.wallpaper, SettingsStore.values.wallpaper)
     }
     readonly property bool locked: LockState.locked || LockState.wanted
-    readonly property bool busy: worker.running || reader.running
+    // (a write counts from the call: Process.running turns true later)
+    property bool writing: false
+    readonly property bool busy: writing || worker.running || reader.running
 
     // ── The scripts ──
     // The chain's walk: $1 start, $2 make missing folders (1 or 0), $3 $4 $5
@@ -112,11 +114,16 @@ Singleton {
         + '  cd -P -- "$x" || exit 1\n'
         + 'done\n'
         + 'chmod 700 . || exit 1\n'
+        // the decoders' limits: memory, CPU time, the size of what they
+        // write, no core file
+        + 'lim="--as=2000000000 --cpu=60 --fsize=64000000 --core=0"\n'
         // a file of the user's, regular, not a link, at most $2 bytes
         + 'okfile() { [ -f "$1" ] && [ ! -L "$1" ] && [ -O "$1" ] && [ "$(stat -c %s -- "$1")" -le "$2" ]; }\n'
+        // a file's real type (libmagic under a time limit)
+        + 'mime() { timeout -k 2 5 file -b --mime-type -- "$1" 2>/dev/null; }\n'
+        // a picture of the profile's: a file as above, and a real PNG
+        + 'okpng() { okfile "$1" "$2" && [ "$(mime "$1")" = image/png ]; }\n'
         // a profile's folder: its id by the pattern, a real folder of the user's
-        // a picture of the profile's: that, and a real PNG
-        + 'okpng() { okfile "$1" "$2" && [ "$(file -b --mime-type -- "$1")" = image/png ]; }\n'
         + 'okdir() { case "$1" in ""|*[!a-z0-9-]*|-*) return 1 ;; esac; [ "${#1}" -le 32 ] && [ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ]; }\n'
         // A picture re-encoded: $1 source, $2 the folder, $3 the longest side.
         // papel.png and miniatura.png in place, or nothing; prints "reduzido"
@@ -127,23 +134,23 @@ Singleton {
         + '  [ "$(stat -c %s -- "$src")" -le 268435456 ] || return 1\n'
         // the real type fixes the decoder and the input format: a disguised
         // file is never read as anything else (a playlist, another file)
-        + '  case "$(file -b --mime-type -- "$src")" in image/png) dec=png ;; image/jpeg) dec=mjpeg ;; image/webp) dec=webp ;; *) return 1 ;; esac\n'
-        + '  dims=$(timeout 10 prlimit --as=1000000000 -- ffprobe -v error -protocol_whitelist file -c:v "$dec" -f image2 -select_streams v:0 \\\n'
+        + '  case "$(mime "$src")" in image/png) dec=png ;; image/jpeg) dec=mjpeg ;; image/webp) dec=webp ;; *) return 1 ;; esac\n'
+        + '  dims=$(timeout -k 2 10 prlimit $lim -- ffprobe -v error -protocol_whitelist file -c:v "$dec" -f image2 -pattern_type none -select_streams v:0 \\\n'
         + '    -show_entries stream=width,height -of csv=p=0 "file:$src" </dev/null 2>/dev/null) || return 1\n'
         + '  w=${dims%%,*}; h=${dims#*,}; h=${h%%,*}\n'
         + '  case "$w$h" in ""|*[!0-9]*) return 1 ;; esac\n'
         + '  [ "$w" -gt 0 ] && [ "$h" -gt 0 ] && [ $((w * h)) -le 40000000 ] || return 1\n'
         + '  t=$(mktemp -- "$d/.papel.XXXXXX") || return 1\n'
         + '  for try in 1 2 3; do\n'
-        + '    timeout 60 prlimit --as=2000000000 -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
-        + '      -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v "$dec" -f image2 -i "file:$src" -frames:v 1 -map_metadata -1 \\\n'
+        + '    timeout -k 2 60 prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
+        + '      -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v "$dec" -f image2 -pattern_type none -i "file:$src" -frames:v 1 -map_metadata -1 \\\n'
         + '      -vf "scale=\'if(gte(iw,ih),min($side,iw),-2)\':\'if(gte(iw,ih),-2,min($side,ih))\'" -f image2 -update 1 -c:v png "file:$t" </dev/null \\\n'
         + '      || { rm -f -- "$t"; return 1; }\n'
         + '    [ "$(stat -c %s -- "$t")" -le 31457280 ] && break\n'
         + '    [ "$try" = 3 ] && { rm -f -- "$t"; return 1; }\n'
         + '    side=$((side * 7 / 10)); reduced=1\n'
         + '  done\n'
-        + '  [ "$(file -b --mime-type -- "$t")" = image/png ] || { rm -f -- "$t"; return 1; }\n'
+        + '  [ "$(mime "$t")" = image/png ] || { rm -f -- "$t"; return 1; }\n'
         + '  chmod 600 -- "$t" && mv -fT -- "$t" "$d/papel.png" || { rm -f -- "$t"; return 1; }\n'
         + '  [ -n "$reduced" ] && echo reduzido\n'
         + '  mini "$d"\n'
@@ -152,8 +159,8 @@ Singleton {
         // miniatura.png from papel.png (640 px, at most 1 MB), or none
         + 'mini() {\n'
         + '  m=$(mktemp -- "$1/.mini.XXXXXX") || return 0\n'
-        + '  if [ "$(file -b --mime-type -- "$1/papel.png")" = image/png ] && timeout 30 prlimit --as=1000000000 -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
-        + '       -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v png -f image2 -i "file:$1/papel.png" -frames:v 1 -map_metadata -1 \\\n'
+        + '  if [ "$(mime "$1/papel.png")" = image/png ] && timeout -k 2 30 prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
+        + '       -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v png -f image2 -pattern_type none -i "file:$1/papel.png" -frames:v 1 -map_metadata -1 \\\n'
         + '       -vf "scale=\'if(gte(iw,ih),min(640,iw),-2)\':\'if(gte(iw,ih),-2,min(640,ih))\'" -f image2 -update 1 -c:v png "file:$m" </dev/null \\\n'
         + '     && [ "$(stat -c %s -- "$m")" -le 1048576 ]; then chmod 600 -- "$m" && mv -fT -- "$m" "$1/miniatura.png"; else rm -f -- "$m" "$1/miniatura.png"; fi\n'
         + '}\n'
@@ -166,17 +173,21 @@ Singleton {
         + '}\n'
         // leftovers of an interrupted write (older than 5 minutes)
         + 'find . -mindepth 2 -maxdepth 2 -type f \\( -name ".papel.*" -o -name ".mini.*" -o -name ".perfil.*" -o -name ".copia.*" \\) -mmin +5 -delete 2>/dev/null\n'
-    // The list: the folders by the pattern (at most 300 looked at, never one
-    // reached through a link), each perfil.json as base64 with the pictures'
-    // marks; a missing miniature is made again from the picture
+    // The list: the folders by the pattern (the first 300 by name looked
+    // at, never one reached through a link), each perfil.json as base64 with
+    // the pictures' marks; a missing miniature is made again from the
+    // picture, at most 3 a reading (the rest on the next ones)
     readonly property string listScript: chainScript
-        + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | head -z -n 300 | while IFS= read -r -d "" p; do\n'
+        + 'made=0\n'
+        + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 300 | while IFS= read -r -d "" p; do\n'
         + '  id=${p#./}\n'
         + '  okdir "$id" || continue\n'
         + '  okfile "$id/perfil.json" 65536 || continue\n'
         + '  pa=0; okpng "$id/papel.png" 31457280 && pa=1\n'
         + '  mi=0; [ "$pa" = 1 ] && okpng "$id/miniatura.png" 1048576 && mi=1\n'
-        + '  if [ "$pa" = 1 ] && [ "$mi" = 0 ]; then [ -L "$id/miniatura.png" ] && rm -f -- "$id/miniatura.png"; mini "$id"; okpng "$id/miniatura.png" 1048576 && mi=1; fi\n'
+        + '  if [ "$pa" = 1 ] && [ "$mi" = 0 ] && [ "$made" -lt 3 ]; then\n'
+        + '    made=$((made + 1)); [ -L "$id/miniatura.png" ] && rm -f -- "$id/miniatura.png"; mini "$id"; okpng "$id/miniatura.png" 1048576 && mi=1\n'
+        + '  fi\n'
         + '  printf "%s %s %s " "$id" "$pa" "$mi"; head -c 65536 -- "$id/perfil.json" | base64 -w0; echo\n'
         + 'done\n'
     // New ($a the id, $b the picture to re-encode or "", $c the longest
@@ -268,6 +279,12 @@ Singleton {
         const t = ThemeCatalog.get(theme)
         return t !== null && Object.prototype.hasOwnProperty.call(t.sabores, flavor)
     }
+    // A reading that failed (the chain, the time): what was read stays, the
+    // order is not touched
+    function readFailed() {
+        ready = true
+        failed("Não deu para ler os perfis.")
+    }
     function parse(out) {
         const got = {}
         let n = 0
@@ -298,7 +315,10 @@ Singleton {
         }
         stderr: StdioCollector {}
         onExited: code => {
-            root.parse(code === 0 || code === 3 ? readerOut.text : "")
+            if (code === 0 || code === 3)
+                root.parse(readerOut.text)
+            else
+                root.readFailed()
             if (root.readAgain) {
                 root.readAgain = false
                 root.reload()
@@ -333,6 +353,7 @@ Singleton {
         worker.command = ["timeout", "180", "sh", "-c", script, "sh", chain.start, what === "create" || what === "duplicate" ? "1" : "0"]
                          .concat(args).concat(chain.comps)
         worker.stdinEnabled = input !== ""
+        writing = true
         worker.running = true
     }
     Process {
@@ -352,12 +373,15 @@ Singleton {
             const ok = code === 0 && out.split("\n").includes("ok")
             const what = root.pendingWhat, id = root.pendingId
             root.pendingInput = ""
+            root.writing = false
             if (!ok)
                 root.failed("Não deu para gravar o perfil: nada mudou.")
             else if (out.includes("sempapel"))
                 root.failed("A imagem não serviu (tipo, tamanho ou arquivo): o perfil ficou sem papel próprio.")
             else if (out.includes("reduzido"))
                 root.failed("A imagem era grande demais: foi reduzida para caber.")
+            if (ok && what === "remove")
+                root.removed(id)
             root.reload()
             if (ok)
                 root.done(what, id)
@@ -393,10 +417,10 @@ Singleton {
         if (!canWrite() || p === null || p.builtin)
             return false
         const valores = pick(SettingsStore.values)
-        const wall = SettingsStore.values.wallpaper
-        const pic = wall === papelPath(p.id) ? "" : currentPicture()
-        const papel = wall === papelPath(p.id) ? p.papel : pic !== ""
-        runWorker("write", p.id, writeScript, [p.id, wall === papelPath(p.id) ? "" : (pic !== "" ? pic : "-"), String(maxSide)],
+        const kept = samePath(SettingsStore.values.wallpaper, papelPath(p.id))
+        const pic = kept ? "" : currentPicture()
+        const papel = kept ? p.papel : pic !== ""
+        runWorker("write", p.id, writeScript, [p.id, kept ? "" : (pic !== "" ? pic : "-"), String(maxSide)],
                   Profile.serialize({ nome: p.nome, valores: valores, papel: papel ? Profile.PAPEL : null }))
         return true
     }
@@ -419,18 +443,26 @@ Singleton {
                   Profile.serialize({ nome: nome, valores: p.valores, papel: p.papel ? Profile.PAPEL : null }))
         return true
     }
-    // Removing one: today's wallpaper first goes back to the repo's when it
-    // is this profile's picture; the active one becomes the Padrão
+    // Removing one: once its folder is gone, today's wallpaper goes back to
+    // the repo's when it was this profile's picture, and the active one
+    // becomes the Padrão (removed)
     function remove(id) {
         const p = get(id)
         if (!canWrite() || p === null || p.builtin)
             return false
-        if (SettingsStore.values.wallpaper === papelPath(id))
-            SettingsStore.setMany({ wallpaper: SettingsStore.defaults.wallpaper })
-        if (SettingsStore.values.profileActive === id)
-            SettingsStore.setAuto("profileActive", "")
         runWorker("remove", id, removeScript, [id, "", ""], "")
         return true
+    }
+    function samePath(a, b) {
+        const x = Validate.expandPath(a ?? "", home), y = Validate.expandPath(b ?? "", home)
+        return x !== "" && x.replace(/\/+/g, "/") === y.replace(/\/+/g, "/")
+    }
+    function removed(id) {
+        if (samePath(SettingsStore.values.wallpaper, papelPath(id))
+                && !SettingsStore.setMany({ wallpaper: SettingsStore.defaults.wallpaper }))
+            failed("O papel de parede não voltou ao do repo.")
+        if (SettingsStore.values.profileActive === id)
+            SettingsStore.setAuto("profileActive", "")
     }
     // A new place in the order (0: right after the Padrão)
     function move(id, to) {
@@ -444,7 +476,7 @@ Singleton {
     // the active one
     function apply(id) {
         const p = get(id)
-        if (p === null || !SettingsStore.ready || locked)
+        if (p === null || !SettingsStore.ready || locked || busy)
             return false
         const m = wanted(p)
         // (only the profile's keys and the wallpaper: setMany refuses any other)
