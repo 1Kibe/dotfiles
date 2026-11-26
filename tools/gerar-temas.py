@@ -233,6 +233,23 @@ THEMES = [
             },
         },
     },
+    {
+        "id": "cyberdream", "nome": "Cyberdream", "licenca": "Cyberdream (MIT)",
+        "accent": "#5ea1ff",   # blue
+        "sabores": {
+            # bg, bg_alt, bg_highlight; fg and its one grey (the second
+            # text tone between them)
+            "dark": {
+                "rotulo": "Default", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#16181a", "bg1": "#1e2124", "bg2": "#3c4048",
+                "fg": "#ffffff", "fg2": ("mix", "#ffffff", "#7b8496", 0.3), "fg4": "#7b8496", "gray": "#7b8496",
+            },
+        },
+        "nomeadas": {"yellow": "#f1ff5e", "orange": "#ffbd5e", "red": "#ff6e5e", "green": "#5eff6c",
+                     "aqua": "#5ef1ff", "blue": "#5ea1ff", "purple": "#bd5eff"},
+        # The project's own Kitty theme (extras/kitty/cyberdream.conf)
+        "ansi": ["#16181a", "#ff6e5e", "#5eff6c", "#f1ff5e", "#5ea1ff", "#bd5eff", "#5ef1ff", "#ffffff"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

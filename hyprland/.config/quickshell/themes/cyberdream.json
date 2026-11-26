@@ -1,0 +1,23 @@
+{
+  "versao": 1,
+  "id": "cyberdream",
+  "nome": "Cyberdream",
+  "licenca": "Cyberdream (MIT)",
+  "destaquePadrao": { "accent": "#5ea1ff", "light": "#a6cbff" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Default",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#0c0d0e", "bgHard": "#111214", "bg": "#16181a", "bg1": "#1e2124", "bg2": "#3c4048",
+        "fg": "#ffffff", "fg2": "#d7dae0", "fg4": "#7b8496", "text": "#ffffff", "gray": "#7b8496"
+      },
+      "nomeadas": {
+        "yellow": "#f1ff5e", "orange": "#ffbd5e", "red": "#ff6e5e", "green": "#5eff6c", "aqua": "#5ef1ff",
+        "blue": "#5ea1ff", "purple": "#bd5eff"
+      },
+      "ansi": ["#16181a", "#ff6e5e", "#5eff6c", "#f1ff5e", "#5ea1ff", "#bd5eff", "#5ef1ff", "#ffffff"]
+    }
+  }
+}
