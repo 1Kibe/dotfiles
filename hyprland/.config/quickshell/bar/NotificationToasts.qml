@@ -602,7 +602,12 @@ Item {
     // Something of it on the screen (the overlay follows it)
     readonly property bool drawn: pileBottom > 0
     onDrawnChanged: syncOverlay()
-    readonly property real stripEdge: visible && !hidden && pileBottom > 0
+    // Hidden only for a capture (Print, a recording), the pile still holds
+    // its place: the strip keeps following its edge (it would jump up over
+    // the card in the picture, and back down after)
+    readonly property bool hiddenForCapture: CaptureState.open || CaptureState.recording || CaptureState.printing
+    readonly property bool outOfPlace: !focusedHere || NotificationState.locked || (frame !== null && frame.out > 0)
+    readonly property real stripEdge: visible && !outOfPlace && pileBottom > 0
                                       ? Math.round(mirrored ? screenHeight - pileBottom : pileBottom) : 0
     onStripEdgeChanged: ShellState.setRightPanelEdge(monitorName, stripEdge, edgeOwner)
     // A monitor gone with the pile showing: nothing of it stays
