@@ -52,7 +52,9 @@ def contrast(a, b):
 # Per theme: id, name, license entry, the default accent (a palette color; or
 # accent and light both given) and its flavors (dark, darkHard, darkSoft)
 # with the roles, the 7 named colors and the 8 dark terminal tones (the
-# project's own terminal theme). None in bgHard: derived from bg.
+# project's own terminal theme). None in bgHard: derived from bg. A role the
+# palette has no color for may be written ("mix", a, b, t): a toward b by t,
+# both colors of the palette.
 
 THEMES = [
     {
@@ -112,13 +114,38 @@ THEMES = [
             },
         },
     },
+    {
+        "id": "nord", "nome": "Nord", "licenca": "Nord (MIT)",
+        "accent": "#88c0d0",   # nord8
+        "sabores": {
+            # One palette (Polar Night, Snow Storm, Frost, Aurora are its
+            # groups, not flavors): nord0-2; nord4, nord5; the dim text
+            # between nord3 and nord4 (nord3 alone reads 1.9 on nord0)
+            "dark": {
+                "rotulo": "Escuro", "syntaxTheme": "Nord",
+                "bgHard": None, "bg": "#2e3440", "bg1": "#3b4252", "bg2": "#434c5e",
+                "fg": "#d8dee9", "fg2": "#e5e9f0", "fg4": ("mix", "#4c566a", "#d8dee9", 0.5),
+                "gray": ("mix", "#4c566a", "#d8dee9", 0.4),
+            },
+        },
+        "nomeadas": {"yellow": "#ebcb8b", "orange": "#d08770", "red": "#bf616a", "green": "#a3be8c",
+                     "aqua": "#8fbcbb", "blue": "#81a1c1", "purple": "#b48ead"},
+        # Nord's terminal port (nordtheme/alacritty), normal colors
+        "ansi": ["#3b4252", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#88c0d0", "#e5e9f0"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
 
 
+def value(v):
+    if isinstance(v, tuple) and v[0] == "mix":
+        return mix(v[1], v[2], v[3])
+    return v
+
+
 def flavor(theme, fid):
-    f = theme["sabores"][fid]
+    f = {k: value(v) for k, v in theme["sabores"][fid].items()}
     named = dict(theme.get("nomeadas", {}), **f.get("nomeadas", {}))
     ansi = f.get("ansi", theme.get("ansi"))
     bg_hard = f["bgHard"] if f["bgHard"] else darken(f["bg"], 0.25)
