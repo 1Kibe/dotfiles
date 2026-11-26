@@ -333,6 +333,15 @@ ShellRoot {
             const m = Hyprland.focusedMonitor
             return MinimizeState.restoreLast(m ? m.name : "") ? "ok" : "nada"
         }
+        // The strips' last moves (numbers only: time ms, top, target, the
+        // panel edge it follows, following 1/0) and the panel edges now by
+        // kind; never a window, a title or a class
+        function stats(): string {
+            const edges = {}
+            for (const k in ShellState.rightPanelEdges)
+                edges[k.endsWith("|notificacoes") ? "notificacoes" : "painel"] = ShellState.rightPanelEdges[k]
+            return JSON.stringify({ edges: edges, trace: MinimizeState.stripTrace })
+        }
     }
 
     // Super+X and Ctrl+Alt+Del: the control center on its power section

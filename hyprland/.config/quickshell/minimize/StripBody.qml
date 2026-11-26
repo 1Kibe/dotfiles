@@ -302,6 +302,15 @@ Item {
         onTriggered: root.edgeMoving = false
     }
     property real pieceTop: wantTop
+    // Its last moves for the stats (time, top, target, edge, following)
+    onPieceTopChanged: {
+        const t = MinimizeState.stripTrace
+        const list = t[screenName] || []
+        list.push([Date.now() % 100000, Math.round(pieceTop * 10) / 10, Math.round(wantTop * 10) / 10, Math.round(topEdge), edgeMoving ? 1 : 0])
+        if (list.length > 300)
+            list.splice(0, list.length - 300)
+        t[screenName] = list
+    }
     Behavior on pieceTop {
         enabled: !Theme.reduceMotion && !root.edgeMoving
         NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
