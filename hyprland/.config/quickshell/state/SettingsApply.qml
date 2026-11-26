@@ -11,6 +11,7 @@ import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
 import "../settings/rofi.js" as Rofi
+import "../settings/mpv.js" as Mpv
 import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
 import "../settings/gestures.js" as Gestures
@@ -154,6 +155,7 @@ Singleton {
             applyBtop()
             applyLazygit()
             applyRofi(colors)
+            applyMpv(colors)
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
@@ -274,6 +276,7 @@ Singleton {
             writeLazygit()
             writeKitty()
             writeRofi()
+            writeMpv()
             applyCursor()
             applyGtk(themeColors(SettingsStore.values))
         }
@@ -542,6 +545,60 @@ Singleton {
         onLoadFailed: {
             root.rofiLoaded = true
             root.writeRofi()
+        }
+    }
+
+    // ── mpv's colors (settings/mpv.js) ──
+    // ~/.config/mpv/cores.conf, included at the end of mpv.conf: written like
+    // rofi's. mpv reads it when a video opens
+    readonly property string mpvDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/mpv`
+    property string mpvWanted: ""
+    property bool mpvLoaded: false
+    property bool mpvAgain: false
+    function applyMpv(colors) {
+        try {
+            mpvWanted = Mpv.mpvConf(Object.assign({}, colors.roles, colors.named))
+        } catch (e) {
+            return
+        }
+        writeMpv()
+    }
+    function writeMpv() {
+        if (!mpvLoaded || locked || mpvWanted === "" || mpvView.text() === mpvWanted)
+            return
+        if (mpvCheck.running) {
+            mpvAgain = true
+            return
+        }
+        mpvCheck.running = true
+    }
+    Process {
+        id: mpvCheck
+        command: ["sh", "-c", root.configDirScript, "sh", root.mpvDir, Quickshell.shellPath("."), "common/.config/mpv", ""]
+        stdout: StdioCollector {
+            id: mpvCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && !root.locked && mpvCheckOut.text.trim() === "ok" && mpvView.text() !== root.mpvWanted)
+                mpvView.setText(root.mpvWanted)
+            if (root.mpvAgain) {
+                root.mpvAgain = false
+                root.writeMpv()
+            }
+        }
+    }
+    FileView {
+        id: mpvView
+        path: root.mpvDir + "/cores.conf"
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.mpvLoaded = true
+            root.writeMpv()
+        }
+        onLoadFailed: {
+            root.mpvLoaded = true
+            root.writeMpv()
         }
     }
 
