@@ -34,7 +34,7 @@ Item {
     // Hidden at once: another monitor in focus, the capture, the lock, or the
     // bar sliding away (a full screen): the cards wait
     readonly property bool hidden: !focusedHere || CaptureState.open || CaptureState.recording || CaptureState.printing
-                                   || NotificationState.locked || squeezed
+                                   || NotificationState.locked
                                    || (frame !== null && frame.out > 0)
                                    || ShellState.openPanel === "notifications"
     readonly property bool mirrored: Theme.barAtBottom
@@ -136,6 +136,8 @@ Item {
         if (!fitting)
             return { show: [], waiting: 0, noMore: false }
         const top = detached ? wantTop : pileTop
+        // A body too narrow for a card: none fits
+        const narrow = detached && boxWidth - 2 * pad < minCardWidth
         const pass = reserve => {
             let y = top
             const show = []
@@ -151,7 +153,7 @@ Item {
                     show.push(true)
                     continue
                 }
-                if (waiting === 0 && y + slot.rowHeight <= usefulBottom - reserve) {
+                if (!narrow && waiting === 0 && y + slot.rowHeight <= usefulBottom - reserve) {
                     y += slot.rowHeight
                     show.push(true)
                 } else {
@@ -171,11 +173,10 @@ Item {
         return shown(second) === 0 && shown(first) > 0 ? Object.assign(first, { noMore: true }) : Object.assign(second, { noMore: false })
     }
     readonly property int waiting: fit.waiting
-    // Not one card fits: the pile is closed (as hidden)
-    // (not while a card on the screen slides out: the pile stays for it)
+    // Not one card fits: every card slides away and its room closes (the
+    // pile closes as a drawer); they come back as there is room
     readonly property int minCardWidth: Theme.toastWidth - 2 * pad
-    readonly property bool squeezed: detached && liveN > 0 && cards.count === liveN
-                                     && (waiting >= liveN || boxWidth - 2 * pad < minCardWidth)
+    readonly property bool squeezed: detached && liveN > 0 && waiting >= liveN
     // Under the panel's edge as it moves, or on the bar's
     readonly property real pileTop: (detached ? othersEdge : junction) + Theme.toastGap * gapStep
     // (set when the first card is in place)
@@ -211,7 +212,7 @@ Item {
             ShellState.setOverlay(overlayKey, false)
         overlayKey = key
         if (key !== "")
-            ShellState.setOverlay(key, visible && !hidden)
+            ShellState.setOverlay(key, visible && !hidden && pileBottom > 0)
     }
 
     // ── The bar's end: stretched before the first card, back after the last ──
@@ -362,14 +363,15 @@ Item {
                     // Seen at least once (a card that only waited leaves at once)
                     property bool everShown: false
                     width: root.width
-                    height: shows ? rowHeight * room : 0
+                    // (a card that stops fitting slides away and its room
+                    // closes; it comes back with the normal way in)
+                    height: rowHeight * room
 
                     ToastCard {
                         id: toast
                         x: (Theme.reduceMotion ? root.boxLeft : slot.leftX) + root.pad
                         y: root.pad
                         width: root.boxWidth - 2 * root.pad
-                        visible: slot.shows
                         opacity: Theme.reduceMotion ? 1 - slot.out : 1
                         cardId: slot.cardId
                         count: slot.count
@@ -390,15 +392,42 @@ Item {
                     Component.onCompleted: {
                         if (!leaving && shows)
                             enter()
+                        else if (!shows)
+                            room = 0
                     }
-                    // A waiting card comes in when there is room for it
+                    // No room for it any more: it slides away and its room
+                    // closes, as when it leaves (but it stays, its time
+                    // stopped); room again: it comes in
                     onShowsChanged: {
-                        if (shows && !leaving && !everShown)
+                        if (leaving)
+                            return
+                        if (shows) {
+                            tuck.stop()
                             enter()
+                        } else if (everShown) {
+                            comeIn.stop()
+                            tuck.restart()
+                        } else {
+                            room = 0
+                        }
+                    }
+                    SequentialAnimation {
+                        id: tuck
+                        NumberAnimation {
+                            target: slot; property: "out"; to: 1
+                            duration: Theme.dur(Math.round(Theme.motionEdgeClose * (1 - Theme.edgePanelFrom)))
+                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveAccel
+                        }
+                        NumberAnimation {
+                            target: slot; property: "room"; to: 0
+                            duration: Theme.dur(Theme.motionEdgeClose)
+                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                        }
                     }
                     onLeavingChanged: {
                         if (leaving) {
                             comeIn.stop()
+                            tuck.stop()
                             root.countLive()
                             if (everShown) {
                                 goOut.restart()
@@ -560,7 +589,15 @@ Item {
     // The minimized windows' strip slides out of the pile's way
     // (down to the rooms still open, a card's that left included, so the
     // strip below moves with them instead of jumping)
-    readonly property real pileBottom: cards.count > 0 && column.height > 0.5 ? Math.max(outline.lowest, pileTop + column.height) : 0
+    // The room from the panel above closes with the last few px of the
+    // pile, so the edge ends on the panel's own (no step when it goes)
+    readonly property real pileBottom: cards.count > 0 && column.height > 0.5
+        ? Math.max(outline.lowest, (detached ? othersEdge : junction) + column.height
+                                   + Theme.toastGap * gapStep * Math.min(1, column.height / Theme.toastGap))
+        : 0
+    // Something of it on the screen (the overlay follows it)
+    readonly property bool drawn: pileBottom > 0
+    onDrawnChanged: syncOverlay()
     readonly property real stripEdge: visible && !hidden && pileBottom > 0
                                       ? Math.round(mirrored ? screenHeight - pileBottom : pileBottom) : 0
     onStripEdgeChanged: ShellState.setRightPanelEdge(monitorName, stripEdge, edgeOwner)
