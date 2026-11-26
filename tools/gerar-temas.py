@@ -81,6 +81,37 @@ THEMES = [
         # The terminal's dark tones of today (kitty.conf)
         "ansi": ["#1d2021", "#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a", "#a89984"],
     },
+    {
+        "id": "catppuccin", "nome": "Catppuccin", "licenca": "Catppuccin (MIT)",
+        "accent": "#c6a0f6",   # Macchiato mauve
+        "sabores": {
+            # base, mantle, surface0, surface1; text, subtext1, subtext0, overlay1
+            "dark": {
+                "rotulo": "Macchiato", "syntaxTheme": "Catppuccin Macchiato",
+                "bgHard": "#1e2030", "bg": "#24273a", "bg1": "#363a4f", "bg2": "#494d64",
+                "fg": "#cad3f5", "fg2": "#b8c0e0", "fg4": "#a5adcb", "gray": "#8087a2",
+                "nomeadas": {"yellow": "#eed49f", "orange": "#f5a97f", "red": "#ed8796", "green": "#a6da95",
+                             "aqua": "#8bd5ca", "blue": "#8aadf4", "purple": "#c6a0f6"},
+                "ansi": ["#494d64", "#ed8796", "#a6da95", "#eed49f", "#8aadf4", "#f5bde6", "#8bd5ca", "#a5adcb"],
+            },
+            "darkHard": {
+                "rotulo": "Mocha", "syntaxTheme": "Catppuccin Mocha",
+                "bgHard": "#181825", "bg": "#1e1e2e", "bg1": "#313244", "bg2": "#45475a",
+                "fg": "#cdd6f4", "fg2": "#bac2de", "fg4": "#a6adc8", "gray": "#7f849c",
+                "nomeadas": {"yellow": "#f9e2af", "orange": "#fab387", "red": "#f38ba8", "green": "#a6e3a1",
+                             "aqua": "#94e2d5", "blue": "#89b4fa", "purple": "#cba6f7"},
+                "ansi": ["#45475a", "#f38ba8", "#a6e3a1", "#f9e2af", "#89b4fa", "#f5c2e7", "#94e2d5", "#a6adc8"],
+            },
+            "darkSoft": {
+                "rotulo": "Frappé", "syntaxTheme": "Catppuccin Frappe",
+                "bgHard": "#292c3c", "bg": "#303446", "bg1": "#414559", "bg2": "#51576d",
+                "fg": "#c6d0f5", "fg2": "#b5bfe2", "fg4": "#a5adce", "gray": "#838ba7",
+                "nomeadas": {"yellow": "#e5c890", "orange": "#ef9f76", "red": "#e78284", "green": "#a6d189",
+                             "aqua": "#81c8be", "blue": "#8caaee", "purple": "#ca9ee6"},
+                "ansi": ["#51576d", "#e78284", "#a6d189", "#e5c890", "#8caaee", "#f4b8e4", "#81c8be", "#a5adce"],
+            },
+        },
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
