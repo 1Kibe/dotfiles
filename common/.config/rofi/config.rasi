@@ -5,3 +5,6 @@ configuration {
 }
 
 @theme "/usr/share/rofi/themes/gruvbox-dark.rasi"
+// The shell's theme over it (written by the shell, out of git; a missing
+// file is skipped)
+@import "~/.config/rofi/cores.rasi"

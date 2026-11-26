@@ -10,6 +10,7 @@ import "../settings/serialize.js" as Serialize
 import "../settings/schema.js" as Schema
 import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
+import "../settings/rofi.js" as Rofi
 import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
 import "../settings/gestures.js" as Gestures
@@ -145,13 +146,14 @@ Singleton {
         if (colors !== null) {
             writeTheme(colors)
             applyGtk(colors)
-            // Kitty's, btop's and lazygit's colors, the accent among them:
-            // only from a theme read (before, they would get the repo's
-            // default and then the chosen one; with no catalog at all the
-            // files stay as they were)
+            // Kitty's, btop's, lazygit's and rofi's colors, the accent
+            // among them: only from a theme read (before, they would get the
+            // repo's default and then the chosen one; with no catalog at all
+            // the files stay as they were)
             applyKitty()
             applyBtop()
             applyLazygit()
+            applyRofi(colors)
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
@@ -271,6 +273,7 @@ Singleton {
             writeBtop()
             writeLazygit()
             writeKitty()
+            writeRofi()
             applyCursor()
             applyGtk(themeColors(SettingsStore.values))
         }
@@ -483,6 +486,62 @@ Singleton {
                 root.gitAgain = false
                 root.applyGit()
             }
+        }
+    }
+
+    // ── rofi's colors (settings/rofi.js) ──
+    // ~/.config/rofi/cores.rasi, imported at the end of config.rasi: written
+    // like Kitty's cores.conf (only when the text changes, atomic, only into
+    // rofi's own folder after the same check). rofi reads it when it opens
+    readonly property string rofiDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/rofi`
+    property string rofiWanted: ""
+    property bool rofiLoaded: false
+    property bool rofiAgain: false
+    function applyRofi(colors) {
+        try {
+            rofiWanted = Rofi.rofiRasi(Object.assign({}, colors.roles, colors.named,
+                                                     { ansi1: colors.ansi[1], ansi3: colors.ansi[3] }), colors.escuro)
+        } catch (e) {
+            return
+        }
+        writeRofi()
+    }
+    function writeRofi() {
+        if (!rofiLoaded || locked || rofiWanted === "" || rofiView.text() === rofiWanted)
+            return
+        if (rofiCheck.running) {
+            rofiAgain = true
+            return
+        }
+        rofiCheck.running = true
+    }
+    Process {
+        id: rofiCheck
+        command: ["sh", "-c", root.configDirScript, "sh", root.rofiDir, Quickshell.shellPath("."), "common/.config/rofi", ""]
+        stdout: StdioCollector {
+            id: rofiCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && !root.locked && rofiCheckOut.text.trim() === "ok" && rofiView.text() !== root.rofiWanted)
+                rofiView.setText(root.rofiWanted)
+            if (root.rofiAgain) {
+                root.rofiAgain = false
+                root.writeRofi()
+            }
+        }
+    }
+    FileView {
+        id: rofiView
+        path: root.rofiDir + "/cores.rasi"
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.rofiLoaded = true
+            root.writeRofi()
+        }
+        onLoadFailed: {
+            root.rofiLoaded = true
+            root.writeRofi()
         }
     }
 
