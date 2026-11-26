@@ -1,10 +1,40 @@
 -- swayimg: default image viewer of the Hyprland session (install.sh:
--- set_default_apps). Colors from the shell (quickshell/theme/Theme.qml),
--- as ARGB: bgHard 1d2021, bg 282828, bg1 3c3836, bg2 504945, fg ebdbb2,
--- accentLight bfb8a3, yellow fabd2f.
--- Every key is set here: the built-in ones are reset first.
+-- set_default_apps). Every key is set here: the built-in ones are reset first.
 
 local font = "Agave Nerd Font Propo"
+
+-- ── Colors ──
+-- The shell's Gruvbox (quickshell/theme/Theme.qml), as RGB: bgHard, bg, bg1,
+-- bg2, fg, accentLight and yellow. The shell writes its theme's into
+-- cores.txt (out of git), read here as data only: a line counts only when
+-- it is `key = "#rrggbb",` with a key of this table; anything else (and a
+-- missing file) keeps these
+local c = {
+  window = 0x1d2021, panel = 0x282828, check_a = 0x3c3836, check_b = 0x504945,
+  text = 0xebdbb2, border = 0xbfb8a3, mark = 0xfabd2f,
+}
+do
+  local dir = os.getenv("XDG_CONFIG_HOME") or ((os.getenv("HOME") or "") .. "/.config")
+  local f = io.open(dir .. "/swayimg/cores.txt", "r")
+  if f then
+    local n = 0
+    for line in f:lines() do
+      n = n + 1
+      if n > 32 then
+        break
+      end
+      local key, value = line:match('^%s*([a-z_]+)%s*=%s*"#(%x%x%x%x%x%x)"%s*,?%s*$')
+      if key and c[key] ~= nil then
+        c[key] = tonumber(value, 16)
+      end
+    end
+    f:close()
+  end
+end
+-- An opaque color, or with alpha a (0-255)
+local function argb(rgb, a)
+  return (a or 0xff) * 0x1000000 + rgb
+end
 
 swayimg.decoration = false     -- Hyprland draws no title bars
 swayimg.exif_orientation = true
@@ -21,12 +51,12 @@ swayimg.text.status_timeout = 3
 swayimg.text.font = font
 swayimg.text.size = 18
 swayimg.text.padding = 14
-swayimg.text.color = 0xffebdbb2
-swayimg.text.background = 0xd9282828
+swayimg.text.color = argb(c.text)
+swayimg.text.background = argb(c.panel, 0xd9)
 swayimg.text.shadow = 0x00000000
 
 swayimg.format_conf = {
-  ttf = { color = 0xffebdbb2, background = 0x00000000 },
+  ttf = { color = argb(c.text), background = 0x00000000 },
 }
 
 -- ── Trash with confirmation ──
@@ -81,7 +111,7 @@ viewer.default_position = "center"
 viewer.loop = true
 viewer.preload = 1
 viewer.history = 1
-viewer.mark_color = 0xfffabd2f
+viewer.mark_color = argb(c.mark)
 viewer.text = {
   topleft = {
     "Arquivo:\t{name}",
@@ -95,8 +125,8 @@ viewer.text = {
   topright = { "{list.index} de {list.total}" },
   bottomleft = { "Zoom:\t{scale}" },
 }
-viewer.set_window_background(0xff1d2021)
-viewer.set_image_chessboard(16, 0xff3c3836, 0xff504945)
+viewer.set_window_background(argb(c.window))
+viewer.set_image_chessboard(16, argb(c.check_a), argb(c.check_b))
 
 common_keys(viewer)
 viewer.on_key("Return", function() swayimg.mode = "gallery" end)
@@ -139,7 +169,7 @@ slideshow.bind_reset()
 slideshow.timeout = 5
 slideshow.default_scale = "fit"
 slideshow.text = { topleft = { "{name}" } }
-slideshow.set_window_background(0xff1d2021)
+slideshow.set_window_background(argb(c.window))
 slideshow.on_key("Escape", function() swayimg.mode = "viewer" end)
 slideshow.on_key("s", function() swayimg.mode = "viewer" end)
 slideshow.on_key("q", function() swayimg.exit() end)
@@ -151,12 +181,12 @@ gallery.thumb_size = 180
 gallery.aspect = "fill"
 gallery.padding_size = 8
 gallery.border_size = 3
-gallery.border_color = 0xffbfb8a3
+gallery.border_color = argb(c.border)
 gallery.selected_scale = 1.08
-gallery.selected_color = 0xff3c3836
-gallery.unselected_color = 0xff282828
-gallery.window_color = 0xff1d2021
-gallery.mark_color = 0xfffabd2f
+gallery.selected_color = argb(c.check_a)
+gallery.unselected_color = argb(c.panel)
+gallery.window_color = argb(c.window)
+gallery.mark_color = argb(c.mark)
 gallery.hover = true
 gallery.pstore = true          -- thumbnails kept in ~/.cache, faster next time
 gallery.text = {

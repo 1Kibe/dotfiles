@@ -12,6 +12,7 @@ import "../settings/kitty.js" as Kitty
 import "../settings/btop.js" as Btop
 import "../settings/rofi.js" as Rofi
 import "../settings/mpv.js" as Mpv
+import "../settings/swayimg.js" as Swayimg
 import "../settings/input.js" as Input
 import "../settings/lazygit.js" as Lazygit
 import "../settings/gestures.js" as Gestures
@@ -156,6 +157,7 @@ Singleton {
             applyLazygit()
             applyRofi(colors)
             applyMpv(colors)
+            applySwayimg(colors)
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
@@ -277,6 +279,7 @@ Singleton {
             writeKitty()
             writeRofi()
             writeMpv()
+            writeSwayimg()
             applyCursor()
             applyGtk(themeColors(SettingsStore.values))
         }
@@ -599,6 +602,62 @@ Singleton {
         onLoadFailed: {
             root.mpvLoaded = true
             root.writeMpv()
+        }
+    }
+
+    // ── swayimg's colors (settings/swayimg.js) ──
+    // ~/.config/swayimg/cores.txt, data that init.lua reads line by line:
+    // written like rofi's (its folder is stow's link to this repo's
+    // hyprland/.config/swayimg). swayimg reads it when it opens
+    readonly property string swayimgDir: `${Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config"}/swayimg`
+    property string swayimgWanted: ""
+    property bool swayimgLoaded: false
+    property bool swayimgAgain: false
+    function applySwayimg(colors) {
+        try {
+            swayimgWanted = Swayimg.swayimgColors(Object.assign({}, colors.roles, colors.named,
+                                                                { accentLight: colors.accentLight }))
+        } catch (e) {
+            return
+        }
+        writeSwayimg()
+    }
+    function writeSwayimg() {
+        if (!swayimgLoaded || locked || swayimgWanted === "" || swayimgView.text() === swayimgWanted)
+            return
+        if (swayimgCheck.running) {
+            swayimgAgain = true
+            return
+        }
+        swayimgCheck.running = true
+    }
+    Process {
+        id: swayimgCheck
+        command: ["sh", "-c", root.configDirScript, "sh", root.swayimgDir, Quickshell.shellPath("."), "hyprland/.config/swayimg", ""]
+        stdout: StdioCollector {
+            id: swayimgCheckOut
+        }
+        onExited: code => {
+            if (code === 0 && !root.locked && swayimgCheckOut.text.trim() === "ok" && swayimgView.text() !== root.swayimgWanted)
+                swayimgView.setText(root.swayimgWanted)
+            if (root.swayimgAgain) {
+                root.swayimgAgain = false
+                root.writeSwayimg()
+            }
+        }
+    }
+    FileView {
+        id: swayimgView
+        path: root.swayimgDir + "/cores.txt"
+        printErrors: false
+        atomicWrites: true
+        onLoaded: {
+            root.swayimgLoaded = true
+            root.writeSwayimg()
+        }
+        onLoadFailed: {
+            root.swayimgLoaded = true
+            root.writeSwayimg()
         }
     }
 
