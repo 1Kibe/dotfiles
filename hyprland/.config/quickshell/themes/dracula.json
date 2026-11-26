@@ -1,0 +1,23 @@
+{
+  "versao": 1,
+  "id": "dracula",
+  "nome": "Dracula",
+  "licenca": "Dracula (MIT)",
+  "destaquePadrao": { "accent": "#bd93f9", "light": "#dbc4fc" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Dracula",
+      "escuro": true,
+      "syntaxTheme": "Dracula",
+      "papeis": {
+        "bgDeep": "#17181f", "bgHard": "#21222c", "bg": "#282a36", "bg1": "#363948", "bg2": "#44475a",
+        "fg": "#f8f8f2", "fg2": "#d3d7df", "fg4": "#6272a4", "text": "#f8f8f2", "gray": "#6272a4"
+      },
+      "nomeadas": {
+        "yellow": "#f1fa8c", "orange": "#ffb86c", "red": "#ff5555", "green": "#50fa7b", "aqua": "#8be9fd",
+        "blue": "#bd93f9", "purple": "#bd93f9"
+      },
+      "ansi": ["#21222c", "#ff5555", "#50fa7b", "#f1fa8c", "#bd93f9", "#ff79c6", "#8be9fd", "#f8f8f2"]
+    }
+  }
+}

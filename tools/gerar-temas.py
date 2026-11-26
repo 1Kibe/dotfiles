@@ -267,6 +267,24 @@ THEMES = [
         # The project's own Kitty theme (kitty/flexoki_dark.conf)
         "ansi": ["#100f0f", "#af3029", "#66800b", "#ad8301", "#205ea6", "#a02f6f", "#24837b", "#878580"],
     },
+    {
+        "id": "dracula", "nome": "Dracula", "licenca": "Dracula (MIT)",
+        "accent": "#bd93f9",   # Purple
+        "sabores": {
+            # Background, the Kitty theme's darker one, Current Line (and
+            # the tone between them); Foreground, Comment. No blue in the
+            # palette: Purple, as the project's Kitty theme has it
+            "dark": {
+                "rotulo": "Dracula", "syntaxTheme": "Dracula",
+                "bgHard": "#21222c", "bg": "#282a36", "bg1": ("mix", "#282a36", "#44475a", 0.5), "bg2": "#44475a",
+                "fg": "#f8f8f2", "fg2": ("mix", "#f8f8f2", "#6272a4", 0.25), "fg4": "#6272a4", "gray": "#6272a4",
+            },
+        },
+        "nomeadas": {"yellow": "#f1fa8c", "orange": "#ffb86c", "red": "#ff5555", "green": "#50fa7b",
+                     "aqua": "#8be9fd", "blue": "#bd93f9", "purple": "#bd93f9"},
+        # The project's Kitty theme (dracula/kitty)
+        "ansi": ["#21222c", "#ff5555", "#50fa7b", "#f1fa8c", "#bd93f9", "#ff79c6", "#8be9fd", "#f8f8f2"],
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
