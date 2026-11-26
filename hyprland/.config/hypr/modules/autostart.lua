@@ -1,7 +1,12 @@
 -- Started once with the session. The shell (Quickshell) only starts when it
 -- has a config, so a fresh install shows no errors.
--- (the GTK theme, color scheme and icons follow the shell's color theme:
--- state/SettingsApply sets them)
+-- The GTK theme, color scheme and icons follow the shell's color theme
+-- (state/SettingsApply sets them); without the shell, today's dark ones
+local gtk_dark = {
+  "gtk-theme 'Adwaita-dark'",
+  "color-scheme 'prefer-dark'",
+  "icon-theme 'breeze-dark'",
+}
 local gtk = {
   "font-name 'Agave Nerd Font Propo 11'",
   "cursor-theme 'Bibata-Modern-Classic-Right'",
@@ -34,6 +39,11 @@ hl.on("hyprland.start", function()
     table.insert(cmds, "gsettings set org.gnome.desktop.interface " .. setting)
   end
   hl.exec_cmd(table.concat(cmds, "; "))
+  local dark = {}
+  for _, setting in ipairs(gtk_dark) do
+    table.insert(dark, "gsettings set org.gnome.desktop.interface " .. setting)
+  end
+  hl.exec_cmd('test -f "$HOME/.config/quickshell/shell.qml" || { ' .. table.concat(dark, "; ") .. "; }")
 
   -- "test", not "[ ]": Hyprland reads a leading "[...]" as window rules
   hl.exec_cmd('test -f "$HOME/.config/quickshell/shell.qml" && qs')

@@ -145,14 +145,17 @@ Singleton {
         if (colors !== null) {
             writeTheme(colors)
             applyGtk(colors)
+            // Kitty's, btop's and lazygit's colors, the accent among them:
+            // only from a theme read (before, they would get the repo's
+            // default and then the chosen one; with no catalog at all the
+            // files stay as they were)
+            applyKitty()
+            applyBtop()
+            applyLazygit()
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
         }
-        // Kitty's, btop's and lazygit's colors, the accent among them
-        applyKitty()
-        applyBtop()
-        applyLazygit()
         Theme.barOpacity = v.barOpacity
         Theme.barHeight = v.barHeight
         moveBar(v.barPosition === "bottom")
@@ -164,10 +167,10 @@ Singleton {
         Theme.fontPanels = SystemLists.usable("fonts", v.fontPanels) ? v.fontPanels
                          : SystemLists.usable("fonts", SettingsStore.defaults.fontPanels) ? SettingsStore.defaults.fontPanels
                          : Theme.font
-        // The Hyprland file only once the cursor themes and the keyboard
-        // layouts are known: before, it would come out without those lines
-        // and be written twice (two reloads) at every start
-        if (!SystemLists.cursorsRead || !SystemLists.layoutsRead)
+        // The Hyprland file only once the cursor themes, the keyboard layouts
+        // and the themes are known: before, it would come out without those
+        // lines and be written twice (two reloads) at every start
+        if (!SystemLists.cursorsRead || !SystemLists.layoutsRead || !ThemeCatalog.ready)
             return
         let text = ""
         try {
@@ -269,6 +272,7 @@ Singleton {
             writeLazygit()
             writeKitty()
             applyCursor()
+            applyGtk(themeColors(SettingsStore.values))
         }
     }
     Timer {
@@ -542,7 +546,8 @@ Singleton {
             id: kittyCheckOut
         }
         onExited: code => {
-            if (code === 0 && kittyCheckOut.text.trim() === "ok" && kittyView.text() !== root.kittyWanted)
+            // (the screen may have locked while the check ran)
+            if (code === 0 && !root.locked && kittyCheckOut.text.trim() === "ok" && kittyView.text() !== root.kittyWanted)
                 kittyView.setText(root.kittyWanted)
             if (root.kittyAgain) {
                 root.kittyAgain = false
@@ -605,7 +610,7 @@ Singleton {
             id: btopCheckOut
         }
         onExited: code => {
-            if (code === 0 && btopCheckOut.text.trim() === "ok" && btopView.text() !== root.btopWanted)
+            if (code === 0 && !root.locked && btopCheckOut.text.trim() === "ok" && btopView.text() !== root.btopWanted)
                 btopView.setText(root.btopWanted)
             if (root.btopAgain) {
                 root.btopAgain = false
@@ -674,7 +679,7 @@ Singleton {
             id: lazygitCheckOut
         }
         onExited: code => {
-            if (code === 0 && lazygitCheckOut.text.trim() === "ok") {
+            if (code === 0 && !root.locked && lazygitCheckOut.text.trim() === "ok") {
                 if (lazygitThemeView.text() !== root.lazygitTheme)
                     lazygitThemeView.setText(root.lazygitTheme)
                 if (lazygitDeltaView.text() !== root.lazygitDelta)
@@ -761,20 +766,29 @@ Singleton {
     // The three GTK settings as they are now (read once at the start), and
     // set only where the flavor's differs: opening the shell writes nothing
     // when the machine already has them; never with the screen locked
+    // (what was set is read back before it counts: a gsettings that failed
+    // is tried again at the next change)
     property var gtkNow: ({})
     property bool gtkRead: false
+    property bool gtkAgain: false
     function applyGtk(colors) {
         if (!gtkRead || locked || colors === null)
             return
-        const want = Appearance.gtkLook(colors.escuro)
-        const now = Object.assign({}, gtkNow)
-        for (const key of Object.keys(want)) {
-            if (now[key] === want[key])
-                continue
-            Quickshell.execDetached(["gsettings", "set", "org.gnome.desktop.interface", key, want[key]])
-            now[key] = want[key]
+        if (gtkWriter.running || gtkReader.running) {
+            gtkAgain = true
+            return
         }
-        gtkNow = now
+        const want = Appearance.gtkLook(colors.escuro)
+        const pairs = Object.keys(want).filter(k => gtkNow[k] !== want[k]).map(k => k + "=" + want[k])
+        if (pairs.length === 0)
+            return
+        gtkWriter.command = ["sh", "-c", 'for kv; do gsettings set org.gnome.desktop.interface "${kv%%=*}" "${kv#*=}"; done',
+                             "sh"].concat(pairs)
+        gtkWriter.running = true
+    }
+    Process {
+        id: gtkWriter
+        onExited: gtkReader.running = true
     }
     Process {
         id: gtkReader
@@ -789,8 +803,14 @@ Singleton {
                         now[m[1]] = m[2]
                 }
                 root.gtkNow = now
+                // (the first read applies the flavor; a read after a write
+                // only when something changed meanwhile, never in a loop)
+                const first = !root.gtkRead
                 root.gtkRead = true
-                root.applyGtk(root.themeColors(SettingsStore.values))
+                if (first || root.gtkAgain) {
+                    root.gtkAgain = false
+                    root.applyGtk(root.themeColors(SettingsStore.values))
+                }
             }
         }
     }
