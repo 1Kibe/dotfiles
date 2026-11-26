@@ -209,6 +209,30 @@ THEMES = [
             },
         },
     },
+    {
+        "id": "kanagawa", "nome": "Kanagawa", "licenca": "Kanagawa (MIT)",
+        "accent": "#7e9cd8",   # crystalBlue
+        "sabores": {
+            # Each theme's bg_dim, bg, bg_p1, bg_p2 and its text tones; the
+            # terminal as each theme sets it (term)
+            "dark": {
+                "rotulo": "Wave", "syntaxTheme": "base16",
+                "bgHard": "#181820", "bg": "#1f1f28", "bg1": "#2a2a37", "bg2": "#363646",
+                "fg": "#dcd7ba", "fg2": "#c8c093", "fg4": "#727169", "gray": "#717c7c",
+                "nomeadas": {"yellow": "#e6c384", "orange": "#ffa066", "red": "#e46876", "green": "#98bb6c",
+                             "aqua": "#7aa89f", "blue": "#7e9cd8", "purple": "#957fb8"},
+                "ansi": ["#16161d", "#c34043", "#76946a", "#c0a36e", "#7e9cd8", "#957fb8", "#6a9589", "#c8c093"],
+            },
+            "darkHard": {
+                "rotulo": "Dragon", "syntaxTheme": "base16",
+                "bgHard": "#12120f", "bg": "#181616", "bg1": "#282727", "bg2": "#393836",
+                "fg": "#c5c9c5", "fg2": "#a6a69c", "fg4": "#7a8382", "gray": "#737c73",
+                "nomeadas": {"yellow": "#c4b28a", "orange": "#b6927b", "red": "#c4746e", "green": "#87a987",
+                             "aqua": "#8ea4a2", "blue": "#8ba4b0", "purple": "#a292a3"},
+                "ansi": ["#0d0c0c", "#c4746e", "#8a9a7b", "#c4b28a", "#8ba4b0", "#a292a3", "#8ea4a2", "#c8c093"],
+            },
+        },
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
