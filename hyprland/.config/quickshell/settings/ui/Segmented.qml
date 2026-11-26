@@ -73,6 +73,8 @@ Rectangle {
                     id: label
                     anchors.centerIn: parent
                     text: option.modelData.label
+                    // (a label may be a theme's own text: never markup)
+                    textFormat: Text.PlainText
                     color: Theme.text
                     font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1

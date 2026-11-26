@@ -120,6 +120,13 @@ Singleton {
         const theme = ThemeCatalog.get(v.theme) ?? ThemeCatalog.get(SettingsStore.defaults.theme)
         return theme === null ? null : Palettes.resolve(theme, v.flavor, v.accent)
     }
+    // The accent an option gives with the chosen theme and flavor (the
+    // accent's color dots): the theme's own pair for "padrao"
+    function accentOf(name) {
+        const v = Object.assign({}, SettingsStore.values, { accent: name })
+        const c = themeColors(v)
+        return c !== null ? c.accent : Appearance.accentPair(name, palette()).accent
+    }
     // Its colors into the Theme's roles, named colors and terminal tones
     function writeTheme(c) {
         for (const role of Palettes.ROLES)

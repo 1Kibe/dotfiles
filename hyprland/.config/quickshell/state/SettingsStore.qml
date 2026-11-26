@@ -89,12 +89,24 @@ Singleton {
             return false
         return write(key, value, false)
     }
+    // The color theme and its flavor, from the user: the theme has to be one
+    // the catalog has and the flavor one of that theme's (rule 10; a value
+    // read back from the file that the catalog no longer has falls on the
+    // repo's default when applied, never in an error)
+    function themePairOk(theme, flavor) {
+        const t = ThemeCatalog.get(theme)
+        return t !== null && own(t.sabores, flavor)
+    }
     function write(key, value, fromUser) {
         const s = spec(key)
         if (!s || !ready)
             return false
         const r = Validate.validate(s, value, home)
         if (!r.ok)
+            return false
+        if (fromUser && key === "theme" && !themePairOk(r.value, values.flavor))
+            return false
+        if (fromUser && key === "flavor" && !themePairOk(values.theme, r.value))
             return false
         if (fromUser)
             dropUndo()
@@ -104,6 +116,42 @@ Singleton {
         else
             next[key] = r.value
         apply(next, [key])
+        return true
+    }
+
+    // Several keys at once, all or nothing: every key known and every value
+    // passing before anything changes (an unknown key, "__proto__" included,
+    // refuses the whole batch), then one change: one write, one `changed` per
+    // key. A change from the user (a pending Desfazer is gone)
+    function setMany(map) {
+        if (!ready || map === null || typeof map !== "object" || Array.isArray(map))
+            return false
+        const keys = Object.keys(map)
+        if (keys.length === 0)
+            return false
+        const checked = {}
+        for (const k of keys) {
+            const s = spec(k)
+            if (!s)
+                return false
+            const r = Validate.validate(s, map[k], home)
+            if (!r.ok)
+                return false
+            checked[k] = r.value
+        }
+        if ((own(checked, "theme") || own(checked, "flavor"))
+                && !themePairOk(own(checked, "theme") ? checked.theme : values.theme,
+                                own(checked, "flavor") ? checked.flavor : values.flavor))
+            return false
+        dropUndo()
+        const next = Object.assign({}, user)
+        for (const k of keys) {
+            if (same(checked[k], defaults[k]))
+                delete next[k]
+            else
+                next[k] = checked[k]
+        }
+        apply(next, keys)
         return true
     }
 

@@ -21,8 +21,9 @@ Item {
     implicitHeight: size + 8
     activeFocusOnTab: true
 
+    // (the chosen theme's own pair for "padrao", once a theme is read)
     function colorOf(v) {
-        return Appearance.accentPair(v, SettingsApply.palette()).accent
+        return SettingsApply.accentOf(v)
     }
     readonly property int chosenIndex: options.findIndex(o => o.value === value)
     Keys.onLeftPressed: if (chosenIndex > 0) picked(options[chosenIndex - 1].value)

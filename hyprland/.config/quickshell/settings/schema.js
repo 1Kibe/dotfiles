@@ -50,7 +50,8 @@
 
 // ── Pages, in the order of the rail ──
 var PAGES = [
-    { id: "tema", group: "Aparência", icon: "󰏘", name: "Tema e cores", sub: "Destaque, transparência, cantos e cursor" },
+    { id: "temas", group: "Aparência", icon: "", name: "Temas", sub: "Paleta, sabor e destaque" },
+    { id: "tema", group: "Aparência", icon: "󰏘", name: "Superfícies e cursor", sub: "Transparência, cantos e cursor" },
     { id: "papel", group: "Aparência", icon: "󰸉", name: "Papel de parede", sub: "Imagem e preenchimento" },
     { id: "fontes", group: "Aparência", icon: "󰛖", name: "Fontes e animações", sub: "Fontes, tamanho do texto e velocidade" },
     { id: "barra", group: "Shell", icon: "󰕮", name: "Barra", sub: "Itens, posição e relógio" },
@@ -69,7 +70,12 @@ var PAGES = [
 
 // ── Cards of each page; `component` names a special card (settings/cards/) ──
 var CARDS = {
-    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview", strip: true }, { id: "cores", title: "Cores" },
+    // Temas: the catalog's themes in miniature (a click picks one), the
+    // chosen theme's flavors by their own names, the accent in its colors
+    temas: [{ id: "grade", title: "Temas", component: "ThemeGrid" },
+            { id: "sabor", title: "Sabor", component: "ThemeFlavors" },
+            { id: "destaque", title: "Destaque" }],
+    tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview", strip: true },
            { id: "superficies", title: "Superfícies" }, { id: "cursor", title: "Cursor" }],
     papel: [{ id: "imagem", title: "Imagem", component: "WallpaperGallery" }, { id: "ajuste", title: "Ajuste" }],
     fontes: [{ id: "previa", title: "Prévia da animação", component: "AnimationPreview", strip: true },
@@ -247,16 +253,15 @@ var OFF_DESC = "Com a trava ligada, sempre 10 s ou mais depois de travar"
 
 var KEYS = {
     // ── Tema e cores ──
-    accent: { def: "padrao", type: "enum", page: "tema", card: "cores", label: "Cor de destaque",
+    accent: { def: "padrao", type: "enum", page: "temas", card: "destaque", label: "Cor de destaque",
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               control: "swatches", syn: ["cor", "acento", "destaque"] },
     // The color theme and its flavor (one of the four fixed places; the
-    // theme's own name for it is its rotulo). Hidden until the Temas page
-    // gives them their rows
-    theme: { def: "gruvbox", type: "string", pattern: COLOR_THEME, hidden: true, page: "tema", card: "cores",
-             label: "Tema", syn: ["paleta", "cores"] },
-    flavor: { def: "dark", type: "enum", hidden: true, page: "tema", card: "cores", label: "Sabor",
+    // theme's own name for it is its rotulo): their cards on Temas draw them
+    theme: { def: "gruvbox", type: "string", pattern: COLOR_THEME, page: "temas", card: "grade",
+             label: "Tema", syn: ["paleta", "cores", "tema de cores"] },
+    flavor: { def: "dark", type: "enum", page: "temas", card: "sabor", label: "Sabor",
               options: opts([["dark", "Escuro"], ["darkHard", "Escuro forte"], ["darkSoft", "Escuro suave"], ["light", "Claro"]]),
               syn: ["escuro", "claro"] },
     // One for the bar and its panels: they are one shape
