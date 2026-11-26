@@ -54,19 +54,18 @@ var ROLES = [
 ]
 
 // Only a plain "#rrggbb" (what a QML color with full alpha prints) goes into
-// the file; anything else is left out, and btop keeps its own color there
+// the file: any other value of a role throws, and nothing is written
 function hex(value) {
     const s = String(value)
-    return /^#[0-9a-f]{6}$/.test(s) ? s : ""
+    if (!/^#[0-9a-f]{6}$/.test(s))
+        throw new Error("btop: cor inválida")
+    return s
 }
 
 // theme: the Theme's colors by role (anything String() turns into "#rrggbb")
 function themeText(theme) {
     let text = "# Written by the shell from its theme; rewritten at every change.\n"
-    for (const [key, role] of ROLES) {
-        const v = hex(theme[role])
-        if (v !== "")
-            text += `theme[${key}]="${v}"\n`
-    }
+    for (const [key, role] of ROLES)
+        text += `theme[${key}]="${hex(theme[role])}"\n`
     return text
 }

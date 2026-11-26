@@ -262,6 +262,7 @@ Singleton {
         if (!locked) {
             hyprTimer.restart()
             gesturesTimer.restart()
+            writeBtop()
         }
     }
     Timer {
@@ -563,15 +564,21 @@ Singleton {
     property bool btopLoaded: false
     property bool btopAgain: false
     function applyBtop() {
-        btopWanted = Btop.themeText({
-            bgHard: Theme.bgHard, bg1: Theme.bg1, bg2: Theme.bg2, fg: Theme.fg, fg4: Theme.fg4, gray: Theme.gray,
-            red: Theme.red, green: Theme.green, yellow: Theme.yellow, orange: Theme.orange, blue: Theme.blue,
-            purple: Theme.purple, aqua: Theme.aqua, accentLight: Theme.accentLight
-        })
+        // (a color that does not pass keeps the file as it was)
+        try {
+            btopWanted = Btop.themeText({
+                bgHard: Theme.bgHard, bg1: Theme.bg1, bg2: Theme.bg2, fg: Theme.fg, fg4: Theme.fg4, gray: Theme.gray,
+                red: Theme.red, green: Theme.green, yellow: Theme.yellow, orange: Theme.orange, blue: Theme.blue,
+                purple: Theme.purple, aqua: Theme.aqua, accentLight: Theme.accentLight
+            })
+        } catch (e) {
+            return
+        }
         writeBtop()
     }
     function writeBtop() {
-        if (!btopLoaded || btopWanted === "" || btopView.text() === btopWanted)
+        // Never with the screen locked (the write waits for the next change)
+        if (!btopLoaded || locked || btopWanted === "" || btopView.text() === btopWanted)
             return
         if (btopCheck.running) {
             btopAgain = true
