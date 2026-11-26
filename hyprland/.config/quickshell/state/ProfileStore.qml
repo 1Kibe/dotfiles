@@ -6,6 +6,7 @@ import Quickshell.Io
 import "../settings/profile.js" as Profile
 import "../settings/schema.js" as Schema
 import "../settings/validate.js" as Validate
+import "../theme/palettes.js" as Palettes
 
 // The profiles (Configurações → Perfis, Super+T): the built-in Padrão (the
 // repo's defaults, the repo's wallpaper, never removed, renamed or written)
@@ -75,6 +76,32 @@ Singleton {
     readonly property var profiles: [padrao].concat(order.map(id => found[id]))
     readonly property string active: Object.prototype.hasOwnProperty.call(found, SettingsStore.values.profileActive ?? "")
                                      ? SettingsStore.values.profileActive : ""
+    // What a card shows (the page's and the carousel's): the picture, as a
+    // file URL ("" = none: the large seal), the Padrão with the repo's; the
+    // reading's stamp makes a rewritten file load again
+    property int stamp: 0
+    // The repo's wallpaper is there (the Padrão's card shows it)
+    property bool repoPicture: false
+    function pictureUrl(p) {
+        let path = ""
+        if (p === null)
+            return ""
+        if (p.builtin)
+            path = repoPicture ? Validate.expandPath(SettingsStore.defaults.wallpaper ?? "", home) : ""
+        else if (p.mini)
+            path = miniPath(p.id)
+        else if (p.papel)
+            path = Validate.expandPath(papelPath(p.id), home)
+        return path === "" ? "" : "file://" + path.split("/").map(encodeURIComponent).join("/") + "?v=" + stamp
+    }
+    // Its colors: its theme resolved for its flavor and accent (the repo's
+    // theme when the catalog has not its own)
+    function colorsOf(p) {
+        if (p === null)
+            return null
+        const t = ThemeCatalog.get(p.valores.theme) ?? ThemeCatalog.get(SettingsStore.defaults.theme ?? "")
+        return Palettes.resolve(t, p.valores.flavor, p.valores.accent)
+    }
     function get(id) {
         return id === "" ? padrao : (Object.prototype.hasOwnProperty.call(found, id) ? found[id] : null)
     }
@@ -97,6 +124,8 @@ Singleton {
     // (a write counts from the call: Process.running turns true later)
     property bool writing: false
     readonly property bool busy: writing || worker.running || reader.running
+    // For the page: reading (the list) or writing (one of the actions)
+    readonly property bool reading: reader.running && !writing && !worker.running
 
     // ── The scripts ──
     // The chain's walk: $1 start, $2 make missing folders (1 or 0), $3 $4 $5
@@ -180,6 +209,8 @@ Singleton {
     // the pictures' marks; a missing miniature is made again from the
     // picture, at most 3 a reading (the rest on the next ones)
     readonly property string listScript: chainScript
+        // first: whether the repo's wallpaper ($a) is there (the Padrão's card)
+        + 'if [ -f "$a" ] && [ ! -L "$a" ]; then echo "repo 1"; else echo "repo 0"; fi\n'
         + 'made=0\n'
         + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 300 | while IFS= read -r -d "" p; do\n'
         + '  id=${p#./}\n'
@@ -255,7 +286,8 @@ Singleton {
             ready = true
             return
         }
-        reader.command = ["timeout", "60", "sh", "-c", listScript, "sh", chain.start, "0", "", "", ""].concat(chain.comps)
+        reader.command = ["timeout", "60", "sh", "-c", listScript, "sh", chain.start, "0",
+                          Validate.expandPath(SettingsStore.defaults.wallpaper ?? "", home), "", ""].concat(chain.comps)
         reader.running = true
     }
     function decode64(line) {
@@ -292,6 +324,10 @@ Singleton {
         let n = 0
         for (const line of out.split("\n")) {
             const parts = line.split(" ")
+            if (parts.length === 2 && parts[0] === "repo") {
+                repoPicture = parts[1] === "1"
+                continue
+            }
             if (parts.length !== 4 || !Profile.ID.test(parts[0]) || n >= Profile.MAX)
                 continue
             const text = decode64(parts[3])
@@ -305,6 +341,7 @@ Singleton {
             n++
         }
         found = got
+        stamp++
         ready = true
         // The order keeps the folders it knows; new ones at the end
         if (SettingsStore.ready && JSON.stringify(order) !== JSON.stringify(SettingsStore.values.profileOrder || []))
@@ -478,8 +515,13 @@ Singleton {
     // the active one
     function apply(id) {
         const p = get(id)
-        if (p === null || !SettingsStore.ready || locked || busy)
+        if (p === null || !SettingsStore.ready || locked)
             return false
+        // (a click never stays silent: the folders are being read or written)
+        if (busy) {
+            failed("Espere: os perfis ainda estão sendo lidos ou gravados.")
+            return false
+        }
         const m = wanted(p)
         // (only the profile's keys and the wallpaper: setMany refuses any other)
         const batch = {}

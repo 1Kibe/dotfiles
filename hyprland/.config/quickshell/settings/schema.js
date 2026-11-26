@@ -53,6 +53,7 @@ var PAGES = [
     { id: "temas", group: "Aparência", icon: "\u{f03d8}", name: "Temas", sub: "Paleta, sabor e destaque" },
     { id: "tema", group: "Aparência", icon: "\u{f0328}", name: "Superfícies e cursor", sub: "Transparência, cantos e cursor" },
     { id: "papel", group: "Aparência", icon: "󰸉", name: "Papel de parede", sub: "Imagem e preenchimento" },
+    { id: "perfis", group: "Aparência", icon: "\u{f0638}", name: "Perfis", sub: "Tema, papel e fontes de uma vez" },
     { id: "fontes", group: "Aparência", icon: "󰛖", name: "Fontes e animações", sub: "Fontes, tamanho do texto e velocidade" },
     { id: "barra", group: "Shell", icon: "󰕮", name: "Barra", sub: "Itens, posição e relógio" },
     { id: "bloqueio", group: "Shell", icon: "󰌾", name: "Bloqueio e login", sub: "Tela apagada e música" },
@@ -78,6 +79,9 @@ var CARDS = {
     tema: [{ id: "preview", title: "Tema atual", component: "ThemePreview", strip: true },
            { id: "superficies", title: "Superfícies" }, { id: "cursor", title: "Cursor" }],
     papel: [{ id: "imagem", title: "Imagem", component: "WallpaperGallery" }, { id: "ajuste", title: "Ajuste" }],
+    perfis: [{ id: "cartoes", title: "Perfis", component: "ProfileCards",
+               syn: ["perfil", "conjunto", "salvar como perfil", "trocar tudo", "voltar ao padrão"] },
+             { id: "transicao", title: "Transição" }],
     fontes: [{ id: "previa", title: "Prévia da animação", component: "AnimationPreview", strip: true },
              { id: "fontes", title: "Fontes" }, { id: "animacoes", title: "Animações" }],
     barra: [{ id: "itens", title: "Itens", component: "BarItems" }, { id: "posicao", title: "Posição" },
@@ -465,9 +469,14 @@ var KEYS = {
     // Perfis: the order of the owner's profiles (Super+T, the numbers) and the
     // active one ("" = the built-in Padrão); kept by the shell itself
     profileOrder: { def: [], type: "idlist", pattern: PROFILE_ID, max: 24, machine: true, hidden: true, auto: true,
-                    page: "tema", card: "superficies", label: "Ordem dos perfis" },
+                    page: "perfis", card: "cartoes", label: "Ordem dos perfis" },
     profileActive: { def: "", type: "string", pattern: /^$|^[a-z0-9][a-z0-9-]{0,31}$/, machine: true, hidden: true,
-                     auto: true, page: "tema", card: "superficies", label: "Perfil ativo" },
+                     auto: true, page: "perfis", card: "cartoes", label: "Perfil ativo" },
+    // How the screen changes to another profile (Configurações → Perfis);
+    // the same for every change, never part of a profile
+    profileSwap: { def: "circle", type: "enum", page: "perfis", card: "transicao", label: "Ao trocar de perfil",
+                   options: opts([["circle", "Círculo"], ["fade", "Esmaecer"], ["slide", "Deslizar"], ["curtain", "Cortina"]]),
+                   desc: "Com “Reduzir movimento”, sempre esmaecer", syn: ["transição", "animação", "troca"] },
     codeProfiles: { def: "[]", type: "codeprofiles", machine: true, hidden: true, kept: true, page: "contas", card: "perfis",
                     label: "Perfis" },
     codeFolders: { def: "[]", type: "codefolders", machine: true, hidden: true, kept: true, page: "contas", card: "pastas",
