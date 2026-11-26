@@ -363,6 +363,9 @@ Item {
         edge: root.mirrored ? "bottom" : "top"
         flareLeft: !root.atLeftEnd
         flareRight: !root.atRightEnd
+        // A drawer of a screen edge: its bottom corner on that edge is square
+        roundBottomLeft: root.edgeSide !== "left"
+        roundBottomRight: root.edgeSide !== "right"
         bodyWidth: root.bodyWidth
         bodyHeight: root.bodyHeight
         progress: root.progress

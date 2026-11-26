@@ -97,22 +97,30 @@ Item {
     readonly property bool detached: othersEdge > junction
     readonly property var span: detached && anchor.span ? anchor.span : null
     readonly property real wantTop: detached ? othersEdge + Theme.toastGap : junction
-    // The pile's box, from its left to the screen's edge: its own width
-    // (attached to the bar) or the panel's body (a drawer of the right
-    // edge too); moving between them with the top
-    readonly property real wantLeft: span ? span.left : screenWidth - rowWidth
-    property real boxLeft: screenWidth - rowWidth
-    Binding on boxLeft {
-        value: root.wantLeft
-    }
-    Behavior on boxLeft {
-        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
+    // 0 on the bar, 1 hanging under a panel: the room from that panel and
+    // the move to its left side follow this step, on the edge drawers'
+    // closing time and curves; the panel's own edge is followed frame by
+    // frame (it moves on its edge timeline), never through an animation
+    // that would start again at every frame
+    property real gapStep: detached ? 1 : 0
+    Behavior on gapStep {
+        enabled: cards.count > 0 && !Theme.reduceMotion
         NumberAnimation {
             duration: Theme.dur(Theme.motionEdgeClose)
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: Theme.curveDecel
+            easing.bezierCurve: root.detached ? Theme.curveDecel : Theme.curveAccel
         }
     }
+    // The panel's left side, kept while the pile goes back to the bar
+    property real spanLeft: screenWidth - rowWidth
+    onSpanChanged: {
+        if (span)
+            spanLeft = span.left
+    }
+    // The pile's box, from its left to the screen's edge: its own width
+    // (attached to the bar) or the panel's body (a drawer of the right
+    // edge too)
+    readonly property real boxLeft: screenWidth - rowWidth + (spanLeft - (screenWidth - rowWidth)) * gapStep
     readonly property real boxWidth: screenWidth - boxLeft
 
     // Under a panel, only the cards that fit whole between its edge and the
@@ -168,20 +176,10 @@ Item {
     readonly property int minCardWidth: Theme.toastWidth - 2 * pad
     readonly property bool squeezed: detached && liveN > 0 && cards.count === liveN
                                      && (waiting >= liveN || boxWidth - 2 * pad < minCardWidth)
-    property real pileTop: junction
-    Binding on pileTop {
-        value: root.wantTop
-    }
-    // Moving only while it already shows (a first card is born in its place)
+    // Under the panel's edge as it moves, or on the bar's
+    readonly property real pileTop: (detached ? othersEdge : junction) + Theme.toastGap * gapStep
+    // (set when the first card is in place)
     property bool settled: false
-    Behavior on pileTop {
-        enabled: root.settled && cards.count > 0 && !Theme.reduceMotion
-        NumberAnimation {
-            duration: Theme.dur(Theme.motionEdgeClose)
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Theme.curveDecel
-        }
-    }
 
     parent: frame ? frame.panelLayer : null
     x: 0

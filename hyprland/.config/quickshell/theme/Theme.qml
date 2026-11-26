@@ -195,6 +195,8 @@ Singleton {
     readonly property int minimizeRow: 32
     readonly property int minimizeMargin: 7
     readonly property int minimizeRadius: 9
+    // The tab's room from a panel above it (or below, with the bar there)
+    readonly property int minimizePanelGap: 8
     // The wire's long curve from the edge: how far along the edge it runs,
     // and how far into the body it ends
     readonly property int minimizeWireReach: 24
