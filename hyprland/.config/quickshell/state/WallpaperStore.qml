@@ -22,8 +22,8 @@ Singleton {
     readonly property string importDir: `${home}/.local/share/dotfiles/wallpapers`
     readonly property var tabs: [
         { id: "repo", label: "Do repo", dir: repoDir },
-        { id: "imported", label: "Importadas", dir: importDir },
-        { id: "pictures", label: "Imagens", dir: BackgroundStore.picturesDir },
+        { id: "imported", label: "Meus papéis", dir: importDir },
+        { id: "pictures", label: "Pasta Imagens", dir: BackgroundStore.picturesDir },
         { id: "captures", label: "Capturas", dir: `${BackgroundStore.picturesDir}/Capturas` }
     ]
 
@@ -76,6 +76,91 @@ Singleton {
 
     // The import itself (settings/wallpaper.js)
     readonly property string importScript: Wallpaper.importScript
+
+    // A file of the owner's into Meus papéis (Escolher arquivo…, a drop):
+    // the same import (real type, size, a regular file, not a link), copied
+    // under a name of its own; then Meus papéis shows it. Not used as the
+    // wallpaper until it is chosen there. done(ok) when given
+    function importFile(path, done) {
+        if (busy || typeof path !== "string" || !path.startsWith("/") || path.includes("\n")) {
+            if (done)
+                done(false)
+            return
+        }
+        message = ""
+        busy = true
+        run(["timeout", "30", "sh", "-c", importScript, "sh", path, importDir, String(BackgroundStore.maxBytes)], (code, out) => {
+            root.busy = false
+            const dest = out.trim()
+            const ok = code === 0 && dest.startsWith(root.importDir + "/") && !dest.includes("\n")
+            if (!ok)
+                root.message = "Não deu para importar essa imagem"
+            root.showTab("imported")
+            if (done)
+                done(ok)
+        })
+    }
+    // A file:// URI (the chooser's, a drop's) to a local path, or "" (a
+    // remote one, another scheme, a host, a line break)
+    function localPath(uri) {
+        const u = String(uri)
+        if (!u.startsWith("file:///"))
+            return ""
+        let p = ""
+        try {
+            p = decodeURIComponent(u.slice(7))
+        } catch (e) {
+            return ""
+        }
+        return p.startsWith("/") && !p.includes("\n") && !p.includes("\0") ? p : ""
+    }
+    // Dropped files (a drag from the file manager): up to 10 at a time, only
+    // local file:// ones, each through the same import, one after another.
+    // Says how many came in when some did not
+    readonly property int maxDrop: 10
+    function importUris(uris) {
+        if (busy || !Array.isArray(uris))
+            return
+        const paths = uris.slice(0, maxDrop).map(localPath).filter(p => p !== "")
+        const skipped = Math.min(uris.length, maxDrop) - paths.length + Math.max(0, uris.length - maxDrop)
+        let good = 0
+        const next = i => {
+            if (i >= paths.length) {
+                const left = paths.length - good + skipped
+                if (left > 0)
+                    root.message = left === 1 ? "Uma imagem não entrou (só imagens locais, até 30 MB)"
+                                              : `${left} imagens não entraram (só imagens locais, até 30 MB, ${root.maxDrop} por vez)`
+                return
+            }
+            root.importFile(paths[i], ok => {
+                if (ok)
+                    good++
+                next(i + 1)
+            })
+        }
+        if (paths.length === 0) {
+            message = "Só imagens locais entram aqui"
+            return
+        }
+        next(0)
+    }
+
+    // Escolher arquivo…: the system's file chooser (hypr-escolher-imagem,
+    // the portal), only images; cancelled, nothing happens
+    property bool picking: false
+    function pickFile() {
+        if (busy || picking)
+            return
+        picking = true
+        message = ""
+        const token = "dotfiles" + Math.floor(Math.random() * 1e9)
+        run(["hypr-escolher-imagem", token], (code, out) => {
+            root.picking = false
+            const path = root.localPath(out.trim())
+            if (path !== "")
+                root.importFile(path)
+        })
+    }
 
     // ── Commands (argument lists only) ──
     component Job: Process {

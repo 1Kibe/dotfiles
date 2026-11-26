@@ -70,7 +70,8 @@ O `local.lua` fica fora do git e é carregado por último, então pode mudar qua
 Deixe só o bloco da máquina em que você está.
 
 O que você escolhe em Configurações → Aparência (`Super+S`) vai para o `dotfiles_settings.lua`, gerado pelo Quickshell e fora do git;
-ele é carregado antes do `local.lua`, então a máquina continua mandando. Os papéis de parede importados pela galeria ficam em
+ele é carregado antes do `local.lua`, então a máquina continua mandando. Os papéis de parede seus ("Meus papéis" na galeria: os
+escolhidos em Pasta Imagens ou Capturas e os acrescentados por "Escolher arquivo…") ficam em
 `~/.local/share/dotfiles/wallpapers`, fora do repo.
 
 **Na VM** (VMware), o bloco da VM no `local.lua` faz os apps desenharem pela CPU (`LIBGL_ALWAYS_SOFTWARE`). Os apps X11

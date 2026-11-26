@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Asks the system's file chooser (xdg-desktop-portal, FileChooser) for one
+# image (PNG, JPEG or WebP) and prints its file:// URI, or nothing when it is
+# cancelled. Used by the shell (Configurações → Papel de parede → Escolher
+# arquivo…), which checks and copies the file itself (WallpaperStore).
+#
+# The portal answers on a request object named by our token: its signals are
+# watched first, then the request is made, then the answer read (at most
+# 10 minutes for the person to pick). Nothing is logged.
+#
+# Usage: hypr-escolher-imagem <token>   (letters and digits)
+set -u
+
+token="${1:-}"
+[[ "$token" =~ ^[A-Za-z0-9]{6,32}$ ]] || exit 2
+
+out="$(mktemp -p "${XDG_RUNTIME_DIR:-/tmp}" escolher.XXXXXX)" || exit 1
+cleanup() { [[ -n "${watch:-}" ]] && kill "$watch" 2>/dev/null; rm -f -- "$out"; }
+trap cleanup EXIT
+
+gdbus monitor --session --dest org.freedesktop.portal.Desktop > "$out" 2>/dev/null &
+watch=$!
+sleep 0.3
+
+options="{'handle_token': <'$token'>, 'modal': <true>,
+  'filters': <[('Imagens', [(uint32 1, 'image/png'), (uint32 1, 'image/jpeg'), (uint32 1, 'image/webp')])]>}"
+gdbus call --session --dest org.freedesktop.portal.Desktop --object-path /org/freedesktop/portal/desktop \
+  --method org.freedesktop.portal.FileChooser.OpenFile "" "Escolher imagem" "$options" > /dev/null 2>&1 || exit 1
+
+answer=""
+for _ in $(seq 1 1200); do
+  answer="$(grep -m1 "/$token: org.freedesktop.portal.Request.Response" "$out")" && break
+  sleep 0.5
+done
+# 0 = chosen; 1 = cancelled; 2 = failed
+case "$answer" in
+  *"(uint32 0,"*) grep -o "file://[^' ,]*" <<< "$answer" | head -n 1 ;;
+esac
+exit 0
