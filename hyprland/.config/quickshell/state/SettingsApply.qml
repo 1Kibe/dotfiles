@@ -167,7 +167,9 @@ Singleton {
             return
         let text = ""
         try {
-            text = Appearance.hyprLua(v, pair, SystemLists.has("cursorThemes", v.cursorTheme), Serialize.luaValue)
+            // (the theme's surfaces only once a theme is read: before, look.lua's)
+            text = Appearance.hyprLua(v, pair, SystemLists.has("cursorThemes", v.cursorTheme), Serialize.luaValue,
+                                      colors !== null ? { bg2: colors.roles.bg2, bgDeep: colors.roles.bgDeep } : undefined)
                    + areasLua(v)
         } catch (e) {
             failed("accent", "Não deu para aplicar no Hyprland")

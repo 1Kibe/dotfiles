@@ -13,6 +13,8 @@ hl.config({
     gaps_in = 5,
     gaps_out = 10,
     border_size = 2,
+    -- The borders and the background below are the reserve: the shell's
+    -- settings file (dotfiles_settings.lua) writes the chosen theme's over them
     col = {
       active_border = { colors = { rgb(c.accent_light), rgb(c.accent) }, angle = 45 },
       inactive_border = rgb(c.bg2),

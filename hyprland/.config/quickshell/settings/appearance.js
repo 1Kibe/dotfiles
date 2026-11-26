@@ -49,8 +49,12 @@ function textScale(percent) {
 // schema); `pair`: accentPair(); `cursorOk`: the cursor theme is installed
 // (else the line is left out and the theme of hypr/modules/env.lua stays);
 // `lua`: serialize.js luaValue. Throws if a value cannot be written.
-function hyprLua(v, pair, cursorOk, lua) {
+// surface (optional): the theme's { bg2, bgDeep }: the inactive border and
+// the desktop's color under the wallpaper; without it, look.lua's own
+function hyprLua(v, pair, cursorOk, lua, surface) {
     if (!isHex(pair.accent) || !isHex(pair.light))
+        throw new Error("appearance: cor inválida")
+    if (surface !== undefined && (surface === null || !isHex(surface.bg2) || !isHex(surface.bgDeep)))
         throw new Error("appearance: cor inválida")
     if (!Number.isInteger(v.radius) || !Number.isInteger(v.cursorSize) || typeof v.blur !== "boolean")
         throw new Error("appearance: valor inválido")
@@ -62,9 +66,11 @@ function hyprLua(v, pair, cursorOk, lua) {
         "-- before local.lua (hyprland.lua), so this machine's local.lua still wins.",
         "hl.config({",
         "  general = {",
-        `    col = { active_border = { colors = { ${rgb(pair.light)}, ${rgb(pair.accent)} }, angle = 45 } },`,
+        `    col = { active_border = { colors = { ${rgb(pair.light)}, ${rgb(pair.accent)} }, angle = 45 }`
+            + (surface !== undefined ? `, inactive_border = ${rgb(surface.bg2)}` : "") + " },",
         "  },",
         `  decoration = { rounding = ${lua(v.radius)} },`,
+        ...(surface !== undefined ? [`  misc = { background_color = ${rgb(surface.bgDeep)} },`] : []),
         "})",
         "-- Glass behind the bar and its panels (rules.lua turns it on)",
         `hl.layer_rule({ name = "settings-glass", match = { namespace = "^(quickshell-bar)$" }, blur = ${lua(v.blur === true)} })`
