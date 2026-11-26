@@ -52,7 +52,9 @@ Loader {
         ColorSwatches {
             options: ctl.spec.options
             value: ctl.value
-            onPicked: v => SettingsStore.set(ctl.key, v)
+            // (the accent changes through the same transition as the theme)
+            onPicked: v => ctl.key === "accent" ? SwapState.run(() => SettingsStore.set("accent", v), { fromCursor: true })
+                                                : SettingsStore.set(ctl.key, v)
         }
     }
     Component {

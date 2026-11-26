@@ -33,6 +33,8 @@ ShellRoot {
 
     // Desktop wallpaper, below every window
     Wallpaper {}
+    // The frozen frames of a change of profile or theme (over everything)
+    SwapFrames {}
 
     // Each Bar (the frame: bar and its panels) gets its screen as modelData;
     // bars are added and removed as monitors are plugged in and out. BarZone

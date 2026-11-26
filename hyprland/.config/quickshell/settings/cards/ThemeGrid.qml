@@ -29,7 +29,8 @@ Item {
     function pick(t) {
         if (LockState.locked || LockState.wanted || t.id === theme)
             return
-        SettingsStore.setMany({ theme: t.id, flavor: flavorOf(t) })
+        const change = { theme: t.id, flavor: flavorOf(t) }
+        SwapState.run(() => SettingsStore.setMany(change), { fromCursor: true })
     }
     readonly property int columns: 3
     readonly property int chosenIndex: ThemeCatalog.themes.findIndex(t => t.id === theme)

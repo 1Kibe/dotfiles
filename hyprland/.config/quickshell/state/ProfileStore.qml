@@ -394,7 +394,12 @@ Singleton {
             root.reload()
         }
     }
-    Component.onCompleted: Qt.callLater(reload)
+    // (born after SettingsStore is ready, padrao never changes: the list is
+    // made here too, never empty until the first reading)
+    Component.onCompleted: {
+        relist()
+        Qt.callLater(reload)
+    }
 
     // ── Writing ──
     property string pendingWhat: ""
@@ -527,12 +532,24 @@ Singleton {
         return SettingsStore.setAuto("profileOrder", list)
     }
     // Applying one: its values and its wallpaper in one change, then it is
-    // the active one
-    function apply(id) {
+    // the active one, through the change of the frozen frame (SwapState: it
+    // may happen a moment later, or after the change going on; checked again
+    // then). opts.fromCursor: the circle starts from the cursor
+    function apply(id, opts) {
         const p = get(id)
         if (p === null || !SettingsStore.ready || locked)
             return false
         // (a click never stays silent: the folders are being read or written)
+        if (busy) {
+            failed("Espere: os perfis ainda estão sendo lidos ou gravados.")
+            return false
+        }
+        return SwapState.run(() => applyNow(id), opts)
+    }
+    function applyNow(id) {
+        const p = get(id)
+        if (p === null || !SettingsStore.ready || locked)
+            return false
         if (busy) {
             failed("Espere: os perfis ainda estão sendo lidos ou gravados.")
             return false

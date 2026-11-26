@@ -350,6 +350,9 @@ Singleton {
     // A new wallpaper (wallpaper/WallpaperSwap): it fades in over the old
     // one with a slight zoom out (wallpaperZoom → 1)
     readonly property int wallpaperFade: 600
+    // A change of profile or theme (wallpaper/SwapFrames): the frozen frame
+    // of the screen leaving (fade, slide, curtain or circle)
+    readonly property int swapDuration: 600
     readonly property real wallpaperZoom: 1.03
     readonly property int motionPanelClose: 200
     // easing.bezierCurve, the standard decelerate/accelerate pair: opening

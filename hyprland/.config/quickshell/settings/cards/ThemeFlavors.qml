@@ -26,7 +26,7 @@ Item {
         value: root.flavor
         onPicked: v => {
             if (!LockState.locked && !LockState.wanted)
-                SettingsStore.set("flavor", v)
+                SwapState.run(() => SettingsStore.set("flavor", v), { fromCursor: true })
         }
     }
 }

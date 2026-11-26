@@ -12,6 +12,8 @@ import qs.theme
 // underneath is never replaced while it shows. A new picture that cannot be
 // loaded is logged and dropped: the old one stays. Reduce motion: the fade
 // only. Speed 0: at once. One swap at a time, never a running animation.
+// `instant`: the change happens at once (a frozen frame of the screen covers
+// it and is the transition); `settled`: the picture asked is the one shown.
 Item {
     id: root
 
@@ -25,6 +27,9 @@ Item {
     readonly property bool swapping: swap.running
     readonly property string key: source === "" ? "" : `${source}|${fill}`
     property bool pending: false
+    property bool instant: false
+    readonly property bool settled: !pending && !swap.running && !fadeOut.running
+                                    && (key === "" ? !hasPicture : hasPicture && pane(front).key === key && pane(front).opacity === 1)
 
     function pane(n) {
         return n === 0 ? a : b
@@ -40,8 +45,12 @@ Item {
         }
         pending = false
         if (key === "") {
-            if (hasPicture)
+            if (hasPicture && instant) {
+                pane(front).opacity = 0
+                hasPicture = false
+            } else if (hasPicture) {
                 fadeOut.restart()
+            }
             return
         }
         if (hasPicture && pane(front).key === key && pane(front).opacity === 1)
@@ -72,6 +81,13 @@ Item {
         incoming.opacity = 0
         incoming.scale = Theme.reduceMotion ? 1 : Theme.wallpaperZoom
         front = n
+        if (instant) {
+            incoming.opacity = 1
+            incoming.scale = 1
+            old.opacity = 0
+            hasPicture = true
+            return
+        }
         swap.incoming = incoming
         swap.restart()
     }

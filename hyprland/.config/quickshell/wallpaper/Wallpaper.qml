@@ -49,25 +49,41 @@ Variants {
         readonly property string wanted: ready ? Validate.expandPath(SettingsStore.get("wallpaper"), home) : ""
         // The picture that passed the check ("" until one does)
         property string shown: ""
+        // Being checked (a new picture asked): not settled yet
+        property bool checking: false
+        // The picture asked is on screen (a change of profile waits for it
+        // under the frozen frame, state/SwapState)
+        readonly property bool settled: !checking && swapper.settled
+        Component.onDestruction: SwapState.removeWallpaper(root)
 
         function pick() {
             const path = wanted
             if (path === "")
                 return
+            checking = true
             BackgroundStore.check(path, ok => {
                 if (path !== root.wanted)
                     return
-                if (ok)
+                if (ok) {
                     root.shown = path
-                else if (path !== root.fallback)
+                    root.checking = false
+                } else if (path !== root.fallback) {
                     BackgroundStore.check(root.fallback, ok2 => {
                         if (ok2 && path === root.wanted)
                             root.shown = root.fallback
+                        if (path === root.wanted)
+                            root.checking = false
                     })
+                } else {
+                    root.checking = false
+                }
             })
         }
         onWantedChanged: pick()
-        Component.onCompleted: pick()
+        Component.onCompleted: {
+            SwapState.addWallpaper(root)
+            pick()
+        }
 
         // A file URL for any name ("#", "?", spaces)
         function fileUrl(path) {
@@ -77,7 +93,9 @@ Variants {
         // The picture, changing with a crossfade (a new picture, fill or
         // screen); a screen left out fades to the plain color
         WallpaperSwap {
+            id: swapper
             anchors.fill: parent
+            instant: SwapState.covering
             source: root.here && root.shown !== "" ? root.fileUrl(root.shown) : ""
             fill: root.fill
         }

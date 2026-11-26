@@ -89,7 +89,7 @@ Item {
         notice = ""
         if (locked || p === null)
             return
-        if (ProfileStore.apply(p.id))
+        if (ProfileStore.apply(p.id, { fromCursor: true }))
             pickedId = p.id
         else if (notice === "")
             notice = "Não deu para aplicar o perfil: nada mudou."

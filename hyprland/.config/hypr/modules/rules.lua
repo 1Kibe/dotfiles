@@ -102,6 +102,14 @@ hl.layer_rule({
   no_anim = true,
 })
 
+-- The frozen frame of a change of profile or theme (wallpaper/SwapFrames):
+-- its own transition only; Hyprland's fade would show the frame arriving
+hl.layer_rule({
+  name = "swap-no-anim",
+  match = { namespace = "^(quickshell-swap)$" },
+  no_anim = true,
+})
+
 -- The volume and brightness notice (osd/Osd.qml): its own fade only
 hl.layer_rule({
   name = "osd-no-anim",
