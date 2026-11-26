@@ -232,9 +232,9 @@ Hyprland usa o mesmo em `modules/input.lua`). Para outro idioma ou teclado, mude
 | **Starship** | Prompt do bash numa linha: usuário · pasta · git (só dentro de um repo) e a seta, na cor de destaque do tema e vermelha quando o último comando falha. Usa as cores do terminal, então segue o tema. Carregado pelo `~/.bashrc` (o install acrescenta uma linha); no console de texto fica o prompt padrão |
 | **btop** | Monitor do sistema (painel do sistema na barra): só CPU, memória e processos, cantos arredondados e gráficos em blocos. As cores vêm do tema do shell (`~/.config/btop/themes/dotfiles.theme`, gerado e fora do git; o btop lê ao abrir): gráficos de verde a vermelho, títulos na cor de destaque, bordas discretas e o fundo do terminal |
 | **lazygit** | Git no terminal: bordas arredondadas, ícones da Nerd Font, gráfico das branches no histórico, o nome de cada autor (com uma cor por autor), o painel de comandos aberto e sem dicas aleatórias. A diferença aparece pelo delta, lado a lado quando cabe e com cor de sintaxe (`\|` troca para o diff normal do git). As cores vêm do tema do shell (`~/.config/lazygit/tema.yml` e `delta.gitconfig`, gerados e fora do git); o `lazygit` do bash lê os dois junto da configuração do repo |
-| **Rofi** | Tema gruvbox-dark |
+| **Rofi** | Tema gruvbox-dark do sistema, com as cores e os ícones do tema do shell por cima |
 | **Firefox** | Navegador padrão, em português do Brasil (`firefox-i18n-pt-br`): abre os links e as páginas (`http`, `https`, `text/html`). O install só põe o padrão inicial |
-| **mpv** | Player de vídeo padrão, com a interface uosc nas cores Gruvbox do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
+| **mpv** | Player de vídeo padrão, com a interface uosc nas cores do tema do shell (detalhes em [hyprland/README.md](hyprland/README.md#visualizadores-imagem-e-vídeo)) |
 | **paru** | Remove as dependências de compilação depois de instalar do AUR (`RemoveMake`); o resto vem do `/etc/paru.conf` |
 | **Thunar** | Ação "Open Terminal Here" e atalhos próprios |
 | **Pavucontrol** | Controle de áudio PulseAudio/PipeWire |
