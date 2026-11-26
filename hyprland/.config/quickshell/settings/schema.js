@@ -132,6 +132,9 @@ var THEME_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 // theme/palettes.js THEME_NAME; one the catalog does not have falls on the
 // repo's default when applied (state/SettingsApply)
 var COLOR_THEME = /^[a-z0-9][a-z0-9-]{0,31}$/
+// A profile's id (its folder under ~/.local/share/dotfiles/profiles): the
+// same pattern as settings/profile.js ID
+var PROFILE_ID = /^[a-z0-9][a-z0-9-]{0,31}$/
 // A screen's port name (eDP-1, HDMI-A-1, Virtual-1), the same shape as
 // settings/monitors.js NAME: never a number or a word Hyprland reads as a
 // selector (next, l, current)
@@ -253,28 +256,28 @@ var OFF_DESC = "Com a trava ligada, sempre 10 s ou mais depois de travar"
 
 var KEYS = {
     // ── Tema e cores ──
-    accent: { def: "padrao", type: "enum", page: "temas", card: "destaque", label: "Cor de destaque",
+    accent: { profile: true, def: "padrao", type: "enum", page: "temas", card: "destaque", label: "Cor de destaque",
               options: opts([["padrao", "Padrão"], ["red", "Vermelho"], ["green", "Verde"], ["yellow", "Amarelo"],
                              ["blue", "Azul"], ["purple", "Roxo"], ["aqua", "Água"], ["orange", "Laranja"]]),
               control: "swatches", syn: ["cor", "acento", "destaque"] },
     // The color theme and its flavor (one of the four fixed places; the
     // theme's own name for it is its rotulo): their cards on Temas draw them
-    theme: { def: "gruvbox", type: "string", pattern: COLOR_THEME, page: "temas", card: "grade",
+    theme: { profile: true, def: "gruvbox", type: "string", pattern: COLOR_THEME, page: "temas", card: "grade",
              label: "Tema", syn: ["paleta", "cores", "tema de cores"] },
-    flavor: { def: "dark", type: "enum", page: "temas", card: "sabor", label: "Sabor",
+    flavor: { profile: true, def: "dark", type: "enum", page: "temas", card: "sabor", label: "Sabor",
               options: opts([["dark", "Escuro"], ["darkHard", "Escuro forte"], ["darkSoft", "Escuro suave"], ["light", "Claro"]]),
               syn: ["escuro", "claro"] },
     // One for the bar and its panels: they are one shape
-    barOpacity: { def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
+    barOpacity: { profile: true, def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
                   card: "superficies", label: "Transparência da barra e dos painéis", desc: "100% é sólida",
                   syn: ["opacidade", "transparente", "painel"] },
-    blur: { def: true, type: "bool", page: "tema", card: "superficies", label: "Desfoque atrás dos painéis",
+    blur: { profile: true, def: true, type: "bool", page: "tema", card: "superficies", label: "Desfoque atrás dos painéis",
             syn: ["blur", "vidro"] },
-    radius: { def: 8, type: "int", min: 0, max: 16, step: 1, unit: "px", page: "tema", card: "superficies",
+    radius: { profile: true, def: 8, type: "int", min: 0, max: 16, step: 1, unit: "px", page: "tema", card: "superficies",
               label: "Raio dos cantos", desc: "Janelas, barra e painéis", syn: ["arredondado", "cantos"] },
-    cursorTheme: { def: "Bibata-Modern-Classic-Right", type: "string", pattern: THEME_NAME, page: "tema",
+    cursorTheme: { profile: true, def: "Bibata-Modern-Classic-Right", type: "string", pattern: THEME_NAME, page: "tema",
                    card: "cursor", label: "Tema do cursor", source: "cursorThemes", syn: ["mouse", "ponteiro"] },
-    cursorSize: { def: 24, type: "enum", page: "tema", card: "cursor", label: "Tamanho do cursor",
+    cursorSize: { profile: true, def: 24, type: "enum", page: "tema", card: "cursor", label: "Tamanho do cursor",
                   options: opts([[20, "20"], [24, "24"], [32, "32"], [48, "48"]]), syn: ["mouse", "ponteiro"] },
 
     // ── Papel de parede ──
@@ -283,24 +286,24 @@ var KEYS = {
     wallpaperMonitor: { def: "", type: "string", pattern: OPT_MONITOR, machine: true, page: "papel",
                         card: "ajuste", label: "Tela", source: "monitors", emptyLabel: "Todas as telas",
                         syn: ["monitor"] },
-    wallpaperFill: { def: "fill", type: "enum", page: "papel", card: "ajuste", label: "Preenchimento",
+    wallpaperFill: { profile: true, def: "fill", type: "enum", page: "papel", card: "ajuste", label: "Preenchimento",
                      options: opts([["fill", "Preencher"], ["fit", "Ajustar"], ["center", "Centralizar"],
                                     ["tile", "Lado a lado"]]), syn: ["ajuste", "esticar"] },
 
     // ── Fontes e animações ──
-    fontUi: { def: "Agave Nerd Font Propo", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
+    fontUi: { profile: true, def: "Agave Nerd Font Propo", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
               label: "Fonte da interface", source: "fonts", syn: ["letra", "texto"] },
-    fontMono: { def: "Agave Nerd Font Mono", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
+    fontMono: { profile: true, def: "Agave Nerd Font Mono", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
                 label: "Fonte monoespaçada", source: "monoFonts", syn: ["letra", "código"] },
-    fontPanels: { def: "Inter", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
+    fontPanels: { profile: true, def: "Inter", type: "string", pattern: FONT_NAME, page: "fontes", card: "fontes",
                   label: "Fonte dos painéis", desc: "O painel das Configurações", source: "fonts",
                   syn: ["letra", "texto", "painel"] },
-    textScale: { def: 100, type: "int", min: 90, max: 130, step: 5, unit: "%", page: "fontes", card: "fontes",
+    textScale: { profile: true, def: 100, type: "int", min: 90, max: 130, step: 5, unit: "%", page: "fontes", card: "fontes",
                  label: "Tamanho do texto", syn: ["escala", "zoom"] },
-    animSpeed: { def: 1, type: "enum", page: "fontes", card: "animacoes", label: "Velocidade das animações",
+    animSpeed: { profile: true, def: 1, type: "enum", page: "fontes", card: "animacoes", label: "Velocidade das animações",
                  options: opts([[0, "Sem animação"], [0.7, "Rápida"], [1, "Normal"], [1.4, "Calma"]]),
                  syn: ["movimento", "transição"] },
-    reduceMotion: { def: false, type: "bool", page: "fontes", card: "animacoes", label: "Reduzir movimento",
+    reduceMotion: { profile: true, def: false, type: "bool", page: "fontes", card: "animacoes", label: "Reduzir movimento",
                     syn: ["acessibilidade", "animação"] },
 
     // ── Barra ──
@@ -459,6 +462,12 @@ var KEYS = {
     // ── Contas de código (this machine only): who signs the commits and
     // which SSH key pushes, per folder; written to ~/.config/git by
     // state/SettingsApply. Only their own cards change them ──
+    // Perfis: the order of the owner's profiles (Super+T, the numbers) and the
+    // active one ("" = the built-in Padrão); kept by the shell itself
+    profileOrder: { def: [], type: "idlist", pattern: PROFILE_ID, max: 24, machine: true, hidden: true, auto: true,
+                    page: "tema", card: "superficies", label: "Ordem dos perfis" },
+    profileActive: { def: "", type: "string", pattern: /^$|^[a-z0-9][a-z0-9-]{0,31}$/, machine: true, hidden: true,
+                     auto: true, page: "tema", card: "superficies", label: "Perfil ativo" },
     codeProfiles: { def: "[]", type: "codeprofiles", machine: true, hidden: true, kept: true, page: "contas", card: "perfis",
                     label: "Perfis" },
     codeFolders: { def: "[]", type: "codefolders", machine: true, hidden: true, kept: true, page: "contas", card: "pastas",
