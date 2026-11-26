@@ -36,7 +36,7 @@ function columns(rows, W) {
 
 // One column's path. top: { attached, r } (r: the concave corner's radius
 // when attached, else the convex one's); botR: the bottom corner's radius
-function columnPath(W, col, top, botR, R, s) {
+function columnPath(W, col, top, botR, R, s, info) {
     const first = col[0]
     const last = col[col.length - 1]
     const ye = last.y + last.h
@@ -49,6 +49,7 @@ function columnPath(W, col, top, botR, R, s) {
     d += `L ${W} ${ye} `
     const rb = Math.min(botR, reachToRadius(last.h / 2, s), reachToRadius((W - last.x) / 2, s))
     d += Corners.corner(last.x, ye, -1, 0, 0, -1, rb, s)
+    const steps = []
     // Up the left side: a step where the width changes
     for (let i = col.length - 1; i > 0; i--) {
         const n = col[i]          // the lower row
@@ -58,6 +59,7 @@ function columnPath(W, col, top, botR, R, s) {
         if (Math.abs(dx) < 0.5)
             continue
         const r = Math.min(R, reachToRadius(Math.abs(dx) / 2, s), reachToRadius(c.h / 2, s), reachToRadius(n.h / 2, s))
+        steps.push(r)
         const dir = dx > 0 ? 1 : -1
         d += Corners.corner(n.x, y, 0, -1, dir, 0, r, s)
         d += Corners.corner(c.x, y, dir, 0, 0, -1, r, s)
@@ -67,10 +69,14 @@ function columnPath(W, col, top, botR, R, s) {
         d += Corners.corner(first.x, first.y, 0, -1, -1, 0, top.r, s)
     else
         d += Corners.corner(first.x, first.y, 0, -1, 1, 0, top.r, s)
+    if (info)
+        info.push({ top: top.attached ? -top.r : top.r, bottom: rb, steps: steps })
     return d + "Z "
 }
 
-// The whole pile: { path, lowest, attached }. junction: the bar's edge; R:
+// The whole pile: { path, lowest, attached, radii }; radii: by column, the
+// top corner's radius (negative: the concave one on the bar), the bottom
+// one's and the steps' (for the tests). junction: the bar's edge; R:
 // the corners' radius; topR: the concave corner's radius now (it grows as
 // the first card comes in); s: the corners' smoothing
 function outline(W, rows, junction, R, topR, s) {
@@ -78,6 +84,7 @@ function outline(W, rows, junction, R, topR, s) {
     let d = ""
     let lowest = 0
     let attached = false
+    const radii = []
     cols.forEach((col, i) => {
         const first = col[0]
         const last = col[col.length - 1]
@@ -92,8 +99,8 @@ function outline(W, rows, junction, R, topR, s) {
         } else {
             top = { attached: false, r: Math.max(0, Math.min(R, 2 * gapTop, reachToRadius(first.h / 2, s), reachToRadius((W - first.x) / 2, s))) }
         }
-        d += columnPath(W, col, top, Math.min(R, 2 * gapBot), R, s)
+        d += columnPath(W, col, top, Math.min(R, 2 * gapBot), R, s, radii)
         lowest = Math.max(lowest, last.y + last.h)
     })
-    return { path: d, lowest: lowest, attached: attached }
+    return { path: d, lowest: lowest, attached: attached, radii: radii }
 }

@@ -172,9 +172,11 @@ PanelWindow {
     readonly property bool edgeRightAsked: EdgeMotion.sideAsked(shown, "right")
     readonly property real edgeLeft: EdgeMotion.sideStep(shown, "left")
     readonly property real edgeRight: EdgeMotion.sideStep(shown, "right")
-    property real cornerLeft: edgeLeftAsked ? Theme.barRadius * (1 - edgeLeft)
+    readonly property real edgeCornerLeft: EdgeMotion.sideCorner(shown, "left")
+    readonly property real edgeCornerRight: EdgeMotion.sideCorner(shown, "right")
+    property real cornerLeft: edgeLeftAsked ? Theme.barRadius * (1 - edgeCornerLeft)
                               : monitorName !== "" && ShellState.attachedLeft === monitorName ? 0 : Theme.barRadius
-    property real cornerRight: edgeRightAsked ? Theme.barRadius * (1 - edgeRight)
+    property real cornerRight: edgeRightAsked ? Theme.barRadius * (1 - edgeCornerRight)
                                : monitorName !== "" && ShellState.attachedRight === monitorName ? 0 : Theme.barRadius
     Behavior on cornerLeft {
         enabled: !root.edgeLeftAsked

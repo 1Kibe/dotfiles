@@ -124,6 +124,19 @@ Singleton {
     // hangs under one of them (the notifications' pile) lines up with it;
     // same keys as rightPanelEdges
     property var rightPanelSpans: ({})
+    // Monitors whose notifications' pile has a card coming in or leaving
+    // right now (its room moving): the minimized strip steps aside meanwhile
+    property var pileMoving: ({})
+    function setPileMoving(monitor, on) {
+        if (monitor === "" || (pileMoving[monitor] === true) === on)
+            return
+        const m = Object.assign({}, pileMoving)
+        if (on)
+            m[monitor] = true
+        else
+            delete m[monitor]
+        pileMoving = m
+    }
     function setRightPanelSpan(monitor, left, right, owner) {
         const key = `${monitor}|${owner || "panel"}`
         const old = rightPanelSpans[key]

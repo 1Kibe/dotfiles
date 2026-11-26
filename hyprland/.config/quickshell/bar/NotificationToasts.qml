@@ -6,6 +6,7 @@ import qs.theme
 import qs.state
 import qs.notifications
 import "pileshape.js" as Pile
+import "edgemotion.js" as EdgeMotion
 
 // The notifications on the screen: a pile on the screen's right edge, drawn
 // in the bar's own window (the frame, Bar.qml) as one shape with the bar.
@@ -46,6 +47,10 @@ Item {
     readonly property string edgeSide: edgeStep > 0 ? "right" : ""
     property real stretch: 0
     readonly property real edgeStep: hidden ? 0 : stretch
+    // The bar's corner: an even time beside the stretch, eased at both ends
+    // (the stretch starts or ends with a rush)
+    property real cornerTime: 0
+    readonly property real edgeCorner: hidden ? 0 : EdgeMotion.cornerStep(cornerTime)
 
     // Sizes: a row is a card with a margin round it
     readonly property int pad: 6
@@ -230,14 +235,38 @@ Item {
         duration: Theme.reduceMotion ? 0 : Theme.dur(root.stretchOut)
         easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveAccel
     }
+    NumberAnimation {
+        id: cornerOpen
+        target: root; property: "cornerTime"; to: 1
+        duration: Theme.reduceMotion ? 0 : Theme.dur(root.stretchIn)
+    }
+    NumberAnimation {
+        id: cornerClose
+        target: root; property: "cornerTime"; to: 0
+        duration: Theme.reduceMotion ? 0 : Theme.dur(root.stretchOut)
+    }
+    function closeBar() {
+        cornerOpen.stop()
+        stretchClose.restart()
+        cornerClose.restart()
+    }
     // A card about to come in: the bar first (how long the card waits)
     function openBar() {
         stretchClose.stop()
-        if (stretch >= 0.99)
+        cornerClose.stop()
+        if (stretch >= 0.99) {
+            cornerTime = 1
             return 0
+        }
         stretchOpen.restart()
+        cornerOpen.restart()
         return Math.round(Theme.motionEdgeOpen * Theme.edgePanelFrom)
     }
+    // How many cards' rooms are moving now (coming in, leaving, stepping
+    // aside for room): said in ShellState for the minimized strip
+    property int movingRooms: 0
+    readonly property bool roomsMoving: movingRooms > 0
+    onRoomsMovingChanged: ShellState.setPileMoving(monitorName, roomsMoving)
     // The cards not leaving (kept up to date: a ListModel's roles are not
     // watched by bindings)
     property int liveN: 0
@@ -308,14 +337,14 @@ Item {
             cards.remove(i)
         countLive()
         if (cards.count === 0)
-            stretchClose.restart()
+            closeBar()
     }
     // A card is out (its room still closing): with no other one left, the
     // bar's end goes back now
     function slidOut() {
         countLive()
         if (liveN === 0)
-            stretchClose.restart()
+            closeBar()
     }
     Connections {
         target: NotificationState
@@ -362,6 +391,13 @@ Item {
                     readonly property bool shows: !root.fitting || root.fit.show[index] === true
                     // Seen at least once (a card that only waited leaves at once)
                     property bool everShown: false
+                    // Its room moving (counted by the pile)
+                    readonly property bool moving: comeIn.running || goOut.running || tuck.running
+                    onMovingChanged: root.movingRooms += moving ? 1 : -1
+                    Component.onDestruction: {
+                        if (moving)
+                            root.movingRooms--
+                    }
                     width: root.width
                     // (a card that stops fitting slides away and its room
                     // closes; it comes back with the normal way in)
@@ -615,5 +651,6 @@ Item {
         ShellState.setRightPanelEdge(monitorName, 0, edgeOwner)
         if (overlayKey !== "")
             ShellState.setOverlay(overlayKey, false)
+        ShellState.setPileMoving(monitorName, false)
     }
 }

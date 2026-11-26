@@ -96,6 +96,7 @@ Item {
     }
     // What the frame reads to stretch the bar's end (Bar.qml)
     readonly property real edgeStep: edgeSide !== "" ? edgeTimeline.barStep : 0
+    readonly property real edgeCorner: edgeSide !== "" ? edgeTimeline.barCorner : 0
     // Set by place(): whether the body continues one of the bar's ends
     property bool atLeftEnd: false
     property bool atRightEnd: false
@@ -369,6 +370,7 @@ Item {
         bodyWidth: root.bodyWidth
         bodyHeight: root.bodyHeight
         progress: root.progress
+        cornerProgress: root.edgeSide !== "" ? edgeTimeline.panelTime : root.progress
         islandWidth: root.joinButton && root.button ? root.button.width : 0
         islandHeight: root.joinButton && root.frame ? root.frame.barArea.height : 0
         islandRadius: Theme.barRadius

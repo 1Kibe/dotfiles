@@ -214,7 +214,44 @@ Item {
         areaTop: areaTop, areaBottom: areaBottom, topEdge: topEdge, bottomEdge: bottomEdge,
         gap: root.edgeReach, level: level === "hidden" ? "wire" : level, n: count
     }, m)
-    readonly property real wantW: level === "hidden" || !g.visible ? 0 : Geom.widthFor(level, m)
+    // The notifications' pile on this screen moving a card in or out: the
+    // strip steps aside into the edge (its closing motion) and comes back
+    // at its new place (its opening one) once the pile has settled a
+    // moment (a burst keeps it aside until the last card is in place);
+    // never under the mouse. Its top holds still while it goes in, moves
+    // only once it is all in, and it comes back only after that
+    readonly property bool pileMoving: ShellState.pileMoving[screenName] === true
+    property bool asideForPile: false
+    property real heldTop: -1
+    onPileMovingChanged: {
+        if (pileMoving) {
+            settleTimer.stop()
+            if (!hovered && !asideForPile) {
+                heldTop = pieceTop
+                asideForPile = true
+            }
+        } else if (asideForPile) {
+            settleTimer.restart()
+        }
+    }
+    readonly property bool allIn: animW < 0.5
+    onAllInChanged: {
+        if (allIn && asideForPile)
+            heldTop = -1
+    }
+    Timer {
+        id: settleTimer
+        interval: Theme.dur(Theme.animFast)
+        onTriggered: {
+            if (!root.allIn) {
+                restart()
+                return
+            }
+            root.heldTop = -1
+            root.asideForPile = false
+        }
+    }
+    readonly property real wantW: level === "hidden" || !g.visible || asideForPile ? 0 : Geom.widthFor(level, m)
     readonly property bool attention: entries.some(e => e.attention)
     // Open with a window wanting attention: its icon pulses (about 1 s, 8
     // steps a second); the timer runs only then
@@ -301,7 +338,7 @@ Item {
         interval: Theme.dur(Theme.animFast)
         onTriggered: root.edgeMoving = false
     }
-    property real pieceTop: wantTop
+    property real pieceTop: heldTop >= 0 ? heldTop : wantTop
     // Its last moves for the stats (time, top, target, edge, following)
     onPieceTopChanged: {
         const t = MinimizeState.stripTrace
@@ -312,7 +349,7 @@ Item {
         t[screenName] = list
     }
     Behavior on pieceTop {
-        enabled: !Theme.reduceMotion && !root.edgeMoving
+        enabled: !Theme.reduceMotion && !root.edgeMoving && !root.asideForPile
         NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
     }
     property real pieceH: wantH
