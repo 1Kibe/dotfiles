@@ -68,7 +68,8 @@ Item {
     // A picture that failed to load: logged, its layer emptied (it is never
     // the one in front), the old picture left as it is
     function dropFailed(pane) {
-        console.warn(`WallpaperSwap: não deu para carregar ${pane.src}`)
+        // (a fixed text: the path may be a profile's)
+        console.warn("WallpaperSwap: não deu para carregar a imagem")
         pane.src = ""
     }
 

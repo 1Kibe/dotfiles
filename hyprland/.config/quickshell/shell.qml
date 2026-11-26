@@ -12,6 +12,7 @@ import qs.settings
 import qs.overview
 import qs.minimize
 import qs.osd
+import qs.profiles
 import "settings/schema.js" as Schema
 import "bar/barscreens.js" as BarScreens
 
@@ -35,6 +36,45 @@ ShellRoot {
     Wallpaper {}
     // The frozen frames of a change of profile or theme (over everything)
     SwapFrames {}
+    // Super+T's carousel and Super+Shift+T's notice
+    ProfileOverlay {}
+    ProfileToast {}
+
+    // Super+T and Super+Shift+T: the profiles (state/CarouselState):
+    // qs ipc call profiles toggle | next | apply <id> | status. The id by
+    // the profiles' pattern ("padrao": the built-in one); fixed answers,
+    // never a name or a path
+    IpcHandler {
+        target: "profiles"
+
+        function toggle(): string {
+            const monitor = Hyprland.focusedMonitor
+            return monitor ? CarouselState.toggle(monitor.name) : "sem monitor em foco"
+        }
+        function next(): string {
+            return CarouselState.next()
+        }
+        function apply(id: string): string {
+            const own = /^[a-z0-9][a-z0-9-]{0,31}$/.test(id) && id !== "padrao"
+            if (!own && id !== "padrao")
+                return "id inválido"
+            const key = own ? id : ""
+            if (ProfileStore.get(key) === null)
+                return "perfil desconhecido"
+            if (CarouselState.blocked())
+                return "travada"
+            return ProfileStore.apply(key) ? "ok" : "recusado"
+        }
+        // Ids, order and counts only
+        function status(): string {
+            return JSON.stringify({
+                open: CarouselState.open,
+                active: ProfileStore.active === "" ? "padrao" : ProfileStore.active,
+                order: ProfileStore.order,
+                count: ProfileStore.profiles.length
+            })
+        }
+    }
 
     // Each Bar (the frame: bar and its panels) gets its screen as modelData;
     // bars are added and removed as monitors are plugged in and out. BarZone
@@ -157,7 +197,7 @@ ShellRoot {
             CaptureState.openCapture()
         }
 
-        // Super+Shift+T: the text of an area goes to the clipboard
+        // Super+Shift+O: the text of an area goes to the clipboard
         function ocr(): void {
             CaptureState.openOcr()
         }

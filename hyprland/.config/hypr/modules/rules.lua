@@ -110,6 +110,20 @@ hl.layer_rule({
   no_anim = true,
 })
 
+-- Super+T's carousel (profiles/ProfileOverlay): the desktop blurred behind
+-- its dark veil, its own fade only; its notice, its own fade only
+hl.layer_rule({
+  name = "profiles-blur",
+  match = { namespace = "^(quickshell-profiles)$" },
+  blur = true,
+  no_anim = true,
+})
+hl.layer_rule({
+  name = "profiles-toast-no-anim",
+  match = { namespace = "^(quickshell-profiles-toast)$" },
+  no_anim = true,
+})
+
 -- The volume and brightness notice (osd/Osd.qml): its own fade only
 hl.layer_rule({
   name = "osd-no-anim",

@@ -165,6 +165,7 @@ Singleton {
         revealed = {}
         limit.restart()
         if (kind === "circle" && opts.fromCursor === true) {
+            cursorFor = change
             cursor.command = ["hyprctl", "cursorpos"]
             cursor.running = true
             return
@@ -184,7 +185,13 @@ Singleton {
                 root.cursorRead("")
         }
     }
+    // (the change the cursor is read for: a late text of a reading stopped
+    // by drop() never starts a newer change)
+    property var cursorFor: null
     function cursorRead(text) {
+        if (current === null || current !== cursorFor)
+            return
+        cursorFor = null
         const m = /^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*$/.exec(text)
         if (m) {
             const gx = Number(m[1]), gy = Number(m[2])

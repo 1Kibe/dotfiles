@@ -114,7 +114,9 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Shift+Print` | Print da tela inteira |
 | `Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
-| `Super+Shift+T` | Copiar o texto de uma área (OCR) |
+| `Super+Shift+O` | Copiar o texto de uma área (OCR) |
+| `Super+T` | Trocar de perfil |
+| `Super+Shift+T` | Próximo perfil |
 | `Super+Alt+R` | Gravar a tela / parar a gravação |
 | `XF86Calculator` | Calculadora |
 | `Super+Shift+R` | Recarregar a config do Hyprland |
@@ -419,7 +421,7 @@ clipboard começa vazio, sem perder o original.
 | `Super+Shift+S` | Print rápido de uma área |
 | `Alt+Print` | Print rápido da janela ativa |
 | `Shift+Print` | Print rápido da tela inteira |
-| `Super+Shift+T` | OCR: o texto de uma área vai para o clipboard |
+| `Super+Shift+O` | OCR: o texto de uma área vai para o clipboard |
 | `Super+Alt+R` | Grava o monitor em foco (com o último som escolhido, sem atraso); de novo, para |
 
 - **Foto:** depois de escolher a área, a barra de anotação sobe da borda de baixo da tela, centralizada (fica fora do PNG):
@@ -480,7 +482,7 @@ Outros alvos, para scripts:
 | `qs ipc call updates check` | Procura atualizações agora, como "Verificar agora" (o `hypr-atualizar` chama no fim) |
 | `qs ipc call taskmanager stats` | Os números do painel do sistema em JSON |
 | `qs ipc call clipboard stats` | Contagens do clipboard em JSON (itens por tipo, fixados, tempo de leitura); nunca o conteúdo |
-| `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+T` e `Super+Alt+R` |
+| `qs ipc call capture open` / `ocr` / `record` | O mesmo que `Print`, `Super+Shift+O` e `Super+Alt+R` |
 | `qs ipc call capture card <arquivo>` | Mostra o cartão de um print (só PNG da pasta `Capturas`; o `hypr-print` chama no fim) |
 | `qs ipc call notifications clear` | Limpa a lista de notificações (não funciona com a tela travada) |
 | `qs ipc call notifications dnd` / `dndOn` / `dndOff` | Alterna, liga ou desliga o Não perturbe |

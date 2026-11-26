@@ -136,7 +136,7 @@ Item {
         CaptureButton {
             id: bOcr
             icon: "󱄽"
-            hint: "Copiar o texto de uma área (Super+Shift+T)"
+            hint: "Copiar o texto de uma área (Super+Shift+O)"
             active: CaptureState.purpose === "ocr"
             onPressed: CaptureState.openOcr()
         }

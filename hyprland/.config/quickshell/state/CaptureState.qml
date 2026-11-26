@@ -171,7 +171,7 @@ Singleton {
     // Mode used to pick: OCR always takes an area
     readonly property string pickMode: purpose === "ocr" ? "area" : mode
 
-    // Super+Shift+T, or the OCR button of the bar: pick an area, its text
+    // Super+Shift+O, or the OCR button of the bar: pick an area, its text
     // goes to the clipboard
     function openOcr() {
         if (open && purpose === "ocr") {

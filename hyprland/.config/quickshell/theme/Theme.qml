@@ -353,6 +353,11 @@ Singleton {
     // A change of profile or theme (wallpaper/SwapFrames): the frozen frame
     // of the screen leaving (fade, slide, curtain or circle)
     readonly property int swapDuration: 600
+    // Super+T (profiles/ProfileOverlay): the middle card's width (3:4), up
+    // to how many profiles the fan holds (more: a grid), the dark veil
+    readonly property int profileCardWidth: 300
+    readonly property int profileFanMax: 6
+    readonly property real profileDim: 0.6
     readonly property real wallpaperZoom: 1.03
     readonly property int motionPanelClose: 200
     // easing.bezierCurve, the standard decelerate/accelerate pair: opening
