@@ -184,6 +184,31 @@ THEMES = [
         "nomeadas": {"yellow": "#dbbc7f", "orange": "#e69875", "red": "#e67e80", "green": "#a7c080",
                      "aqua": "#83c092", "blue": "#7fbbb3", "purple": "#d699b6"},
     },
+    {
+        "id": "rose-pine", "nome": "Rosé Pine", "licenca": "Rosé Pine (MIT)",
+        "accent": "#c4a7e7",   # iris
+        "sabores": {
+            # base, surface, overlay; text, subtle, muted. Six accents for
+            # seven names: green and blue as the project's own terminal has
+            # them (pine, foam), orange the nearest (rose), aqua = foam
+            "dark": {
+                "rotulo": "Main", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#191724", "bg1": "#1f1d2e", "bg2": "#26233a",
+                "fg": "#e0def4", "fg2": "#908caa", "fg4": "#6e6a86", "gray": "#6e6a86",
+                "nomeadas": {"yellow": "#f6c177", "orange": "#ebbcba", "red": "#eb6f92", "green": "#31748f",
+                             "aqua": "#9ccfd8", "blue": "#9ccfd8", "purple": "#c4a7e7"},
+                "ansi": ["#26233a", "#eb6f92", "#31748f", "#f6c177", "#9ccfd8", "#c4a7e7", "#ebbcba", "#e0def4"],
+            },
+            "darkSoft": {
+                "rotulo": "Moon", "syntaxTheme": "base16",
+                "bgHard": None, "bg": "#232136", "bg1": "#2a273f", "bg2": "#393552",
+                "fg": "#e0def4", "fg2": "#908caa", "fg4": "#6e6a86", "gray": "#6e6a86",
+                "nomeadas": {"yellow": "#f6c177", "orange": "#ea9a97", "red": "#eb6f92", "green": "#3e8fb0",
+                             "aqua": "#9ccfd8", "blue": "#9ccfd8", "purple": "#c4a7e7"},
+                "ansi": ["#393552", "#eb6f92", "#3e8fb0", "#f6c177", "#9ccfd8", "#c4a7e7", "#ea9a97", "#e0def4"],
+            },
+        },
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

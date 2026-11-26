@@ -1,0 +1,37 @@
+{
+  "versao": 1,
+  "id": "rose-pine",
+  "nome": "Rosé Pine",
+  "licenca": "Rosé Pine (MIT)",
+  "destaquePadrao": { "accent": "#c4a7e7", "light": "#dfcff2" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Main",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#0d0c13", "bgHard": "#13111b", "bg": "#191724", "bg1": "#1f1d2e", "bg2": "#26233a",
+        "fg": "#e0def4", "fg2": "#908caa", "fg4": "#6e6a86", "text": "#e0def4", "gray": "#6e6a86"
+      },
+      "nomeadas": {
+        "yellow": "#f6c177", "orange": "#ebbcba", "red": "#eb6f92", "green": "#31748f", "aqua": "#9ccfd8",
+        "blue": "#9ccfd8", "purple": "#c4a7e7"
+      },
+      "ansi": ["#26233a", "#eb6f92", "#31748f", "#f6c177", "#9ccfd8", "#c4a7e7", "#ebbcba", "#e0def4"]
+    },
+    "darkSoft": {
+      "rotulo": "Moon",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#12121d", "bgHard": "#1a1929", "bg": "#232136", "bg1": "#2a273f", "bg2": "#393552",
+        "fg": "#e0def4", "fg2": "#908caa", "fg4": "#6e6a86", "text": "#e0def4", "gray": "#6e6a86"
+      },
+      "nomeadas": {
+        "yellow": "#f6c177", "orange": "#ea9a97", "red": "#eb6f92", "green": "#3e8fb0", "aqua": "#9ccfd8",
+        "blue": "#9ccfd8", "purple": "#c4a7e7"
+      },
+      "ansi": ["#393552", "#eb6f92", "#3e8fb0", "#f6c177", "#9ccfd8", "#c4a7e7", "#ea9a97", "#e0def4"]
+    }
+  }
+}
