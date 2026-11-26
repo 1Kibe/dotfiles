@@ -133,6 +133,29 @@ THEMES = [
         # Nord's terminal port (nordtheme/alacritty), normal colors
         "ansi": ["#3b4252", "#bf616a", "#a3be8c", "#ebcb8b", "#81a1c1", "#b48ead", "#88c0d0", "#e5e9f0"],
     },
+    {
+        "id": "tokyo-night", "nome": "Tokyo Night", "licenca": "Tokyo Night (MIT)",
+        "accent": "#7aa2f7",
+        "sabores": {
+            # The original theme (VS Code): editor background, side bar,
+            # active selection, line numbers; editor text, the lighter
+            # one, the terminal's white
+            "dark": {
+                "rotulo": "Night", "syntaxTheme": "base16",
+                "bgHard": "#16161e", "bg": "#1a1b26", "bg1": "#202330", "bg2": "#363b54",
+                "fg": "#a9b1d6", "fg2": "#9aa5ce", "fg4": "#787c99", "gray": "#787c99",
+                "ansi": ["#363b54", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#787c99"],
+            },
+            "darkSoft": {
+                "rotulo": "Storm", "syntaxTheme": "base16",
+                "bgHard": "#1f2335", "bg": "#24283b", "bg1": "#2c324a", "bg2": "#3b4261",
+                "fg": "#a9b1d6", "fg2": "#9aa5ce", "fg4": "#8089b3", "gray": "#8089b3",
+                "ansi": ["#414868", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#8089b3"],
+            },
+        },
+        "nomeadas": {"yellow": "#e0af68", "orange": "#ff9e64", "red": "#f7768e", "green": "#9ece6a",
+                     "aqua": "#73daca", "blue": "#7aa2f7", "purple": "#bb9af7"},
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]

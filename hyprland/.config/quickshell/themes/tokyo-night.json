@@ -1,0 +1,37 @@
+{
+  "versao": 1,
+  "id": "tokyo-night",
+  "nome": "Tokyo Night",
+  "licenca": "Tokyo Night (MIT)",
+  "destaquePadrao": { "accent": "#7aa2f7", "light": "#b6ccfb" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Night",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#0f0f15", "bgHard": "#16161e", "bg": "#1a1b26", "bg1": "#202330", "bg2": "#363b54",
+        "fg": "#a9b1d6", "fg2": "#9aa5ce", "fg4": "#787c99", "text": "#a9b1d6", "gray": "#787c99"
+      },
+      "nomeadas": {
+        "yellow": "#e0af68", "orange": "#ff9e64", "red": "#f7768e", "green": "#9ece6a", "aqua": "#73daca",
+        "blue": "#7aa2f7", "purple": "#bb9af7"
+      },
+      "ansi": ["#363b54", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#787c99"]
+    },
+    "darkSoft": {
+      "rotulo": "Storm",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#161925", "bgHard": "#1f2335", "bg": "#24283b", "bg1": "#2c324a", "bg2": "#3b4261",
+        "fg": "#a9b1d6", "fg2": "#9aa5ce", "fg4": "#8089b3", "text": "#a9b1d6", "gray": "#8089b3"
+      },
+      "nomeadas": {
+        "yellow": "#e0af68", "orange": "#ff9e64", "red": "#f7768e", "green": "#9ece6a", "aqua": "#73daca",
+        "blue": "#7aa2f7", "purple": "#bb9af7"
+      },
+      "ansi": ["#414868", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#8089b3"]
+    }
+  }
+}
