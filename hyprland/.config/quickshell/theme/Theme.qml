@@ -380,6 +380,11 @@ Singleton {
     // Wider while the theme editor is open (its form and preview side by
     // side); never more than the screen has
     readonly property int settingsWideWidth: 960
+    // The profiles' color seal (settings/ui/ColorSeal): in a card's corner,
+    // large in the middle of a card with no picture, and its margin
+    readonly property int sealSmall: 40
+    readonly property int sealLarge: 120
+    readonly property int sealMargin: 10
     readonly property int cascadeStart: 160     // after the panel starts opening
     readonly property int cascadeItem: 220      // each item coming in
     readonly property int cascadeStagger: 35    // between two items
