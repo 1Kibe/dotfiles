@@ -366,6 +366,9 @@ Item {
                     // (a card that stops fitting slides away and its room
                     // closes; it comes back with the normal way in)
                     height: rowHeight * room
+                    // The card shows only inside its room: coming in, it
+                    // unrolls as it slides, the shape and the column with it
+                    clip: room < 0.999
 
                     ToastCard {
                         id: toast
@@ -390,10 +393,10 @@ Item {
                         comeIn.restart()
                     }
                     Component.onCompleted: {
+                        // A new card's room opens with it (never all at once)
+                        room = 0
                         if (!leaving && shows)
                             enter()
-                        else if (!shows)
-                            room = 0
                     }
                     // No room for it any more: it slides away and its room
                     // closes, as when it leaves (but it stays, its time
@@ -421,7 +424,7 @@ Item {
                         NumberAnimation {
                             target: slot; property: "room"; to: 0
                             duration: Theme.dur(Theme.motionEdgeClose)
-                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard
                         }
                     }
                     onLeavingChanged: {
@@ -460,12 +463,13 @@ Item {
                                 duration: Theme.dur(Math.round(Theme.motionEdgeOpen * (1 - Theme.edgePanelFrom)))
                                 easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
                             }
-                            // (a slot taken back while its room was closing
-                            // opens it again)
+                            // Its room opens in the same time as the slide, soft
+                            // at both ends (also a slot taken back while its
+                            // room was closing)
                             NumberAnimation {
                                 target: slot; property: "room"; to: 1
-                                duration: Theme.dur(Theme.motionEdgeClose)
-                                easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                                duration: Theme.dur(Math.round(Theme.motionEdgeOpen * (1 - Theme.edgePanelFrom)))
+                                easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard
                             }
                         }
                     }
@@ -482,7 +486,7 @@ Item {
                         NumberAnimation {
                             target: slot; property: "room"; to: 0
                             duration: Theme.dur(Theme.motionEdgeClose)
-                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel
+                            easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard
                         }
                         ScriptAction { script: root.remove(slot.cardId) }
                     }

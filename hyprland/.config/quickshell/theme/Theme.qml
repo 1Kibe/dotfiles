@@ -345,6 +345,9 @@ Singleton {
     // still
     readonly property var curveDecel: [0.2, 0, 0, 1, 1, 1]
     readonly property var curveAccel: [0.4, 0, 1, 1, 1, 1]
+    // Soft at both ends: a room that opens or closes in a column (what
+    // follows its edge, like the minimized strip, never starts with a leap)
+    readonly property var curveStandard: [0.4, 0, 0.2, 1, 1, 1]
 
     // A panel that touches the screen's left or right edge (the settings,
     // bar/EdgeTimeline): one timeline: the bar first stretches that end to the
