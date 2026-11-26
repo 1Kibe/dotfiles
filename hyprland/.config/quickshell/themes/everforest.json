@@ -1,0 +1,51 @@
+{
+  "versao": 1,
+  "id": "everforest",
+  "nome": "Everforest",
+  "licenca": "Everforest (MIT)",
+  "destaquePadrao": { "accent": "#a7c080", "light": "#cfdcb9" },
+  "sabores": {
+    "dark": {
+      "rotulo": "Dark Medium",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#191d20", "bgHard": "#232a2e", "bg": "#2d353b", "bg1": "#343f44", "bg2": "#3d484d",
+        "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "text": "#d3c6aa", "gray": "#7a8478"
+      },
+      "nomeadas": {
+        "yellow": "#dbbc7f", "orange": "#e69875", "red": "#e67e80", "green": "#a7c080", "aqua": "#83c092",
+        "blue": "#7fbbb3", "purple": "#d699b6"
+      },
+      "ansi": ["#475258", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"]
+    },
+    "darkHard": {
+      "rotulo": "Dark Hard",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#15191b", "bgHard": "#1e2326", "bg": "#272e33", "bg1": "#2e383c", "bg2": "#374145",
+        "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "text": "#d3c6aa", "gray": "#7a8478"
+      },
+      "nomeadas": {
+        "yellow": "#dbbc7f", "orange": "#e69875", "red": "#e67e80", "green": "#a7c080", "aqua": "#83c092",
+        "blue": "#7fbbb3", "purple": "#d699b6"
+      },
+      "ansi": ["#414b50", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"]
+    },
+    "darkSoft": {
+      "rotulo": "Dark Soft",
+      "escuro": true,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#1d2226", "bgHard": "#293136", "bg": "#333c43", "bg1": "#3a464c", "bg2": "#434f55",
+        "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "text": "#d3c6aa", "gray": "#7a8478"
+      },
+      "nomeadas": {
+        "yellow": "#dbbc7f", "orange": "#e69875", "red": "#e67e80", "green": "#a7c080", "aqua": "#83c092",
+        "blue": "#7fbbb3", "purple": "#d699b6"
+      },
+      "ansi": ["#4d5960", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"]
+    }
+  }
+}

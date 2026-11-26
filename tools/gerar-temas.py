@@ -156,6 +156,34 @@ THEMES = [
         "nomeadas": {"yellow": "#e0af68", "orange": "#ff9e64", "red": "#f7768e", "green": "#9ece6a",
                      "aqua": "#73daca", "blue": "#7aa2f7", "purple": "#bb9af7"},
     },
+    {
+        "id": "everforest", "nome": "Everforest", "licenca": "Everforest (MIT)",
+        "accent": "#a7c080",   # green
+        "sabores": {
+            # bg_dim, bg0, bg1, bg2 of each contrast; fg, grey2, grey1,
+            # grey0; the terminal as the theme sets it (bg3 for black)
+            "dark": {
+                "rotulo": "Dark Medium", "syntaxTheme": "base16",
+                "bgHard": "#232a2e", "bg": "#2d353b", "bg1": "#343f44", "bg2": "#3d484d",
+                "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "gray": "#7a8478",
+                "ansi": ["#475258", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"],
+            },
+            "darkHard": {
+                "rotulo": "Dark Hard", "syntaxTheme": "base16",
+                "bgHard": "#1e2326", "bg": "#272e33", "bg1": "#2e383c", "bg2": "#374145",
+                "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "gray": "#7a8478",
+                "ansi": ["#414b50", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"],
+            },
+            "darkSoft": {
+                "rotulo": "Dark Soft", "syntaxTheme": "base16",
+                "bgHard": "#293136", "bg": "#333c43", "bg1": "#3a464c", "bg2": "#434f55",
+                "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "gray": "#7a8478",
+                "ansi": ["#4d5960", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"],
+            },
+        },
+        "nomeadas": {"yellow": "#dbbc7f", "orange": "#e69875", "red": "#e67e80", "green": "#a7c080",
+                     "aqua": "#83c092", "blue": "#7fbbb3", "purple": "#d699b6"},
+    },
 ]
 
 FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
