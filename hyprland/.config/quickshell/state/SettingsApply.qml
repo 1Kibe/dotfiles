@@ -127,7 +127,10 @@ Singleton {
             Theme["ansi" + i] = c.ansi[i]
         Theme.accent = c.accent
         Theme.accentLight = c.accentLight
+        syntaxTheme = c.syntaxTheme
     }
+    // delta's syntax theme of the flavor (checked again by lazygit.js)
+    property string syntaxTheme: "gruvbox-dark"
 
     // The store's choices into the Theme (a font this machine does not have
     // keeps the default), then the Hyprland file
@@ -263,6 +266,7 @@ Singleton {
             hyprTimer.restart()
             gesturesTimer.restart()
             writeBtop()
+            writeLazygit()
         }
     }
     Timer {
@@ -637,14 +641,15 @@ Singleton {
         }
         try {
             lazygitTheme = Lazygit.themeYaml(colors)
-            lazygitDelta = Lazygit.deltaConf(colors)
+            lazygitDelta = Lazygit.deltaConf(colors, syntaxTheme)
         } catch (e) {
             return
         }
         writeLazygit()
     }
     function writeLazygit() {
-        if (!lazygitThemeLoaded || !lazygitDeltaLoaded || lazygitTheme === "" || lazygitDelta === "")
+        // Never with the screen locked (written again at unlocking)
+        if (!lazygitThemeLoaded || !lazygitDeltaLoaded || locked || lazygitTheme === "" || lazygitDelta === "")
             return
         if (lazygitThemeView.text() === lazygitTheme && lazygitDeltaView.text() === lazygitDelta)
             return
