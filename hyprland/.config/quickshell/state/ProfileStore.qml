@@ -544,7 +544,11 @@ Singleton {
             failed("Espere: os perfis ainda estão sendo lidos ou gravados.")
             return false
         }
-        return SwapState.run(() => applyNow(id), opts)
+        if (SwapState.run(() => applyNow(id), opts))
+            return true
+        if (SwapState.refusal !== "")
+            failed(SwapState.refusal)
+        return false
     }
     function applyNow(id) {
         const p = get(id)

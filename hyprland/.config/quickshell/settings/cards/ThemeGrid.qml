@@ -45,7 +45,23 @@ Item {
     Keys.onUpPressed: step(-columns)
     Keys.onDownPressed: step(columns)
 
-    implicitHeight: grid.implicitHeight + newButton.height + 12
+    implicitHeight: grid.implicitHeight + newButton.height + 12 + (refusal.visible ? refusal.implicitHeight + 8 : 0)
+    // A change of theme, flavor or accent refused while the monitors or the
+    // keyboard are applied (state/SwapState): said here, at the top of the
+    // page those three are on
+    Text {
+        id: refusal
+        visible: SwapState.refusal !== ""
+        anchors.bottom: newButton.top
+        anchors.bottomMargin: 8
+        width: parent.width
+        wrapMode: Text.WordWrap
+        text: SwapState.refusal
+        textFormat: Text.PlainText
+        color: Theme.yellow
+        font.family: Theme.fontPanels
+        font.pointSize: Theme.fontSize - 2
+    }
     Button {
         id: newButton
         anchors.bottom: parent.bottom

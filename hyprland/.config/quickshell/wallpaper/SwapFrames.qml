@@ -100,7 +100,9 @@ Scope {
                 // through the chosen effect
                 SwapEffect {
                     anchors.fill: parent
-                    visible: win.hasFrame && (win.phase === "cover" || win.phase === "reveal")
+                    // (a frame that came after the change started directly
+                    // is already the new screen: never shown)
+                    visible: win.hasFrame && SwapState.ready[win.name] === true && (win.phase === "cover" || win.phase === "reveal")
                     source: frozen
                     kind: SwapState.kind
                     progress: win.progress

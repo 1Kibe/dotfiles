@@ -45,7 +45,32 @@ Singleton {
         return LockState.locked || LockState.wanted
     }
     function blocked() {
-        return isLocked() || MonitorsApply.pending || MonitorsApply.identifying || KeyboardLayout.pending
+        return isLocked() || LockState.dimmed || MonitorsApply.pending || MonitorsApply.identifying || KeyboardLayout.pending
+    }
+    // Why the last change was refused, for the page that asked (the lock and
+    // its veil: nothing to say); gone after a few seconds
+    property string refusal: ""
+    function refuse() {
+        if (isLocked() || LockState.dimmed)
+            return
+        refusal = "Espere: os monitores ou o teclado estão sendo aplicados."
+        refusalClear.restart()
+    }
+    Timer {
+        id: refusalClear
+        interval: 5000
+        onTriggered: root.refusal = ""
+    }
+    // A change going on, being prepared or waiting
+    readonly property bool busy: active || current !== null || waiting !== null
+    // Every change that ends (done, dropped or refused later)
+    signal ended()
+    function safely(change) {
+        try {
+            change()
+        } catch (e) {
+            console.warn(`SwapState: ${e}`)
+        }
     }
     function effectKind() {
         if (Theme.reduceMotion)
@@ -110,9 +135,13 @@ Singleton {
     property var current: null
     property var waiting: null
     function run(change, opts) {
-        if (typeof change !== "function" || blocked())
+        if (typeof change !== "function")
             return false
-        if (active) {
+        if (blocked()) {
+            refuse()
+            return false
+        }
+        if (active || current !== null) {
             waiting = { change: change, opts: opts || {} }
             return true
         }
@@ -122,7 +151,8 @@ Singleton {
     function start(change, opts) {
         // Nothing to freeze, no motion, or a minimized window flying: at once
         if (Theme.dur(1000) === 0 || Object.keys(frames).length === 0 || MinimizeState.flights.length > 0) {
-            change()
+            safely(change)
+            ended()
             return
         }
         current = change
@@ -184,14 +214,14 @@ Singleton {
     }
     function cover() {
         noFrame.stop()
+        if (isLocked()) {
+            drop(false)
+            return
+        }
         phase = "cover"
         const change = current
         current = null
-        try {
-            change()
-        } catch (e) {
-            console.warn(`SwapState: ${e}`)
-        }
+        safely(change)
         settle.waited = 0
         settle.restart()
     }
@@ -217,10 +247,20 @@ Singleton {
         phase = ""
         ready = {}
         revealed = {}
+        runNext()
+    }
+    // The change waiting runs now; with none (or it refused), every change
+    // has ended
+    function runNext() {
         const next = waiting
         waiting = null
         if (next !== null && !blocked())
-            Qt.callLater(() => root.run(next.change, next.opts))
+            Qt.callLater(() => {
+                if (!root.run(next.change, next.opts))
+                    root.ended()
+            })
+        else
+            ended()
     }
     // Everything stops at once: the frames are dropped first; the change not
     // made yet happens directly (doIt) or not at all
@@ -234,12 +274,12 @@ Singleton {
         phase = ""
         ready = {}
         revealed = {}
-        if (doIt && change !== null && !blocked())
-            change()
         const next = waiting
         waiting = null
-        if (next !== null && !blocked())
-            Qt.callLater(() => root.run(next.change, next.opts))
+        if (doIt && change !== null && !blocked())
+            safely(change)
+        waiting = next
+        runNext()
     }
     // The hard limit: whatever happens, the frames go
     Timer {

@@ -44,6 +44,7 @@ Item {
         target: ProfileStore
         function onFailed(message) {
             root.notice = message
+            Qt.callLater(root.settlePick)
         }
         function onDone(what, id) {
             if (what === "create" || what === "duplicate")
@@ -69,6 +70,21 @@ Item {
             naming = ""
     }
     readonly property string busyText: "Espere: os perfis ainda estão sendo lidos ou gravados."
+    // A profile clicked whose change has not happened yet; once every change
+    // ends (or one fails), the pick follows what is really active
+    property string applying: ""
+    function settlePick() {
+        if (applying === "" || SwapState.busy)
+            return
+        applying = ""
+        pickedId = ProfileStore.active
+    }
+    Connections {
+        target: SwapState
+        function onEnded() {
+            Qt.callLater(root.settlePick)
+        }
+    }
 
     // An action: never silent (busy, or the store refused without saying why)
     function act(fn) {
@@ -89,9 +105,12 @@ Item {
         notice = ""
         if (locked || p === null)
             return
-        if (ProfileStore.apply(p.id, { fromCursor: true }))
+        if (ProfileStore.apply(p.id, { fromCursor: true })) {
             pickedId = p.id
-        else if (notice === "")
+            // (applied a moment later: if it never is, the pick goes back)
+            if (ProfileStore.active !== p.id)
+                applying = p.id
+        } else if (notice === "")
             notice = "Não deu para aplicar o perfil: nada mudou."
     }
     function startNaming(kind) {

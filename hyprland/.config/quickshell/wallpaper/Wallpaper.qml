@@ -58,10 +58,13 @@ Variants {
 
         function pick() {
             const path = wanted
-            if (path === "")
+            if (path === "") {
+                checking = false
                 return
+            }
             checking = true
             BackgroundStore.check(path, ok => {
+                // (a newer picture asked: its own check clears the flag)
                 if (path !== root.wanted)
                     return
                 if (ok) {
