@@ -135,7 +135,6 @@ THEMES = [
                 "bgHard": "#282828", "bg": "#32302f", "bg1": "#3c3836", "bg2": "#504945",
                 "fg": "#ebdbb2", "fg2": "#d5c4a1", "fg4": "#a89984", "gray": "#928374",
             },
-            # Light: https://github.com/morhetz/gruvbox (colors/gruvbox.vim)
             # The light ones: bg0, bg0_h, bg0_s by contrast; bg1, bg2; fg1,
             # fg2, fg4, gray; the faded colors; the terminal as the vim file
             # sets it (color0 the background, color7 fg4)
@@ -195,7 +194,6 @@ THEMES = [
                              "aqua": "#81c8be", "blue": "#8caaee", "purple": "#ca9ee6"},
                 "ansi": ["#51576d", "#e78284", "#a6d189", "#e5c890", "#8caaee", "#f4b8e4", "#81c8be", "#a5adce"],
             },
-            # Light: https://github.com/catppuccin/palette (palette.json); terminal: https://github.com/catppuccin/kitty (themes/latte.conf)
             "light": {
                 "rotulo": "Latte", "syntaxTheme": "Catppuccin Latte",
                 "bgHard": "#e6e9ef", "bg": "#eff1f5", "bg1": "#ccd0da", "bg2": "#bcc0cc",
@@ -244,7 +242,6 @@ THEMES = [
                 "fg": "#a9b1d6", "fg2": "#9aa5ce", "fg4": "#8089b3", "gray": "#8089b3",
                 "ansi": ["#414868", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#8089b3"],
             },
-            # Light: https://github.com/tokyo-night/tokyo-night-vscode-theme (themes/tokyo-night-light-color-theme.json)
             # Light: editor background, side bar (darker), line highlight, the
             # selection's color without its alpha; the editor text, the
             # parameters' lighter text, the terminal's white, the comments.
@@ -286,7 +283,6 @@ THEMES = [
                 "fg": "#d3c6aa", "fg2": "#9da9a0", "fg4": "#859289", "gray": "#7a8478",
                 "ansi": ["#4d5960", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"],
             },
-            # Light: https://github.com/sainnhe/everforest (autoload/everforest.vim; terminal: colors/everforest.vim)
             "light": {
                 "rotulo": "Light Medium", "syntaxTheme": "base16",
                 "bgHard": "#efebd4", "bg": "#fdf6e3", "bg1": "#f4f0d9", "bg2": "#efebd4",
@@ -335,7 +331,6 @@ THEMES = [
                              "aqua": "#9ccfd8", "blue": "#9ccfd8", "purple": "#c4a7e7"},
                 "ansi": ["#393552", "#eb6f92", "#3e8fb0", "#f6c177", "#9ccfd8", "#c4a7e7", "#ea9a97", "#e0def4"],
             },
-            # Light: https://github.com/rose-pine/palette (dist/index.js); terminal: https://github.com/rose-pine/kitty (dist/rose-pine-dawn.conf)
             # Dawn: base; overlay and highlightMed as the two surfaces (its
             # surface is lighter than base); text, subtle, muted; the named
             # ones as in the dark ones
@@ -371,7 +366,6 @@ THEMES = [
                              "aqua": "#8ea4a2", "blue": "#8ba4b0", "purple": "#a292a3"},
                 "ansi": ["#0d0c0c", "#c4746e", "#8a9a7b", "#c4b28a", "#8ba4b0", "#a292a3", "#8ea4a2", "#c8c093"],
             },
-            # Light: https://github.com/rebelot/kanagawa.nvim (lua/kanagawa/colors.lua, lua/kanagawa/themes.lua)
             "light": {
                 "rotulo": "Lotus", "syntaxTheme": "base16",
                 "bgHard": "#dcd5ac", "bg": "#f2ecbc", "bg1": "#e7dba0", "bg2": "#e4d794",
@@ -393,7 +387,6 @@ THEMES = [
                 "bgHard": None, "bg": "#16181a", "bg1": "#1e2124", "bg2": "#3c4048",
                 "fg": "#ffffff", "fg2": ("mix", "#ffffff", "#7b8496", 0.3), "fg4": "#7b8496", "gray": "#7b8496",
             },
-            # Light: https://github.com/scottmckendry/cyberdream.nvim (lua/cyberdream/colors.lua; terminal: extras/kitty/cyberdream-light.conf)
             "light": {
                 "rotulo": "Light", "syntaxTheme": "base16",
                 "bgHard": None, "bg": "#ffffff", "bg1": "#eaeaea", "bg2": "#acacac",
@@ -419,7 +412,6 @@ THEMES = [
                 "bgHard": None, "bg": "#100f0f", "bg1": "#1c1b1a", "bg2": "#282726",
                 "fg": "#cecdc3", "fg2": "#b7b5ac", "fg4": "#878580", "gray": "#6f6e69",
             },
-            # Light: https://github.com/kepano/flexoki (README.md; terminal: kitty/flexoki_light.conf)
             # Light: paper, base-50, base-100; black, base-800, base-600,
             # base-500; the accents in their 600 tones (the light theme's)
             "light": {
@@ -479,7 +471,6 @@ THEMES = [
                 "bgHard": None, "bg": "#002b36", "bg1": "#073642", "bg2": ("mix", "#073642", "#586e75", 0.35),
                 "fg": "#839496", "fg2": "#93a1a1", "fg4": "#657b83", "gray": "#586e75",
             },
-            # Light: https://github.com/altercation/solarized (README.md; terminal: xresources/solarized)
             # Light: base3, base2 (and a tone toward base1, the palette has
             # none); base00, base01, base0, base1; the Xresources' light block
             "light": {
@@ -531,7 +522,6 @@ THEMES = [
                 "fg": "#d0d0d0", "fg2": "#f2f2f2", "fg4": ("mix", "#525252", "#d0d0d0", 0.5),
                 "gray": ("mix", "#525252", "#d0d0d0", 0.4),
             },
-            # Light: https://github.com/nyoom-engineering/oxocarbon.nvim (fnl/oxocarbon/init.fnl)
             # Light: base00, and base01-02 by the theme's own blends (0.95,
             # 0.82 toward base03); base04 the text, base06, base05. No yellow
             # nor true red: base10 (orange) as both, base09 as red. Its
