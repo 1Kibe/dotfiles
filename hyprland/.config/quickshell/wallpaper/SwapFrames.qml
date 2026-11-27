@@ -119,6 +119,11 @@ Scope {
                             SwapState.framePresented(win.name)
                     }
                 }
+                // While the photo covers the change, a frame each vsync: the
+                // change settles after two of them (state/SwapState settle)
+                FrameAnimation {
+                    running: win.phase === "cover" && effect.visible
+                }
                 // Nothing shows until the picture is in; then the picture
                 // through the chosen effect
                 SwapEffect {

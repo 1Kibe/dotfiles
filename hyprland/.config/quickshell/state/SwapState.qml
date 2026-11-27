@@ -242,7 +242,13 @@ Singleton {
         coverWait.restart()
     }
     property var presented: ({})
+    // Frames shown since the change ran (under the photo)
+    property int settleFrames: 0
     function framePresented(name) {
+        if (phase === "cover" && current === null) {
+            settleFrames++
+            return
+        }
         if (phase !== "cover" || current === null || presented[name])
             return
         const m = Object.assign({}, presented)
@@ -267,20 +273,23 @@ Singleton {
         }
         const change = current
         current = null
+        settleFrames = 0
         safely(change)
         settle.waited = 0
         settle.restart()
     }
-    // The new wallpaper on screen (checked every 50 ms, 1.5 s at most; at
-    // least two frames so the new colors are drawn under the frame)
+    // The new wallpaper on screen (checked every 16 ms, 1.5 s at most; at
+    // least two frames shown under the photo, so the new colors are drawn
+    // beneath it, or 100 ms when the frames do not say)
     Timer {
         id: settle
         property int waited: 0
-        interval: 50
+        interval: 16
         repeat: true
         onTriggered: {
             waited += interval
-            if (waited >= 100 && (root.wallpapersSettled() || waited >= 1500)) {
+            const drawn = root.settleFrames >= 2 || waited >= 100
+            if (drawn && (root.wallpapersSettled() || waited >= 1500)) {
                 stop()
                 root.phase = "reveal"
             }

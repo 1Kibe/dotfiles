@@ -147,10 +147,22 @@ Singleton {
         applying = id
         applyingOpts = opts || {}
         afterClose.restart()
+        leftScreen()
+    }
+    // The change starts once the closed carousel has left the screen (its
+    // window gone: the frozen frame's capture comes after it; onShownChanged
+    // below), 50 ms at most
+    function leftScreen() {
+        if (!shown && afterClose.running)
+            Qt.callLater(() => {
+                if (afterClose.running) {
+                    afterClose.stop()
+                    afterClose.triggered()
+                }
+            })
     }
     Timer {
         id: afterClose
-        // two frames for the closed carousel to leave the screen
         interval: 50
         onTriggered: {
             const id = root.applying
@@ -308,5 +320,8 @@ Singleton {
     // its window is up): the minimize picture is never taken over it
     property bool shown: false
     onOpenChanged: ShellState.setOverlay("carousel", open || shown)
-    onShownChanged: ShellState.setOverlay("carousel", open || shown)
+    onShownChanged: {
+        ShellState.setOverlay("carousel", open || shown)
+        leftScreen()
+    }
 }
