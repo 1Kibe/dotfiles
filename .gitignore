@@ -85,3 +85,7 @@ common/.config/lazygit/delta.gitconfig*
 # ~/.config/git, never in the repo), and the temporary files of their writes ──
 common/.config/git/contas.conf*
 common/.config/git/contas/
+
+# ── Python ──
+# the theme generator's bytecode cache (tools/gerar-temas.py, made when it is imported)
+__pycache__/
