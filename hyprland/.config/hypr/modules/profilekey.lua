@@ -13,12 +13,16 @@ local M = {}
 -- How long Super+T has to be held for the selector (milliseconds): the one
 -- place to change it
 M.HOLD_MS = 400
--- A release that never came (another TTY, a grab): the state is dropped
--- after this, so the next press starts clean
+-- A release that never came (another TTY, a grab): a timer started with
+-- each press drops the state this long after it, so the next press starts
+-- clean
 M.STALE_MS = 2000
 
 local held, opened = false, false
 local holdTimer, staleTimer = nil, nil
+-- Each press its own number: a timer of an older press never acts, even if
+-- turning it off failed
+local press_id = 0
 
 local function stop(t)
   if t then
@@ -41,7 +45,12 @@ function M.press()
     return
   end
   held, opened = true, false
+  press_id = press_id + 1
+  local mine = press_id
   holdTimer = hl.timer(function()
+    if mine ~= press_id then
+      return
+    end
     holdTimer = nil
     if held and not opened then
       opened = true
@@ -49,6 +58,9 @@ function M.press()
     end
   end, { timeout = M.HOLD_MS, type = "oneshot" })
   staleTimer = hl.timer(function()
+    if mine ~= press_id then
+      return
+    end
     staleTimer = nil
     M.reset()
   end, { timeout = M.STALE_MS, type = "oneshot" })

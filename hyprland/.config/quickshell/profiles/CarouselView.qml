@@ -74,13 +74,15 @@ Item {
                     }
                     // Its place as drawn: it follows d one step at a time;
                     // a jump of more than one place (going round the ends)
-                    // goes there at once and fades in, never across the fan
+                    // goes there at once and fades in, never across the fan;
+                    // nothing slides while closed (the pick set on opening
+                    // is already in place when it shows)
                     property int place: d
                     property bool jumped: false
                     onDChanged: {
                         jumped = Math.abs(d - place) > 1
                         place = d
-                        if (jumped && !Theme.reduceMotion)
+                        if (jumped && !Theme.reduceMotion && view.shown)
                             fadeIn.restart()
                     }
                     readonly property int ad: Math.abs(place)
@@ -102,16 +104,16 @@ Item {
                     scale: Math.pow(0.82, ad)
                     property real faded: ad === 0 ? 1 : 1 - ad * 0.2
                     Behavior on faded {
-                        enabled: !Theme.reduceMotion && !slot.jumped
+                        enabled: !Theme.reduceMotion && !slot.jumped && view.shown
                         NumberAnimation { duration: Theme.dur(Theme.animNormal) }
                     }
                     opacity: faded * shownIn
                     Behavior on x {
-                        enabled: !Theme.reduceMotion && !slot.jumped
+                        enabled: !Theme.reduceMotion && !slot.jumped && view.shown
                         NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard }
                     }
                     Behavior on scale {
-                        enabled: !Theme.reduceMotion && !slot.jumped
+                        enabled: !Theme.reduceMotion && !slot.jumped && view.shown
                         NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard }
                     }
                     ProfileCard {

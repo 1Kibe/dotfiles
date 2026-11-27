@@ -50,6 +50,8 @@ Singleton {
         if (OverviewState.open)
             OverviewState.hide()
         index = Math.max(0, ProfileStore.profiles.findIndex(p => p.id === ProfileStore.active))
+        wheelSum = 0
+        wheelLast = -1e9
         openOn = monitor
         open = true
         return "ok"
@@ -65,6 +67,8 @@ Singleton {
     property bool instant: false
     function close(instantly) {
         instant = instantly === true
+        wheelSum = 0
+        wheelLast = -1e9
         open = false
     }
     // The fan goes round; the grid stops at the ends
@@ -97,8 +101,9 @@ Singleton {
         if (Math.abs(wheelSum) < limit)
             return false
         if (now - wheelLast < Theme.animNormal) {
-            // (too soon: held at the edge, no second step queued)
-            wheelSum = Math.sign(wheelSum) * limit
+            // (too soon: dropped, so a touchpad's coasting after the gesture
+            // never keeps stepping; the next step needs a whole notch again)
+            wheelSum = 0
             return false
         }
         const by = wheelSum > 0 ? -1 : 1
