@@ -47,7 +47,8 @@ Item {
         }
         WheelHandler {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            onWheel: event => CarouselState.step(event.angleDelta.y > 0 || event.angleDelta.x > 0 ? -1 : 1)
+            onWheel: event => CarouselState.wheel(event.angleDelta.x, event.angleDelta.y, event.pixelDelta.x,
+                                                  event.pixelDelta.y, Date.now())
         }
 
         // ── The fan (up to six) ──

@@ -67,6 +67,37 @@ Singleton {
         else
             index = Math.max(0, Math.min(count - 1, index + by))
     }
+    // The wheel and the touchpad (profiles/CarouselView): a step only once
+    // the motion adds up to one notch of a wheel (120) or Theme.
+    // profileSwipeStep pixels of a touchpad, at most one step each Theme.
+    // animNormal (a fast flick never jumps several cards nor restarts the
+    // fan's motion), the sum dropped at each step. A touchpad (pixel deltas)
+    // moves only sideways, the way the fingers go; a plain wheel (notches
+    // only) moves with its usual axis. Picking only: it never applies.
+    property real wheelSum: 0
+    property real wheelLast: -1e9
+    function wheel(angleX, angleY, pixelX, pixelY, now) {
+        const pad = pixelX !== 0 || pixelY !== 0
+        const v = pad ? pixelX : (angleX !== 0 ? angleX : angleY)
+        if (v === 0 || count <= 0)
+            return false
+        if (wheelSum !== 0 && Math.sign(v) !== Math.sign(wheelSum))
+            wheelSum = 0
+        const limit = pad ? Theme.profileSwipeStep : 120
+        wheelSum += v
+        if (Math.abs(wheelSum) < limit)
+            return false
+        if (now - wheelLast < Theme.animNormal) {
+            // (too soon: held at the edge, no second step queued)
+            wheelSum = Math.sign(wheelSum) * limit
+            return false
+        }
+        const by = wheelSum > 0 ? -1 : 1
+        wheelSum = 0
+        wheelLast = now
+        step(by)
+        return true
+    }
     // 5: the list changing while open
     onCountChanged: {
         if (count === 0)

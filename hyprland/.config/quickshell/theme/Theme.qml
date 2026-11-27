@@ -366,6 +366,8 @@ Singleton {
     // to how many profiles the fan holds (more: a grid), the dark veil
     readonly property int profileCardWidth: 300
     readonly property int profileFanMax: 6
+    // The touchpad's sideways motion for one card in the carousel (pixels)
+    readonly property int profileSwipeStep: 90
     readonly property real profileDim: 0.6
     readonly property real wallpaperZoom: 1.03
     readonly property int motionPanelClose: 200
