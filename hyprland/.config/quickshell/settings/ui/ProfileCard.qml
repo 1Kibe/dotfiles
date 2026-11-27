@@ -62,7 +62,9 @@ Item {
                 // (in steps of 64: a resize does not read the file again each step)
                 sourceSize: Qt.size(Math.ceil(poster.width / 64) * 64, Math.ceil(poster.height / 64) * 64)
                 asynchronous: true
-                cache: false
+                // (kept decoded between openings of the carousel: a rewritten
+                // file comes with another url, ProfileStore.stamp)
+                cache: true
             }
             Item {
                 id: shape

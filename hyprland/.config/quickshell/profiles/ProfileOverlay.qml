@@ -24,9 +24,16 @@ Scope {
                 readonly property bool shown: CarouselState.open
 
                 screen: modelData
-                visible: shown || fade.running
+                // Kept on the screen, empty and letting every click through
+                // while closed: opening only shows what is already there (a
+                // window made anew each time took 150 ms to show up)
+                readonly property bool up: shown || fade.running
+                visible: true
+                mask: up ? all : none
+                Region { id: none }
+                Region { id: all; item: content }
                 // (registered while up, the fade out too)
-                onVisibleChanged: CarouselState.shown = visible
+                onUpChanged: CarouselState.shown = up
                 anchors {
                     top: true
                     bottom: true
