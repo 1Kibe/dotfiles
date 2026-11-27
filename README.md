@@ -37,7 +37,7 @@ Numa instalação nova do Arch, basta o profile **minimal** do `archinstall` (co
 4. Deixa o sistema e o teclado em pt-BR (veja [Idioma e teclado](#idioma-e-teclado))
 5. Ativa NetworkManager e Bluetooth (e o greetd, a tela de login, nos ambientes `xfce` e `hyprland`) e pergunta se deve ativar o `sshd`
 6. Oferece dependências opcionais do Neovim (Java, PHP, Go, Rust, Nix), só no Arch
-7. Configura os filtros git que mantêm nomes de redes Wi-Fi, nomes de monitor e tamanhos de janela fora dos commits
+7. Configura os filtros git que mantêm nomes de redes Wi-Fi, nomes de monitor, tamanhos de janela e a lista de programas que notificaram fora dos commits
 8. Cria os links com o `stow` (`common` + ambientes escolhidos) e avisa se houver cópias `*.bak` acumuladas no `~/.config`; acrescenta ao fim do `~/.gitconfig` (sem link, o resto do arquivo fica igual) o bloco que inclui as [contas de código](hyprland/README.md#contas-de-código)
 9. Aplica as configurações do XFCE (temas, painéis, wallpaper), se o ambiente `xfce` foi escolhido
 10. Instala a tela de login (em `/etc/greetd`) e a pasta do fundo dela, nos ambientes `xfce` e `hyprland`, e o serviço PAM do bloqueio de tela, no `hyprland` (veja [Login e bloqueio](#login-e-bloqueio)). No `hyprland`, também a regra do limite de carga da bateria (notebooks Lenovo): o grupo `bateria` pode ligar e desligar só esse limite, sem senha, e o usuário entra no grupo (vale no próximo login)
@@ -257,6 +257,7 @@ As dependências opcionais do Neovim, por enquanto, só são oferecidas no Arch.
 
 - **Nomes de Wi-Fi no painel do XFCE.** O XFCE grava os nomes das redes no `xfce4-panel.xml`. Um filtro git (`tools/xfce-panel-clean.awk`, ligado pelo `install.sh`) tira isso antes de cada commit. Mesmo assim, revise o `git diff` antes do push.
 - **Wallpaper por monitor.** O XFCE também grava no `xfce4-desktop.xml` o nome de cada monitor e o caminho do wallpaper com a sua pasta pessoal (`/home/<usuário>`). O filtro `tools/xfce-desktop-clean.awk` tira esse bloco antes de cada commit.
+- **Programas que notificaram.** O `xfce4-notifyd` grava no `xfce4-notifyd.xml` o nome de cada programa que já mandou uma notificação. O filtro `tools/xfce-notifyd-clean.awk` tira essa lista antes de cada commit; as preferências de notificação ficam.
 - **Nada é apagado.** Se já existir um arquivo onde vai um link, ele é renomeado para `<nome>.bak` (ou `<nome>.bak.<data>`, se o `.bak` já existir). No fim do link, o script lista essas cópias no `~/.config` para você apagar o que não precisa mais.
 - **PulseAudio é trocado pelo PipeWire.** O `pipewire-pulse` substitui o PulseAudio e os dois não convivem. Num sistema que ainda usa PulseAudio, remova antes de rodar o script: `sudo pacman -Rdd pulseaudio pulseaudio-bluetooth`.
 - **Tela de login.** Nos ambientes `xfce` e `hyprland`, o script ativa o greetd com a tela de login em Quickshell (`system/greetd/quickshell`), que lista Hyprland e Xfce. Um LightDM ativado por uma versão antiga do script é trocado pelo greetd (o pacote continua instalado; para remover: `sudo pacman -Rns lightdm lightdm-gtk-greeter`). Outro gerenciador de login (GDM, SDDM...) é mantido.
@@ -336,7 +337,8 @@ dotfiles/
 ├── tools/
 │   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]
 │   ├── xfce-desktop-clean.awk             [filtro git: wallpaper por monitor]
-│   └── xfce-thunar-clean.awk              [filtro git: tamanho da janela do Thunar]
+│   ├── xfce-thunar-clean.awk              [filtro git: tamanho da janela do Thunar]
+│   └── xfce-notifyd-clean.awk             [filtro git: programas que notificaram]
 ├── install.sh
 ├── LICENSE
 └── README.md
