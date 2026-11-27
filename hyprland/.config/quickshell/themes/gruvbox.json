@@ -46,6 +46,48 @@
         "blue": "#83a598", "purple": "#d3869b"
       },
       "ansi": ["#1d2021", "#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a", "#a89984"]
+    },
+    "light": {
+      "rotulo": "Light",
+      "escuro": false,
+      "syntaxTheme": "gruvbox-light",
+      "papeis": {
+        "bgDeep": "#dbd3ae", "bgHard": "#eee5bd", "bg": "#fbf1c7", "bg1": "#ebdbb2", "bg2": "#d5c4a1",
+        "fg": "#3c3836", "fg2": "#504945", "fg4": "#7c6f64", "text": "#3c3836", "gray": "#897a6b"
+      },
+      "nomeadas": {
+        "yellow": "#b57614", "orange": "#af3a03", "red": "#9d0006", "green": "#79740e", "aqua": "#427b58",
+        "blue": "#076678", "purple": "#8f3f71"
+      },
+      "ansi": ["#fbf1c7", "#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a", "#7c6f64"]
+    },
+    "lightHard": {
+      "rotulo": "Light Hard",
+      "escuro": false,
+      "syntaxTheme": "gruvbox-light",
+      "papeis": {
+        "bgDeep": "#dad6bc", "bgHard": "#ede9cc", "bg": "#f9f5d7", "bg1": "#ebdbb2", "bg2": "#d5c4a1",
+        "fg": "#3c3836", "fg2": "#504945", "fg4": "#7c6f64", "text": "#3c3836", "gray": "#897a6b"
+      },
+      "nomeadas": {
+        "yellow": "#b57614", "orange": "#af3a03", "red": "#9d0006", "green": "#79740e", "aqua": "#427b58",
+        "blue": "#076678", "purple": "#8f3f71"
+      },
+      "ansi": ["#f9f5d7", "#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a", "#7c6f64"]
+    },
+    "lightSoft": {
+      "rotulo": "Light Soft",
+      "escuro": false,
+      "syntaxTheme": "gruvbox-light",
+      "papeis": {
+        "bgDeep": "#d4c9a5", "bgHard": "#e6dab3", "bg": "#f2e5bc", "bg1": "#ebdbb2", "bg2": "#d5c4a1",
+        "fg": "#3c3836", "fg2": "#504945", "fg4": "#7c6f64", "text": "#3c3836", "gray": "#897a6b"
+      },
+      "nomeadas": {
+        "yellow": "#b57614", "orange": "#af3a03", "red": "#9d0006", "green": "#79740e", "aqua": "#427b58",
+        "blue": "#076678", "purple": "#8f3f71"
+      },
+      "ansi": ["#f2e5bc", "#cc241d", "#98971a", "#d79921", "#458588", "#b16286", "#689d6a", "#7c6f64"]
     }
   }
 }

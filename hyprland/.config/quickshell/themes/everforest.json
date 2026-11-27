@@ -46,6 +46,51 @@
         "blue": "#7fbbb3", "purple": "#d699b6"
       },
       "ansi": ["#4d5960", "#e67e80", "#a7c080", "#dbbc7f", "#7fbbb3", "#d699b6", "#83c092", "#d3c6aa"]
+    },
+    "light": {
+      "rotulo": "Light Medium",
+      "escuro": false,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#dcd8c3", "bgHard": "#efebd4", "bg": "#fdf6e3", "bg1": "#f4f0d9", "bg2": "#efebd4",
+        "fg": "#5c6a72", "fg2": "#829181", "fg4": "#818d7f", "text": "#5c6a72", "gray": "#838d7d"
+      },
+      "nomeadas": {
+        "yellow": "#ba8502", "orange": "#e36d04", "red": "#f85552", "green": "#84970d", "aqua": "#2da176",
+        "blue": "#3a94c5", "purple": "#da64b5"
+      },
+      "ansi": ["#5c6a72", "#f85552", "#8da101", "#dfa000", "#3a94c5", "#df69ba", "#35a77c", "#e6e2cc"],
+      "destaque": { "accent": "#84970d", "light": "#687800" }
+    },
+    "lightHard": {
+      "rotulo": "Light Hard",
+      "escuro": false,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#dfdccd", "bgHard": "#f2efdf", "bg": "#fffbef", "bg1": "#f8f5e4", "bg2": "#f2efdf",
+        "fg": "#5c6a72", "fg2": "#829181", "fg4": "#859183", "text": "#5c6a72", "gray": "#869080"
+      },
+      "nomeadas": {
+        "yellow": "#bd880c", "orange": "#e7700e", "red": "#f85552", "green": "#879a02", "aqua": "#31a479",
+        "blue": "#3a94c5", "purple": "#dd67b8"
+      },
+      "ansi": ["#5c6a72", "#f85552", "#8da101", "#dfa000", "#3a94c5", "#df69ba", "#35a77c", "#edeada"],
+      "destaque": { "accent": "#879a02", "light": "#6b7a07" }
+    },
+    "lightSoft": {
+      "rotulo": "Light Soft",
+      "escuro": false,
+      "syntaxTheme": "base16",
+      "papeis": {
+        "bgDeep": "#d3cdb5", "bgHard": "#e5dfc5", "bg": "#f3ead3", "bg1": "#eae4ca", "bg2": "#e5dfc5",
+        "fg": "#56646c", "fg2": "#829181", "fg4": "#7a8578", "text": "#56646c", "gray": "#7c8576"
+      },
+      "nomeadas": {
+        "yellow": "#b07e01", "orange": "#d5670b", "red": "#ef4c4b", "green": "#7d8f09", "aqua": "#1e976d",
+        "blue": "#338ebe", "purple": "#d05bac"
+      },
+      "ansi": ["#5c6a72", "#f85552", "#8da101", "#dfa000", "#3a94c5", "#df69ba", "#35a77c", "#ddd8be"],
+      "destaque": { "accent": "#7d8f09", "light": "#637100" }
     }
   }
 }

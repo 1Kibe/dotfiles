@@ -142,6 +142,7 @@ Singleton {
             Theme["ansi" + i] = c.ansi[i]
         Theme.accent = c.accent
         Theme.accentLight = c.accentLight
+        Theme.dark = c.escuro !== false
         syntaxTheme = c.syntaxTheme
     }
     // delta's syntax theme of the flavor (checked again by lazygit.js)

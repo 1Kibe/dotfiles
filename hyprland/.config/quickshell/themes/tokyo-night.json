@@ -32,6 +32,21 @@
         "blue": "#7aa2f7", "purple": "#bb9af7"
       },
       "ansi": ["#414868", "#f7768e", "#73daca", "#e0af68", "#7aa2f7", "#bb9af7", "#7dcfff", "#8089b3"]
+    },
+    "light": {
+      "rotulo": "Light",
+      "escuro": false,
+      "syntaxTheme": "OneHalfLight",
+      "papeis": {
+        "bgDeep": "#c5c7cd", "bgHard": "#d6d8df", "bg": "#e6e7ed", "bg1": "#dcdee3", "bg2": "#acb0bf",
+        "fg": "#343b59", "fg2": "#4e5579", "fg4": "#707280", "text": "#343b59", "gray": "#7b7e86"
+      },
+      "nomeadas": {
+        "yellow": "#8f5e15", "orange": "#965027", "red": "#8c4351", "green": "#385f0d", "aqua": "#006c86",
+        "blue": "#2959aa", "purple": "#7b43ba"
+      },
+      "ansi": ["#343b58", "#8c4351", "#33635c", "#8f5e15", "#2959aa", "#7b43ba", "#006c86", "#707280"],
+      "destaque": { "accent": "#2959aa", "light": "#2959aa" }
     }
   }
 }

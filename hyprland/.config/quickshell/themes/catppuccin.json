@@ -46,6 +46,21 @@
         "blue": "#8caaee", "purple": "#ca9ee6"
       },
       "ansi": ["#51576d", "#e78284", "#a6d189", "#e5c890", "#8caaee", "#f4b8e4", "#81c8be", "#a5adce"]
+    },
+    "light": {
+      "rotulo": "Latte",
+      "escuro": false,
+      "syntaxTheme": "Catppuccin Latte",
+      "papeis": {
+        "bgDeep": "#d4d6dc", "bgHard": "#e6e9ef", "bg": "#eff1f5", "bg1": "#ccd0da", "bg2": "#bcc0cc",
+        "fg": "#4c4f69", "fg2": "#5c5f77", "fg4": "#6c6f85", "text": "#4c4f69", "gray": "#707384"
+      },
+      "nomeadas": {
+        "yellow": "#c47a09", "orange": "#ed5d08", "red": "#d20f39", "green": "#3e9e29", "aqua": "#179299",
+        "blue": "#1e66f5", "purple": "#8839ef"
+      },
+      "ansi": ["#5c5f77", "#d20f39", "#40a02b", "#df8e1d", "#1e66f5", "#ea76cb", "#179299", "#acb0be"],
+      "destaque": { "accent": "#8839ef", "light": "#8839ef" }
     }
   }
 }

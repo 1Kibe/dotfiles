@@ -75,7 +75,9 @@ Rectangle {
                     text: option.modelData.label
                     // (a label may be a theme's own text: never markup)
                     textFormat: Text.PlainText
-                    color: Theme.text
+                    // (the chosen one over the accent: on a light flavor the
+                    // text that reads on it)
+                    color: chosen && !Theme.dark ? Theme.onAccent : Theme.text
                     font.family: Theme.fontPanels
                     font.pointSize: Theme.fontSize - 1
                 }

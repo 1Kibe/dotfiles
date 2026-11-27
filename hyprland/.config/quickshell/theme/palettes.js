@@ -67,8 +67,20 @@ function flavor(f) {
     if (roles === null || named === null || !own(f, "ansi") || !Array.isArray(f.ansi) || f.ansi.length !== 8
             || !f.ansi.every(isHex))
         return null
-    return { rotulo: f.rotulo, escuro: f.escuro, syntaxTheme: syntaxTheme(f.syntaxTheme), papeis: roles, nomeadas: named,
-             ansi: f.ansi.map(c => c.toLowerCase()) }
+    // (a flavor's own default accent: the light ones have it, the theme's
+    // being a color of its dark palette)
+    let destaque = null
+    if (own(f, "destaque")) {
+        const d = f.destaque
+        if (d === null || typeof d !== "object" || !own(d, "accent") || !own(d, "light") || !isHex(d.accent) || !isHex(d.light))
+            return null
+        destaque = { accent: d.accent.toLowerCase(), light: d.light.toLowerCase() }
+    }
+    const out = { rotulo: f.rotulo, escuro: f.escuro, syntaxTheme: syntaxTheme(f.syntaxTheme), papeis: roles, nomeadas: named,
+                  ansi: f.ansi.map(c => c.toLowerCase()) }
+    if (destaque !== null)
+        out.destaque = destaque
+    return out
 }
 
 // The file's object checked: { ok, theme }. Only the known keys come out
@@ -122,11 +134,65 @@ function resolve(theme, flavorId, accentId) {
         return null
     const id = own(theme.sabores, flavorId) ? flavorId : FLAVORS.find(f => own(theme.sabores, f))
     const f = theme.sabores[id]
+    const base = f.destaque || theme.destaquePadrao
     const pair = accentId === "padrao" || !NAMED.includes(accentId)
-                 ? { accent: theme.destaquePadrao.accent, light: theme.destaquePadrao.light }
+                 ? { accent: base.accent, light: base.light }
                  : Appearance.accentPair(accentId, f.nomeadas)
+    // On a light flavor the accent's strong tone is the same color darker
+    // (toward white it would vanish on the light background)
+    if (f.escuro === false && !(accentId === "padrao" && f.destaque))
+        pair.light = deepen(pair.accent, f.papeis.bg, 4.5)
     return { flavor: id, roles: Object.assign({}, f.papeis), named: Object.assign({}, f.nomeadas), ansi: f.ansi.slice(),
              accent: pair.accent, accentLight: pair.light, escuro: f.escuro, syntaxTheme: f.syntaxTheme }
+}
+
+// ── A darker tone of the same color (the light flavors): in OKLCH the hue
+// kept, the lightness lowered until the contrast with `against` reaches
+// `least` (the chroma lowered only to stay in sRGB). The same as
+// tools/gerar-temas.py deepen() ──
+function srgbToLinear(v) {
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+}
+function linearToSrgb(v) {
+    return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055
+}
+function toOklch(hex) {
+    const [r, g, b] = [1, 3, 5].map(i => srgbToLinear(parseInt(hex.substr(i, 2), 16) / 255))
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+    const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
+    const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+    return [L, Math.sqrt(A * A + B * B), Math.atan2(B, A)]
+}
+function fromOklch(L, C, H) {
+    const A = C * Math.cos(H), B = C * Math.sin(H)
+    const l = Math.pow(L + 0.3963377774 * A + 0.2158037573 * B, 3)
+    const m = Math.pow(L - 0.1055613458 * A - 0.0638541728 * B, 3)
+    const s = Math.pow(L - 0.0894841775 * A - 1.2914855480 * B, 3)
+    const rgb = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                 -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                 -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s]
+    if (rgb.some(v => v < -0.0005 || v > 1.0005))
+        return null
+    return "#" + rgb.map(v => Math.round(Math.min(1, Math.max(0, linearToSrgb(Math.min(1, Math.max(0, v))))) * 255)
+                                .toString(16).padStart(2, "0")).join("")
+}
+function deepen(hex, against, least) {
+    if (contrast(hex, against) >= least)
+        return hex.toLowerCase()
+    const [L0, C0, H] = toOklch(hex)
+    for (let L = L0; L >= 0; L -= 0.005) {
+        let C = C0, c = fromOklch(L, C, H)
+        while (c === null && C > 0) {
+            C = Math.max(0, C - 0.005)
+            c = fromOklch(L, C, H)
+        }
+        if (c !== null && contrast(c, against) >= least)
+            return c
+    }
+    return "#000000"
 }
 
 // WCAG contrast ratio of two "#rrggbb"

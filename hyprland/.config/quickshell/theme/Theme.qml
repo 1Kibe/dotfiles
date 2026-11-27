@@ -36,6 +36,11 @@ Singleton {
     // Configurações → Tema e cores (settings/appearance.js accentPair)
     property color accent: "#7e735f"
     property color accentLight: "#bfb8a3"
+    // The flavor is dark (false: a light one; set with the colors)
+    property bool dark: true
+    // Text over the accent: the dark flavors' background as always; on a
+    // light one, whichever of the background and the text reads better
+    readonly property color onAccent: dark || contrast(bgHard, accent) >= contrast(fg, accent) ? bgHard : fg
     // The terminal's eight dark tones (kitty color0 to color7), today's
     // kitty.conf; nothing in the shell draws with them
     property color ansi0: "#1d2021"
@@ -411,5 +416,12 @@ Singleton {
 
     function alpha(c, a) {
         return Qt.rgba(c.r, c.g, c.b, a)
+    }
+    // WCAG contrast of two colors
+    function contrast(a, b) {
+        const lum = c => [c.r, c.g, c.b].map(x => x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4))
+                                        .reduce((s, x, i) => s + x * [0.2126, 0.7152, 0.0722][i], 0)
+        const la = lum(a), lb = lum(b)
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
     }
 }

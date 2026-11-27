@@ -117,7 +117,7 @@ Item {
                         anchors.centerIn: parent
                         text: parent.modelData
                         textFormat: Text.PlainText
-                        color: parent.modelData === "ativo" ? Theme.bgHard : Theme.yellow
+                        color: parent.modelData === "ativo" ? Theme.onAccent : Theme.yellow
                         font.family: Theme.fontPanels
                         font.pointSize: Theme.fontSize - 2
                     }
