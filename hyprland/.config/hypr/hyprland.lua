@@ -110,6 +110,9 @@ end
 -- (modules/areas.lua reads dotfiles_areas), nothing else
 local function refused(what)
   print("hyprland.lua: dotfiles_settings.lua: not allowed: " .. string.format("%q", tostring(what):sub(1, 80)))
+  -- Hyprland's output goes to the journal through a socket, where it waits
+  -- in a buffer that a running Hyprland never empties: the line is sent now
+  io.stdout:flush()
 end
 -- The options the shell writes (settings/appearance.js, settings/input.js;
 -- a test checks that both sides list the same ones): a table is a group,
