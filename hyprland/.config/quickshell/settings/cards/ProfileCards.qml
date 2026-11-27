@@ -125,6 +125,11 @@ Item {
             closeMenu()
             return act(() => ProfileStore.duplicate(id))
         }
+        if (what === "export" || what === "exportbare") {
+            closeMenu()
+            exportPicture = what === "export"
+            return act(() => ProfileStore.exportProfile(id, what === "export"))
+        }
         if (what === "remove") {
             if (!armed) {
                 armed = true
@@ -137,6 +142,7 @@ Item {
         return false
     }
 
+    property bool exportPicture: true
     Connections {
         target: ProfileStore
         function onFailed(message) {
@@ -147,7 +153,25 @@ Item {
                 root.adopting = false
                 ProfileStore.adoptActive(id)
             }
+            if (what === "export" && ProfileStore.lastExport !== "")
+                root.notice = `Exportado para ${ProfileStore.exportsShown}/${ProfileStore.lastExport}: `
+                              + (root.exportPicture ? "o nome e a imagem vão junto." : "o nome vai junto, sem a imagem.")
+            else if (what === "importdone") {
+                root.notice = "Importado: clique no cartão para aplicar."
+                ProfileStore.listImports()
+            }
         }
+    }
+    // The export folder's list, open below the cards
+    property bool importOpen: false
+    function toggleImports() {
+        notice = ""
+        importOpen = !importOpen
+        if (importOpen && !ProfileStore.listImports() && ProfileStore.exportsRel === "")
+            notice = "A pasta Documentos não foi encontrada: não dá para importar."
+    }
+    function importFolder(folder) {
+        return act(() => ProfileStore.importFolder(folder))
     }
 
     // An action: never silent (busy, or the store refused without saying why)
@@ -616,6 +640,73 @@ Item {
             }
         }
 
+        // Import from the export folder
+        Button {
+            text: root.importOpen ? "Fechar a importação" : `Importar de ${ProfileStore.exportsShown || "Documentos/Perfis"}`
+            flat: true
+            enabled: !root.locked
+            onClicked: root.toggleImports()
+        }
+        Column {
+            visible: root.importOpen
+            width: parent.width
+            spacing: 6
+            Text {
+                visible: ProfileStore.importsRead && ProfileStore.imports.length === 0
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: `Nenhum perfil exportado em ${ProfileStore.exportsShown}.`
+                textFormat: Text.PlainText
+                color: Theme.fg4
+                font.family: Theme.fontPanels
+                font.pointSize: Theme.fontSize - 1
+            }
+            Repeater {
+                model: root.importOpen ? ProfileStore.imports : []
+                Rectangle {
+                    required property var modelData
+                    width: parent.width
+                    height: 40
+                    radius: Theme.radius
+                    color: Theme.bg1
+                    Column {
+                        x: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - importButton.width - 36
+                        Text {
+                            width: parent.width
+                            elide: Text.ElideRight
+                            text: parent.parent.modelData.nome + (parent.parent.modelData.theme !== "" ? ` · ${parent.parent.modelData.theme}` : "")
+                            textFormat: Text.PlainText
+                            color: Theme.text
+                            font.family: Theme.fontPanels
+                            font.pointSize: Theme.fontSize - 1
+                        }
+                        Text {
+                            width: parent.width
+                            elide: Text.ElideRight
+                            text: `pasta ${parent.parent.modelData.folder}`
+                            textFormat: Text.PlainText
+                            color: Theme.fg4
+                            font.family: Theme.fontPanels
+                            font.pointSize: Theme.fontSize - 2
+                        }
+                    }
+                    Button {
+                        id: importButton
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "Importar"
+                        outline: true
+                        enabled: root.canAct && !root.full
+                        opacity: enabled ? 1 : 0.5
+                        onClicked: root.importFolder(parent.modelData.folder)
+                    }
+                }
+            }
+        }
+
         // Reading or writing; what did not work
         Text {
             visible: text !== ""
@@ -662,7 +753,7 @@ Item {
         z: 10
         x: Math.max(0, Math.min(root.width - width, root.menuX - width))
         y: root.menuY + 4
-        width: 150
+        width: 190
         height: menuColumn.implicitHeight + 8
         radius: Theme.radius
         color: Theme.bg1
@@ -674,8 +765,9 @@ Item {
             y: 4
             width: parent.width - 8
             Repeater {
-                model: [{ id: "rename", label: "Renomear" }, { id: "duplicate", label: "Duplicar" }, { id: "line" },
-                        { id: "remove", label: "Apagar…" }]
+                model: [{ id: "rename", label: "Renomear" }, { id: "duplicate", label: "Duplicar" },
+                        { id: "export", label: "Exportar" }, { id: "exportbare", label: "Exportar sem a imagem" },
+                        { id: "line" }, { id: "remove", label: "Apagar…" }]
                 Item {
                     id: menuItem
                     required property var modelData

@@ -219,6 +219,24 @@ Singleton {
         + '}\n'
         // leftovers of an interrupted write (older than 5 minutes)
         + 'find . -mindepth 2 -maxdepth 2 -type f \\( -name ".papel.*" -o -name ".mini.*" -o -name ".perfil.*" -o -name ".copia.*" \\) -mmin +5 -delete 2>/dev/null\n'
+        // and an import's preparation left by an interruption (5 minutes)
+        + 'find . -mindepth 1 -maxdepth 1 -type d -name ".import-*" -mmin +5 -exec rm -rf --one-file-system -- {} + 2>/dev/null\n'
+        // how many profiles there are, preparations included (the limit)
+        + 'count() { n=0; for d in ./* ./.import-*; do d=${d#./}; { okdir "$d" || case "$d" in .import-?*) [ -d "$d" ] && [ ! -L "$d" ] ;; *) false ;; esac; } && n=$((n + 1)); done; echo "$n"; }\n'
+        // The export folder: from $start, each of the components of $1 (a/b)
+        // a real folder of the user's; the last one made 700 when $2 is 1
+        + 'toexports() {\n'
+        + '  cd -P -- "$start" 2>/dev/null || return 1\n'
+        + '  rest=$1; mkl=$2\n'
+        + '  while [ -n "$rest" ]; do\n'
+        + '    x=${rest%%/*}; case "$rest" in */*) rest=${rest#*/} ;; *) rest= ;; esac\n'
+        + '    case "$x" in ""|.|..) return 1 ;; esac\n'
+        + '    if [ -e "$x" ] || [ -L "$x" ]; then [ -d "$x" ] && [ ! -L "$x" ] && [ -O "$x" ] || return 1\n'
+        + '    elif [ -z "$rest" ] && [ "$mkl" = 1 ]; then mkdir -m 700 -- "$x" || return 1\n'
+        + '    else return 3; fi\n'
+        + '    cd -P -- "$x" || return 1\n'
+        + '  done\n'
+        + '}\n'
     // The list: the folders by the pattern (the first 300 by name looked
     // at, never one reached through a link), each perfil.json as base64 with
     // the pictures' marks; a missing miniature is made again from the
@@ -275,6 +293,101 @@ Singleton {
         + 'okdir "$a" || exit 1\n'
         + '[ "$(readlink -f -- "$a")" = "$(pwd -P)/$a" ] || exit 1\n'
         + 'rm -rf --one-file-system -- "$a" || exit 1\n'
+        + 'echo ok\n'
+
+    // ── Export and import (Documentos/Perfis) ──
+    // Export ($a the id, $b 1: with its picture, $c the export folder from
+    // HOME; stdin the perfil.json): a new folder named by the id (id-2,
+    // id-3... when taken; never one there), the checked perfil.json and the
+    // picture already re-encoded (no miniature); prints its name
+    readonly property string exportScript: chainScript
+        + 'okdir "$a" || exit 1\n'
+        + 'src=$(pwd -P)/$a\n'
+        + 'toexports "$c" 1 || exit 1\n'
+        + 'name=\n'
+        + 'for k in "" -2 -3 -4 -5 -6 -7 -8 -9 -10 -11 -12 -13 -14 -15 -16 -17 -18 -19 -20; do\n'
+        + '  if mkdir -m 700 -- "$a$k" 2>/dev/null; then name=$a$k; break; fi\n'
+        + 'done\n'
+        + '[ -n "$name" ] || exit 1\n'
+        + 'trap \'rm -rf --one-file-system -- "$name"\' EXIT INT TERM HUP\n'
+        + 'writejson "$name" || exit 1\n'
+        + 'if [ "$b" = 1 ] && okpng "$src/papel.png" 31457280; then\n'
+        + '  t=$(mktemp -- "$name/.papel.XXXXXX") && dd if="$src/papel.png" of="$t" iflag=nofollow bs=65536 status=none && chmod 600 -- "$t" && mv -fT -- "$t" "$name/papel.png" || exit 1\n'
+        + 'fi\n'
+        + 'trap - EXIT INT TERM HUP\n'
+        + 'printf "pasta %s\\n" "$name"\n'
+        + 'echo ok\n'
+    // The export folder's list ($c it from HOME): each folder (the first 300
+    // by name, never through a link) as base64, with its perfil.json read
+    // without following a link nor waiting (a FIFO gives nothing), at most
+    // 65537 bytes (more: refused by the check)
+    readonly property string importListScript: chainScript
+        + 'toexports "$c" 0; r=$?\n'
+        + '[ "$r" = 3 ] && exit 0\n'
+        + '[ "$r" = 0 ] || exit 1\n'
+        + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 300 | while IFS= read -r -d "" p; do\n'
+        + '  d=${p#./}\n'
+        + '  [ -d "$d" ] && [ ! -L "$d" ] || continue\n'
+        + '  j=$(dd if="$d/perfil.json" iflag=nofollow,nonblock bs=65537 count=1 status=none 2>/dev/null | base64 -w0)\n'
+        + '  printf "%s %s\\n" "$(printf %s "$d" | base64 -w0)" "$j"\n'
+        + 'done\n'
+    // Import, first step ($a the folder from the list, $c the export folder):
+    // a preparation inside profiles/ (counted in the limit) with copies of
+    // only perfil.json and papel.png, read without following a link nor
+    // waiting, their sizes checked on the copies; prints its name and the
+    // perfil.json as base64 (the shell checks it). Any failure: no
+    // preparation left
+    readonly property string importCopyScript: chainScript
+        + 'P=$(pwd -P)\n'
+        + '[ "$(count)" -lt 24 ] || { echo cheio; exit 1; }\n'
+        + 'prep=$(mktemp -d -- "$P/.import-XXXXXX") || exit 1\n'
+        + 'chmod 700 -- "$prep" || exit 1\n'
+        + 'trap \'rm -rf --one-file-system -- "$prep"\' EXIT INT TERM HUP\n'
+        + 'case "$a" in ""|.|..|*/*) exit 1 ;; esac\n'
+        + 'toexports "$c" 0 || exit 1\n'
+        + '[ -d "$a" ] && [ ! -L "$a" ] || exit 1\n'
+        + 'dd if="$a/perfil.json" of="$prep/perfil.in" iflag=nofollow,nonblock bs=65537 count=1 status=none 2>/dev/null || exit 1\n'
+        + '[ "$(stat -c %s -- "$prep/perfil.in")" -le 65536 ] || exit 1\n'
+        + 'if [ -f "$a/papel.png" ] && [ ! -L "$a/papel.png" ]; then\n'
+        + '  dd if="$a/papel.png" of="$prep/papel.in" iflag=nofollow,nonblock bs=65536 count=481 status=none 2>/dev/null || rm -f -- "$prep/papel.in"\n'
+        + '  [ -f "$prep/papel.in" ] && [ "$(stat -c %s -- "$prep/papel.in")" -gt 31457280 ] && rm -f -- "$prep/papel.in"\n'
+        + 'fi\n'
+        + 'chmod 600 -- "$prep"/* 2>/dev/null\n'
+        + 'printf "prep %s " "${prep##*/}"; base64 -w0 -- "$prep/perfil.in"; echo\n'
+        + 'trap - EXIT INT TERM HUP\n'
+        + 'echo ok\n'
+    // Import, second step ($a the preparation, $b the new id, $c the
+    // longest side; stdin the checked perfil.json): the picture re-encoded
+    // by the same recode (never copied as it came), the copies gone, then
+    // the preparation renamed to the id (never over one there). Any failure:
+    // the preparation goes
+    readonly property string importDoneScript: chainScript
+        + 'case "$a" in .import-?*) ;; *) exit 1 ;; esac\n'
+        + 'case "$a" in */*) exit 1 ;; esac\n'
+        + '[ -d "$a" ] && [ ! -L "$a" ] && [ -O "$a" ] || exit 1\n'
+        + '[ "$(readlink -f -- "$a")" = "$(pwd -P)/$a" ] || exit 1\n'
+        + 'trap \'rm -rf --one-file-system -- "$a"\' EXIT INT TERM HUP\n'
+        + 'case "$b" in ""|*[!a-z0-9-]*|-*) exit 1 ;; esac\n'
+        + '[ -e "$b" ] || [ -L "$b" ] && exit 1\n'
+        + '[ "$(count)" -le 24 ] || { echo cheio; exit 1; }\n'
+        + 'json=$(head -c 65536)\n'
+        + 'sem=sem\n'
+        + 'if [ -f "$a/papel.in" ] && printf "%s" "$json" | grep -q \'^  "papel": "papel.png"$\'; then\n'
+        + '  recode "$a/papel.in" "$a" "$c" && sem= || echo sempapel\n'
+        + 'fi\n'
+        + 'rm -f -- "$a/papel.in" "$a/perfil.in"\n'
+        + '[ -n "$sem" ] && rm -f -- "$a/papel.png" "$a/miniatura.png"\n'
+        + 'printf "%s\\n" "$json" | writejson "$a" "$sem" || exit 1\n'
+        + 'mv -T -- "$a" "$b" || exit 1\n'
+        + 'trap - EXIT INT TERM HUP\n'
+        + 'echo ok\n'
+    // An import's preparation dropped ($a it): the checked file did not pass
+    readonly property string importDropScript: chainScript
+        + 'case "$a" in .import-?*) ;; *) exit 1 ;; esac\n'
+        + 'case "$a" in */*) exit 1 ;; esac\n'
+        + '[ -d "$a" ] && [ ! -L "$a" ] && [ -O "$a" ] || exit 1\n'
+        + '[ "$(readlink -f -- "$a")" = "$(pwd -P)/$a" ] || exit 1\n'
+        + 'rm -rf --one-file-system -- "$a"\n'
         + 'echo ok\n'
 
     // The longest side a picture keeps: the largest screen's, 3840 at most
@@ -401,6 +514,7 @@ Singleton {
     Component.onCompleted: {
         relist()
         Qt.callLater(reload)
+        Qt.callLater(() => docs.running = true)
     }
 
     // ── Writing ──
@@ -411,7 +525,7 @@ Singleton {
         pendingWhat = what
         pendingId = id
         pendingInput = input
-        worker.command = ["timeout", "180", "sh", "-c", script, "sh", chain.start, what === "create" || what === "duplicate" ? "1" : "0"]
+        worker.command = ["timeout", "180", "sh", "-c", script, "sh", chain.start, ["create", "duplicate", "importcopy"].includes(what) ? "1" : "0"]
                          .concat(args).concat(chain.comps)
         worker.stdinEnabled = input !== ""
         writing = true
@@ -435,7 +549,23 @@ Singleton {
             const what = root.pendingWhat, id = root.pendingId
             root.pendingInput = ""
             root.writing = false
-            if (!ok)
+            // (the import's first step: the shell checks the file, then the
+            // second step or the preparation dropped)
+            if (what === "importcopy") {
+                Qt.callLater(() => root.importChecked(ok, out))
+                return
+            }
+            if (what === "export" && ok) {
+                const m = /^pasta (.+)$/m.exec(out)
+                root.lastExport = m ? m[1] : ""
+            }
+            if (!ok && what === "export")
+                root.failed("Não deu para exportar o perfil: nada foi gravado.")
+            else if (!ok && what === "importdone")
+                root.failed(out.includes("cheio") ? `No máximo ${Profile.MAX} perfis: nada foi importado.` : "Não deu para importar o perfil: nada foi gravado.")
+            else if (!ok && what === "importdrop")
+                return
+            else if (!ok)
                 root.failed("Não deu para gravar o perfil: nada mudou.")
             else if (out.includes("sempapel"))
                 root.failed("A imagem não serviu (tipo, tamanho ou arquivo): o perfil ficou sem papel próprio.")
@@ -448,6 +578,111 @@ Singleton {
                 root.done(what, id)
         }
     }
+    // ── Export and import (Documentos/Perfis) ──
+    // The export folder, from HOME: the documents folder (xdg-user-dir,
+    // asked once, its answer checked: under HOME, no "..", no control) and
+    // "Perfis". "": not known (export and import refused)
+    property string exportsRel: ""
+    Process {
+        id: docs
+        command: ["xdg-user-dir", "DOCUMENTS"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const d = text.trim()
+                const ok = d.startsWith(root.home + "/") && !/[\u0000-\u001f\u007f]/.test(d)
+                           && d.slice(root.home.length + 1).split("/").every(c => c !== "" && c !== "." && c !== "..")
+                root.exportsRel = ok ? d.slice(root.home.length + 1) + "/Perfis" : ""
+            }
+        }
+    }
+    readonly property string exportsShown: exportsRel === "" ? "" : "~/" + exportsRel
+    property string lastExport: ""
+    // Export: the profile's checked file and, with withPicture, its picture
+    // (already re-encoded); the folder's name in lastExport
+    function exportProfile(id, withPicture) {
+        const p = get(id)
+        if (!canWrite() || p === null || p.builtin || exportsRel === "" || chain === null || chain.start !== home)
+            return false
+        lastExport = ""
+        const papel = withPicture === true && p.papel
+        runWorker("export", id, exportScript, [id, papel ? "1" : "0", exportsRel],
+                  Profile.serialize({ nome: p.nome, valores: p.valores, papel: papel ? Profile.PAPEL : null }))
+        return true
+    }
+    // The export folder's list: { folder, nome, theme } of each that holds a
+    // profile that passes the check (the folder's name only shown)
+    property var imports: []
+    property bool importsRead: false
+    function listImports() {
+        if (exportsRel === "" || chain === null || chain.start !== home || lister.running)
+            return false
+        importsRead = false
+        // (the profiles' folder made when missing: the chain walks it first)
+        lister.command = ["timeout", "30", "sh", "-c", importListScript, "sh", chain.start, "1", "", "", exportsRel].concat(chain.comps)
+        lister.running = true
+        return true
+    }
+    Process {
+        id: lister
+        stdout: StdioCollector {
+            id: listerOut
+        }
+        stderr: StdioCollector {}
+        onExited: code => {
+            const got = []
+            for (const line of (code === 0 ? listerOut.text : "").split("\n")) {
+                const parts = line.split(" ")
+                if (parts.length !== 2 || got.length >= 300)
+                    continue
+                const folder = root.decode64(parts[0])
+                const text = root.decode64(parts[1])
+                if (folder === null || text === null || folder === "" || folder.includes("/") || /[\u0000-\u001f\u007f]/.test(folder))
+                    continue
+                const r = Profile.validateProfile(text, Schema, (sp, v) => Validate.validate(sp, v, root.home), SettingsStore.defaults, root.themeOk)
+                if (!r.ok)
+                    continue
+                const t = ThemeCatalog.get(r.profile.valores.theme)
+                got.push({ folder: folder, nome: r.profile.nome, theme: t ? t.nome : "" })
+            }
+            root.imports = got
+            root.importsRead = true
+        }
+    }
+    // Import one of the list's folders: copied, checked, re-encoded, saved
+    // under a new id; never applied
+    property string importing: ""
+    function importFolder(folder) {
+        if (!canWrite() || exportsRel === "" || chain.start !== home || !imports.some(e => e.folder === folder))
+            return false
+        if (Object.keys(found).length >= Profile.MAX) {
+            failed(`No máximo ${Profile.MAX} perfis: nada foi importado.`)
+            return false
+        }
+        importing = folder
+        runWorker("importcopy", "", importCopyScript, [folder, "", exportsRel], "")
+        return true
+    }
+    function importChecked(ok, out) {
+        const m = /^prep (\.import-[A-Za-z0-9]+) ([A-Za-z0-9+/=]*)$/m.exec(out)
+        if (!ok || m === null) {
+            failed(out.includes("cheio") ? `No máximo ${Profile.MAX} perfis: nada foi importado.` : "Não deu para ler o perfil exportado: nada foi importado.")
+            importing = ""
+            reload()
+            return
+        }
+        const text = decode64(m[2])
+        const r = text === null ? { ok: false } : Profile.validateProfile(text, Schema, (sp, v) => Validate.validate(sp, v, home), SettingsStore.defaults, themeOk)
+        if (!r.ok) {
+            failed("Esse perfil não passou na conferência: nada foi importado.")
+            importing = ""
+            runWorker("importdrop", "", importDropScript, [m[1], "", ""], "")
+            return
+        }
+        const id = Profile.newId(Math.random, Object.keys(found))
+        importing = ""
+        runWorker("importdone", id, importDoneScript, [m[1], id, String(maxSide)], Profile.serialize(r.profile))
+    }
+
     // A picture to keep: the wallpaper of today, as a local path (none:
     // the repo's own or not set)
     function currentPicture() {
