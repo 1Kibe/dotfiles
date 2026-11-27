@@ -192,6 +192,8 @@ function deepen(hex, against, least) {
         if (c !== null && contrast(c, against) >= least)
             return c
     }
+    // (not even black reaches it: no palette has such a pair today)
+    console.warn(`palettes: nenhum tom de ${hex} alcança ${least} sobre ${against}`)
     return "#000000"
 }
 
