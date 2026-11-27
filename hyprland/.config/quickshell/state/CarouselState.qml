@@ -52,6 +52,7 @@ Singleton {
         index = Math.max(0, ProfileStore.profiles.findIndex(p => p.id === ProfileStore.active))
         wheelSum = 0
         wheelLast = -1e9
+        instant = false
         openOn = monitor
         open = true
         return "ok"

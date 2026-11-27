@@ -51,8 +51,11 @@ Scope {
                         NumberAnimation {
                             id: fade
                             // (closing before a change: at once, the frozen
-                            // frame must not hold it)
-                            duration: CarouselState.instant && !win.shown ? 0 : Theme.dur(Theme.animNormal)
+                            // frame must not hold it; only `instant`, set
+                            // before the carousel closes: a duration that
+                            // also read `shown` could still be the long one
+                            // when the fade starts)
+                            duration: CarouselState.instant ? 0 : Theme.dur(Theme.animNormal)
                             easing.type: Easing.BezierSpline
                             easing.bezierCurve: win.shown ? Theme.curveDecel : Theme.curveAccel
                         }
