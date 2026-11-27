@@ -603,7 +603,10 @@ def flavor(theme, fid):
         name = next((k for k, v in darkp.items() if v.lower() == theme["accent"].lower()), None)
         if name:
             acc = named[name]
-            out["destaque"] = {"accent": acc, "light": deepen(acc, roles["bg"], 4.5)}
+            # (the strong tone against the darker of bg and bgHard: as
+            # theme/palettes.js resolve)
+            back = roles["bg"] if luminance(roles["bg"]) < luminance(roles["bgHard"]) else roles["bgHard"]
+            out["destaque"] = {"accent": acc, "light": deepen(acc, back, 4.5)}
     return out
 
 

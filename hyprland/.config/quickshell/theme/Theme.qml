@@ -39,8 +39,12 @@ Singleton {
     // The flavor is dark (false: a light one; set with the colors)
     property bool dark: true
     // Text over the accent: the dark flavors' background as always; on a
-    // light one, whichever of the background and the text reads better
-    readonly property color onAccent: dark || contrast(bgHard, accent) >= contrast(fg, accent) ? bgHard : fg
+    // light one, the background or the text, whichever reads better, else a
+    // dark tone of the accent itself (theme/palettes.js resolve; set with
+    // the colors)
+    property color onAccent: bgHard
+    // The same over the accent's strong tone (a button filled with it)
+    property color onAccentLight: bgHard
     // The terminal's eight dark tones (kitty color0 to color7), today's
     // kitty.conf; nothing in the shell draws with them
     property color ansi0: "#1d2021"

@@ -32,7 +32,7 @@
         "blue": "#268bd2", "purple": "#6c71c4"
       },
       "ansi": ["#eee8d5", "#dc322f", "#859900", "#b58900", "#268bd2", "#d33682", "#2aa198", "#073642"],
-      "destaque": { "accent": "#268bd2", "light": "#0875b8" }
+      "destaque": { "accent": "#268bd2", "light": "#046eae" }
     }
   }
 }

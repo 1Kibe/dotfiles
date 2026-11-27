@@ -139,11 +139,33 @@ function resolve(theme, flavorId, accentId) {
                  ? { accent: base.accent, light: base.light }
                  : Appearance.accentPair(accentId, f.nomeadas)
     // On a light flavor the accent's strong tone is the same color darker
-    // (toward white it would vanish on the light background)
-    if (f.escuro === false && !(accentId === "padrao" && f.destaque))
-        pair.light = deepen(pair.accent, f.papeis.bg, 4.5)
-    return { flavor: id, roles: Object.assign({}, f.papeis), named: Object.assign({}, f.nomeadas), ansi: f.ansi.slice(),
-             accent: pair.accent, accentLight: pair.light, escuro: f.escuro, syntaxTheme: f.syntaxTheme }
+    // (toward white it would vanish on the light background), measured
+    // against the darker of bg and bgHard: readable as text on both, and
+    // bgHard readable on it (a button filled with it)
+    const r = f.papeis
+    const light = f.escuro === false
+    if (light && !(accentId === "padrao" && f.destaque))
+        pair.light = deepen(pair.accent, darker(r.bg, r.bgHard), 4.5)
+    return { flavor: id, roles: Object.assign({}, r), named: Object.assign({}, f.nomeadas), ansi: f.ansi.slice(),
+             accent: pair.accent, accentLight: pair.light, escuro: f.escuro, syntaxTheme: f.syntaxTheme,
+             onAccent: light ? textOn(pair.accent, r) : r.bgHard,
+             onAccentLight: light ? textOn(pair.light, r) : r.bgHard }
+}
+
+// The text over a fill of a light flavor: bgHard or fg, whichever reads
+// better; when neither reaches 4.5, a dark tone of the fill's own color, if
+// that reads better still (the fill itself stays as it is)
+function textOn(fill, r) {
+    const best = contrast(r.bgHard, fill) >= contrast(r.fg, fill) ? r.bgHard : r.fg
+    if (contrast(best, fill) >= 4.5)
+        return best
+    // (over a fill this dark not even black reaches 4.5: the darkest tone
+    // that still keeps a trace of the hue)
+    const deep = deepen(fill, fill, Math.min(4.5, contrast("#000000", fill) * 0.97))
+    return contrast(deep, fill) > contrast(best, fill) ? deep : best
+}
+function darker(a, b) {
+    return luminance(a) < luminance(b) ? a : b
 }
 
 // ── A darker tone of the same color (the light flavors): in OKLCH the hue

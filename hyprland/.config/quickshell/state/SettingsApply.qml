@@ -142,6 +142,8 @@ Singleton {
             Theme["ansi" + i] = c.ansi[i]
         Theme.accent = c.accent
         Theme.accentLight = c.accentLight
+        Theme.onAccent = c.onAccent
+        Theme.onAccentLight = c.onAccentLight
         Theme.dark = c.escuro !== false
         syntaxTheme = c.syntaxTheme
     }
@@ -174,6 +176,7 @@ Singleton {
         } else {
             Theme.accent = pair.accent
             Theme.accentLight = pair.light
+            Theme.onAccent = Theme.onAccentLight = Theme.bgHard
         }
         Theme.barOpacity = v.barOpacity
         Theme.barHeight = v.barHeight

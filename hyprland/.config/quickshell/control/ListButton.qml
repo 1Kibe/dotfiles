@@ -62,7 +62,7 @@ Rectangle {
             id: label
             text: root.text
             textFormat: Text.PlainText
-            color: root.primary ? Theme.onAccent : root.danger ? Theme.red : Theme.fg2
+            color: root.primary ? Theme.onAccentLight : root.danger ? Theme.red : Theme.fg2
             Behavior on color {
                 ColorAnimation { duration: Theme.dur(Theme.animFast) }
             }
