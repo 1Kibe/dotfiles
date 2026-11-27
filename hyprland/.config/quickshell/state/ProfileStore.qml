@@ -682,17 +682,34 @@ Singleton {
         }
         stderr: StdioCollector {}
         onExited: code => {
-            const got = []
-            let total = 0
-            for (const line of (code === 0 ? listerOut.text : "").split("\n")) {
+            // (read a few at a time: 50 files of 64 KB at once froze the
+            // interface for seconds)
+            root.listLines = (code === 0 ? listerOut.text : "").split("\n")
+            root.listGot = []
+            root.listTotal = 0
+            listBatch.restart()
+        }
+    }
+    property var listLines: []
+    property var listGot: []
+    property int listTotal: 0
+    Timer {
+        id: listBatch
+        interval: 16
+        repeat: true
+        onTriggered: {
+            let done = 0
+            while (root.listLines.length > 0 && done < 2) {
+                const line = root.listLines.shift()
                 const tm = /^total (\d+)$/.exec(line)
                 if (tm) {
-                    total = Number(tm[1])
+                    root.listTotal = Number(tm[1])
                     continue
                 }
                 const parts = line.split(" ")
-                if (parts.length !== 2 || got.length >= 300)
+                if (parts.length !== 2 || root.listGot.length >= 300)
                     continue
+                done++
                 const folder = root.decode64(parts[0])
                 const text = root.decode64(parts[1])
                 if (folder === null || text === null || folder === "" || folder.includes("/")
@@ -702,11 +719,14 @@ Singleton {
                 if (!r.ok)
                     continue
                 const t = ThemeCatalog.get(r.profile.valores.theme)
-                got.push({ folder: folder, nome: r.profile.nome, theme: t ? t.nome : "" })
+                root.listGot.push({ folder: folder, nome: r.profile.nome, theme: t ? t.nome : "" })
             }
-            root.imports = got
-            root.importsTotal = Math.max(total, got.length)
-            root.importsRead = true
+            if (root.listLines.length === 0) {
+                stop()
+                root.imports = root.listGot
+                root.importsTotal = Math.max(root.listTotal, root.listGot.length)
+                root.importsRead = true
+            }
         }
     }
     // Import one of the list's folders: copied, checked, re-encoded, saved
