@@ -63,7 +63,8 @@ ShellRoot {
                 return "perfil desconhecido"
             if (CarouselState.blocked())
                 return "travada"
-            return ProfileStore.apply(key) ? "ok" : "recusado"
+            // (the carousel, if open, closes first: never inside the frame)
+            return CarouselState.applyId(key) ? "ok" : "recusado"
         }
         // Ids, order and counts only
         function status(): string {

@@ -12,6 +12,14 @@ import "../settings/ui"
 Item {
     id: view
     readonly property bool grid: CarouselState.count > Theme.profileFanMax
+    // Shown (the overlay up): the fan opens out from the middle and closes
+    // back into it; reduce motion: no slide (the overlay's fade only)
+    property bool shown: true
+    property real spread: shown ? 1 : 0.6
+    Behavior on spread {
+        enabled: !Theme.reduceMotion
+        NumberAnimation { duration: Theme.dur(Theme.motionPanelOpen); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveDecel }
+    }
     readonly property alias keys: keyArea
     Item {
         id: keyArea
@@ -55,15 +63,27 @@ Item {
                     id: slot
                     required property var modelData
                     required property int index
-                    readonly property int d: index - CarouselState.index
+                    // (round: the first one's left neighbor is the last)
+                    readonly property int d: {
+                        const n = CarouselState.count, raw = index - CarouselState.index
+                        if (n < 3)
+                            return raw
+                        const m = ((raw % n) + n) % n
+                        return m > n / 2 ? m - n : m
+                    }
                     readonly property int ad: Math.abs(d)
                     width: fan.width
                     height: card.implicitHeight
                     z: 100 - ad
-                    visible: ad <= 3
-                    x: d === 0 ? 0 : Math.sign(d) * (fan.width * 0.42 + (ad - 1) * fan.width * 0.3)
+                    // (the ones past the fan's ends: neither seen nor clicked)
+                    visible: ad <= 2
+                    x: (d === 0 ? 0 : Math.sign(d) * (fan.width * 0.42 + (ad - 1) * fan.width * 0.3)) * view.spread
                     scale: Math.pow(0.82, ad)
-                    opacity: ad === 0 ? 1 : ad === 3 ? 0 : 1 - ad * 0.2
+                    opacity: ad === 0 ? 1 : 1 - ad * 0.2
+                    Behavior on opacity {
+                        enabled: !Theme.reduceMotion
+                        NumberAnimation { duration: Theme.dur(Theme.animNormal) }
+                    }
                     Behavior on x {
                         enabled: !Theme.reduceMotion
                         NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard }
@@ -86,12 +106,17 @@ Item {
                         radius: Theme.radius
                         color: Theme.bgDeep
                         opacity: Math.min(0.7, slot.ad * 0.3)
+                        Behavior on opacity {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { duration: Theme.dur(Theme.animNormal) }
+                        }
                     }
                     MouseArea {
                         width: card.width
                         height: Math.round(card.width * 4 / 3)
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: slot.d === 0 ? CarouselState.applyPicked() : CarouselState.pick(slot.index)
+                        // (a click: the circle starts from the cursor)
+                        onClicked: slot.d === 0 ? CarouselState.applyPicked({ fromCursor: true }) : CarouselState.pick(slot.index)
                     }
                 }
             }
@@ -102,7 +127,14 @@ Item {
             id: gridView
             visible: view.grid
             anchors.centerIn: parent
-            readonly property real cell: Theme.profileCardWidth * 0.6
+            // The cell fits the screen's height too (24 on a small screen):
+            // the columns by the width, then the rows by the height left
+            // above the name
+            readonly property real room: view.height - 160
+            readonly property real base: Theme.profileCardWidth * 0.6
+            readonly property int cols0: Math.max(1, Math.floor((view.width - 2 * Theme.gap * 4) / (base + spacing)))
+            readonly property int rows0: Math.max(1, Math.ceil(CarouselState.count / cols0))
+            readonly property real cell: Math.max(60, Math.min(base, (room - (rows0 - 1) * spacing) / rows0 * 3 / 4))
             columns: Math.max(1, Math.floor((view.width - 2 * Theme.gap * 4) / (cell + spacing)))
             spacing: Theme.gap * 2
             Repeater {
@@ -134,7 +166,7 @@ Item {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: parent.picked ? CarouselState.applyPicked() : CarouselState.pick(parent.index)
+                        onClicked: parent.picked ? CarouselState.applyPicked({ fromCursor: true }) : CarouselState.pick(parent.index)
                     }
                 }
             }

@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import qs.theme
 
 // The quick change of profile: Super+T (the carousel, profiles/
 // ProfileOverlay, on the focused monitor) and Super+Shift+T (the next
@@ -39,13 +40,13 @@ Singleton {
             return "travada"
         if (!ProfileStore.ready || count === 0)
             return "sem perfis"
+        if (CaptureState.open)
+            return "ocupada"
         // One thing open at a time
         ShellState.close()
         ClipboardStore.close()
         if (OverviewState.open)
             OverviewState.hide()
-        if (CaptureState.open)
-            return "ocupada"
         index = Math.max(0, ProfileStore.profiles.findIndex(p => p.id === ProfileStore.active))
         openOn = monitor
         open = true
@@ -57,24 +58,54 @@ Singleton {
         instant = instantly === true
         open = false
     }
+    // The fan goes round; the grid stops at the ends
     function step(by) {
-        if (count > 0)
+        if (count <= 0)
+            return
+        if (count <= Theme.profileFanMax)
+            index = ((index + by) % count + count) % count
+        else
             index = Math.max(0, Math.min(count - 1, index + by))
+    }
+    // 5: the list changing while open
+    onCountChanged: {
+        if (count === 0)
+            close(true)
+        else
+            index = Math.min(index, count - 1)
     }
     function pick(i) {
         if (i >= 0 && i < count)
             index = i
     }
-    // Enter: the picked one applied, once the carousel is off the screen
+    // Enter (from the middle) or a click (from the cursor): the picked one
+    // applied, once the carousel is off the screen
     property string applying: ""
-    function applyPicked() {
+    property var applyingOpts: ({})
+    function applyPicked(opts) {
         const p = picked
         if (!open || p === null)
             return
         close(true)
         if (p.id === ProfileStore.active && !ProfileStore.dirty)
             return
-        applying = p.id
+        applyAfterClose(p.id, opts)
+    }
+    // Any change asked while the carousel shows (IPC apply, Super+Shift+T):
+    // it closes at once and the change waits for it to leave the screen
+    function applyId(id, opts) {
+        if (blocked() || ProfileStore.get(id) === null)
+            return false
+        if (open || afterClose.running) {
+            close(true)
+            applyAfterClose(id, opts)
+            return true
+        }
+        return ProfileStore.apply(id, opts)
+    }
+    function applyAfterClose(id, opts) {
+        applying = id
+        applyingOpts = opts || {}
         afterClose.restart()
     }
     Timer {
@@ -84,8 +115,9 @@ Singleton {
         onTriggered: {
             const id = root.applying
             root.applying = ""
-            if (!root.blocked())
-                ProfileStore.apply(id)
+            // (opened again meanwhile: not under it)
+            if (!root.blocked() && !root.open && !ProfileStore.apply(id, root.applyingOpts))
+                root.dropToast()
         }
     }
 
@@ -104,18 +136,21 @@ Singleton {
             toast(null, "Só há um perfil")
             return "um perfil"
         }
-        if (open)
-            close(true)
-        const from = SwapState.busy && lastNext !== "" ? lastNext : ProfileStore.active
+        const from = (SwapState.busy || afterClose.running) && lastNext !== "" ? lastNext : ProfileStore.active
         const i = (Math.max(0, list.findIndex(p => p.id === from)) + 1) % list.length
         const target = list[i]
-        if (!ProfileStore.apply(target.id))
+        const waits = open || afterClose.running
+        if (!applyId(target.id))
             return "recusado"
         lastNext = target.id
         toastFor = target.id
-        if (!SwapState.busy)
+        if (!waits && !SwapState.busy)
             showToast()
         return "ok"
+    }
+    function dropToast() {
+        toastFor = ""
+        lastNext = ""
     }
     // The notice: the profile (its seal and name) and "N de M", or a text
     property var toastProfile: null
@@ -127,12 +162,13 @@ Singleton {
         toastText = text
         toastSerial++
     }
+    // (only for the profile that really is the active one now)
     function showToast() {
         const list = ProfileStore.profiles
         const i = list.findIndex(p => p.id === toastFor)
-        toastFor = ""
-        lastNext = ""
-        if (i >= 0)
+        const ok = i >= 0 && ProfileStore.active === toastFor
+        dropToast()
+        if (ok)
             toast(list[i], `${i + 1} de ${list.length}`)
     }
     Connections {
@@ -143,6 +179,15 @@ Singleton {
             else if (!SwapState.busy)
                 root.lastNext = ""
         }
+    }
+
+    function onBlocked() {
+        if (!blocked())
+            return
+        close(true)
+        afterClose.stop()
+        applying = ""
+        dropToast()
     }
 
     // ── One thing open at a time ──
@@ -181,16 +226,13 @@ Singleton {
     Connections {
         target: LockState
         function onLockedChanged() {
-            if (root.blocked())
-                root.close(true)
+            root.onBlocked()
         }
         function onWantedChanged() {
-            if (root.blocked())
-                root.close(true)
+            root.onBlocked()
         }
         function onDimmedChanged() {
-            if (root.blocked())
-                root.close(true)
+            root.onBlocked()
         }
     }
     Connections {
@@ -208,5 +250,9 @@ Singleton {
                 root.close(true)
         }
     }
-    onOpenChanged: ShellState.setOverlay("carousel", open)
+    // Registered while it shows, its fade out too (ProfileOverlay says when
+    // its window is up): the minimize picture is never taken over it
+    property bool shown: false
+    onOpenChanged: ShellState.setOverlay("carousel", open || shown)
+    onShownChanged: ShellState.setOverlay("carousel", open || shown)
 }

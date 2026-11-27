@@ -25,6 +25,8 @@ Scope {
 
                 screen: modelData
                 visible: shown || fade.running
+                // (registered while up, the fade out too)
+                onVisibleChanged: CarouselState.shown = visible
                 anchors {
                     top: true
                     bottom: true
@@ -67,6 +69,7 @@ Scope {
                         id: cards
                         anchors.fill: parent
                         visible: win.here
+                        shown: win.shown
                         keys.focus: win.here && win.shown
                     }
                 }
