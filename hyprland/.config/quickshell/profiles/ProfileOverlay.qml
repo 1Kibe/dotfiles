@@ -24,14 +24,11 @@ Scope {
                 readonly property bool shown: CarouselState.open
 
                 screen: modelData
-                // Kept on the screen, empty and letting every click through
-                // while closed: opening only shows what is already there (a
-                // window made anew each time took 150 ms to show up)
+                // No surface while closed (nothing of the shell stays over a
+                // full-screen game or video); the cards and their pictures
+                // stay loaded, so opening only maps it again
                 readonly property bool up: shown || fade.running
-                visible: true
-                mask: up ? all : none
-                Region { id: none }
-                Region { id: all; item: content }
+                visible: up
                 // (registered while up, the fade out too)
                 onUpChanged: CarouselState.shown = up
                 anchors {

@@ -116,8 +116,6 @@ hl.layer_rule({
   name = "profiles-blur",
   match = { namespace = "^(quickshell-profiles)$" },
   blur = true,
-  -- (the window stays on the screen while closed, fully clear: no blur there)
-  ignore_alpha = 0,
   no_anim = true,
 })
 hl.layer_rule({
