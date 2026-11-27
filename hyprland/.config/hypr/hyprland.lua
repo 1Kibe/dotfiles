@@ -117,8 +117,9 @@ end
 -- the border's colors and angle. Anything else goes to the log and is left
 -- out
 local SETTINGS_OPTIONS = {
-  general = { col = { active_border = "gradient" } },
+  general = { col = { active_border = "gradient", inactive_border = true } },
   decoration = { rounding = true },
+  misc = { background_color = true },
   input = {
     kb_layout = true, kb_variant = true, repeat_rate = true, repeat_delay = true, numlock_by_default = true,
     sensitivity = true, accel_profile = true, natural_scroll = true, left_handed = true, follow_mouse = true,
