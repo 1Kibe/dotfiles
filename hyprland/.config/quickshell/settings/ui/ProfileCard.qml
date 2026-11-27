@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import qs.theme
 
 import "../../theme/seal.js" as Seal
@@ -31,40 +32,73 @@ Item {
     readonly property var c: colors ? colors.roles : ({})
     readonly property var pair: colors ? Seal.sealColors(colors.named, String(colors.accent)) : ["red", "blue"]
 
+    // The frame's width; the picture, the seal and the marks stay inside it
+    readonly property int borderWidth: focusRing ? 3 : chosen ? 2 : 1
+    // Where the marks and a card's buttons go: this far inside the frame
+    readonly property int inset: borderWidth + 8
+    readonly property bool software: GraphicsInfo.api === GraphicsInfo.Software
+
     Rectangle {
         id: poster
         width: parent.width
         height: Math.round(width * 4 / 3)
         radius: Theme.radius
         color: root.c.bg || Theme.bg1
-        clip: true
-        Image {
-            id: image
-            anchors.fill: parent
-            visible: root.picture !== "" && status === Image.Ready
-            source: root.picture
-            fillMode: Image.PreserveAspectCrop
-            // (in steps of 64: a resize does not read the file again each step)
-            sourceSize: Qt.size(Math.ceil(poster.width / 64) * 64, Math.ceil(poster.height / 64) * 64)
-            asynchronous: true
-            cache: false
+        // The picture, cut to the rounded rectangle inside the frame (a mask
+        // of that shape; the software renderer has none: square corners)
+        Item {
+            id: inner
+            x: root.borderWidth
+            y: root.borderWidth
+            width: poster.width - 2 * root.borderWidth
+            height: poster.height - 2 * root.borderWidth
+            clip: root.software
+            Image {
+                id: image
+                anchors.fill: parent
+                visible: root.picture !== "" && status === Image.Ready && root.software
+                source: root.picture
+                fillMode: Image.PreserveAspectCrop
+                // (in steps of 64: a resize does not read the file again each step)
+                sourceSize: Qt.size(Math.ceil(poster.width / 64) * 64, Math.ceil(poster.height / 64) * 64)
+                asynchronous: true
+                cache: false
+            }
+            Item {
+                id: shape
+                anchors.fill: parent
+                visible: false
+                layer.enabled: !root.software
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Math.max(0, Theme.radius - root.borderWidth)
+                    color: Theme.text
+                }
+            }
+            MultiEffect {
+                anchors.fill: parent
+                visible: root.hasPicture && !root.software
+                source: image
+                maskEnabled: true
+                maskSource: shape
+            }
+            ColorSeal {
+                readonly property bool large: !root.hasPicture
+                width: large ? Math.min(Theme.sealLarge, inner.width * 0.6) : Theme.sealSmall
+                height: width
+                x: large ? (inner.width - width) / 2 : inner.width - width - Theme.sealMargin
+                y: large ? (inner.height - height) / 2 : inner.height - height - Theme.sealMargin
+                outline: root.c.bgDeep || "transparent"
+                thin: root.c.bg2 || "transparent"
+                accent: root.colors ? root.colors.accent : "transparent"
+                colorA: root.colors ? root.colors.named[root.pair[0]] : "transparent"
+                colorB: root.colors ? root.colors.named[root.pair[1]] : "transparent"
+            }
         }
-        ColorSeal {
-            readonly property bool large: !image.visible
-            width: large ? Math.min(Theme.sealLarge, poster.width * 0.6) : Theme.sealSmall
-            height: width
-            x: large ? (poster.width - width) / 2 : poster.width - width - Theme.sealMargin
-            y: large ? (poster.height - height) / 2 : poster.height - height - Theme.sealMargin
-            outline: root.c.bgDeep || "transparent"
-            thin: root.c.bg2 || "transparent"
-            accent: root.colors ? root.colors.accent : "transparent"
-            colorA: root.colors ? root.colors.named[root.pair[0]] : "transparent"
-            colorB: root.colors ? root.colors.named[root.pair[1]] : "transparent"
-        }
-        // The marks, over the top left corner
+        // The marks, inside the top left corner
         Row {
-            x: 6
-            y: 6
+            x: root.inset
+            y: root.inset
             spacing: 4
             visible: root.marks
             Repeater {
@@ -88,13 +122,14 @@ Item {
             }
         }
     }
+    readonly property bool hasPicture: root.picture !== "" && image.status === Image.Ready
     // The frame: the chosen one in the accent, the keyboard's thicker
     Rectangle {
         width: poster.width
         height: poster.height
         radius: Theme.radius
-        color: "transparent"
-        border.width: root.focusRing ? 3 : root.chosen ? 2 : 1
+        color: Theme.clear
+        border.width: root.borderWidth
         border.color: root.focusRing ? Theme.text : root.chosen ? Theme.accent : Theme.alpha(Theme.fg, 0.15)
     }
     Text {

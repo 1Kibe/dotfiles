@@ -100,3 +100,32 @@ function newId(random, taken) {
 function sameValues(a, b, keys) {
     return keys.every(k => JSON.stringify(a[k]) === JSON.stringify(b[k]))
 }
+
+// The groups of settings that differ between two value maps, as the page
+// names them ("tema", "papel de parede"): the title of each key's card in
+// the schema, in lower case, with two names of their own (the theme's card
+// is the whole theme; the picture's card is the wallpaper). In the schema's
+// order, each once
+var GROUP_NAMES = { grade: "tema", imagem: "papel de parede", ajuste: "papel de parede" }
+function changedGroups(schema, keys, a, b) {
+    const out = []
+    for (const k of keys) {
+        if (JSON.stringify(a[k]) === JSON.stringify(b[k]))
+            continue
+        const spec = schema.KEYS[k]
+        let name = spec && GROUP_NAMES[spec.card]
+        if (!name) {
+            const card = spec ? (schema.CARDS[spec.page] || []).find(c => c.id === spec.card) : null
+            name = card ? card.title.toLowerCase() : k
+        }
+        if (!out.includes(name))
+            out.push(name)
+    }
+    return out
+}
+// The list as the banner says it: up to three, then "e mais N"
+function groupsText(groups) {
+    if (groups.length <= 3)
+        return groups.join(", ")
+    return groups.slice(0, 3).join(", ") + ` e mais ${groups.length - 3}`
+}

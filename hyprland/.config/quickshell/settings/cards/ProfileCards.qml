@@ -2,19 +2,23 @@ import QtQuick
 import qs.theme
 import qs.state
 import "../ui"
+import "../schema.js" as Schema
 import "../profile.js" as Profile
 
 // Configurações → Perfis: one poster per profile (the Padrão first, then the
-// owner's in their order) and, last, "Salvar como perfil". A click applies
-// the profile; the pencil on an own one picks it for the actions without
-// applying it. The actions act on the one picked (the active one until
-// another is picked): Salvar no perfil (today's values into it), Renomear,
-// Duplicar, Apagar (two clicks), and Voltar ao padrão. A name is asked in a
-// field of its own and checked before anything is written. Dragging an own
+// owner's in their order) and, last, "Novo perfil" (from how things are
+// now). A click on a card applies it; the Padrão's card is going back to the
+// repo's defaults. When today's values differ from the active profile's, a
+// banner above the cards says what changed and offers to update it (never
+// the Padrão, which is not written), to save as a new one or to discard (the
+// active one applied again). Each own card has a "⋯" menu: Renomear (the
+// name under the card becomes a field), Duplicar and Apagar (two clicks);
+// its actions act on that card's id, kept when the menu opened, and the menu
+// closes with Esc, a click outside or the list changing. Dragging an own
 // card onto another's place reorders them (Ctrl+arrows with the keyboard);
 // the arrows apply the neighbor. While the folders are read or written the
-// buttons wait, with a word saying so; what did not work stays written
-// below until the next action. Nothing is written with the screen locked.
+// buttons wait, with a word saying so; what did not work stays written until
+// the next action. Nothing is written with the screen locked.
 Item {
     id: root
 
@@ -23,74 +27,95 @@ Item {
     readonly property var profiles: ProfileStore.profiles
     readonly property bool locked: LockState.locked || LockState.wanted
     readonly property bool canAct: !locked && !ProfileStore.busy && ProfileStore.ready
-    // The one the actions act on ("" = the Padrão)
-    property string pickedId: ProfileStore.active
-    readonly property var picked: ProfileStore.get(pickedId) ?? ProfileStore.padrao
-    readonly property bool pickedOwn: picked !== null && !picked.builtin
     readonly property bool full: Object.keys(ProfileStore.found).length >= Profile.MAX
-    // "" | "save" | "rename": the field asking for a name
-    property string naming: ""
-    // The profile being renamed (the one picked when the field opened)
-    property string namingId: ""
-    property bool nameBad: false
+    readonly property var activeProfile: ProfileStore.get(ProfileStore.active) ?? ProfileStore.padrao
+    readonly property bool activeOwn: activeProfile !== null && !activeProfile.builtin
+    readonly property string busyText: "Espere: os perfis ainda estão sendo lidos ou gravados."
     property string notice: ""
+
+    // ── The banner: what changed since the active one was applied ──
+    readonly property bool bannerShown: ProfileStore.dirty || naming === "new"
+    readonly property var changed: activeProfile !== null && SettingsStore.ready
+        ? Profile.changedGroups(Schema, ProfileStore.keys.concat(["wallpaper"]), ProfileStore.wanted(activeProfile),
+                                Object.assign({}, SettingsStore.values, {
+                                    wallpaper: ProfileStore.samePath(SettingsStore.values.wallpaper, ProfileStore.wanted(activeProfile).wallpaper)
+                                               ? ProfileStore.wanted(activeProfile).wallpaper : SettingsStore.values.wallpaper }))
+        : []
+    readonly property string changedText: Profile.groupsText(changed)
+
+    // ── A name asked: "" | "new" (a new profile, from the banner or the
+    // "Novo perfil" card) | "rename" (under a card, for renamingId) ──
+    property string naming: ""
+    property string renamingId: ""
+    property bool nameBad: false
+
+    // ── The "⋯" menu: the card it is for (kept when it opened) ──
+    property string menuId: ""
     property bool armed: false
     Timer {
         id: disarm
         interval: 3000
         onTriggered: root.armed = false
     }
+    function openMenu(id) {
+        if (ProfileStore.get(id) === null || ProfileStore.get(id).builtin)
+            return
+        notice = ""
+        armed = false
+        disarm.stop()
+        menuId = id
+        forceActiveFocus()
+    }
+    function closeMenu() {
+        menuId = ""
+        armed = false
+        disarm.stop()
+    }
+    // (the list changing closes the menu and the rename field: they were for
+    // the list as it was)
+    onProfilesChanged: {
+        closeMenu()
+        if (naming === "rename" && ProfileStore.get(renamingId) === null)
+            naming = ""
+    }
+    // The menu's items, on the id it opened for
+    function menuAction(what) {
+        const id = menuId
+        if (id === "" || ProfileStore.get(id) === null) {
+            closeMenu()
+            return false
+        }
+        if (what === "rename") {
+            closeMenu()
+            startRename(id)
+            return true
+        }
+        if (what === "duplicate") {
+            closeMenu()
+            return act(() => ProfileStore.duplicate(id))
+        }
+        if (what === "remove") {
+            if (!armed) {
+                armed = true
+                disarm.restart()
+                return false
+            }
+            closeMenu()
+            return act(() => ProfileStore.remove(id))
+        }
+        return false
+    }
+
     Connections {
         target: ProfileStore
         function onFailed(message) {
             root.notice = message
-            Qt.callLater(root.settlePick)
-        }
-        function onDone(what, id) {
-            if (what === "create" || what === "duplicate")
-                root.pickedId = id
-            else if (what === "remove" && root.pickedId === id)
-                root.pickedId = ProfileStore.active
-        }
-    }
-    // A picked one gone (removed by another way): back to the active one
-    Connections {
-        target: ProfileStore
-        function onFoundChanged() {
-            if (ProfileStore.get(root.pickedId) === null)
-                root.pickedId = ProfileStore.active
-        }
-    }
-    // Another one picked: Apagar disarms and the rename field closes (they
-    // were for the one before)
-    onPickedIdChanged: {
-        armed = false
-        disarm.stop()
-        if (naming === "rename")
-            naming = ""
-    }
-    readonly property string busyText: "Espere: os perfis ainda estão sendo lidos ou gravados."
-    // A profile clicked whose change has not happened yet; once every change
-    // ends (or one fails), the pick follows what is really active
-    property string applying: ""
-    function settlePick() {
-        if (applying === "" || SwapState.busy)
-            return
-        applying = ""
-        pickedId = ProfileStore.active
-    }
-    Connections {
-        target: SwapState
-        function onEnded() {
-            Qt.callLater(root.settlePick)
         }
     }
 
     // An action: never silent (busy, or the store refused without saying why)
     function act(fn) {
         notice = ""
-        armed = false
-        disarm.stop()
         if (!canAct) {
             if (!locked)
                 notice = busyText
@@ -103,37 +128,61 @@ Item {
     }
     function apply(p) {
         notice = ""
+        closeMenu()
         if (locked || p === null)
             return
-        if (ProfileStore.apply(p.id, { fromCursor: true })) {
-            pickedId = p.id
-            // (applied a moment later: if it never is, the pick goes back)
-            if (ProfileStore.active !== p.id)
-                applying = p.id
-        } else if (notice === "")
+        if (!ProfileStore.apply(p.id, { fromCursor: true }) && notice === "")
             notice = "Não deu para aplicar o perfil: nada mudou."
     }
-    function startNaming(kind) {
-        if (!canAct || (kind === "save" && full) || (kind === "rename" && !pickedOwn))
-            return
-        naming = kind
-        namingId = kind === "rename" ? pickedId : ""
-        nameBad = false
-        nameField.value = kind === "rename" ? picked.nome : ""
-        nameField.input.text = nameField.value
-        nameField.input.forceActiveFocus()
+    // The banner's buttons
+    function updateActive() {
+        if (!activeOwn)
+            return false
+        return act(() => ProfileStore.saveActive())
     }
-    function finishNaming(text) {
-        if (naming === "")
-            return
-        if (!Profile.checkName(text)) {
-            nameBad = true
+    function discard() {
+        apply(activeProfile)
+    }
+    function startNew() {
+        if (!canAct || full) {
+            if (!canAct && !locked)
+                notice = busyText
             return
         }
-        const kind = naming, id = namingId
+        closeMenu()
+        naming = "new"
         nameBad = false
-        if (act(() => kind === "save" ? ProfileStore.save(text) : ProfileStore.rename(id, text)))
+        newField.input.text = ""
+        newField.input.forceActiveFocus()
+    }
+    function startRename(id) {
+        const p = ProfileStore.get(id)
+        if (!canAct || p === null || p.builtin)
+            return
+        naming = "rename"
+        renamingId = id
+        nameBad = false
+        renameText = p.nome
+    }
+    property string renameText: ""
+    // A name given: checked first; the field closes only once it is written
+    function finishNaming(text) {
+        if (naming === "")
+            return false
+        if (!Profile.checkName(text)) {
+            nameBad = true
+            return false
+        }
+        const kind = naming, id = renamingId
+        nameBad = false
+        const ok = act(() => kind === "new" ? ProfileStore.save(text) : ProfileStore.rename(id, text))
+        if (ok)
             naming = ""
+        return ok
+    }
+    function cancelNaming() {
+        naming = ""
+        nameBad = false
     }
     // Reorder: an own profile to a place among the owner's (0 = right after
     // the Padrão)
@@ -145,9 +194,9 @@ Item {
     readonly property real cellWidth: Math.max(110, Math.floor((width - (columns - 1) * grid.spacing) / columns))
     readonly property int activeIndex: profiles.findIndex(p => p.id === ProfileStore.active)
     // The arrows: the neighbor applied; with Ctrl, the active one moved
-    // (nothing while a name is being typed)
+    // (nothing while a name is being typed or the menu is open)
     function arrow(dir, ctrl) {
-        if (naming !== "")
+        if (naming !== "" || menuId !== "")
             return
         if (ctrl) {
             if (dir < 0 && activeIndex > 1)
@@ -162,12 +211,117 @@ Item {
     }
     Keys.onLeftPressed: event => arrow(-1, (event.modifiers & Qt.ControlModifier) !== 0)
     Keys.onRightPressed: event => arrow(1, (event.modifiers & Qt.ControlModifier) !== 0)
+    Keys.onEscapePressed: event => {
+        if (menuId !== "") {
+            closeMenu()
+            event.accepted = true
+        } else {
+            event.accepted = false
+        }
+    }
 
     implicitHeight: column.implicitHeight
     Column {
         id: column
         width: parent.width
         spacing: 12
+
+        // ── The banner ──
+        Rectangle {
+            id: banner
+            visible: root.bannerShown
+            width: parent.width
+            height: bannerRow.implicitHeight + 20
+            radius: Theme.radius
+            color: Theme.bg1
+            Flow {
+                id: bannerRow
+                x: 12
+                y: 10
+                width: parent.width - 24
+                spacing: 10
+                Row {
+                    spacing: 10
+                    width: Math.max(160, bannerRow.width - (root.naming === "new" ? newBox.width : buttons.width) - 12)
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 8; height: 8; radius: 4
+                        color: Theme.yellow
+                    }
+                    Text {
+                        id: bannerText
+                        width: parent.width - 18
+                        anchors.verticalCenter: parent.verticalCenter
+                        wrapMode: Text.WordWrap
+                        text: ProfileStore.dirty
+                              ? `Você mudou o ${root.activeProfile ? root.activeProfile.nome : ""} desde que aplicou: ${root.changedText}`
+                              : "Novo perfil a partir do que está agora"
+                        textFormat: Text.PlainText
+                        color: Theme.text
+                        font.family: Theme.fontPanels
+                        font.pointSize: Theme.fontSize - 1
+                    }
+                }
+                // Atualizar, Salvar como novo, Descartar
+                Row {
+                    id: buttons
+                    visible: root.naming !== "new"
+                    spacing: 8
+                    enabled: root.canAct
+                    opacity: enabled ? 1 : 0.5
+                    Button {
+                        visible: root.activeOwn
+                        text: `Atualizar “${root.activeProfile ? root.activeProfile.nome : ""}”`
+                        primary: true
+                        onClicked: root.updateActive()
+                    }
+                    Button {
+                        text: "Salvar como novo"
+                        outline: true
+                        visible: !root.full
+                        onClicked: root.startNew()
+                    }
+                    Button {
+                        text: "Descartar"
+                        flat: true
+                        onClicked: root.discard()
+                    }
+                }
+                // The new profile's name
+                Row {
+                    id: newBox
+                    visible: root.naming === "new"
+                    spacing: 8
+                    Field {
+                        id: newField
+                        width: Math.max(140, Math.min(240, root.width - 260))
+                        placeholder: "Nome do novo perfil"
+                        invalid: root.nameBad
+                        Component.onCompleted: input.maximumLength = 32
+                        onAccepted: text => {
+                            if (root.naming === "new" && newField.input.activeFocus)
+                                root.finishNaming(text)
+                        }
+                    }
+                    Button {
+                        text: "Salvar"
+                        primary: true
+                        onClicked: root.finishNaming(newField.input.text)
+                    }
+                    Button {
+                        text: "Cancelar"
+                        flat: true
+                        onClicked: root.cancelNaming()
+                    }
+                }
+            }
+            Connections {
+                target: newField.input
+                function onTextChanged() {
+                    root.nameBad = false
+                }
+            }
+        }
 
         Flow {
             id: grid
@@ -179,19 +333,20 @@ Item {
                     id: cell
                     required property var modelData
                     required property int index
+                    readonly property bool renaming: root.naming === "rename" && root.renamingId === modelData.id
                     width: root.cellWidth
                     height: card.implicitHeight
-                    z: handle.dragging ? 2 : 0
+                    z: handle.dragging ? 3 : root.menuId === modelData.id ? 2 : 0
                     ProfileCard {
                         id: card
                         width: parent.width
                         colors: ProfileStore.colorsOf(cell.modelData)
-                        name: cell.modelData.nome
+                        name: cell.renaming ? "" : cell.modelData.nome
                         picture: ProfileStore.pictureUrl(cell.modelData)
                         marks: true
                         active: cell.modelData.id === ProfileStore.active
                         dirty: active && ProfileStore.dirty
-                        chosen: cell.modelData.id === root.pickedId
+                        chosen: active
                         focusRing: active && root.activeFocus
                         opacity: handle.dragging ? 0.85 : 1
                     }
@@ -200,7 +355,8 @@ Item {
                         // (the Padrão stays first: only the owner's move)
                         readonly property bool dragging: drag.active
                         property bool moved: false
-                        anchors.fill: card
+                        width: card.width
+                        height: Math.round(card.width * 4 / 3)
                         cursorShape: Qt.PointingHandCursor
                         drag.target: cell.modelData.builtin ? null : card
                         drag.threshold: 8
@@ -226,49 +382,106 @@ Item {
                                 root.apply(cell.modelData)
                         }
                     }
-                    // The pencil: picks an own one for the actions, without
-                    // applying it
+                    // "⋯": the card's menu (never the Padrão's)
                     Rectangle {
+                        id: dots
                         visible: !cell.modelData.builtin && !handle.dragging
-                        x: card.width - width - 6
-                        y: 6
-                        width: 24; height: 24; radius: 6
-                        color: Theme.alpha(Theme.bgHard, 0.85)
+                        // (inside the card's frame, never on it)
+                        x: card.width - width - card.inset
+                        y: card.inset
+                        width: 26; height: 22; radius: 6
+                        color: Theme.alpha(Theme.bgHard, root.menuId === cell.modelData.id ? 0.95 : 0.75)
                         Text {
                             anchors.centerIn: parent
-                            text: "󰏫"
+                            text: "⋯"
                             color: Theme.text
-                            font.family: Theme.font
-                            font.pointSize: Theme.fontSize - 1
+                            font.family: Theme.fontPanels
+                            font.pointSize: Theme.fontSize
                         }
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.notice = ""
-                                root.armed = false
-                                root.pickedId = cell.modelData.id
+                            onClicked: root.menuId === cell.modelData.id ? root.closeMenu() : root.openMenu(cell.modelData.id)
+                        }
+                    }
+                    // The name, as a field while it is renamed
+                    Field {
+                        id: renameField
+                        visible: cell.renaming
+                        x: 0
+                        y: Math.round(card.width * 4 / 3) + 2
+                        width: card.width
+                        height: 24
+                        value: root.renameText
+                        invalid: root.nameBad
+                        Component.onCompleted: input.maximumLength = 32
+                        onVisibleChanged: {
+                            if (visible) {
+                                input.text = root.renameText
+                                input.forceActiveFocus()
+                                input.selectAll()
+                            }
+                        }
+                        onAccepted: text => {
+                            if (cell.renaming && input.activeFocus)
+                                root.finishNaming(text)
+                        }
+                        // Esc (the field's own) or a click elsewhere: the
+                        // name stays as it was
+                        Connections {
+                            target: renameField.input
+                            function onActiveFocusChanged() {
+                                if (!target.activeFocus && cell.renaming)
+                                    root.cancelNaming()
                             }
                         }
                     }
                 }
             }
-            // The last card: "Salvar como perfil"
+            // The last card: "Novo perfil"
             Rectangle {
+                id: newCard
                 width: root.cellWidth
                 height: Math.round(width * 4 / 3)
                 radius: Theme.radius
-                color: saveMouse.containsMouse && root.canAct && !root.full ? Theme.bg2 : Theme.bg1
+                color: newMouse.containsMouse && root.canAct && !root.full ? Theme.alpha(Theme.fg, 0.05) : Theme.clear
                 opacity: root.canAct && !root.full ? 1 : 0.5
-                border.width: 1
-                border.color: Theme.alpha(Theme.fg, 0.15)
                 Behavior on color {
                     ColorAnimation { duration: Theme.dur(Theme.animFast) }
+                }
+                // a dashed border
+                Repeater {
+                    model: 4
+                    Item {
+                        required property int index
+                        readonly property bool horizontal: index < 2
+                        x: index === 3 ? newCard.width - 1 : 0
+                        y: index === 1 ? newCard.height - 1 : 0
+                        width: horizontal ? newCard.width : 1
+                        height: horizontal ? 1 : newCard.height
+                        clip: true
+                        Row {
+                            visible: parent.horizontal
+                            spacing: 5
+                            Repeater {
+                                model: Math.ceil(newCard.width / 10)
+                                Rectangle { width: 5; height: 1; color: Theme.alpha(Theme.fg, 0.3) }
+                            }
+                        }
+                        Column {
+                            visible: !parent.horizontal
+                            spacing: 5
+                            Repeater {
+                                model: Math.ceil(newCard.height / 10)
+                                Rectangle { width: 1; height: 5; color: Theme.alpha(Theme.fg, 0.3) }
+                            }
+                        }
+                    }
                 }
                 Column {
                     anchors.centerIn: parent
                     width: parent.width - 16
-                    spacing: 6
+                    spacing: 4
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
@@ -281,114 +494,34 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.WordWrap
-                        text: root.full ? `No máximo ${Profile.MAX} perfis` : "Salvar como perfil"
+                        text: root.full ? `No máximo ${Profile.MAX} perfis` : "Novo perfil"
                         textFormat: Text.PlainText
-                        color: Theme.fg4
+                        color: Theme.text
                         font.family: Theme.fontPanels
                         font.pointSize: Theme.fontSize - 1
                     }
+                    Text {
+                        visible: !root.full
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: "a partir do que está agora"
+                        textFormat: Text.PlainText
+                        color: Theme.fg4
+                        font.family: Theme.fontPanels
+                        font.pointSize: Theme.fontSize - 2
+                    }
                 }
                 MouseArea {
-                    id: saveMouse
+                    id: newMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.startNaming("save")
+                    onClicked: root.startNew()
                 }
             }
         }
 
-        // The name being asked (a new profile, or the picked one renamed)
-        Connections {
-            target: nameField.input
-            function onTextChanged() {
-                root.nameBad = false
-            }
-        }
-        Row {
-            visible: root.naming !== ""
-            spacing: 8
-            Field {
-                id: nameField
-                width: Math.max(120, Math.min(260, root.width - 200))
-                Component.onCompleted: input.maximumLength = 32
-                placeholder: "Nome do perfil"
-                invalid: root.nameBad
-                onAccepted: text => {
-                    if (root.naming !== "" && nameField.input.activeFocus)
-                        root.finishNaming(text)
-                }
-            }
-            Button {
-                text: root.naming === "rename" ? "Renomear" : "Salvar"
-                primary: true
-                onClicked: root.finishNaming(nameField.input.text)
-            }
-            Button {
-                text: "Cancelar"
-                onClicked: {
-                    root.naming = ""
-                    root.nameBad = false
-                }
-            }
-        }
-        Text {
-            visible: root.naming !== "" && root.nameBad
-            width: parent.width
-            wrapMode: Text.WordWrap
-            text: "De 1 a 32 caracteres: letras, números, espaços e . _ -, com ao menos uma letra ou número, sem espaço nas pontas e sem “..”."
-            textFormat: Text.PlainText
-            color: Theme.yellow
-            font.family: Theme.fontPanels
-            font.pointSize: Theme.fontSize - 2
-        }
-
-        // The picked one's actions
-        Flow {
-            width: parent.width
-            spacing: 8
-            visible: root.naming === ""
-            enabled: root.canAct
-            opacity: enabled ? 1 : 0.5
-            Button {
-                visible: root.pickedOwn && root.pickedId === ProfileStore.active
-                text: "Salvar no perfil"
-                primary: ProfileStore.dirty
-                onClicked: root.act(() => ProfileStore.saveActive())
-            }
-            Button {
-                visible: root.pickedOwn
-                text: "Renomear"
-                onClicked: root.startNaming("rename")
-            }
-            Button {
-                visible: root.pickedOwn && !root.full
-                text: "Duplicar"
-                onClicked: root.act(() => ProfileStore.duplicate(root.pickedId))
-            }
-            // Two clicks: the first arms it for 3 s
-            Button {
-                visible: root.pickedOwn
-                text: root.armed ? "Confirmar?" : "Apagar"
-                danger: root.armed
-                destructive: true
-                onClicked: {
-                    if (!root.armed) {
-                        root.notice = ""
-                        root.armed = true
-                        disarm.restart()
-                        return
-                    }
-                    const id = root.pickedId
-                    root.act(() => ProfileStore.remove(id))
-                }
-            }
-            Button {
-                visible: ProfileStore.active !== "" || ProfileStore.dirty
-                text: "Voltar ao padrão"
-                onClicked: root.apply(ProfileStore.padrao)
-            }
-        }
         // Reading or writing; what did not work
         Text {
             visible: text !== ""
@@ -401,6 +534,16 @@ Item {
             font.pointSize: Theme.fontSize - 2
         }
         Text {
+            visible: root.naming !== "" && root.nameBad
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: "De 1 a 32 caracteres: letras, números, espaços e . _ -, com ao menos uma letra ou número, sem espaço nas pontas e sem “..”."
+            textFormat: Text.PlainText
+            color: Theme.yellow
+            font.family: Theme.fontPanels
+            font.pointSize: Theme.fontSize - 2
+        }
+        Text {
             visible: root.notice !== ""
             width: parent.width
             wrapMode: Text.WordWrap
@@ -409,6 +552,77 @@ Item {
             color: Theme.yellow
             font.family: Theme.fontPanels
             font.pointSize: Theme.fontSize - 2
+        }
+    }
+
+    // ── The open menu: over everything, closed by a click outside ──
+    MouseArea {
+        anchors.fill: parent
+        visible: root.menuId !== ""
+        z: 9
+        onClicked: root.closeMenu()
+    }
+    Rectangle {
+        id: menu
+        visible: root.menuId !== ""
+        z: 10
+        readonly property int place: root.profiles.findIndex(p => p.id === root.menuId)
+        readonly property real cardX: (place % root.columns) * (root.cellWidth + grid.spacing)
+        readonly property real cardY: grid.y + Math.floor(place / root.columns) * (Math.round(root.cellWidth * 4 / 3) + 26 + grid.spacing)
+        x: Math.max(0, Math.min(root.width - width, cardX + root.cellWidth - width - 6))
+        y: cardY + 40
+        width: 150
+        height: menuColumn.implicitHeight + 8
+        radius: Theme.radius
+        color: Theme.bg1
+        border.width: 1
+        border.color: Theme.alpha(Theme.fg, 0.12)
+        Column {
+            id: menuColumn
+            x: 4
+            y: 4
+            width: parent.width - 8
+            Repeater {
+                model: [{ id: "rename", label: "Renomear" }, { id: "duplicate", label: "Duplicar" }, { id: "line" },
+                        { id: "remove", label: "Apagar…" }]
+                Item {
+                    id: menuItem
+                    required property var modelData
+                    width: menuColumn.width
+                    height: modelData.id === "line" ? 9 : 28
+                    visible: modelData.id !== "duplicate" || !root.full
+                    Rectangle {
+                        visible: menuItem.modelData.id === "line"
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width
+                        height: 1
+                        color: Theme.alpha(Theme.fg, 0.12)
+                    }
+                    Rectangle {
+                        visible: menuItem.modelData.id !== "line"
+                        anchors.fill: parent
+                        radius: Theme.radius - 2
+                        color: itemMouse.containsMouse ? Theme.bg2 : (menuItem.modelData.id === "remove" && root.armed ? Theme.danger : Theme.clear)
+                        Text {
+                            x: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: menuItem.modelData.id === "remove" && root.armed ? "Confirmar?" : (menuItem.modelData.label || "")
+                            textFormat: Text.PlainText
+                            color: menuItem.modelData.id === "remove" ? Theme.red : Theme.text
+                            font.family: Theme.fontPanels
+                            font.pointSize: Theme.fontSize - 1
+                        }
+                        MouseArea {
+                            id: itemMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            enabled: root.canAct
+                            onClicked: root.menuAction(menuItem.modelData.id)
+                        }
+                    }
+                }
+            }
         }
     }
 }
