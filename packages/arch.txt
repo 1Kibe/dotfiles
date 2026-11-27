@@ -175,6 +175,7 @@ tesseract-data-por           # its Portuguese
 tesseract-data-eng           # and English
 gpu-screen-recorder          # screen recording of the capture (Super+Alt+R)
 ffmpeg                       # lock/login background: the picked picture blurred and darkened (BackgroundStore)
+bubblewrap                   # profiles: a picture from an import read by ffmpeg in a sandbox (ProfileStore)
 hypridle                     # idle dim, lock and screen off; lock before sleeping (hypr/hypridle.conf)
 hyprlock                     # reserve lock screen when Quickshell does not answer (hypr-travar, hypr/hyprlock.conf)
 hyprsunset                   # night light: warmer screen between the hours chosen in Configurações → Monitores

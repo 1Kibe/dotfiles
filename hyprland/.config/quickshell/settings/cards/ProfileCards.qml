@@ -155,9 +155,12 @@ Item {
             }
             if (what === "export" && ProfileStore.lastExport !== "")
                 root.notice = `Exportado para ${ProfileStore.exportsShown}/${ProfileStore.lastExport}: `
-                              + (root.exportPicture ? "o nome e a imagem vão junto." : "o nome vai junto, sem a imagem.")
+                              + (ProfileStore.lastExportPicture ? "o nome e a imagem vão junto."
+                                 : root.exportPicture ? "o nome vai junto; a imagem não pôde ir." : "o nome vai junto, sem a imagem.")
             else if (what === "importdone") {
-                root.notice = "Importado: clique no cartão para aplicar."
+                root.notice = ProfileStore.importNote !== ""
+                    ? `Importado, sem a imagem: ${ProfileStore.importNote}. Clique no cartão para aplicar.`
+                    : "Importado: clique no cartão para aplicar."
                 ProfileStore.listImports()
             }
         }
@@ -651,6 +654,16 @@ Item {
             visible: root.importOpen
             width: parent.width
             spacing: 6
+            Text {
+                visible: ProfileStore.importsTotal > ProfileStore.imports.length
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: `Mostrando ${ProfileStore.imports.length} de ${ProfileStore.importsTotal}.`
+                textFormat: Text.PlainText
+                color: Theme.fg4
+                font.family: Theme.fontPanels
+                font.pointSize: Theme.fontSize - 2
+            }
             Text {
                 visible: ProfileStore.importsRead && ProfileStore.imports.length === 0
                 width: parent.width

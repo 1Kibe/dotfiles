@@ -169,27 +169,54 @@ Singleton {
         + 'okpng() { okfile "$1" "$2" && [ "$(mime "$1")" = image/png ]; }\n'
         // a profile's folder: its id by the pattern, a real folder of the user's
         + 'okdir() { case "$1" in ""|*[!a-z0-9-]*|-*) return 1 ;; esac; [ "${#1}" -le 32 ] && [ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ]; }\n'
+        // The sandbox for reading a picture (bubblewrap, fixed path): no
+        // network, no other process, no home, no capabilities, only /usr
+        // read-only, the picture read-only at /in/img and, for ffmpeg, one
+        // file (the one mktemp made) at /out/img.png. sbxok: it works (probed
+        // once, the first time a picture is read)
+        + 'BWA="--unshare-all --unshare-user --die-with-parent --new-session --disable-userns --clearenv --cap-drop ALL --ro-bind /usr /usr --symlink usr/lib /lib --symlink usr/lib /lib64 --ro-bind-try /etc/ld.so.cache /etc/ld.so.cache --proc /proc --dev /dev --tmpfs /tmp"\n'
+        + 'sbxok=; sbxprobed=\n'
+        + 'sbxprobe() { [ -n "$sbxprobed" ] && return; sbxprobed=1; [ -x /usr/bin/bwrap ] && timeout -k 2 5 /usr/bin/bwrap $BWA -- /usr/bin/true 2>/dev/null && sbxok=1; }\n'
         // A picture re-encoded: $1 source, $2 the folder, $3 the longest side.
         // papel.png and miniatura.png in place, or nothing; prints "reduzido"
-        // when it had to shrink to fit 30 MB
+        // when it had to shrink to fit 30 MB. $4 strict: a picture from
+        // outside (an import) is read only in the sandbox (none: return 2,
+        // nothing read); the owner's own picture goes in it when it works,
+        // else under the time and memory limits alone
         + 'recode() {\n'
-        + '  src=$1; d=$2; side=$3; reduced=\n'
+        + '  src=$1; d=$2; side=$3; strict=${4:-}; reduced=\n'
+        + '  sbxprobe\n'
         + '  [ -f "$src" ] && [ ! -L "$src" ] || return 1\n'
+        + '  [ "$strict" = 1 ] && [ -z "$sbxok" ] && return 2\n'
         + '  [ "$(stat -c %s -- "$src")" -le 268435456 ] || return 1\n'
         // the real type fixes the decoder and the input format: a disguised
         // file is never read as anything else (a playlist, another file)
-        + '  case "$(mime "$src")" in image/png) dec=png ;; image/jpeg) dec=mjpeg ;; image/webp) dec=webp ;; *) return 1 ;; esac\n'
-        + '  dims=$(timeout -k 2 10 prlimit $lim -- ffprobe -v error -protocol_whitelist file -c:v "$dec" -f image2 -pattern_type none -select_streams v:0 \\\n'
-        + '    -show_entries stream=width,height -of csv=p=0 "file:$src" </dev/null 2>/dev/null) || return 1\n'
+        + '  if [ -n "$sbxok" ]; then m=$(timeout -k 2 5 /usr/bin/bwrap $BWA --ro-bind "$src" /in/img -- /usr/bin/file -b --mime-type -- /in/img 2>/dev/null)\n'
+        + '  else m=$(mime "$src"); fi\n'
+        + '  case "$m" in image/png) dec=png ;; image/jpeg) dec=mjpeg ;; image/webp) dec=webp ;; *) return 1 ;; esac\n'
+        + '  if [ -n "$sbxok" ]; then\n'
+        + '    dims=$(timeout -k 2 10 prlimit $lim -- /usr/bin/bwrap $BWA --ro-bind "$src" /in/img -- /usr/bin/ffprobe -v error -protocol_whitelist file -c:v "$dec" -f image2 -pattern_type none \\\n'
+        + '      -select_streams v:0 -show_entries stream=width,height -of csv=p=0 file:/in/img </dev/null 2>/dev/null) || return 1\n'
+        + '  else\n'
+        + '    dims=$(timeout -k 2 10 prlimit $lim -- ffprobe -v error -protocol_whitelist file -c:v "$dec" -f image2 -pattern_type none \\\n'
+        + '      -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "file:$src" </dev/null 2>/dev/null) || return 1\n'
+        + '  fi\n'
         + '  w=${dims%%,*}; h=${dims#*,}; h=${h%%,*}\n'
         + '  case "$w$h" in ""|*[!0-9]*) return 1 ;; esac\n'
         + '  [ "$w" -gt 0 ] && [ "$h" -gt 0 ] && [ $((w * h)) -le 40000000 ] || return 1\n'
         + '  t=$(mktemp -- "$d/.papel.XXXXXX") || return 1\n'
         + '  for try in 1 2 3; do\n'
-        + '    timeout -k 2 60 prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
-        + '      -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v "$dec" -f image2 -pattern_type none -i "file:$src" -frames:v 1 -map_metadata -1 \\\n'
-        + '      -vf "scale=\'if(gte(iw,ih),min($side,iw),-2)\':\'if(gte(iw,ih),-2,min($side,ih))\'" -f image2 -update 1 -c:v png "file:$t" </dev/null \\\n'
-        + '      || { rm -f -- "$t"; return 1; }\n'
+        + '    vf="scale=\'if(gte(iw,ih),min($side,iw),-2)\':\'if(gte(iw,ih),-2,min($side,ih))\'"\n'
+        // in the sandbox the only file it may write is the temporary one
+        + '    if [ -n "$sbxok" ]; then\n'
+        + '      timeout -k 2 60 prlimit $lim -- /usr/bin/bwrap $BWA --ro-bind "$src" /in/img --bind "$t" /out/img.png -- /usr/bin/ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
+        + '        -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v "$dec" -f image2 -pattern_type none -i file:/in/img -frames:v 1 -map_metadata -1 \\\n'
+        + '        -vf "$vf" -f image2 -update 1 -c:v png file:/out/img.png </dev/null || { rm -f -- "$t"; return 1; }\n'
+        + '    else\n'
+        + '      timeout -k 2 60 prlimit $lim -- ffmpeg -nostdin -hide_banner -loglevel error -threads 1 -y \\\n'
+        + '        -protocol_whitelist file -max_pixels 40000000 -err_detect explode -xerror -c:v "$dec" -f image2 -pattern_type none -i "file:$src" -frames:v 1 -map_metadata -1 \\\n'
+        + '        -vf "$vf" -f image2 -update 1 -c:v png "file:$t" </dev/null || { rm -f -- "$t"; return 1; }\n'
+        + '    fi\n'
         + '    [ "$(stat -c %s -- "$t")" -le 31457280 ] && break\n'
         + '    [ "$try" = 3 ] && { rm -f -- "$t"; return 1; }\n'
         + '    side=$((side * 7 / 10)); reduced=1\n'
@@ -226,6 +253,7 @@ Singleton {
         // The export folder: from $start, each of the components of $1 (a/b)
         // a real folder of the user's; the last one made 700 when $2 is 1
         + 'toexports() {\n'
+        + '  case "$1" in ?*/Perfis) ;; *) return 1 ;; esac\n'
         + '  cd -P -- "$start" 2>/dev/null || return 1\n'
         + '  rest=$1; mkl=$2\n'
         + '  while [ -n "$rest" ]; do\n'
@@ -310,10 +338,12 @@ Singleton {
         + 'done\n'
         + '[ -n "$name" ] || exit 1\n'
         + 'trap \'rm -rf --one-file-system -- "$name"\' EXIT INT TERM HUP\n'
-        + 'writejson "$name" || exit 1\n'
+        + 'sem=\n'
         + 'if [ "$b" = 1 ] && okpng "$src/papel.png" 31457280; then\n'
         + '  t=$(mktemp -- "$name/.papel.XXXXXX") && dd if="$src/papel.png" of="$t" iflag=nofollow bs=65536 status=none && chmod 600 -- "$t" && mv -fT -- "$t" "$name/papel.png" || exit 1\n'
+        + 'elif [ "$b" = 1 ]; then sem=sem; echo semimagem\n'
         + 'fi\n'
+        + 'writejson "$name" "$sem" || exit 1\n'
         + 'trap - EXIT INT TERM HUP\n'
         + 'printf "pasta %s\\n" "$name"\n'
         + 'echo ok\n'
@@ -325,11 +355,17 @@ Singleton {
         + 'toexports "$c" 0; r=$?\n'
         + '[ "$r" = 3 ] && exit 0\n'
         + '[ "$r" = 0 ] || exit 1\n'
-        + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 300 | while IFS= read -r -d "" p; do\n'
+        + 'n=0\n'
+        + 'find . -mindepth 1 -maxdepth 1 -type d -print0 | LC_ALL=C sort -z | head -z -n 1000 | while IFS= read -r -d "" p; do\n'
         + '  d=${p#./}\n'
-        + '  [ -d "$d" ] && [ ! -L "$d" ] || continue\n'
-        + '  j=$(dd if="$d/perfil.json" iflag=nofollow,nonblock bs=65537 count=1 status=none 2>/dev/null | base64 -w0)\n'
-        + '  printf "%s %s\\n" "$(printf %s "$d" | base64 -w0)" "$j"\n'
+        + '  [ -d "$d" ] && [ ! -L "$d" ] && [ -f "$d/perfil.json" ] && [ ! -L "$d/perfil.json" ] || continue\n'
+        + '  [ "$(stat -c %s -- "$d/perfil.json")" -le 65536 ] || continue\n'
+        + '  n=$((n + 1))\n'
+        + '  if [ "$n" -le 50 ]; then\n'
+        + '    j=$(dd if="$d/perfil.json" iflag=nofollow,nonblock bs=65537 count=1 status=none 2>/dev/null | base64 -w0)\n'
+        + '    printf "%s %s\\n" "$(printf %s "$d" | base64 -w0)" "$j"\n'
+        + '  fi\n'
+        + '  echo "total $n"\n'
         + 'done\n'
     // Import, first step ($a the folder from the list, $c the export folder):
     // a preparation inside profiles/ (counted in the limit) with copies of
@@ -346,11 +382,13 @@ Singleton {
         + 'case "$a" in ""|.|..|*/*) exit 1 ;; esac\n'
         + 'toexports "$c" 0 || exit 1\n'
         + '[ -d "$a" ] && [ ! -L "$a" ] || exit 1\n'
+        + '[ -f "$a/perfil.json" ] && [ ! -L "$a/perfil.json" ] || exit 1\n'
         + 'dd if="$a/perfil.json" of="$prep/perfil.in" iflag=nofollow,nonblock bs=65537 count=1 status=none 2>/dev/null || exit 1\n'
         + '[ "$(stat -c %s -- "$prep/perfil.in")" -le 65536 ] || exit 1\n'
         + 'if [ -f "$a/papel.png" ] && [ ! -L "$a/papel.png" ]; then\n'
         + '  dd if="$a/papel.png" of="$prep/papel.in" iflag=nofollow,nonblock bs=65536 count=481 status=none 2>/dev/null || rm -f -- "$prep/papel.in"\n'
-        + '  [ -f "$prep/papel.in" ] && [ "$(stat -c %s -- "$prep/papel.in")" -gt 31457280 ] && rm -f -- "$prep/papel.in"\n'
+        + '  if [ -f "$prep/papel.in" ] && [ "$(stat -c %s -- "$prep/papel.in")" -gt 31457280 ]; then rm -f -- "$prep/papel.in"; echo papelgrande; fi\n'
+        + 'elif [ -e "$a/papel.png" ] || [ -L "$a/papel.png" ]; then echo papelfora\n'
         + 'fi\n'
         + 'chmod 600 -- "$prep"/* 2>/dev/null\n'
         + 'printf "prep %s " "${prep##*/}"; base64 -w0 -- "$prep/perfil.in"; echo\n'
@@ -373,7 +411,8 @@ Singleton {
         + 'json=$(head -c 65536)\n'
         + 'sem=sem\n'
         + 'if [ -f "$a/papel.in" ] && printf "%s" "$json" | grep -q \'^  "papel": "papel.png"$\'; then\n'
-        + '  recode "$a/papel.in" "$a" "$c" && sem= || echo sempapel\n'
+        + '  recode "$a/papel.in" "$a" "$c" 1; r=$?\n'
+        + '  if [ "$r" = 0 ]; then sem=; elif [ "$r" = 2 ]; then echo semisolamento; else echo sempapel; fi\n'
         + 'fi\n'
         + 'rm -f -- "$a/papel.in" "$a/perfil.in"\n'
         + '[ -n "$sem" ] && rm -f -- "$a/papel.png" "$a/miniatura.png"\n'
@@ -414,7 +453,7 @@ Singleton {
             ready = true
             return
         }
-        reader.command = ["timeout", "60", "sh", "-c", listScript, "sh", chain.start, "0",
+        reader.command = ["timeout", "-k", "2", "60", "sh", "-c", listScript, "sh", chain.start, "0",
                           Validate.expandPath(SettingsStore.defaults.wallpaper ?? "", home), "", ""].concat(chain.comps)
         reader.running = true
     }
@@ -525,7 +564,7 @@ Singleton {
         pendingWhat = what
         pendingId = id
         pendingInput = input
-        worker.command = ["timeout", "180", "sh", "-c", script, "sh", chain.start, ["create", "duplicate", "importcopy"].includes(what) ? "1" : "0"]
+        worker.command = ["timeout", "-k", "2", "180", "sh", "-c", script, "sh", chain.start, ["create", "duplicate", "importcopy"].includes(what) ? "1" : "0"]
                          .concat(args).concat(chain.comps)
         worker.stdinEnabled = input !== ""
         writing = true
@@ -558,6 +597,13 @@ Singleton {
             if (what === "export" && ok) {
                 const m = /^pasta (.+)$/m.exec(out)
                 root.lastExport = m ? m[1] : ""
+                root.lastExportPicture = root.exportWanted && !out.includes("semimagem")
+            }
+            if (what === "importdone" && ok) {
+                if (out.includes("semisolamento"))
+                    root.importNote = "a imagem não foi importada: falta o isolamento (bubblewrap)"
+                else if (out.includes("sempapel"))
+                    root.importNote = "a imagem não serviu (tipo, tamanho ou arquivo)"
             }
             if (!ok && what === "export")
                 root.failed("Não deu para exportar o perfil: nada foi gravado.")
@@ -567,7 +613,7 @@ Singleton {
                 return
             else if (!ok)
                 root.failed("Não deu para gravar o perfil: nada mudou.")
-            else if (out.includes("sempapel"))
+            else if (out.includes("sempapel") && what !== "importdone")
                 root.failed("A imagem não serviu (tipo, tamanho ou arquivo): o perfil ficou sem papel próprio.")
             else if (out.includes("reduzido"))
                 root.failed("A imagem era grande demais: foi reduzida para caber.")
@@ -597,6 +643,10 @@ Singleton {
     }
     readonly property string exportsShown: exportsRel === "" ? "" : "~/" + exportsRel
     property string lastExport: ""
+    property bool exportWanted: false
+    property bool lastExportPicture: false
+    // What happened to an import's picture ("" = it came, or there was none)
+    property string importNote: ""
     // Export: the profile's checked file and, with withPicture, its picture
     // (already re-encoded); the folder's name in lastExport
     function exportProfile(id, withPicture) {
@@ -605,6 +655,7 @@ Singleton {
             return false
         lastExport = ""
         const papel = withPicture === true && p.papel
+        exportWanted = papel
         runWorker("export", id, exportScript, [id, papel ? "1" : "0", exportsRel],
                   Profile.serialize({ nome: p.nome, valores: p.valores, papel: papel ? Profile.PAPEL : null }))
         return true
@@ -613,12 +664,14 @@ Singleton {
     // profile that passes the check (the folder's name only shown)
     property var imports: []
     property bool importsRead: false
+    // how many the folder has (the list holds 50 at most)
+    property int importsTotal: 0
     function listImports() {
         if (exportsRel === "" || chain === null || chain.start !== home || lister.running)
             return false
         importsRead = false
         // (the profiles' folder made when missing: the chain walks it first)
-        lister.command = ["timeout", "30", "sh", "-c", importListScript, "sh", chain.start, "1", "", "", exportsRel].concat(chain.comps)
+        lister.command = ["timeout", "-k", "2", "30", "sh", "-c", importListScript, "sh", chain.start, "1", "", "", exportsRel].concat(chain.comps)
         lister.running = true
         return true
     }
@@ -630,13 +683,20 @@ Singleton {
         stderr: StdioCollector {}
         onExited: code => {
             const got = []
+            let total = 0
             for (const line of (code === 0 ? listerOut.text : "").split("\n")) {
+                const tm = /^total (\d+)$/.exec(line)
+                if (tm) {
+                    total = Number(tm[1])
+                    continue
+                }
                 const parts = line.split(" ")
                 if (parts.length !== 2 || got.length >= 300)
                     continue
                 const folder = root.decode64(parts[0])
                 const text = root.decode64(parts[1])
-                if (folder === null || text === null || folder === "" || folder.includes("/") || /[\u0000-\u001f\u007f]/.test(folder))
+                if (folder === null || text === null || folder === "" || folder.includes("/")
+                        || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(folder))
                     continue
                 const r = Profile.validateProfile(text, Schema, (sp, v) => Validate.validate(sp, v, root.home), SettingsStore.defaults, root.themeOk)
                 if (!r.ok)
@@ -645,6 +705,7 @@ Singleton {
                 got.push({ folder: folder, nome: r.profile.nome, theme: t ? t.nome : "" })
             }
             root.imports = got
+            root.importsTotal = Math.max(total, got.length)
             root.importsRead = true
         }
     }
@@ -668,6 +729,14 @@ Singleton {
             failed(out.includes("cheio") ? `No máximo ${Profile.MAX} perfis: nada foi importado.` : "Não deu para ler o perfil exportado: nada foi importado.")
             importing = ""
             reload()
+            return
+        }
+        importNote = out.includes("papelgrande") ? "a imagem passava de 30 MB"
+                   : out.includes("papelfora") ? "a imagem não era um arquivo comum" : ""
+        if (locked || busy) {
+            failed(locked ? "A tela travou: nada foi importado." : "Espere: os perfis ainda estão sendo lidos ou gravados.")
+            importing = ""
+            Qt.callLater(() => root.runWorker("importdrop", "", importDropScript, [m[1], "", ""], ""))
             return
         }
         const text = decode64(m[2])
