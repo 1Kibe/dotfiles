@@ -8,8 +8,8 @@
 #   git config filter.xfce-notifyd.clean "awk -f tools/xfce-notifyd-clean.awk"
 
 /<property name="known_applications"/ {
-  # self-closing property: nothing inside to skip
-  if ($0 ~ /\/>[[:space:]]*$/) next
+  # self-closing, or opened and closed on this line: nothing inside to skip
+  if ($0 ~ /\/>[[:space:]]*$/ || $0 ~ /<\/property>/) next
   skipping = 1
   next
 }
