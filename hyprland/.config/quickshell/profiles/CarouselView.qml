@@ -72,25 +72,46 @@ Item {
                         const m = ((raw % n) + n) % n
                         return m > n / 2 ? m - n : m
                     }
-                    readonly property int ad: Math.abs(d)
+                    // Its place as drawn: it follows d one step at a time;
+                    // a jump of more than one place (going round the ends)
+                    // goes there at once and fades in, never across the fan
+                    property int place: d
+                    property bool jumped: false
+                    onDChanged: {
+                        jumped = Math.abs(d - place) > 1
+                        place = d
+                        if (jumped && !Theme.reduceMotion)
+                            fadeIn.restart()
+                    }
+                    readonly property int ad: Math.abs(place)
+                    property real shownIn: 1
+                    NumberAnimation {
+                        id: fadeIn
+                        target: slot
+                        property: "shownIn"
+                        from: 0
+                        to: 1
+                        duration: Theme.dur(Theme.animNormal)
+                    }
                     width: fan.width
                     height: card.implicitHeight
                     z: 100 - ad
                     // (the ones past the fan's ends: neither seen nor clicked)
                     visible: ad <= 2
-                    x: (d === 0 ? 0 : Math.sign(d) * (fan.width * 0.42 + (ad - 1) * fan.width * 0.3)) * view.spread
+                    x: (place === 0 ? 0 : Math.sign(place) * (fan.width * 0.42 + (ad - 1) * fan.width * 0.3)) * view.spread
                     scale: Math.pow(0.82, ad)
-                    opacity: ad === 0 ? 1 : 1 - ad * 0.2
-                    Behavior on opacity {
-                        enabled: !Theme.reduceMotion
+                    property real faded: ad === 0 ? 1 : 1 - ad * 0.2
+                    Behavior on faded {
+                        enabled: !Theme.reduceMotion && !slot.jumped
                         NumberAnimation { duration: Theme.dur(Theme.animNormal) }
                     }
+                    opacity: faded * shownIn
                     Behavior on x {
-                        enabled: !Theme.reduceMotion
+                        enabled: !Theme.reduceMotion && !slot.jumped
                         NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard }
                     }
                     Behavior on scale {
-                        enabled: !Theme.reduceMotion
+                        enabled: !Theme.reduceMotion && !slot.jumped
                         NumberAnimation { duration: Theme.dur(Theme.animNormal); easing.type: Easing.BezierSpline; easing.bezierCurve: Theme.curveStandard }
                     }
                     ProfileCard {
@@ -117,7 +138,7 @@ Item {
                         height: Math.round(card.width * 4 / 3)
                         cursorShape: Qt.PointingHandCursor
                         // (a click: the circle starts from the cursor)
-                        onClicked: slot.d === 0 ? CarouselState.applyPicked({ fromCursor: true }) : CarouselState.pick(slot.index)
+                        onClicked: slot.place === 0 ? CarouselState.applyPicked({ fromCursor: true }) : CarouselState.pick(slot.index)
                     }
                 }
             }
