@@ -85,7 +85,7 @@ gestures() {
 # records each bind, in the same JSON as `hyprctl -j binds` (key, modmask,
 # release, description). The file is loaded as text only, with an
 # environment that has only what it needs to read: no os, io, load,
-# dofile, loadfile or debug, and a require that gives only the two fake
+# dofile, loadfile or debug, and a require that gives only the three fake
 # modules it uses. Anything else it reaches for stops the generator with a
 # message, never acting.
 SOURCE=session
@@ -119,7 +119,8 @@ local hl = {
 local actions = setmetatable({ data_file = function() return nil end },
   { __index = function(_, k) return "action:" .. tostring(k) end })
 local areas = setmetatable({}, { __index = function() return function() end end })
-local modules = { ["modules.actions"] = actions, ["modules.areas"] = areas }
+local profilekey = setmetatable({}, { __index = function() return function() end end })
+local modules = { ["modules.actions"] = actions, ["modules.areas"] = areas, ["modules.profilekey"] = profilekey }
 local env = {
   string = string, table = table, ipairs = ipairs, pairs = pairs, select = select, type = type,
   tostring = tostring, tonumber = tonumber, error = error, pcall = pcall, rawget = rawget, hl = hl,

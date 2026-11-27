@@ -4,6 +4,7 @@
 -- actions.lua; here only keys -> actions.
 local a = require("modules.actions")
 local areas = require("modules.areas")
+local profilekey = require("modules.profilekey")
 
 -- Runs an action from actions.lua
 local function run(keys, action, description, flags)
@@ -68,8 +69,13 @@ run("SHIFT + Print", "print_tela", "Sistema: Print da tela inteira")
 run("SUPER + SHIFT + S", "print_area", "Sistema: Print de uma área")
 run("ALT + Print", "print_janela", "Sistema: Print da janela ativa")
 run("SUPER + SHIFT + O", "capture_ocr", "Sistema: Copiar o texto de uma área (OCR)")
-run("SUPER + T", "profiles", "Sistema: Trocar de perfil")
-run("SUPER + SHIFT + T", "profile_next", "Sistema: Próximo perfil")
+-- A tap: the next profile; held: the selector (modules/profilekey.lua). The
+-- release of T with any modifiers, passed on to the window (it never saw the
+-- press; a release alone types nothing); no "Grupo: " in its description, so
+-- the list of shortcuts leaves it out
+bind("SUPER + T", profilekey.press, "Sistema: Próximo perfil (segurar abre o seletor)")
+bind("T", profilekey.release, "Fim do Super+T (soltar o T)", { release = true, ignore_mods = true, non_consuming = true })
+run("SUPER + SHIFT + T", "profile_prev", "Sistema: Perfil anterior")
 run("SUPER + ALT + R", "capture_record", "Sistema: Gravar a tela / parar a gravação")
 run("XF86Calculator", "calculator", "Sistema: Calculadora")
 bind("SUPER + SHIFT + R", hl.dsp.reload_config(), "Sistema: Recarregar a config do Hyprland")

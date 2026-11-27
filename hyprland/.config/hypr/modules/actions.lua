@@ -85,8 +85,9 @@ return {
   settings      = qs("settings"),      -- Configurações, on the left edge
   capture       = qs("capture", "open"),   -- Print: capture bar
   capture_ocr   = qs("capture", "ocr"),    -- text of an area to the clipboard
-  profiles      = qs("profiles", "toggle"), -- Super+T: the profiles' carousel
-  profile_next  = qs("profiles", "next"),   -- the next profile, with a notice
+  profiles_open = qs("profiles", "open"),   -- Super+T held: the profiles' selector
+  profile_next  = qs("profiles", "next"),   -- a tap of Super+T: the next profile, with a notice
+  profile_prev  = qs("profiles", "prev"),   -- Super+Shift+T: the profile before, with a notice
   capture_record = qs("capture", "record"), -- record the screen / stop
   overview      = qs("overview"),
   minimize      = qs("minimize", "focused"),       -- hide the focused window

@@ -51,8 +51,16 @@ ShellRoot {
             const monitor = Hyprland.focusedMonitor
             return monitor ? CarouselState.toggle(monitor.name) : "sem monitor em foco"
         }
+        // Super+T held: the selector, left open (already open: nothing)
+        function open(): string {
+            const monitor = Hyprland.focusedMonitor
+            return monitor ? CarouselState.show(monitor.name) : "sem monitor em foco"
+        }
         function next(): string {
             return CarouselState.next()
+        }
+        function prev(): string {
+            return CarouselState.prev()
         }
         function apply(id: string): string {
             const own = /^[a-z0-9][a-z0-9-]{0,31}$/.test(id) && id !== "padrao"

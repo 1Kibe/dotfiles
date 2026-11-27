@@ -5,9 +5,11 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.theme
 
-// The quick change of profile: Super+T (the carousel, profiles/
-// ProfileOverlay, on the focused monitor) and Super+Shift+T (the next
-// profile in the order, with a notice, profiles/ProfileToast). The carousel
+// The quick change of profile: a tap of Super+T goes to the next profile
+// in the order and Super+Shift+T to the one before (round, with a notice,
+// profiles/ProfileToast); Super+T held opens the carousel (profiles/
+// ProfileOverlay, on the focused monitor; hypr/modules/profilekey.lua tells
+// the tap from the hold). The carousel
 // only picks and applies: moving through it applies nothing; Enter (or a
 // click on the middle card) applies through the frozen frame's change, after
 // the carousel is gone from the screen (the frame never holds it). One thing
@@ -51,6 +53,13 @@ Singleton {
         openOn = monitor
         open = true
         return "ok"
+    }
+    // Super+T held: the carousel on `monitor`, left open when the key is let
+    // go (already open: nothing)
+    function show(monitor) {
+        if (root.open)
+            return "ok"
+        return toggle(monitor)
     }
     // instant: no fade (before a change: the frozen frame must not hold it)
     property bool instant: false
@@ -152,23 +161,37 @@ Singleton {
         }
     }
 
-    // ── Super+Shift+T ──
-    // The next one after the last asked (a held key goes round the order,
-    // never asking the same one twice), applied with the transition; the
-    // notice shows once the change is over (never inside the frame)
+    // ── A tap of Super+T, Super+Shift+T (the selector closed) ──
+    // The next one (or the one before) after the last asked (taps in a row go
+    // round the order, never asking the same one twice), applied with the
+    // transition; the notice shows once the change is over (never inside the
+    // frame)
     property string lastNext: ""
     function next() {
+        return go(1)
+    }
+    function prev() {
+        return go(-1)
+    }
+    function go(by) {
         if (blocked())
             return "travada"
         if (!ProfileStore.ready)
             return "sem perfis"
+        // With the selector open, the key only moves its pick (round, the
+        // grid too); Enter or a click on the middle card applies
+        if (open) {
+            if (count > 0)
+                index = ((index + by) % count + count) % count
+            return "ok"
+        }
         const list = ProfileStore.profiles
         if (list.length <= 1) {
             toast(null, "Só há um perfil")
             return "um perfil"
         }
         const from = (SwapState.busy || afterClose.running) && lastNext !== "" ? lastNext : ProfileStore.active
-        const i = (Math.max(0, list.findIndex(p => p.id === from)) + 1) % list.length
+        const i = ((Math.max(0, list.findIndex(p => p.id === from)) + by) % list.length + list.length) % list.length
         const target = list[i]
         const waits = open || afterClose.running
         if (!applyId(target.id))

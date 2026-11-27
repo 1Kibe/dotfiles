@@ -115,8 +115,8 @@ Hyprland antes); as teclas de mídia e de volume continuam valendo travadas.
 | `Super+Shift+S` | Print de uma área |
 | `Alt+Print` | Print da janela ativa |
 | `Super+Shift+O` | Copiar o texto de uma área (OCR) |
-| `Super+T` | Trocar de perfil |
-| `Super+Shift+T` | Próximo perfil |
+| `Super+T` | Próximo perfil (segurar abre o seletor) |
+| `Super+Shift+T` | Perfil anterior |
 | `Super+Alt+R` | Gravar a tela / parar a gravação |
 | `XF86Calculator` | Calculadora |
 | `Super+Shift+R` | Recarregar a config do Hyprland |
