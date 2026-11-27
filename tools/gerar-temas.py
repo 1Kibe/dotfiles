@@ -346,7 +346,7 @@ THEMES = [
     },
 ]
 
-FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light"]
+FLAVOR_ORDER = ["dark", "darkHard", "darkSoft", "light", "lightHard", "lightSoft"]
 
 
 def value(v):
@@ -364,7 +364,7 @@ def flavor(theme, fid):
         "bgDeep": darken(bg_hard, 0.3), "bgHard": bg_hard, "bg": f["bg"], "bg1": f["bg1"], "bg2": f["bg2"],
         "fg": f["fg"], "fg2": f["fg2"], "fg4": f["fg4"], "text": f["fg"], "gray": f["gray"],
     }
-    return {"rotulo": f["rotulo"], "escuro": True, "syntaxTheme": f["syntaxTheme"], "papeis": roles,
+    return {"rotulo": f["rotulo"], "escuro": fid.startswith("dark"), "syntaxTheme": f["syntaxTheme"], "papeis": roles,
             "nomeadas": {k: named[k] for k in ["yellow", "orange", "red", "green", "aqua", "blue", "purple"]},
             "ansi": list(ansi)}
 
@@ -396,7 +396,7 @@ def text(theme):
         r, c = f["papeis"], f["nomeadas"]
         out += [f'    {q(fid)}: {{',
                 f'      "rotulo": {q(f["rotulo"], ensure_ascii=False)},',
-                '      "escuro": true,',
+                '      "escuro": ' + ("true" if f["escuro"] else "false") + ',',
                 f'      "syntaxTheme": {q(f["syntaxTheme"])},',
                 '      "papeis": {',
                 "        " + ", ".join(f'{q(k)}: {q(r[k])}' for k in ["bgDeep", "bgHard", "bg", "bg1", "bg2"]) + ",",

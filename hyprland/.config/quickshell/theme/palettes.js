@@ -9,7 +9,12 @@
 // A theme's id (also its file name)
 var THEME_NAME = /^[a-z0-9][a-z0-9-]{0,31}$/
 // The four fixed flavors (each theme fills the ones its palette has)
-var FLAVORS = ["dark", "darkHard", "darkSoft", "light"]
+var FLAVORS = ["dark", "darkHard", "darkSoft", "light", "lightHard", "lightSoft"]
+// A place is dark or light by its name: the file's escuro must say the same
+// (GTK and the icons follow it)
+function darkPlace(id) {
+    return id.startsWith("dark")
+}
 // A flavor's label: the palette's own name for it, short plain text
 // (Latin letters with accents; never × or ÷)
 var LABEL = /^[A-Za-z0-9À-ÖØ-öø-ÿ][A-Za-z0-9À-ÖØ-öø-ÿ '()-]{0,23}$/
@@ -90,7 +95,7 @@ function validateTheme(obj) {
         if (!own(obj.sabores, id))
             continue
         const f = flavor(obj.sabores[id])
-        if (f === null)
+        if (f === null || f.escuro !== darkPlace(id))
             return no
         sabores[id] = f
     }

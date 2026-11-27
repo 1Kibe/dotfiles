@@ -269,7 +269,8 @@ var KEYS = {
     theme: { profile: true, def: "gruvbox", type: "string", pattern: COLOR_THEME, page: "temas", card: "grade",
              label: "Tema", syn: ["paleta", "cores", "tema de cores"] },
     flavor: { profile: true, def: "dark", type: "enum", page: "temas", card: "sabor", label: "Sabor",
-              options: opts([["dark", "Escuro"], ["darkHard", "Escuro forte"], ["darkSoft", "Escuro suave"], ["light", "Claro"]]),
+              options: opts([["dark", "Escuro"], ["darkHard", "Escuro forte"], ["darkSoft", "Escuro suave"], ["light", "Claro"],
+                             ["lightHard", "Claro forte"], ["lightSoft", "Claro suave"]]),
               syn: ["escuro", "claro"] },
     // One for the bar and its panels: they are one shape
     barOpacity: { profile: true, def: 0.85, type: "real", min: 0.5, max: 1, step: 0.05, format: "percent", page: "tema",
