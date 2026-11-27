@@ -109,9 +109,20 @@ Scope {
                     live: false
                     paintCursor: false
                 }
+                // Each frame this overlay puts on the screen: the first one
+                // with the photo lets the change happen underneath
+                Connections {
+                    target: win.contentItem ? win.contentItem.Window.window : null
+                    ignoreUnknownSignals: true
+                    function onFrameSwapped() {
+                        if (win.phase === "cover" && effect.visible)
+                            SwapState.framePresented(win.name)
+                    }
+                }
                 // Nothing shows until the picture is in; then the picture
                 // through the chosen effect
                 SwapEffect {
+                    id: effect
                     anchors.fill: parent
                     // (a frame that came after the change started directly
                     // is already the new screen: never shown)

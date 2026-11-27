@@ -227,7 +227,37 @@ Singleton {
             drop(false)
             return
         }
+        // The photo first: the change waits until every overlay has put it
+        // on the screen (a window of the shell repainting with the new
+        // colors before the photo shows was seen as new, old, new)
         phase = "cover"
+        presented = {}
+        coverWait.restart()
+    }
+    property var presented: ({})
+    function framePresented(name) {
+        if (phase !== "cover" || current === null || presented[name])
+            return
+        const m = Object.assign({}, presented)
+        m[name] = true
+        presented = m
+        if (Object.keys(ready).every(n => presented[n]))
+            doChange()
+    }
+    // (at most this long: an overlay that never says so)
+    Timer {
+        id: coverWait
+        interval: 150
+        onTriggered: root.doChange()
+    }
+    function doChange() {
+        coverWait.stop()
+        if (phase !== "cover" || current === null)
+            return
+        if (isLocked()) {
+            drop(false)
+            return
+        }
         const change = current
         current = null
         safely(change)
@@ -277,6 +307,7 @@ Singleton {
         const change = current
         current = null
         cursor.running = false
+        coverWait.stop()
         limit.stop()
         settle.stop()
         noFrame.stop()
