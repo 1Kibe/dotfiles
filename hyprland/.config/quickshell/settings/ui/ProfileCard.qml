@@ -68,7 +68,7 @@ Item {
                 id: shape
                 anchors.fill: parent
                 visible: false
-                layer.enabled: !root.software
+                layer.enabled: root.hasPicture && !root.software
                 Rectangle {
                     anchors.fill: parent
                     radius: Math.max(0, Theme.radius - root.borderWidth)
@@ -108,13 +108,16 @@ Item {
                     width: markText.implicitWidth + 10
                     height: markText.implicitHeight + 2
                     radius: height / 2
-                    color: modelData === "ativo" ? Theme.accent : Theme.alpha(Theme.bgHard, 0.85)
+                    // ativo in the accent; alterado in yellow, outlined
+                    color: modelData === "ativo" ? Theme.accent : Qt.tint(Theme.alpha(Theme.bgHard, 0.92), Theme.alpha(Theme.yellow, 0.2))
+                    border.width: modelData === "ativo" ? 0 : 1
+                    border.color: Theme.yellow
                     Text {
                         id: markText
                         anchors.centerIn: parent
                         text: parent.modelData
                         textFormat: Text.PlainText
-                        color: parent.modelData === "ativo" ? Theme.bgHard : Theme.text
+                        color: parent.modelData === "ativo" ? Theme.bgHard : Theme.yellow
                         font.family: Theme.fontPanels
                         font.pointSize: Theme.fontSize - 2
                     }

@@ -358,6 +358,8 @@ Singleton {
         found = got
         stamp++
         ready = true
+        if (adoptId !== "")
+            tryAdopt()
         // The order keeps the folders it knows; new ones at the end
         if (SettingsStore.ready && JSON.stringify(order) !== JSON.stringify(SettingsStore.values.profileOrder || []))
             SettingsStore.setAuto("profileOrder", order)
@@ -522,6 +524,33 @@ Singleton {
             failed("O papel de parede não voltou ao do repo.")
         if (SettingsStore.values.profileActive === id)
             SettingsStore.setAuto("profileActive", "")
+    }
+    // A profile just saved from how things are now becomes the active one,
+    // without applying it again: only when today's values are its values
+    // (its picture is a re-encoded copy of today's wallpaper: the wallpaper
+    // then points at that copy, the same picture)
+    // (asked right after the write: done once the reading has it)
+    property string adoptId: ""
+    function adoptActive(id) {
+        adoptId = id
+        if (get(id) !== null)
+            tryAdopt()
+        return true
+    }
+    function tryAdopt() {
+        const id = adoptId
+        adoptId = ""
+        const p = get(id)
+        if (p === null || p.builtin || !SettingsStore.ready || locked)
+            return false
+        if (!Profile.sameValues(wanted(p), SettingsStore.values, keys))
+            return false
+        if (!samePath(wanted(p).wallpaper, SettingsStore.values.wallpaper)) {
+            if (!p.papel || !SettingsStore.setMany({ wallpaper: papelPath(id) }))
+                return false
+        }
+        SettingsStore.setAuto("profileActive", id)
+        return true
     }
     // A new place in the order (0: right after the Padrão)
     function move(id, to) {

@@ -35,6 +35,8 @@ Rectangle {
         id: label
         anchors.centerIn: parent
         text: root.icon !== "" ? `${root.icon}  ${root.text}` : root.text
+        // (a profile's name may be in it)
+        textFormat: Text.PlainText
         color: root.danger || root.destructive ? Theme.red : root.primary ? Theme.bgHard : root.outline ? Theme.accentLight : Theme.text
         font.family: Theme.fontPanels
         font.pointSize: Theme.fontSize - 1

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import qs.theme
 import qs.state
 import "../ui"
@@ -34,7 +35,7 @@ Item {
     property string notice: ""
 
     // ── The banner: what changed since the active one was applied ──
-    readonly property bool bannerShown: ProfileStore.dirty || naming === "new"
+    readonly property bool bannerShown: ProfileStore.dirty
     readonly property var changed: activeProfile !== null && SettingsStore.ready
         ? Profile.changedGroups(Schema, ProfileStore.keys.concat(["wallpaper"]), ProfileStore.wanted(activeProfile),
                                 Object.assign({}, SettingsStore.values, {
@@ -43,8 +44,9 @@ Item {
         : []
     readonly property string changedText: Profile.groupsText(changed)
 
-    // ── A name asked: "" | "new" (a new profile, from the banner or the
-    // "Novo perfil" card) | "rename" (under a card, for renamingId) ──
+    // ── A name asked: "" | "new" (a new profile, from the banner's Salvar
+    // como novo) | "plus" (a new profile, in the "Novo perfil" card) |
+    // "rename" (under a card, for renamingId) ──
     property string naming: ""
     property string renamingId: ""
     property bool nameBad: false
@@ -57,12 +59,20 @@ Item {
         interval: 3000
         onTriggered: root.armed = false
     }
-    function openMenu(id) {
+    // (where: the card's top right corner, in this item, kept when it opens)
+    property real menuX: 0
+    property real menuY: 0
+    function openMenu(id, from) {
         if (ProfileStore.get(id) === null || ProfileStore.get(id).builtin)
             return
-        notice = ""
+        notice = canAct ? "" : (locked ? "" : busyText)
         armed = false
         disarm.stop()
+        if (from) {
+            const pt = from.mapToItem(root, from.width, from.height)
+            menuX = pt.x
+            menuY = pt.y
+        }
         menuId = id
         forceActiveFocus()
     }
@@ -75,8 +85,29 @@ Item {
     // the list as it was)
     onProfilesChanged: {
         closeMenu()
-        if (naming === "rename" && ProfileStore.get(renamingId) === null)
-            naming = ""
+        if (naming === "rename")
+            cancelNaming()
+    }
+    // 1: the page losing the keyboard (a click elsewhere in the panel) or
+    // the panel scrolling closes the menu
+    onActiveFocusChanged: {
+        if (!activeFocus)
+            closeMenu()
+    }
+    property Item flick: null
+    Component.onCompleted: {
+        for (let p = parent; p; p = p.parent)
+            if (p.contentY !== undefined && p.flicking !== undefined) {
+                flick = p
+                break
+            }
+    }
+    Connections {
+        target: root.flick
+        ignoreUnknownSignals: true
+        function onContentYChanged() {
+            root.closeMenu()
+        }
     }
     // The menu's items, on the id it opened for
     function menuAction(what) {
@@ -111,6 +142,12 @@ Item {
         function onFailed(message) {
             root.notice = message
         }
+        function onDone(what, id) {
+            if (what === "create" && root.adopting) {
+                root.adopting = false
+                ProfileStore.adoptActive(id)
+            }
+        }
     }
 
     // An action: never silent (busy, or the store refused without saying why)
@@ -143,18 +180,22 @@ Item {
     function discard() {
         apply(activeProfile)
     }
-    function startNew() {
+    // where: "new" (the banner) or "plus" (the "Novo perfil" card)
+    function startNew(where) {
         if (!canAct || full) {
             if (!canAct && !locked)
                 notice = busyText
             return
         }
         closeMenu()
-        naming = "new"
+        naming = where === "plus" ? "plus" : "new"
         nameBad = false
-        newField.input.text = ""
-        newField.input.forceActiveFocus()
+        const f = naming === "plus" ? plusField : newField
+        f.input.text = ""
+        f.input.forceActiveFocus()
     }
+    // the next create is today's values: it becomes the active one
+    property bool adopting: false
     function startRename(id) {
         const p = ProfileStore.get(id)
         if (!canAct || p === null || p.builtin)
@@ -175,9 +216,12 @@ Item {
         }
         const kind = naming, id = renamingId
         nameBad = false
-        const ok = act(() => kind === "new" ? ProfileStore.save(text) : ProfileStore.rename(id, text))
-        if (ok)
+        const creating = kind === "new" || kind === "plus"
+        const ok = act(() => creating ? ProfileStore.save(text) : ProfileStore.rename(id, text))
+        if (ok) {
+            adopting = creating
             naming = ""
+        }
         return ok
     }
     function cancelNaming() {
@@ -248,18 +292,25 @@ Item {
                         width: 8; height: 8; radius: 4
                         color: Theme.yellow
                     }
-                    Text {
+                    // "Você mudou o <nome, in bold> desde que aplicou: <list>"
+                    Flow {
                         id: bannerText
                         width: parent.width - 18
                         anchors.verticalCenter: parent.verticalCenter
-                        wrapMode: Text.WordWrap
-                        text: ProfileStore.dirty
-                              ? `Você mudou o ${root.activeProfile ? root.activeProfile.nome : ""} desde que aplicou: ${root.changedText}`
-                              : "Novo perfil a partir do que está agora"
-                        textFormat: Text.PlainText
-                        color: Theme.text
-                        font.family: Theme.fontPanels
-                        font.pointSize: Theme.fontSize - 1
+                        spacing: 4
+                        Repeater {
+                            model: [{ t: "Você mudou o", b: false }, { t: root.activeProfile ? root.activeProfile.nome : "", b: true },
+                                    { t: "desde que aplicou:", b: false }, { t: root.changedText, b: false }]
+                            Text {
+                                required property var modelData
+                                text: modelData.t
+                                textFormat: Text.PlainText
+                                color: Theme.text
+                                font.family: Theme.fontPanels
+                                font.bold: modelData.b
+                                font.pointSize: Theme.fontSize - 1
+                            }
+                        }
                     }
                 }
                 // Atualizar, Salvar como novo, Descartar
@@ -279,7 +330,7 @@ Item {
                         text: "Salvar como novo"
                         outline: true
                         visible: !root.full
-                        onClicked: root.startNew()
+                        onClicked: root.startNew("new")
                     }
                     Button {
                         text: "Descartar"
@@ -319,6 +370,11 @@ Item {
                 target: newField.input
                 function onTextChanged() {
                     root.nameBad = false
+                }
+                // Esc (the field's own) or a click elsewhere: nothing saved
+                function onActiveFocusChanged() {
+                    if (!newField.input.activeFocus && root.naming === "new")
+                        root.cancelNaming()
                 }
             }
         }
@@ -391,6 +447,7 @@ Item {
                         y: card.inset
                         width: 26; height: 22; radius: 6
                         color: Theme.alpha(Theme.bgHard, root.menuId === cell.modelData.id ? 0.95 : 0.75)
+                        opacity: root.canAct ? 1 : 0.5
                         Text {
                             anchors.centerIn: parent
                             text: "⋯"
@@ -401,7 +458,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: root.menuId === cell.modelData.id ? root.closeMenu() : root.openMenu(cell.modelData.id)
+                            onClicked: root.menuId === cell.modelData.id ? root.closeMenu() : root.openMenu(cell.modelData.id, dots)
                         }
                     }
                     // The name, as a field while it is renamed
@@ -430,6 +487,9 @@ Item {
                         // name stays as it was
                         Connections {
                             target: renameField.input
+                            function onTextChanged() {
+                                root.nameBad = false
+                            }
                             function onActiveFocusChanged() {
                                 if (!target.activeFocus && cell.renaming)
                                     root.cancelNaming()
@@ -449,36 +509,26 @@ Item {
                 Behavior on color {
                     ColorAnimation { duration: Theme.dur(Theme.animFast) }
                 }
-                // a dashed border
-                Repeater {
-                    model: 4
-                    Item {
-                        required property int index
-                        readonly property bool horizontal: index < 2
-                        x: index === 3 ? newCard.width - 1 : 0
-                        y: index === 1 ? newCard.height - 1 : 0
-                        width: horizontal ? newCard.width : 1
-                        height: horizontal ? 1 : newCard.height
-                        clip: true
-                        Row {
-                            visible: parent.horizontal
-                            spacing: 5
-                            Repeater {
-                                model: Math.ceil(newCard.width / 10)
-                                Rectangle { width: 5; height: 1; color: Theme.alpha(Theme.fg, 0.3) }
-                            }
-                        }
-                        Column {
-                            visible: !parent.horizontal
-                            spacing: 5
-                            Repeater {
-                                model: Math.ceil(newCard.height / 10)
-                                Rectangle { width: 1; height: 5; color: Theme.alpha(Theme.fg, 0.3) }
-                            }
+                // a dashed border, rounded
+                Shape {
+                    anchors.fill: parent
+                    preferredRendererType: Shape.CurveRenderer
+                    ShapePath {
+                        strokeWidth: 2
+                        strokeColor: Theme.alpha(Theme.fg, 0.3)
+                        fillColor: Theme.clear
+                        strokeStyle: ShapePath.DashLine
+                        dashPattern: [3, 3]
+                        PathRectangle {
+                            x: 1; y: 1
+                            width: newCard.width - 2
+                            height: newCard.height - 2
+                            radius: Theme.radius
                         }
                     }
                 }
                 Column {
+                    visible: root.naming !== "plus"
                     anchors.centerIn: parent
                     width: parent.width - 16
                     spacing: 4
@@ -515,9 +565,53 @@ Item {
                 MouseArea {
                     id: newMouse
                     anchors.fill: parent
+                    visible: root.naming !== "plus"
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.startNew()
+                    onClicked: root.startNew("plus")
+                }
+                // The new profile's name, inside the card
+                Column {
+                    visible: root.naming === "plus"
+                    anchors.centerIn: parent
+                    width: parent.width - 16
+                    spacing: 8
+                    Field {
+                        id: plusField
+                        width: parent.width
+                        placeholder: "Nome do novo perfil"
+                        invalid: root.nameBad
+                        Component.onCompleted: input.maximumLength = 32
+                        onAccepted: text => {
+                            if (root.naming === "plus" && plusField.input.activeFocus)
+                                root.finishNaming(text)
+                        }
+                        Connections {
+                            target: plusField.input
+                            function onTextChanged() {
+                                root.nameBad = false
+                            }
+                            function onActiveFocusChanged() {
+                                if (!plusField.input.activeFocus && root.naming === "plus")
+                                    root.cancelNaming()
+                            }
+                        }
+                    }
+                    Row {
+                        id: plusButtons
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        spacing: 6
+                        Button {
+                            text: "Salvar"
+                            primary: true
+                            onClicked: root.finishNaming(plusField.input.text)
+                        }
+                        Button {
+                            text: "Cancelar"
+                            flat: true
+                            onClicked: root.cancelNaming()
+                        }
+                    }
                 }
             }
         }
@@ -566,11 +660,8 @@ Item {
         id: menu
         visible: root.menuId !== ""
         z: 10
-        readonly property int place: root.profiles.findIndex(p => p.id === root.menuId)
-        readonly property real cardX: (place % root.columns) * (root.cellWidth + grid.spacing)
-        readonly property real cardY: grid.y + Math.floor(place / root.columns) * (Math.round(root.cellWidth * 4 / 3) + 26 + grid.spacing)
-        x: Math.max(0, Math.min(root.width - width, cardX + root.cellWidth - width - 6))
-        y: cardY + 40
+        x: Math.max(0, Math.min(root.width - width, root.menuX - width))
+        y: root.menuY + 4
         width: 150
         height: menuColumn.implicitHeight + 8
         radius: Theme.radius
@@ -600,6 +691,7 @@ Item {
                     }
                     Rectangle {
                         visible: menuItem.modelData.id !== "line"
+                        opacity: root.canAct ? 1 : 0.5
                         anchors.fill: parent
                         radius: Theme.radius - 2
                         color: itemMouse.containsMouse ? Theme.bg2 : (menuItem.modelData.id === "remove" && root.armed ? Theme.danger : Theme.clear)
