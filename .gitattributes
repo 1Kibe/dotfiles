@@ -19,3 +19,6 @@
 
 # Strip Thunar's last window size and maximized state; see tools/xfce-thunar-clean.awk
 **/thunar.xml filter=xfce-thunar
+
+# Strip the list of programs that sent a notification; see tools/xfce-notifyd-clean.awk
+**/xfce4-notifyd.xml filter=xfce-notifyd
