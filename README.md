@@ -89,9 +89,10 @@ git push
 
 Sessão em Lua com um shell próprio em Quickshell: barra, painéis que descem da barra colados nela (rede, volume,
 Bluetooth, música), a central de controle (`Super+I`: rede, Bluetooth, mixer, atualizações, Tailscale, energia, luz noturna e
-os apps em segundo plano), clipboard (`Super+V`), captura de tela (`Print`), bloqueio e tela de login. `Super+S` abre as
-Configurações: tema, papel de parede, fontes, barra, bloqueio, captura, energia, monitores, teclado e mouse, gestos,
-atalhos, apps padrão, dispositivos (impressoras, pendrives e USB) e o Sobre. Detalhes, atalhos e gestos em
+os apps em segundo plano), clipboard (`Super+V`), captura de tela (`Print`), bloqueio e tela de login. Treze temas, com
+sabores escuros e claros, e perfis que guardam o visual inteiro: um toque no `Super+T` troca para o próximo perfil, e
+segurar abre o seletor. `Super+S` abre as Configurações: tema, perfis, papel de parede, fontes, barra, bloqueio, captura,
+energia, monitores, teclado e mouse, gestos, atalhos, apps padrão, dispositivos (impressoras, pendrives e USB) e o Sobre. Detalhes, atalhos e gestos em
 [hyprland/README.md](hyprland/README.md).
 
 ### Neovim
@@ -334,6 +335,7 @@ dotfiles/
 │   └── udev/90-dotfiles-bateria.rules     [limite de carga da bateria (Lenovo), em /etc/udev/rules.d]
 ├── assets/preview.png
 ├── tools/
+│   ├── gerar-temas.py                     [gera os temas do shell (themes/*.json)]
 │   ├── xfce-panel-clean.awk               [filtro git: nomes de Wi-Fi]
 │   ├── xfce-desktop-clean.awk             [filtro git: wallpaper por monitor]
 │   └── xfce-thunar-clean.awk              [filtro git: tamanho da janela do Thunar]

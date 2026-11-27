@@ -1,7 +1,8 @@
 # hyprland
 
 Configuração do **Hyprland** (em Lua) e do shell próprio em **Quickshell** (por enquanto a barra, os painéis, o clipboard, a
-captura de tela, o bloqueio de tela e a tela de login), no tema Gruvbox, e do visualizador de imagens **swayimg**.
+captura de tela, o bloqueio de tela e a tela de login), com temas e perfis próprios, e do visualizador de imagens
+**swayimg**.
 
 | Pasta no repo | Vira, depois do `stow` |
 |---|---|
@@ -47,12 +48,19 @@ E o Quickshell, em `.config/quickshell/`:
 | `state/MinimizeState.qml` | As janelas minimizadas: esconder, trazer, fechar, a foto da prévia e a lista depois de reiniciar |
 | `state/LockState.qml` | O bloqueio: pedido de trava, senha pelo PAM, muitas tentativas, Caps Lock e o escurecer antes de travar |
 | `state/BackgroundStore.qml` | O fundo do bloqueio e do login: as imagens, a checagem e o PNG final (ffmpeg) |
+| `theme/palettes.js` | Os temas: confere cada arquivo e calcula as cores de um tema, sabor e destaque |
+| `state/ThemeCatalog.qml` | Os temas do repo (`themes/`) e os próprios (`~/.local/share/dotfiles/themes`) |
+| `state/ProfileStore.qml` | Os perfis: ler, salvar, atualizar, apagar, exportar e importar |
+| `state/CarouselState.qml` | O `Super+T`: o toque, o seletor e o `Super+Shift+T` |
+| `state/SwapState.qml` | A transição de uma troca de tema ou de perfil, a partir da tela congelada |
 | `bar/` | A barra e os painéis que descem dela, numa janela só por monitor (`Bar.qml`; `BarZone.qml` reserva o espaço da barra), os itens dela e os painéis (`*Panel.qml`, base em `AttachedPanel.qml`, desenho em `AttachedShape.qml`) |
 | `clipboard/` | O clipboard do `Super+V`: a gaveta de baixo com os cartões, o emoji e as anotações |
 | `overview/` | A visão geral do `Super+Tab`: a faixa das áreas, os cartões das janelas e o voo |
 | `minimize/` | A peça das minimizadas na borda direita (o fio, os ícones, os nomes e a prévia) e o voo da foto da janela até o fio |
 | `lock/` | A tela de bloqueio, o escolhedor de fundo, o aviso antes de travar e as peças que a tela de login também usa |
-| `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas |
+| `wallpaper/` | O papel de parede da sessão, atrás de todas as janelas, e a tela congelada da transição |
+| `profiles/` | O seletor do `Super+T` e o aviso da troca de perfil |
+| `themes/` | Os temas do repo (`index.json` e um arquivo por tema) e as licenças deles (`LICENSES`) |
 
 ## Entrar no Hyprland
 
@@ -471,6 +479,7 @@ Antes do módulo existir, o atalho não faz nada ou usa o substituto indicado.
 | `lock` | `lock` | `Super+L` |
 | `taskmanager` | `toggle` | `Ctrl+Shift+Esc` (painel do sistema da barra) |
 | `cheatsheet` | `toggle` | `Super+F1` (hoje abre o `hypr-atalhos`) |
+| `profiles` | `next` (toque) / `open` (segurar), `prev` | `Super+T`, `Super+Shift+T` |
 
 Outros alvos, para scripts:
 
@@ -492,6 +501,9 @@ Outros alvos, para scripts:
 | `qs ipc call lock stats` | O estado do bloqueio em JSON (travado, conferindo, escurecido, erro); nunca a senha |
 | `qs ipc call lock background` | Abre o escolhedor do fundo do bloqueio e do login (não abre com a tela travada) |
 | `qs ipc call lock dim <segundos>` / `undim` | O escurecer antes de travar (o `hypridle` chama); só visual, nunca trava nem destrava |
+| `qs ipc call profiles apply <id>` | Aplica um perfil pelo id, com a transição (`padrao` é o Padrão) |
+| `qs ipc call profiles toggle` | Abre ou fecha o seletor de perfis no monitor em foco |
+| `qs ipc call profiles status` | Os perfis em JSON: os ids, a ordem, o ativo e a contagem; nunca nomes nem caminhos |
 
 Não existe alvo para destravar: só a senha, pelo PAM, destrava.
 
@@ -549,6 +561,43 @@ hora.
   uma impressora no `system-config-printer` (pelo `cups-pk-helper`); depois de digitada, vale por alguns minutos. Montar,
   abrir e ejetar pendrive, a impressora padrão, a página de teste, cancelar o seu trabalho e o limite da bateria não pedem
   senha.
+
+### Temas e perfis
+
+Em Configurações → **Tema e cores** ficam os 13 temas do repo (Gruvbox, Catppuccin, Nord, Tokyo Night, Everforest, Rosé
+Pine, Kanagawa, Cyberdream, Flexoki, Dracula, Solarized, Neofusion e Oxocarbon), cada um com os sabores que tem: escuro,
+escuro forte, escuro suave, claro, claro forte e claro suave. A cor de destaque é a do tema (Padrão) ou uma das cores
+dele. O tema vale para o shell, o Hyprland (as bordas), o GTK, o Kitty, o btop, o lazygit, o Rofi, o mpv e o swayimg.
+
+- **Sabores claros:** as cores são as dos projetos originais. Quando um tom não lê bem sobre o fundo claro, o shell usa um
+  tom mais escuro da mesma cor, só na cópia dele: o terminal e os outros programas ficam com a paleta original.
+- **Temas próprios:** "Novo tema personalizado" abre um editor que parte de um tema do repo ou do zero, com todas as cores
+  editáveis, o contraste de cada texto sobre o fundo e uma prévia ao vivo. Eles ficam em `~/.local/share/dotfiles/themes`,
+  fora do repo.
+- **Gerar os temas do repo:** os arquivos de `themes/` saem do `tools/gerar-temas.py` (rodado da raiz do repo); ele confere
+  os contrastes de cada sabor e lista os tons que escureceu.
+
+Em Configurações → **Perfis**, um perfil guarda o visual inteiro: tema, sabor, destaque, transparência e desfoque da barra,
+cantos, cursor, fontes, tamanho do texto, velocidade das animações e o papel de parede (com uma cópia da imagem). O Padrão
+é o do repo e não muda. Cabem 24 perfis.
+
+- **Salvar e atualizar:** quando as Configurações mudam depois de aplicar um perfil, o cartão dele fica "alterado" e
+  mostra o que mudou. "Atualizar" grava as mudanças nele, "Salvar como novo" cria outro e "Descartar" volta ao perfil.
+  Trocar de perfil com um alterado aplica o outro direto, e as mudanças não salvas se perdem.
+- **No menu "⋯" de cada cartão:** Renomear, Duplicar, Exportar, Exportar sem a imagem e Apagar.
+- **Exportar e importar:** um perfil exportado vira uma pasta em `Documentos/Perfis`. Importar lista as pastas de lá. A
+  imagem de um perfil importado é sempre gravada de novo pelo `ffmpeg`, isolado no `bubblewrap` (sem rede, sem a sua pasta
+  pessoal e com limite de tempo e de memória). Sem o `bubblewrap`, a imagem não é importada.
+- **A troca:** a tela congela, o tema e o papel novos entram por baixo e aparecem pela transição escolhida: Círculo (a
+  partir do cursor num clique, ou do meio), Esmaecer, Deslizar ou Cortina. Com "Reduzir movimento", sempre esmaece. A troca
+  de tema na página Tema e cores usa a mesma transição.
+- **`Super+T`:** um toque vai para o próximo perfil da ordem, em roda, com um aviso do nome e "N de M"; `Super+Shift+T`
+  volta ao anterior. Segurar o `Super+T` abre o seletor, que continua aberto ao soltar: setas, a roda do mouse (um cartão
+  por degrau), a rolagem lateral do touchpad, os números de 1 a 9, o próprio `Super+T` (o próximo cartão) e o
+  `Super+Shift+T` (o anterior) escolhem; Enter ou um clique no cartão do meio aplica; Esc fecha. Mais de seis perfis viram
+  uma grade.
+- Nada disso funciona com a tela travada. Os perfis ficam em `~/.local/share/dotfiles/profiles`, fora do repo, e o
+  Restaurar tudo não apaga nem muda a ordem deles.
 
 ### Luz noturna
 
