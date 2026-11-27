@@ -39,7 +39,7 @@
       "syntaxTheme": "base16",
       "papeis": {
         "bgDeep": "#dbd5cf", "bgHard": "#eee8e1", "bg": "#faf4ed", "bg1": "#f2e9e1", "bg2": "#dfdad9",
-        "fg": "#575279", "fg2": "#797593", "fg4": "#898496", "text": "#575279", "gray": "#898496"
+        "fg": "#575279", "fg2": "#696582", "fg4": "#898496", "text": "#575279", "gray": "#898496"
       },
       "nomeadas": {
         "yellow": "#c57d01", "orange": "#ca7672", "red": "#b4637a", "green": "#286983", "aqua": "#56949f",

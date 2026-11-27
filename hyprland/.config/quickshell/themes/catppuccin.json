@@ -53,7 +53,7 @@
       "syntaxTheme": "Catppuccin Latte",
       "papeis": {
         "bgDeep": "#d4d6dc", "bgHard": "#e6e9ef", "bg": "#eff1f5", "bg1": "#ccd0da", "bg2": "#bcc0cc",
-        "fg": "#4c4f69", "fg2": "#5c5f77", "fg4": "#6c6f85", "text": "#4c4f69", "gray": "#707384"
+        "fg": "#4c4f69", "fg2": "#555870", "fg4": "#6c6f85", "text": "#4c4f69", "gray": "#707384"
       },
       "nomeadas": {
         "yellow": "#c47a09", "orange": "#ed5d08", "red": "#d20f39", "green": "#3e9e29", "aqua": "#179299",

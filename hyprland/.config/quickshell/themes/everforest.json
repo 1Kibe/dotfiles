@@ -53,7 +53,7 @@
       "syntaxTheme": "base16",
       "papeis": {
         "bgDeep": "#dcd8c3", "bgHard": "#efebd4", "bg": "#fdf6e3", "bg1": "#f4f0d9", "bg2": "#efebd4",
-        "fg": "#5c6a72", "fg2": "#829181", "fg4": "#818d7f", "text": "#5c6a72", "gray": "#838d7d"
+        "fg": "#5c6a72", "fg2": "#627061", "fg4": "#818d7f", "text": "#5c6a72", "gray": "#838d7d"
       },
       "nomeadas": {
         "yellow": "#ba8502", "orange": "#e36d04", "red": "#f85552", "green": "#84970d", "aqua": "#2da176",
@@ -68,7 +68,7 @@
       "syntaxTheme": "base16",
       "papeis": {
         "bgDeep": "#dfdccd", "bgHard": "#f2efdf", "bg": "#fffbef", "bg1": "#f8f5e4", "bg2": "#f2efdf",
-        "fg": "#5c6a72", "fg2": "#829181", "fg4": "#859183", "text": "#5c6a72", "gray": "#869080"
+        "fg": "#5c6a72", "fg2": "#657364", "fg4": "#859183", "text": "#5c6a72", "gray": "#869080"
       },
       "nomeadas": {
         "yellow": "#bd880c", "orange": "#e7700e", "red": "#f85552", "green": "#879a02", "aqua": "#31a479",
@@ -83,7 +83,7 @@
       "syntaxTheme": "base16",
       "papeis": {
         "bgDeep": "#d3cdb5", "bgHard": "#e5dfc5", "bg": "#f3ead3", "bg1": "#eae4ca", "bg2": "#e5dfc5",
-        "fg": "#56646c", "fg2": "#829181", "fg4": "#7a8578", "text": "#56646c", "gray": "#7c8576"
+        "fg": "#56646c", "fg2": "#5b695a", "fg4": "#7a8578", "text": "#56646c", "gray": "#7c8576"
       },
       "nomeadas": {
         "yellow": "#b07e01", "orange": "#d5670b", "red": "#ef4c4b", "green": "#7d8f09", "aqua": "#1e976d",

@@ -585,6 +585,10 @@ def flavor(theme, fid):
             if n != named[k].lower():
                 adjusted.append(f"{k} {named[k]}->{n}")
             named[k] = n
+        n = deepen(roles["fg2"], darker(roles["bg"], roles["bg1"]), 4.5)
+        if n != roles["fg2"].lower():
+            adjusted.append(f"fg2 {roles['fg2']}->{n}")
+        roles["fg2"] = n
         for k in ("fg4", "gray"):
             n = deepen(roles[k], darker(roles["bg"], roles["bg1"]), 3)
             if n != roles[k].lower():
@@ -611,15 +615,17 @@ def flavor(theme, fid):
 
 
 def check(theme, fid, f):
-    """The spec's contrasts (fg/bg 4.5, fg4/bg 3, text/bgHard 4.5, each named/bg 3)."""
+    """The spec's contrasts (fg/bg 4.5, fg4/bg 3, text/bgHard 4.5, each named/bg 3);
+    on a light flavor also fg2 4.5 over bg and bg1."""
     r, problems = f["papeis"], []
-    for name, a, b, least in [("fg/bg", r["fg"], r["bg"], 4.5), ("fg4/bg", r["fg4"], r["bg"], 3),
-                              ("text/bgHard", r["text"], r["bgHard"], 4.5)]:
+    pairs = [("fg/bg", r["fg"], r["bg"], 4.5), ("fg4/bg", r["fg4"], r["bg"], 3),
+             ("text/bgHard", r["text"], r["bgHard"], 4.5)]
+    pairs += [(f"{k}/bg", v, r["bg"], 3) for k, v in f["nomeadas"].items()]
+    if not f["escuro"]:
+        pairs += [("fg2/bg", r["fg2"], r["bg"], 4.5), ("fg2/bg1", r["fg2"], r["bg1"], 4.5)]
+    for name, a, b, least in pairs:
         if contrast(a, b) < least:
             problems.append(f"{name} {contrast(a, b):.2f}")
-    for k, v in f["nomeadas"].items():
-        if contrast(v, r["bg"]) < 3:
-            problems.append(f"{k}/bg {contrast(v, r['bg']):.2f}")
     return problems
 
 

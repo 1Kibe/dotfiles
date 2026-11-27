@@ -25,7 +25,7 @@
       "syntaxTheme": "Solarized (light)",
       "papeis": {
         "bgDeep": "#ddd7c7", "bgHard": "#f0ead8", "bg": "#fdf6e3", "bg1": "#eee8d5", "bg2": "#cecfc3",
-        "fg": "#576c74", "fg2": "#586e75", "fg4": "#77888a", "text": "#576c74", "gray": "#7a8787"
+        "fg": "#576c74", "fg2": "#556b72", "fg4": "#77888a", "text": "#576c74", "gray": "#7a8787"
       },
       "nomeadas": {
         "yellow": "#b28812", "orange": "#cb4b16", "red": "#dc322f", "green": "#84970f", "aqua": "#259e95",
